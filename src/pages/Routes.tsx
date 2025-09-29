@@ -1,6 +1,6 @@
 import RouteMap from "@/components/RouteMap";
 
-const Routes = () => {
+const RoutesPage = () => {
   return (
     <div className="p-6">
       <RouteMap />
@@ -8,4 +8,4 @@ const Routes = () => {
   );
 };
 
-export default Routes;
+export default RoutesPage;

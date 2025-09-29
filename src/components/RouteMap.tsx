@@ -3,7 +3,7 @@ import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, Clock, Users, Route } from "lucide-react";
+import { MapPin, Clock, Users, Route as RouteIcon } from "lucide-react";
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -144,7 +144,7 @@ const RouteMap: React.FC = () => {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
-              <Route className="h-5 w-5" />
+              <RouteIcon className="h-5 w-5" />
               <span>Rotas Otimizadas</span>
             </CardTitle>
           </CardHeader>
