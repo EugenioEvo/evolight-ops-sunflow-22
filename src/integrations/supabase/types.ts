@@ -14,7 +14,138 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      insumos: {
+        Row: {
+          categoria: string
+          created_at: string | null
+          estoque_critico: number | null
+          estoque_minimo: number | null
+          fornecedor: string | null
+          id: string
+          localizacao: string | null
+          nome: string
+          observacoes: string | null
+          preco: number | null
+          quantidade: number
+          unidade: string
+          updated_at: string | null
+        }
+        Insert: {
+          categoria: string
+          created_at?: string | null
+          estoque_critico?: number | null
+          estoque_minimo?: number | null
+          fornecedor?: string | null
+          id?: string
+          localizacao?: string | null
+          nome: string
+          observacoes?: string | null
+          preco?: number | null
+          quantidade?: number
+          unidade?: string
+          updated_at?: string | null
+        }
+        Update: {
+          categoria?: string
+          created_at?: string | null
+          estoque_critico?: number | null
+          estoque_minimo?: number | null
+          fornecedor?: string | null
+          id?: string
+          localizacao?: string | null
+          nome?: string
+          observacoes?: string | null
+          preco?: number | null
+          quantidade?: number
+          unidade?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      movimentacoes: {
+        Row: {
+          created_at: string | null
+          data_movimentacao: string | null
+          id: string
+          insumo_id: string
+          motivo: string | null
+          observacoes: string | null
+          quantidade: number
+          responsavel_id: string
+          tipo: string
+        }
+        Insert: {
+          created_at?: string | null
+          data_movimentacao?: string | null
+          id?: string
+          insumo_id: string
+          motivo?: string | null
+          observacoes?: string | null
+          quantidade: number
+          responsavel_id: string
+          tipo: string
+        }
+        Update: {
+          created_at?: string | null
+          data_movimentacao?: string | null
+          id?: string
+          insumo_id?: string
+          motivo?: string | null
+          observacoes?: string | null
+          quantidade?: number
+          responsavel_id?: string
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "movimentacoes_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "insumos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "movimentacoes_responsavel_id_fkey"
+            columns: ["responsavel_id"]
+            isOneToOne: false
+            referencedRelation: "responsaveis"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      responsaveis: {
+        Row: {
+          ativo: boolean | null
+          contato: string | null
+          created_at: string | null
+          id: string
+          nome: string
+          observacoes: string | null
+          tipo: string
+          updated_at: string | null
+        }
+        Insert: {
+          ativo?: boolean | null
+          contato?: string | null
+          created_at?: string | null
+          id?: string
+          nome: string
+          observacoes?: string | null
+          tipo: string
+          updated_at?: string | null
+        }
+        Update: {
+          ativo?: boolean | null
+          contato?: string | null
+          created_at?: string | null
+          id?: string
+          nome?: string
+          observacoes?: string | null
+          tipo?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
