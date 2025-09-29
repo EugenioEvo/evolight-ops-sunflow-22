@@ -5,6 +5,8 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "@/hooks/useAuth";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import RoutesPage from "./pages/Routes";
 import Clientes from "./pages/Clientes";
@@ -13,39 +15,49 @@ import Equipamentos from "./pages/Equipamentos";
 import Insumos from "./pages/Insumos";
 import Prestadores from "./pages/Prestadores";
 import NotFound from "./pages/NotFound";
+import Auth from "./pages/Auth";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <SidebarProvider>
-          <div className="min-h-screen flex w-full">
-            <AppSidebar />
-            <div className="flex-1 flex flex-col">
-              <header className="h-12 flex items-center border-b bg-background px-4">
-                <SidebarTrigger />
-              </header>
-              <main className="flex-1 overflow-auto">
-                <Routes>
-                  <Route path="/" element={<Index />} />
-                  <Route path="/tickets" element={<Tickets />} />
-                  <Route path="/routes" element={<RoutesPage />} />
-                  <Route path="/clientes" element={<Clientes />} />
-                  <Route path="/prestadores" element={<Prestadores />} />
-                  <Route path="/equipamentos" element={<Equipamentos />} />
-                  <Route path="/insumos" element={<Insumos />} />
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </main>
-            </div>
-          </div>
-        </SidebarProvider>
-      </BrowserRouter>
-    </TooltipProvider>
+    <AuthProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/*" element={
+              <ProtectedRoute>
+                <SidebarProvider>
+                  <div className="min-h-screen flex w-full">
+                    <AppSidebar />
+                    <div className="flex-1 flex flex-col">
+                      <header className="h-12 flex items-center border-b bg-background px-4">
+                        <SidebarTrigger />
+                      </header>
+                      <main className="flex-1 overflow-auto">
+                        <Routes>
+                          <Route path="/" element={<Index />} />
+                          <Route path="/tickets" element={<Tickets />} />
+                          <Route path="/routes" element={<RoutesPage />} />
+                          <Route path="/clientes" element={<Clientes />} />
+                          <Route path="/prestadores" element={<Prestadores />} />
+                          <Route path="/equipamentos" element={<Equipamentos />} />
+                          <Route path="/insumos" element={<Insumos />} />
+                          <Route path="*" element={<NotFound />} />
+                        </Routes>
+                      </main>
+                    </div>
+                  </div>
+                </SidebarProvider>
+              </ProtectedRoute>
+            } />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </AuthProvider>
   </QueryClientProvider>
 );
 

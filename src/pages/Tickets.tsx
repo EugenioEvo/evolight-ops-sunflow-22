@@ -1,246 +1,338 @@
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
-  Ticket, 
-  Plus, 
-  Search, 
-  Clock, 
-  User, 
-  MapPin, 
-  Wrench, 
-  AlertTriangle,
-  CheckCircle,
-  Calendar
-} from "lucide-react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import React, { useState, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { Calendar, Clock, MapPin, Plus, Search, Settings, FileText, CheckCircle, XCircle } from 'lucide-react';
 
 const ticketSchema = z.object({
-  titulo: z.string().min(5, "Título deve ter pelo menos 5 caracteres"),
-  cliente: z.string().min(2, "Cliente é obrigatório"),
-  endereco: z.string().min(5, "Endereço é obrigatório"),
-  tipo: z.enum(["manutencao", "instalacao", "inspecao", "reparo", "emergencia"]),
-  prioridade: z.enum(["baixa", "media", "alta", "critica"]),
-  descricao: z.string().min(10, "Descrição deve ter pelo menos 10 caracteres"),
-  equipamentos: z.string().optional(),
-  dataAgendamento: z.string().min(1, "Data de agendamento é obrigatória"),
-  tecnicoResponsavel: z.string().optional(),
+  titulo: z.string().min(1, 'Título é obrigatório'),
+  descricao: z.string().min(1, 'Descrição é obrigatória'),
+  cliente_id: z.string().uuid('Selecione um cliente'),
+  equipamento_tipo: z.enum(['painel_solar', 'inversor', 'controlador_carga', 'bateria', 'cabeamento', 'estrutura', 'monitoramento', 'outros']),
+  prioridade: z.enum(['baixa', 'media', 'alta', 'critica']),
+  endereco_servico: z.string().min(1, 'Endereço do serviço é obrigatório'),
+  data_vencimento: z.string().optional(),
+  tempo_estimado: z.number().min(1, 'Tempo estimado deve ser maior que 0').optional(),
   observacoes: z.string().optional(),
 });
 
 type TicketForm = z.infer<typeof ticketSchema>;
 
-interface TicketData extends TicketForm {
-  id: number;
-  status: "aberto" | "em_andamento" | "pausado" | "concluido" | "cancelado";
-  dataAbertura: string;
-  dataVencimento: string;
-  tempoEstimado: string;
-}
-
 const Tickets = () => {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [activeTab, setActiveTab] = useState("todos");
+  const [tickets, setTickets] = useState<any[]>([]);
+  const [clientes, setClientes] = useState<any[]>([]);
+  const [tecnicos, setTecnicos] = useState<any[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [activeTab, setActiveTab] = useState('todos');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTicket, setEditingTicket] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+
+  const { user, profile } = useAuth();
+  const { toast } = useToast();
 
   const form = useForm<TicketForm>({
     resolver: zodResolver(ticketSchema),
     defaultValues: {
-      titulo: "",
-      cliente: "",
-      endereco: "",
-      tipo: "manutencao",
-      prioridade: "media",
-      descricao: "",
-      equipamentos: "",
-      dataAgendamento: "",
-      tecnicoResponsavel: "",
-      observacoes: "",
+      titulo: '',
+      descricao: '',
+      cliente_id: '',
+      equipamento_tipo: 'painel_solar',
+      prioridade: 'media',
+      endereco_servico: '',
+      observacoes: '',
     },
   });
 
-  // Mock data - será substituído pelo Supabase
-  const [tickets, setTickets] = useState<TicketData[]>([
-    {
-      id: 1,
-      titulo: "Manutenção Preventiva Inversor Principal",
-      cliente: "Solar Tech Ltda",
-      endereco: "Av. Paulista, 1000 - São Paulo, SP",
-      tipo: "manutencao",
-      prioridade: "alta",
-      descricao: "Realizar manutenção preventiva no inversor principal e verificar conexões",
-      equipamentos: "Inversor SUN2000-60KTL-M0",
-      dataAgendamento: "2024-01-15",
-      tecnicoResponsavel: "João Silva",
-      observacoes: "Cliente solicitou horário após 14h",
-      status: "aberto",
-      dataAbertura: "2024-01-10",
-      dataVencimento: "2024-01-15",
-      tempoEstimado: "2h"
-    },
-    {
-      id: 2,
-      titulo: "Inspeção Módulos Fotovoltaicos",
-      cliente: "Green Energy Corp",
-      endereco: "Rua das Flores, 500 - São Paulo, SP",
-      tipo: "inspecao",
-      prioridade: "media",
-      descricao: "Inspeção visual e termográfica dos módulos fotovoltaicos",
-      equipamentos: "Módulos Canadian Solar 450W",
-      dataAgendamento: "2024-01-12",
-      tecnicoResponsavel: "Maria Santos",
-      observacoes: "",
-      status: "em_andamento",
-      dataAbertura: "2024-01-08",
-      dataVencimento: "2024-01-12",
-      tempoEstimado: "1h 30min"
-    },
-    {
-      id: 3,
-      titulo: "Instalação Sistema de Monitoramento",
-      cliente: "EcoSolar Brasil",
-      endereco: "Av. Faria Lima, 2000 - São Paulo, SP",
-      tipo: "instalacao",
-      prioridade: "baixa",
-      descricao: "Instalar sistema de monitoramento remoto",
-      equipamentos: "Gateway de Comunicação",
-      dataAgendamento: "2024-01-20",
-      tecnicoResponsavel: "Pedro Costa",
-      observacoes: "Aguardando entrega do equipamento",
-      status: "concluido",
-      dataAbertura: "2024-01-05",
-      dataVencimento: "2024-01-20",
-      tempoEstimado: "4h"
-    }
-  ]);
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      
+      // Carregar clientes
+      const { data: clientesData } = await supabase
+        .from('clientes')
+        .select(`
+          id,
+          empresa,
+          profiles!inner(nome, email)
+        `);
+      setClientes(clientesData || []);
 
-  const onSubmit = (data: TicketForm) => {
-    if (editingTicket) {
-      const updatedTicket: TicketData = { 
-        ...data, 
-        id: editingTicket.id,
-        status: editingTicket.status,
-        dataAbertura: editingTicket.dataAbertura,
-        dataVencimento: data.dataAgendamento,
-        tempoEstimado: "2h" // Calcular baseado no tipo
-      };
-      setTickets(prev => prev.map(ticket => 
-        ticket.id === editingTicket.id ? updatedTicket : ticket
-      ));
-    } else {
-      const newTicket: TicketData = {
-        id: Date.now(),
-        ...data,
-        status: "aberto",
-        dataAbertura: new Date().toISOString().split('T')[0],
-        dataVencimento: data.dataAgendamento,
-        tempoEstimado: "2h" // Calcular baseado no tipo
-      };
-      setTickets(prev => [...prev, newTicket]);
+      // Carregar técnicos
+      const { data: tecnicosData } = await supabase
+        .from('tecnicos')
+        .select(`
+          id,
+          registro_profissional,
+          profiles!inner(nome, email)
+        `);
+      setTecnicos(tecnicosData || []);
+
+      // Carregar tickets
+      const { data: ticketsData } = await supabase
+        .from('tickets')
+        .select(`
+          *,
+          clientes!inner(
+            empresa,
+            profiles!inner(nome, email)
+          ),
+          tecnicos(
+            profiles!inner(nome)
+          )
+        `)
+        .order('created_at', { ascending: false });
+
+      setTickets(ticketsData || []);
+    } catch (error) {
+      console.error('Erro ao carregar dados:', error);
+      toast({
+        title: 'Erro',
+        description: 'Erro ao carregar dados',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
     }
-    
-    form.reset();
-    setIsDialogOpen(false);
-    setEditingTicket(null);
   };
 
-  const handleEdit = (ticket: TicketData) => {
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const onSubmit = async (data: TicketForm) => {
+    try {
+      setLoading(true);
+
+      const ticketData = {
+        ...data,
+        tempo_estimado: data.tempo_estimado || null,
+        data_vencimento: data.data_vencimento ? new Date(data.data_vencimento).toISOString() : null,
+        created_by: user?.id,
+      };
+
+      if (editingTicket) {
+        const { error } = await supabase
+          .from('tickets')
+          .update(ticketData as any)
+          .eq('id', editingTicket.id);
+
+        if (error) throw error;
+
+        toast({
+          title: 'Sucesso',
+          description: 'Ticket atualizado com sucesso!',
+        });
+      } else {
+        const { error } = await supabase
+          .from('tickets')
+          .insert([ticketData as any]);
+
+        if (error) throw error;
+
+        toast({
+          title: 'Sucesso',
+          description: 'Ticket criado com sucesso!',
+        });
+      }
+
+      setIsDialogOpen(false);
+      setEditingTicket(null);
+      form.reset();
+      loadData();
+    } catch (error: any) {
+      console.error('Erro ao salvar ticket:', error);
+      toast({
+        title: 'Erro',
+        description: error.message || 'Erro ao salvar ticket',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEdit = (ticket: any) => {
     setEditingTicket(ticket);
-    form.reset(ticket);
+    form.reset({
+      titulo: ticket.titulo,
+      descricao: ticket.descricao,
+      cliente_id: ticket.cliente_id,
+      equipamento_tipo: ticket.equipamento_tipo,
+      prioridade: ticket.prioridade,
+      endereco_servico: ticket.endereco_servico,
+      data_vencimento: ticket.data_vencimento ? new Date(ticket.data_vencimento).toISOString().split('T')[0] : '',
+      tempo_estimado: ticket.tempo_estimado || undefined,
+      observacoes: ticket.observacoes || '',
+    });
     setIsDialogOpen(true);
   };
 
-  const handleDelete = (id: number) => {
-    setTickets(prev => prev.filter(ticket => ticket.id !== id));
+  const handleApprove = async (ticketId: string) => {
+    try {
+      setLoading(true);
+      
+      // Atualizar status do ticket
+      const { error: updateError } = await supabase
+        .from('tickets')
+        .update({ status: 'aprovado' })
+        .eq('id', ticketId);
+
+      if (updateError) throw updateError;
+
+      // Registrar aprovação
+      const { error: approvalError } = await supabase
+        .from('aprovacoes')
+        .insert({
+          ticket_id: ticketId,
+          aprovador_id: profile?.id,
+          status: 'aprovado',
+          observacoes: 'Aprovado automaticamente'
+        });
+
+      if (approvalError) throw approvalError;
+
+      toast({
+        title: 'Sucesso',
+        description: 'Ticket aprovado com sucesso!',
+      });
+
+      loadData();
+    } catch (error: any) {
+      toast({
+        title: 'Erro',
+        description: error.message || 'Erro ao aprovar ticket',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleReject = async (ticketId: string) => {
+    try {
+      setLoading(true);
+      
+      // Atualizar status do ticket
+      const { error: updateError } = await supabase
+        .from('tickets')
+        .update({ status: 'rejeitado' })
+        .eq('id', ticketId);
+
+      if (updateError) throw updateError;
+
+      // Registrar rejeição
+      const { error: approvalError } = await supabase
+        .from('aprovacoes')
+        .insert({
+          ticket_id: ticketId,
+          aprovador_id: profile?.id,
+          status: 'rejeitado',
+          observacoes: 'Rejeitado'
+        });
+
+      if (approvalError) throw approvalError;
+
+      toast({
+        title: 'Sucesso',
+        description: 'Ticket rejeitado',
+      });
+
+      loadData();
+    } catch (error: any) {
+      toast({
+        title: 'Erro',
+        description: error.message || 'Erro ao rejeitar ticket',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const filteredTickets = tickets.filter(ticket => {
     const matchesSearch = ticket.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         ticket.cliente.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         ticket.descricao.toLowerCase().includes(searchTerm.toLowerCase());
+                         ticket.numero_ticket.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         ticket.clientes?.profiles?.nome?.toLowerCase().includes(searchTerm.toLowerCase());
     
-    if (activeTab === "todos") return matchesSearch;
+    if (activeTab === 'todos') return matchesSearch;
     return matchesSearch && ticket.status === activeTab;
   });
 
-  const getPrioridadeColor = (prioridade: string) => {
-    switch (prioridade) {
-      case "critica": return "bg-red-500 text-white";
-      case "alta": return "bg-red-100 text-red-800";
-      case "media": return "bg-yellow-100 text-yellow-800";
-      case "baixa": return "bg-green-100 text-green-800";
-      default: return "bg-muted text-muted-foreground";
-    }
-  };
-
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case "aberto": return "bg-blue-100 text-blue-800";
-      case "em_andamento": return "bg-orange-100 text-orange-800";
-      case "pausado": return "bg-gray-100 text-gray-800";
-      case "concluido": return "bg-green-100 text-green-800";
-      case "cancelado": return "bg-red-100 text-red-800";
-      default: return "bg-muted text-muted-foreground";
-    }
-  };
-
-  const getTipoIcon = (tipo: string) => {
-    switch (tipo) {
-      case "manutencao": return <Wrench className="h-4 w-4" />;
-      case "instalacao": return <Plus className="h-4 w-4" />;
-      case "inspecao": return <Search className="h-4 w-4" />;
-      case "reparo": return <Wrench className="h-4 w-4" />;
-      case "emergencia": return <AlertTriangle className="h-4 w-4" />;
-      default: return <Ticket className="h-4 w-4" />;
-    }
-  };
-
-  const getStatusCounts = () => {
-    return {
-      todos: tickets.length,
-      aberto: tickets.filter(t => t.status === "aberto").length,
-      em_andamento: tickets.filter(t => t.status === "em_andamento").length,
-      pausado: tickets.filter(t => t.status === "pausado").length,
-      concluido: tickets.filter(t => t.status === "concluido").length,
-      cancelado: tickets.filter(t => t.status === "cancelado").length,
+    const colors = {
+      'aberto': 'bg-blue-100 text-blue-800',
+      'aguardando_aprovacao': 'bg-yellow-100 text-yellow-800',
+      'aprovado': 'bg-green-100 text-green-800',
+      'rejeitado': 'bg-red-100 text-red-800',
+      'ordem_servico_gerada': 'bg-purple-100 text-purple-800',
+      'em_execucao': 'bg-orange-100 text-orange-800',
+      'aguardando_rme': 'bg-indigo-100 text-indigo-800',
+      'concluido': 'bg-gray-100 text-gray-800',
+      'cancelado': 'bg-red-100 text-red-800'
     };
+    return colors[status as keyof typeof colors] || 'bg-gray-100 text-gray-800';
   };
 
-  const statusCounts = getStatusCounts();
+  const getPrioridadeColor = (prioridade: string) => {
+    const colors = {
+      'baixa': 'bg-green-100 text-green-800',
+      'media': 'bg-yellow-100 text-yellow-800',
+      'alta': 'bg-orange-100 text-orange-800',
+      'critica': 'bg-red-100 text-red-800'
+    };
+    return colors[prioridade as keyof typeof colors] || 'bg-gray-100 text-gray-800';
+  };
+
+  const getEquipamentoIcon = (tipo: string) => {
+    return <Settings className="h-4 w-4" />;
+  };
+
+  if (loading && tickets.length === 0) {
+    return (
+      <div className="p-6 space-y-6">
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 bg-gray-200 rounded w-1/4"></div>
+          <div className="h-32 bg-gray-200 rounded"></div>
+          <div className="h-32 bg-gray-200 rounded"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Gestão de Tickets</h1>
-          <p className="text-muted-foreground">Abra e gerencie chamados de manutenção</p>
+          <h1 className="text-3xl font-bold">Tickets</h1>
+          <p className="text-muted-foreground">Gerencie solicitações de manutenção</p>
         </div>
-        
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-gradient-solar shadow-solar">
+            <Button onClick={() => { setEditingTicket(null); form.reset(); }}>
               <Plus className="h-4 w-4 mr-2" />
               Novo Ticket
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>
-                {editingTicket ? "Editar Ticket" : "Novo Ticket"}
-              </DialogTitle>
+              <DialogTitle>{editingTicket ? 'Editar Ticket' : 'Criar Novo Ticket'}</DialogTitle>
+              <DialogDescription>
+                {editingTicket ? 'Atualize os dados do ticket' : 'Preencha os dados para criar um novo ticket'}
+              </DialogDescription>
             </DialogHeader>
-            
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
@@ -248,39 +340,35 @@ const Tickets = () => {
                     control={form.control}
                     name="titulo"
                     render={({ field }) => (
-                      <FormItem className="col-span-2">
-                        <FormLabel>Título do Ticket</FormLabel>
+                      <FormItem>
+                        <FormLabel>Título</FormLabel>
                         <FormControl>
-                          <Input {...field} placeholder="Ex: Manutenção preventiva inversor" />
+                          <Input {...field} placeholder="Manutenção em painel solar" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  
                   <FormField
                     control={form.control}
-                    name="cliente"
+                    name="cliente_id"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Cliente</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="Nome do cliente" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="dataAgendamento"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Data de Agendamento</FormLabel>
-                        <FormControl>
-                          <Input type="date" {...field} />
-                        </FormControl>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione um cliente" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {clientes.map((cliente) => (
+                              <SelectItem key={cliente.id} value={cliente.id}>
+                                {cliente.empresa || cliente.profiles?.nome}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -289,51 +377,53 @@ const Tickets = () => {
 
                 <FormField
                   control={form.control}
-                  name="endereco"
+                  name="descricao"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Endereço</FormLabel>
+                      <FormLabel>Descrição</FormLabel>
                       <FormControl>
-                        <Input {...field} placeholder="Endereço completo do local" />
+                        <Textarea {...field} placeholder="Descreva o problema ou serviço necessário..." rows={3} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
 
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
-                    name="tipo"
+                    name="equipamento_tipo"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Tipo</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormLabel>Tipo de Equipamento</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="manutencao">Manutenção</SelectItem>
-                            <SelectItem value="instalacao">Instalação</SelectItem>
-                            <SelectItem value="inspecao">Inspeção</SelectItem>
-                            <SelectItem value="reparo">Reparo</SelectItem>
-                            <SelectItem value="emergencia">Emergência</SelectItem>
+                            <SelectItem value="painel_solar">Painel Solar</SelectItem>
+                            <SelectItem value="inversor">Inversor</SelectItem>
+                            <SelectItem value="controlador_carga">Controlador de Carga</SelectItem>
+                            <SelectItem value="bateria">Bateria</SelectItem>
+                            <SelectItem value="cabeamento">Cabeamento</SelectItem>
+                            <SelectItem value="estrutura">Estrutura</SelectItem>
+                            <SelectItem value="monitoramento">Sistema de Monitoramento</SelectItem>
+                            <SelectItem value="outros">Outros</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  
                   <FormField
                     control={form.control}
                     name="prioridade"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Prioridade</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue />
@@ -350,15 +440,49 @@ const Tickets = () => {
                       </FormItem>
                     )}
                   />
+                </div>
 
+                <FormField
+                  control={form.control}
+                  name="endereco_servico"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Endereço do Serviço</FormLabel>
+                      <FormControl>
+                        <Textarea {...field} placeholder="Endereço completo onde o serviço será realizado..." rows={2} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
-                    name="tecnicoResponsavel"
+                    name="data_vencimento"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Técnico Responsável</FormLabel>
+                        <FormLabel>Data de Vencimento</FormLabel>
                         <FormControl>
-                          <Input {...field} placeholder="Nome do técnico" />
+                          <Input type="date" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="tempo_estimado"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Tempo Estimado (horas)</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            {...field} 
+                            onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                            placeholder="Ex: 4"
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -368,60 +492,24 @@ const Tickets = () => {
 
                 <FormField
                   control={form.control}
-                  name="equipamentos"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Equipamentos Envolvidos</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="Ex: Inversor, Módulos, Estrutura" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="descricao"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Descrição do Problema/Serviço</FormLabel>
-                      <FormControl>
-                        <Textarea {...field} placeholder="Descreva detalhadamente o problema ou serviço a ser realizado" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
                   name="observacoes"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Observações</FormLabel>
                       <FormControl>
-                        <Textarea {...field} placeholder="Informações adicionais, horários preferenciais, etc." />
+                        <Textarea {...field} placeholder="Informações adicionais..." rows={2} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
 
-                <div className="flex gap-2 pt-4">
-                  <Button type="submit" className="bg-gradient-solar">
-                    {editingTicket ? "Atualizar" : "Criar Ticket"}
-                  </Button>
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    onClick={() => {
-                      setIsDialogOpen(false);
-                      setEditingTicket(null);
-                      form.reset();
-                    }}
-                  >
+                <div className="flex justify-end space-x-2">
+                  <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                     Cancelar
+                  </Button>
+                  <Button type="submit" disabled={loading}>
+                    {loading ? 'Salvando...' : editingTicket ? 'Atualizar' : 'Criar Ticket'}
                   </Button>
                 </div>
               </form>
@@ -431,129 +519,130 @@ const Tickets = () => {
       </div>
 
       <div className="flex items-center space-x-4">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Buscar tickets..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
+            className="pl-8"
           />
         </div>
       </div>
 
-      <Tabs defaultValue="todos" className="w-full">
-        <TabsList className="grid w-full grid-cols-6">
-          <TabsTrigger value="todos" onClick={() => setActiveTab("todos")}>
-            Todos ({statusCounts.todos})
-          </TabsTrigger>
-          <TabsTrigger value="aberto" onClick={() => setActiveTab("aberto")}>
-            Abertos ({statusCounts.aberto})
-          </TabsTrigger>
-          <TabsTrigger value="em_andamento" onClick={() => setActiveTab("em_andamento")}>
-            Em Andamento ({statusCounts.em_andamento})
-          </TabsTrigger>
-          <TabsTrigger value="pausado" onClick={() => setActiveTab("pausado")}>
-            Pausados ({statusCounts.pausado})
-          </TabsTrigger>
-          <TabsTrigger value="concluido" onClick={() => setActiveTab("concluido")}>
-            Concluídos ({statusCounts.concluido})
-          </TabsTrigger>
-          <TabsTrigger value="cancelado" onClick={() => setActiveTab("cancelado")}>
-            Cancelados ({statusCounts.cancelado})
-          </TabsTrigger>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList>
+          <TabsTrigger value="todos">Todos</TabsTrigger>
+          <TabsTrigger value="aberto">Abertos</TabsTrigger>
+          <TabsTrigger value="aguardando_aprovacao">Aguardando Aprovação</TabsTrigger>
+          <TabsTrigger value="aprovado">Aprovados</TabsTrigger>
+          <TabsTrigger value="em_execucao">Em Execução</TabsTrigger>
+          <TabsTrigger value="concluido">Concluídos</TabsTrigger>
         </TabsList>
 
-        <TabsContent value={activeTab} className="mt-6">
-          <div className="grid gap-4">
-            {filteredTickets.map((ticket) => (
-              <Card key={ticket.id} className="hover:shadow-md transition-shadow">
-                <CardContent className="p-6">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 space-y-3">
-                      <div className="flex items-start space-x-3">
-                        {getTipoIcon(ticket.tipo)}
-                        <div className="flex-1">
-                          <h3 className="text-lg font-semibold">{ticket.titulo}</h3>
-                          <p className="text-sm text-muted-foreground">{ticket.cliente}</p>
-                        </div>
-                        <div className="flex space-x-2">
-                          <Badge className={getPrioridadeColor(ticket.prioridade)}>
-                            {ticket.prioridade}
+        <TabsContent value={activeTab} className="space-y-4">
+          {filteredTickets.length === 0 ? (
+            <Card>
+              <CardContent className="flex items-center justify-center py-12">
+                <div className="text-center">
+                  <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-medium">Nenhum ticket encontrado</h3>
+                  <p className="text-muted-foreground">
+                    {searchTerm ? 'Tente ajustar os filtros de busca' : 'Crie seu primeiro ticket'}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4">
+              {filteredTickets.map((ticket) => (
+                <Card key={ticket.id} className="hover:shadow-md transition-shadow">
+                  <CardHeader className="pb-4">
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <CardTitle className="text-lg">{ticket.titulo}</CardTitle>
+                          <Badge variant="outline" className="text-xs">
+                            {ticket.numero_ticket}
                           </Badge>
-                          <Badge className={getStatusColor(ticket.status)}>
-                            {ticket.status.replace('_', ' ')}
-                          </Badge>
                         </div>
+                        <CardDescription>
+                          Cliente: {ticket.clientes?.empresa || ticket.clientes?.profiles?.nome}
+                        </CardDescription>
                       </div>
+                      <div className="flex items-center gap-2">
+                        <Badge className={getStatusColor(ticket.status)}>
+                          {ticket.status.replace('_', ' ').toUpperCase()}
+                        </Badge>
+                        <Badge className={getPrioridadeColor(ticket.prioridade)}>
+                          {ticket.prioridade.toUpperCase()}
+                        </Badge>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <p className="text-sm text-muted-foreground">{ticket.descricao}</p>
                       
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-muted-foreground">
-                        <div className="flex items-center space-x-2">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                        <div className="flex items-center gap-2">
+                          {getEquipamentoIcon(ticket.equipamento_tipo)}
+                          <span>{ticket.equipamento_tipo.replace('_', ' ')}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
                           <MapPin className="h-4 w-4" />
-                          <span className="truncate">{ticket.endereco}</span>
+                          <span className="truncate">{ticket.endereco_servico}</span>
                         </div>
-                        <div className="flex items-center space-x-2">
+                        <div className="flex items-center gap-2">
                           <Calendar className="h-4 w-4" />
-                          <span>Agendado: {new Date(ticket.dataAgendamento).toLocaleDateString('pt-BR')}</span>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Clock className="h-4 w-4" />
-                          <span>Estimado: {ticket.tempoEstimado}</span>
+                          <span>{new Date(ticket.data_abertura).toLocaleDateString('pt-BR')}</span>
                         </div>
                       </div>
 
-                      {ticket.tecnicoResponsavel && (
-                        <div className="flex items-center space-x-2 text-sm">
-                          <User className="h-4 w-4" />
-                          <span>Técnico: {ticket.tecnicoResponsavel}</span>
+                      {ticket.tempo_estimado && (
+                        <div className="flex items-center gap-2 text-sm">
+                          <Clock className="h-4 w-4" />
+                          <span>{ticket.tempo_estimado} horas estimadas</span>
                         </div>
                       )}
-                      
-                      <p className="text-sm">{ticket.descricao}</p>
-                      
-                      {ticket.equipamentos && (
-                        <p className="text-sm text-muted-foreground">
-                          <strong>Equipamentos:</strong> {ticket.equipamentos}
-                        </p>
+
+                      {profile?.role === 'area_tecnica' && ticket.status === 'aguardando_aprovacao' && (
+                        <div className="flex gap-2 pt-2 border-t">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleApprove(ticket.id)}
+                            disabled={loading}
+                            className="flex items-center gap-2"
+                          >
+                            <CheckCircle className="h-4 w-4" />
+                            Aprovar
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleReject(ticket.id)}
+                            disabled={loading}
+                            className="flex items-center gap-2"
+                          >
+                            <XCircle className="h-4 w-4" />
+                            Rejeitar
+                          </Button>
+                        </div>
                       )}
 
-                      {ticket.observacoes && (
-                        <p className="text-sm text-muted-foreground bg-muted p-2 rounded">
-                          <strong>Observações:</strong> {ticket.observacoes}
-                        </p>
-                      )}
+                      <div className="flex justify-between items-center pt-2 border-t">
+                        <span className="text-xs text-muted-foreground">
+                          Criado em {new Date(ticket.created_at).toLocaleString('pt-BR')}
+                        </span>
+                        <Button variant="outline" size="sm" onClick={() => handleEdit(ticket)}>
+                          Editar
+                        </Button>
+                      </div>
                     </div>
-                    
-                    <div className="flex flex-col space-y-2 ml-4">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEdit(ticket)}
-                      >
-                        Editar
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDelete(ticket.id)}
-                        className="text-destructive hover:text-destructive"
-                      >
-                        Excluir
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          {filteredTickets.length === 0 && (
-            <div className="text-center py-12">
-              <Ticket className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-xl font-semibold mb-2">Nenhum ticket encontrado</h3>
-              <p className="text-muted-foreground">
-                {searchTerm ? "Tente ajustar sua busca" : "Comece abrindo seu primeiro ticket"}
-              </p>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
           )}
         </TabsContent>
