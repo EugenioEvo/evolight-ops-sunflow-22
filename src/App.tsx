@@ -16,6 +16,8 @@ import Insumos from "./pages/Insumos";
 import Prestadores from "./pages/Prestadores";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
+import RME from "./pages/RME";
+import Relatorios from "./pages/Relatorios";
 
 const queryClient = new QueryClient();
 
@@ -46,6 +48,8 @@ const App = () => (
                           <Route path="/prestadores" element={<Prestadores />} />
                           <Route path="/equipamentos" element={<Equipamentos />} />
                           <Route path="/insumos" element={<Insumos />} />
+                          <Route path="/rme" element={<RME />} />
+                          <Route path="/relatorios" element={<Relatorios />} />
                           <Route path="*" element={<NotFound />} />
                         </Routes>
                       </main>

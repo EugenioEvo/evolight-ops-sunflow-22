@@ -7,9 +7,14 @@ import {
   Route, 
   BarChart3, 
   Settings,
-  Home
+  Home,
+  FileText,
+  LogOut,
+  User
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
+import { Button } from "@/components/ui/button";
 
 import {
   Sidebar,
@@ -26,6 +31,7 @@ import {
 const mainItems = [
   { title: "Dashboard", url: "/", icon: Home },
   { title: "Tickets", url: "/tickets", icon: Package },
+  { title: "RME", url: "/rme", icon: BarChart3 },
   { title: "Rotas", url: "/routes", icon: Route },
 ];
 
@@ -43,6 +49,7 @@ const systemItems = [
 
 export function AppSidebar() {
   const { open, isMobile } = useSidebar();
+  const { profile, signOut } = useAuth();
   const location = useLocation();
   const currentPath = location.pathname;
   const collapsed = !open;
@@ -123,6 +130,43 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {/* Footer com informações do usuário */}
+        {profile && (
+          <div className="mt-auto p-4 border-t">
+            {!collapsed ? (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-sm">
+                  <User className="h-4 w-4" />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium truncate">{profile.nome}</p>
+                    <p className="text-xs text-muted-foreground capitalize">
+                      {profile.role?.replace('_', ' ')}
+                    </p>
+                  </div>
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={signOut}
+                  className="w-full justify-start"
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Sair
+                </Button>
+              </div>
+            ) : (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={signOut}
+                className="w-full justify-center p-2"
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+        )}
       </SidebarContent>
     </Sidebar>
   );

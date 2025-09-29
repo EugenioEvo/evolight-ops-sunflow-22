@@ -262,6 +262,38 @@ const Tickets = () => {
     }
   };
 
+  const handleGenerateOS = async (ticketId: string) => {
+    try {
+      setLoading(true);
+      
+      const { data, error } = await supabase.functions.invoke('gerar-ordem-servico', {
+        body: { ticketId }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: 'Sucesso',
+        description: 'Ordem de serviço gerada com sucesso!',
+      });
+
+      // Abrir PDF em nova aba
+      if (data.pdfUrl) {
+        window.open(data.pdfUrl, '_blank');
+      }
+
+      loadData();
+    } catch (error: any) {
+      toast({
+        title: 'Erro',
+        description: error.message || 'Erro ao gerar ordem de serviço',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const filteredTickets = tickets.filter(ticket => {
     const matchesSearch = ticket.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          ticket.numero_ticket.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -627,6 +659,20 @@ const Tickets = () => {
                           >
                             <XCircle className="h-4 w-4" />
                             Rejeitar
+                          </Button>
+                        </div>
+                      )}
+
+                      {profile?.role === 'area_tecnica' && ticket.status === 'aprovado' && (
+                        <div className="flex gap-2 pt-2 border-t">
+                          <Button
+                            size="sm"
+                            onClick={() => handleGenerateOS(ticket.id)}
+                            disabled={loading}
+                            className="flex items-center gap-2"
+                          >
+                            <FileText className="h-4 w-4" />
+                            Gerar Ordem de Serviço
                           </Button>
                         </div>
                       )}
