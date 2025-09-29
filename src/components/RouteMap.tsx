@@ -7,6 +7,33 @@ import { MapPin, Clock, Users, Route as RouteIcon } from "lucide-react";
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
+// Guard against runtime errors in map libs to avoid full app crash
+class MapErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error: any, info: any) {
+    console.error('MapErrorBoundary caught:', error, info);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <Card className="h-full">
+          <CardContent className="p-6 flex items-center justify-center">
+            <div className="text-center text-sm">Falha ao carregar o mapa.</div>
+          </CardContent>
+        </Card>
+      );
+    }
+    return this.props.children as any;
+  }
+}
+
+
 // Create custom icon to avoid production build issues
 const defaultIcon = L.icon({
   iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
@@ -230,50 +257,52 @@ const RouteMap: React.FC = () => {
         <Card className="h-full">
           <CardContent className="p-0 h-full">
             <div className="w-full h-full rounded-lg overflow-hidden">
-              <MapContainer
-                key="main-map"
-                center={[-23.5505, -46.6333]}
-                zoom={12}
-                className="w-full h-full"
-                scrollWheelZoom={true}
-              >
-                <TileLayer
-                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                />
-                
-                {/* Marcadores dos tickets */}
-                {tickets.map((ticket) => (
-                  <Marker key={`marker-${ticket.id}`} position={ticket.coordenadas}>
-                    <Popup>
-                      <div className="p-2">
-                        <h6 className="font-semibold mb-1">{ticket.cliente}</h6>
-                        <p className="text-sm text-gray-600 mb-1">{ticket.tipo}</p>
-                        <p className="text-xs text-gray-500 mb-2">{ticket.endereco}</p>
-                        <div className="flex space-x-1">
-                          <Badge className={getPrioridadeColor(ticket.prioridade)}>
-                            {ticket.prioridade}
-                          </Badge>
-                          <Badge className={getStatusColor(ticket.status)}>
-                            {ticket.status.replace('_', ' ')}
-                          </Badge>
-                        </div>
-                      </div>
-                    </Popup>
-                  </Marker>
-                ))}
-                
-                {/* Linha da rota selecionada */}
-                {selectedRoute && getRouteCoordinates(selectedRoute).length > 1 && (
-                  <Polyline
-                    key={`route-${selectedRoute}`}
-                    positions={getRouteCoordinates(selectedRoute)}
-                    color="#3b82f6"
-                    weight={4}
-                    opacity={0.7}
+              <MapErrorBoundary>
+                <MapContainer
+                  key="main-map"
+                  center={[-23.5505, -46.6333]}
+                  zoom={12}
+                  className="w-full h-full"
+                  scrollWheelZoom={true}
+                >
+                  <TileLayer
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                   />
-                )}
-              </MapContainer>
+                  
+                  {/* Marcadores dos tickets */}
+                  {tickets.map((ticket) => (
+                    <Marker key={`marker-${ticket.id}`} position={ticket.coordenadas}>
+                      <Popup>
+                        <div className="p-2">
+                          <h6 className="font-semibold mb-1">{ticket.cliente}</h6>
+                          <p className="text-sm text-gray-600 mb-1">{ticket.tipo}</p>
+                          <p className="text-xs text-gray-500 mb-2">{ticket.endereco}</p>
+                          <div className="flex space-x-1">
+                            <Badge className={getPrioridadeColor(ticket.prioridade)}>
+                              {ticket.prioridade}
+                            </Badge>
+                            <Badge className={getStatusColor(ticket.status)}>
+                              {ticket.status.replace('_', ' ')}
+                            </Badge>
+                          </div>
+                        </div>
+                      </Popup>
+                    </Marker>
+                  ))}
+                  
+                  {/* Linha da rota selecionada */}
+                  {selectedRoute && getRouteCoordinates(selectedRoute).length > 1 && (
+                    <Polyline
+                      key={`route-${selectedRoute}`}
+                      positions={getRouteCoordinates(selectedRoute)}
+                      color="#3b82f6"
+                      weight={4}
+                      opacity={0.7}
+                    />
+                  )}
+                </MapContainer>
+              </MapErrorBoundary>
             </div>
           </CardContent>
         </Card>
