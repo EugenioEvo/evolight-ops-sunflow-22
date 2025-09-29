@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,8 +21,13 @@ const defaultIcon = L.icon({
 // Set the default icon for all markers
 L.Marker.prototype.options.icon = defaultIcon;
 
-const RouteMap = () => {
+const RouteMap: React.FC = () => {
   const [selectedRoute, setSelectedRoute] = useState<number | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Mock data para demonstração
   const tickets = [
@@ -109,6 +114,28 @@ const RouteMap = () => {
     
     return coordinates;
   };
+
+  // Don't render map until component is mounted (prevents SSR/hydration issues)
+  if (!mounted) {
+    return (
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[600px]">
+        <div className="lg:col-span-1">
+          <Card>
+            <CardContent className="p-6">
+              <div className="text-center">Carregando mapa...</div>
+            </CardContent>
+          </Card>
+        </div>
+        <div className="lg:col-span-2">
+          <Card className="h-full">
+            <CardContent className="p-6 flex items-center justify-center">
+              <div className="text-center">Carregando...</div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[600px]">
@@ -204,6 +231,7 @@ const RouteMap = () => {
           <CardContent className="p-0 h-full">
             <div className="w-full h-full rounded-lg overflow-hidden">
               <MapContainer
+                key="main-map"
                 center={[-23.5505, -46.6333]}
                 zoom={12}
                 className="w-full h-full"
@@ -216,7 +244,7 @@ const RouteMap = () => {
                 
                 {/* Marcadores dos tickets */}
                 {tickets.map((ticket) => (
-                  <Marker key={ticket.id} position={ticket.coordenadas}>
+                  <Marker key={`marker-${ticket.id}`} position={ticket.coordenadas}>
                     <Popup>
                       <div className="p-2">
                         <h6 className="font-semibold mb-1">{ticket.cliente}</h6>
@@ -238,6 +266,7 @@ const RouteMap = () => {
                 {/* Linha da rota selecionada */}
                 {selectedRoute && getRouteCoordinates(selectedRoute).length > 1 && (
                   <Polyline
+                    key={`route-${selectedRoute}`}
                     positions={getRouteCoordinates(selectedRoute)}
                     color="#3b82f6"
                     weight={4}
