@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,29 +12,39 @@ import { Zap, Plus, Search, Calendar, Shield, Edit, Trash2, Battery, Sun, Activi
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 const equipamentoSchema = z.object({
   nome: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
   modelo: z.string().min(1, "Modelo é obrigatório"),
   fabricante: z.string().min(1, "Fabricante é obrigatório"),
-  numeroSerie: z.string().min(1, "Número de série é obrigatório"),
-  tipo: z.enum(["inversor", "painel", "bateria", "monitoring", "estrutura", "outros"]),
+  numero_serie: z.string().min(1, "Número de série é obrigatório"),
+  tipo: z.enum(["inversor", "painel_solar", "bateria", "cabeamento", "controlador_carga", "estrutura", "monitoramento", "outros"]),
   capacidade: z.string().optional(),
   tensao: z.string().optional(),
   corrente: z.string().optional(),
-  dataInstalacao: z.string(),
-  garantia: z.number().min(0, "Garantia deve ser positiva"),
-  cliente: z.string().min(1, "Cliente é obrigatório"),
-  localizacao: z.string().min(1, "Localização é obrigatória"),
-  status: z.enum(["operacional", "manutencao", "defeito", "inativo"]),
+  data_instalacao: z.string().optional(),
+  garantia: z.string().optional(),
+  cliente_id: z.string().optional(),
+  localizacao: z.string().optional(),
   observacoes: z.string().optional(),
 });
 
 type EquipamentoForm = z.infer<typeof equipamentoSchema>;
 
-interface Equipamento extends Omit<EquipamentoForm, 'status'> {
-  id: number;
-  status: "operacional" | "manutencao" | "defeito" | "inativo";
+interface Equipamento extends EquipamentoForm {
+  id: string;
+  status: string;
+  created_at?: string;
+  updated_at?: string;
+  clientes?: {
+    id: string;
+    empresa?: string;
+    profiles?: {
+      nome: string;
+    };
+  };
 }
 
 const Equipamentos = () => {
@@ -42,6 +52,9 @@ const Equipamentos = () => {
   const [activeTab, setActiveTab] = useState("todos");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingEquipamento, setEditingEquipamento] = useState<any>(null);
+  const [equipamentos, setEquipamentos] = useState<Equipamento[]>([]);
+  const [clientes, setClientes] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const form = useForm<EquipamentoForm>({
     resolver: zodResolver(equipamentoSchema),
@@ -49,97 +62,118 @@ const Equipamentos = () => {
       nome: "",
       modelo: "",
       fabricante: "",
-      numeroSerie: "",
+      numero_serie: "",
       tipo: "inversor",
       capacidade: "",
       tensao: "",
       corrente: "",
-      dataInstalacao: "",
-      garantia: 0,
-      cliente: "",
+      data_instalacao: "",
+      garantia: "",
+      cliente_id: "",
       localizacao: "",
-      status: "operacional",
       observacoes: "",
     },
   });
 
-  // Mock data - será substituído pelo Supabase
-  const [equipamentos, setEquipamentos] = useState<Equipamento[]>([
-    {
-      id: 1,
-      nome: "Inversor Principal A1",
-      modelo: "SUN2000-60KTL-M0",
-      fabricante: "Huawei",
-      numeroSerie: "HW2023001",
-      tipo: "inversor",
-      capacidade: "60 kW",
-      tensao: "380V",
-      corrente: "90A",
-      dataInstalacao: "2023-01-15",
-      garantia: 5,
-      cliente: "Solar Tech Ltda",
-      localizacao: "Telhado - Setor A",
-      status: "operacional",
-      observacoes: "Monitoramento 24/7 ativo"
-    },
-    {
-      id: 2,
-      nome: "Painel Solar Conjunto B",
-      modelo: "HiKu7 Mono",
-      fabricante: "Canadian Solar",
-      numeroSerie: "CS2023045",
-      tipo: "painel",
-      capacidade: "665 W",
-      tensao: "45.5V",
-      corrente: "14.6A",
-      dataInstalacao: "2023-01-20",
-      garantia: 25,
-      cliente: "Green Energy Corp",
-      localizacao: "Telhado - Setor B",
-      status: "operacional",
-      observacoes: "120 painéis no total"
-    },
-    {
-      id: 3,
-      nome: "Sistema de Monitoramento",
-      modelo: "SmartLogger 3000A",
-      fabricante: "Huawei",
-      numeroSerie: "SL2023010",
-      tipo: "monitoring",
-      capacidade: "N/A",
-      tensao: "12V",
-      corrente: "2A",
-      dataInstalacao: "2023-02-01",
-      garantia: 3,
-      cliente: "Solar Tech Ltda",
-      localizacao: "Sala Técnica",
-      status: "operacional",
-      observacoes: "Conectado via 4G"
-    }
-  ]);
+  const fetchEquipamentos = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('equipamentos')
+        .select(`
+          *,
+          clientes (
+            id,
+            empresa,
+            profiles (
+              nome
+            )
+          )
+        `)
+        .order('created_at', { ascending: false });
 
-  const onSubmit = (data: EquipamentoForm) => {
-    if (editingEquipamento) {
-      const updatedEquipamento: Equipamento = { 
-        ...data, 
-        id: editingEquipamento.id,
-        status: data.status || "operacional"
-      };
-      setEquipamentos(prev => prev.map(equipamento => 
-        equipamento.id === editingEquipamento.id ? updatedEquipamento : equipamento
-      ));
-    } else {
-      const newEquipamento: Equipamento = {
-        id: Date.now(),
-        ...data,
-        status: data.status || "operacional"
-      };
-      setEquipamentos(prev => [...prev, newEquipamento]);
+      if (error) {
+        toast.error('Erro ao carregar equipamentos');
+        console.error('Error fetching equipamentos:', error);
+        return;
+      }
+
+      setEquipamentos(data || []);
+    } catch (error) {
+      toast.error('Erro ao carregar equipamentos');
+      console.error('Error:', error);
+    } finally {
+      setLoading(false);
     }
-    
-    form.reset();
-    setIsDialogOpen(false);
-    setEditingEquipamento(null);
+  };
+
+  const fetchClientes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('clientes')
+        .select(`
+          id,
+          empresa,
+          profiles (
+            nome
+          )
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching clientes:', error);
+        return;
+      }
+
+      setClientes(data || []);
+    } catch (error) {
+      console.error('Error:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchEquipamentos();
+    fetchClientes();
+  }, []);
+
+  const onSubmit = async (data: EquipamentoForm) => {
+    try {
+      if (editingEquipamento) {
+        // Atualizar equipamento existente
+        const { error } = await supabase
+          .from('equipamentos')
+          .update(data)
+          .eq('id', editingEquipamento.id);
+
+        if (error) {
+          toast.error('Erro ao atualizar equipamento');
+          console.error('Error updating equipamento:', error);
+          return;
+        }
+
+        toast.success("Equipamento atualizado com sucesso!");
+      } else {
+        // Criar novo equipamento
+        const { error } = await supabase
+          .from('equipamentos')
+          .insert([{ ...data, status: 'ativo' }]);
+
+        if (error) {
+          toast.error('Erro ao criar equipamento');
+          console.error('Error creating equipamento:', error);
+          return;
+        }
+
+        toast.success("Equipamento criado com sucesso!");
+      }
+      
+      form.reset();
+      setIsDialogOpen(false);
+      setEditingEquipamento(null);
+      fetchEquipamentos();
+    } catch (error) {
+      toast.error('Erro ao salvar equipamento');
+      console.error('Error:', error);
+    }
   };
 
   const handleEdit = (equipamento: any) => {
@@ -148,13 +182,30 @@ const Equipamentos = () => {
     setIsDialogOpen(true);
   };
 
-  const handleDelete = (id: number) => {
-    setEquipamentos(prev => prev.filter(equipamento => equipamento.id !== id));
+  const handleDelete = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('equipamentos')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        toast.error('Erro ao remover equipamento');
+        console.error('Error deleting equipamento:', error);
+        return;
+      }
+
+      toast.success("Equipamento removido com sucesso!");
+      fetchEquipamentos();
+    } catch (error) {
+      toast.error('Erro ao remover equipamento');
+      console.error('Error:', error);
+    }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "operacional": return "bg-green-100 text-green-800";
+      case "ativo": return "bg-green-100 text-green-800";
       case "manutencao": return "bg-yellow-100 text-yellow-800";
       case "defeito": return "bg-red-100 text-red-800";
       case "inativo": return "bg-gray-100 text-gray-800";
@@ -165,26 +216,17 @@ const Equipamentos = () => {
   const getTipoIcon = (tipo: string) => {
     switch (tipo) {
       case "inversor": return Zap;
-      case "painel": return Sun;
+      case "painel_solar": return Sun;
       case "bateria": return Battery;
-      case "monitoring": return Activity;
+      case "medidor": return Activity;
       default: return Zap;
     }
   };
 
-  // Mock clientes para o select
-  const clientes = [
-    "Solar Tech Ltda",
-    "Green Energy Corp",
-    "EcoSolar Brasil",
-    "Sunshine Power"
-  ];
-
   const filteredEquipamentos = equipamentos.filter(equipamento => {
     const matchesSearch = equipamento.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          equipamento.modelo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         equipamento.fabricante.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         equipamento.cliente.toLowerCase().includes(searchTerm.toLowerCase());
+                         equipamento.fabricante.toLowerCase().includes(searchTerm.toLowerCase());
     
     if (activeTab === "todos") return matchesSearch;
     return matchesSearch && equipamento.tipo === activeTab;
@@ -193,10 +235,20 @@ const Equipamentos = () => {
   const tipoCounts = {
     todos: equipamentos.length,
     inversor: equipamentos.filter(e => e.tipo === "inversor").length,
-    painel: equipamentos.filter(e => e.tipo === "painel").length,
+    painel_solar: equipamentos.filter(e => e.tipo === "painel_solar").length,
     bateria: equipamentos.filter(e => e.tipo === "bateria").length,
-    monitoring: equipamentos.filter(e => e.tipo === "monitoring").length,
+    outros: equipamentos.filter(e => e.tipo === "outros").length,
   };
+
+  if (loading) {
+    return (
+      <div className="p-6 space-y-6">
+        <div className="flex justify-center items-center h-64">
+          <div className="text-lg">Carregando equipamentos...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -208,7 +260,10 @@ const Equipamentos = () => {
         
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-gradient-solar shadow-solar">
+            <Button className="bg-gradient-solar shadow-solar" onClick={() => {
+              setEditingEquipamento(null);
+              form.reset();
+            }}>
               <Plus className="h-4 w-4 mr-2" />
               Novo Equipamento
             </Button>
@@ -251,10 +306,13 @@ const Equipamentos = () => {
                           </FormControl>
                           <SelectContent>
                             <SelectItem value="inversor">Inversor</SelectItem>
-                            <SelectItem value="painel">Painel Solar</SelectItem>
+                            <SelectItem value="painel_solar">Painel Solar</SelectItem>
                             <SelectItem value="bateria">Bateria</SelectItem>
-                            <SelectItem value="monitoring">Monitoramento</SelectItem>
+                            
+                            <SelectItem value="cabeamento">Cabeamento</SelectItem>
+                            <SelectItem value="controlador_carga">Controlador de Carga</SelectItem>
                             <SelectItem value="estrutura">Estrutura</SelectItem>
+                            <SelectItem value="monitoramento">Monitoramento</SelectItem>
                             <SelectItem value="outros">Outros</SelectItem>
                           </SelectContent>
                         </Select>
@@ -296,7 +354,7 @@ const Equipamentos = () => {
 
                 <FormField
                   control={form.control}
-                  name="numeroSerie"
+                  name="numero_serie"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Número de Série</FormLabel>
@@ -355,7 +413,7 @@ const Equipamentos = () => {
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
-                    name="cliente"
+                    name="cliente_id"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Cliente</FormLabel>
@@ -367,8 +425,8 @@ const Equipamentos = () => {
                           </FormControl>
                           <SelectContent>
                             {clientes.map((cliente) => (
-                              <SelectItem key={cliente} value={cliente}>
-                                {cliente}
+                              <SelectItem key={cliente.id} value={cliente.id}>
+                                {cliente.empresa || cliente.profiles?.nome || 'Cliente sem nome'}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -393,10 +451,10 @@ const Equipamentos = () => {
                   />
                 </div>
 
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
-                    name="dataInstalacao"
+                    name="data_instalacao"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Data de Instalação</FormLabel>
@@ -413,38 +471,10 @@ const Equipamentos = () => {
                     name="garantia"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Garantia (anos)</FormLabel>
+                        <FormLabel>Garantia</FormLabel>
                         <FormControl>
-                          <Input 
-                            type="number" 
-                            {...field}
-                            onChange={(e) => field.onChange(Number(e.target.value))}
-                          />
+                          <Input {...field} placeholder="Ex: 5 anos" />
                         </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="status"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Status</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="operacional">Operacional</SelectItem>
-                            <SelectItem value="manutencao">Manutenção</SelectItem>
-                            <SelectItem value="defeito">Defeito</SelectItem>
-                            <SelectItem value="inativo">Inativo</SelectItem>
-                          </SelectContent>
-                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -507,121 +537,132 @@ const Equipamentos = () => {
           <TabsTrigger value="inversor">
             Inversores ({tipoCounts.inversor})
           </TabsTrigger>
-          <TabsTrigger value="painel">
-            Painéis ({tipoCounts.painel})
+          <TabsTrigger value="painel_solar">
+            Painéis ({tipoCounts.painel_solar})
           </TabsTrigger>
           <TabsTrigger value="bateria">
             Baterias ({tipoCounts.bateria})
           </TabsTrigger>
-          <TabsTrigger value="monitoring">
-            Monitoramento ({tipoCounts.monitoring})
+          <TabsTrigger value="outros">
+            Outros ({tipoCounts.outros})
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value={activeTab} className="mt-6">
           <div className="grid gap-4">
             {filteredEquipamentos.map((equipamento) => {
-              const IconComponent = getTipoIcon(equipamento.tipo);
+              const TipoIcon = getTipoIcon(equipamento.tipo);
+              
               return (
-                <Card key={equipamento.id} className="hover:shadow-md transition-shadow">
+                <Card key={equipamento.id} className="border-border/50 shadow-sm hover:shadow-md transition-shadow">
                   <CardContent className="p-6">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1 space-y-3">
-                        <div className="flex items-center space-x-3">
-                          <IconComponent className="h-5 w-5 text-primary" />
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="p-3 rounded-lg bg-primary/10">
+                          <TipoIcon className="h-6 w-6 text-primary" />
+                        </div>
+                        
+                        <div>
                           <h3 className="text-lg font-semibold">{equipamento.nome}</h3>
-                          <Badge className={getStatusColor(equipamento.status)}>
-                            {equipamento.status === "operacional" ? "Operacional" :
-                             equipamento.status === "manutencao" ? "Manutenção" :
-                             equipamento.status === "defeito" ? "Defeito" : "Inativo"}
-                          </Badge>
-                          {equipamento.capacidade && (
-                            <Badge variant="outline" className="text-xs">
-                              {equipamento.capacidade}
-                            </Badge>
-                          )}
-                        </div>
-                        
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                          <div>
-                            <span className="font-medium text-muted-foreground">Fabricante:</span>
-                            <p>{equipamento.fabricante}</p>
-                          </div>
-                          <div>
-                            <span className="font-medium text-muted-foreground">Modelo:</span>
-                            <p>{equipamento.modelo}</p>
-                          </div>
-                          <div>
-                            <span className="font-medium text-muted-foreground">Série:</span>
-                            <p>{equipamento.numeroSerie}</p>
-                          </div>
-                          <div>
-                            <span className="font-medium text-muted-foreground">Cliente:</span>
-                            <p>{equipamento.cliente}</p>
-                          </div>
-                        </div>
-                        
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                          <div className="flex items-center space-x-2">
-                            <Calendar className="h-4 w-4 text-muted-foreground" />
-                            <span>{new Date(equipamento.dataInstalacao).toLocaleDateString('pt-BR')}</span>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <Shield className="h-4 w-4 text-muted-foreground" />
-                            <span>{equipamento.garantia} anos</span>
-                          </div>
-                          <div>
-                            <span className="font-medium text-muted-foreground">Localização:</span>
-                            <p>{equipamento.localizacao}</p>
-                          </div>
-                          {equipamento.tensao && (
-                            <div>
-                              <span className="font-medium text-muted-foreground">Tensão/Corrente:</span>
-                              <p>{equipamento.tensao} / {equipamento.corrente}</p>
-                            </div>
-                          )}
-                        </div>
-                        
-                        {equipamento.observacoes && (
-                          <p className="text-sm text-muted-foreground bg-muted p-2 rounded">
-                            {equipamento.observacoes}
+                          <p className="text-sm text-muted-foreground">
+                            {equipamento.fabricante} - {equipamento.modelo}
                           </p>
-                        )}
+                          <p className="text-xs text-muted-foreground">
+                            SN: {equipamento.numero_serie}
+                          </p>
+                        </div>
                       </div>
                       
-                      <div className="flex space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEdit(equipamento)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleDelete(equipamento.id)}
-                          className="text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                      <div className="flex items-center gap-3">
+                        <div className="text-right text-sm">
+                          <p className="font-medium">
+                            {equipamento.clientes?.empresa || equipamento.clientes?.profiles?.nome || 'Cliente não encontrado'}
+                          </p>
+                          <p className="text-muted-foreground">{equipamento.localizacao}</p>
+                        </div>
+                        
+                        <Badge className={getStatusColor(equipamento.status)}>
+                          {equipamento.status === 'ativo' ? 'Ativo' :
+                           equipamento.status === 'manutencao' ? 'Manutenção' : 
+                           equipamento.status}
+                        </Badge>
+                        
+                        <div className="flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEdit(equipamento)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDelete(equipamento.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
+                    
+                    <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                      {equipamento.capacidade && (
+                        <div>
+                          <span className="font-medium">Capacidade:</span> {equipamento.capacidade}
+                        </div>
+                      )}
+                      
+                      {equipamento.tensao && (
+                        <div>
+                          <span className="font-medium">Tensão:</span> {equipamento.tensao}
+                        </div>
+                      )}
+                      
+                      {equipamento.corrente && (
+                        <div>
+                          <span className="font-medium">Corrente:</span> {equipamento.corrente}
+                        </div>
+                      )}
+                      
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        <span>{new Date(equipamento.data_instalacao).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+                    
+                    {equipamento.garantia && (
+                      <div className="mt-3 pt-3 border-t border-border/50">
+                        <div className="flex items-center gap-2 text-sm">
+                          <Shield className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-medium">Garantia:</span> {equipamento.garantia}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {equipamento.observacoes && (
+                      <div className="mt-2">
+                        <div className="text-sm">
+                          <span className="font-medium text-muted-foreground">Observações:</span> {equipamento.observacoes}
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               );
             })}
+            
+            {filteredEquipamentos.length === 0 && (
+              <Card className="p-6 text-center">
+                <Zap className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <h3 className="text-lg font-semibold mb-2">Nenhum equipamento encontrado</h3>
+                <p className="text-muted-foreground">
+                  {searchTerm ? "Ajuste sua busca ou " : ""}
+                  Adicione um novo equipamento para começar.
+                </p>
+              </Card>
+            )}
           </div>
-
-          {filteredEquipamentos.length === 0 && (
-            <div className="text-center py-12">
-              <Zap className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-xl font-semibold mb-2">Nenhum equipamento encontrado</h3>
-              <p className="text-muted-foreground">
-                {searchTerm ? "Tente ajustar sua busca" : "Comece cadastrando um equipamento"}
-              </p>
-            </div>
-          )}
         </TabsContent>
       </Tabs>
     </div>

@@ -106,6 +106,74 @@ export type Database = {
           },
         ]
       }
+      equipamentos: {
+        Row: {
+          capacidade: string | null
+          cliente_id: string | null
+          corrente: string | null
+          created_at: string
+          data_instalacao: string | null
+          fabricante: string | null
+          garantia: string | null
+          id: string
+          localizacao: string | null
+          modelo: string | null
+          nome: string
+          numero_serie: string | null
+          observacoes: string | null
+          status: string
+          tensao: string | null
+          tipo: Database["public"]["Enums"]["equipamento_tipo"]
+          updated_at: string
+        }
+        Insert: {
+          capacidade?: string | null
+          cliente_id?: string | null
+          corrente?: string | null
+          created_at?: string
+          data_instalacao?: string | null
+          fabricante?: string | null
+          garantia?: string | null
+          id?: string
+          localizacao?: string | null
+          modelo?: string | null
+          nome: string
+          numero_serie?: string | null
+          observacoes?: string | null
+          status?: string
+          tensao?: string | null
+          tipo: Database["public"]["Enums"]["equipamento_tipo"]
+          updated_at?: string
+        }
+        Update: {
+          capacidade?: string | null
+          cliente_id?: string | null
+          corrente?: string | null
+          created_at?: string
+          data_instalacao?: string | null
+          fabricante?: string | null
+          garantia?: string | null
+          id?: string
+          localizacao?: string | null
+          modelo?: string | null
+          nome?: string
+          numero_serie?: string | null
+          observacoes?: string | null
+          status?: string
+          tensao?: string | null
+          tipo?: Database["public"]["Enums"]["equipamento_tipo"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "equipamentos_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       insumos: {
         Row: {
           categoria: string
@@ -258,6 +326,69 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      prestadores: {
+        Row: {
+          ativo: boolean
+          categoria: string
+          cep: string | null
+          certificacoes: string[] | null
+          cidade: string | null
+          cpf: string | null
+          created_at: string
+          data_admissao: string | null
+          email: string
+          endereco: string | null
+          especialidades: string[] | null
+          estado: string | null
+          experiencia: number | null
+          id: string
+          nome: string
+          salario: number | null
+          telefone: string | null
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          categoria: string
+          cep?: string | null
+          certificacoes?: string[] | null
+          cidade?: string | null
+          cpf?: string | null
+          created_at?: string
+          data_admissao?: string | null
+          email: string
+          endereco?: string | null
+          especialidades?: string[] | null
+          estado?: string | null
+          experiencia?: number | null
+          id?: string
+          nome: string
+          salario?: number | null
+          telefone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          categoria?: string
+          cep?: string | null
+          certificacoes?: string[] | null
+          cidade?: string | null
+          cpf?: string | null
+          created_at?: string
+          data_admissao?: string | null
+          email?: string
+          endereco?: string | null
+          especialidades?: string[] | null
+          estado?: string | null
+          experiencia?: number | null
+          id?: string
+          nome?: string
+          salario?: number | null
+          telefone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
@@ -588,6 +719,10 @@ export type Database = {
       gerar_numero_ticket: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      get_user_role: {
+        Args: { _user_id: string }
+        Returns: Database["public"]["Enums"]["user_role"]
       }
     }
     Enums: {

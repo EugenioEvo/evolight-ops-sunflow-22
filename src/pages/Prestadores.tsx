@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,29 +11,34 @@ import { Users, Plus, Search, Mail, Phone, MapPin, Edit, Trash2, GraduationCap, 
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 const prestadorSchema = z.object({
   nome: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
   email: z.string().email("Email inválido"),
-  telefone: z.string().min(10, "Telefone deve ter pelo menos 10 dígitos"),
-  cpf: z.string().min(11, "CPF deve ter 11 dígitos"),
-  endereco: z.string().min(5, "Endereço é obrigatório"),
-  cidade: z.string().min(2, "Cidade é obrigatória"),
-  estado: z.string().min(2, "Estado é obrigatório"),
-  cep: z.string().min(8, "CEP deve ter 8 dígitos"),
-  categoria: z.enum(["engenharia", "supervisao", "tecnico"]),
-  especialidades: z.string().optional(),
-  certificacoes: z.string().optional(),
-  experiencia: z.number().min(0, "Experiência deve ser positiva"),
-  salario: z.number().min(0, "Salário deve ser positivo"),
-  dataAdmissao: z.string(),
+  telefone: z.string().optional(),
+  cpf: z.string().optional(),
+  endereco: z.string().optional(),
+  cidade: z.string().optional(),
+  estado: z.string().optional(),
+  cep: z.string().optional(),
+  categoria: z.string().min(1, "Categoria é obrigatória"),
+  especialidades: z.array(z.string()).optional(),
+  certificacoes: z.array(z.string()).optional(),
+  experiencia: z.number().min(0, "Experiência deve ser positiva").optional(),
+  salario: z.number().min(0, "Salário deve ser positivo").optional(),
+  data_admissao: z.string().optional(),
 });
 
 type PrestadorForm = z.infer<typeof prestadorSchema>;
 
-interface Prestador extends PrestadorForm {
-  id: number;
-  status: string;
+interface Prestador extends Omit<PrestadorForm, 'categoria'> {
+  id: string;
+  categoria: string;
+  ativo: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
 const Prestadores = () => {
@@ -41,6 +46,8 @@ const Prestadores = () => {
   const [activeTab, setActiveTab] = useState("todos");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingPrestador, setEditingPrestador] = useState<any>(null);
+  const [prestadores, setPrestadores] = useState<Prestador[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const form = useForm<PrestadorForm>({
     resolver: zodResolver(prestadorSchema),
@@ -54,90 +61,79 @@ const Prestadores = () => {
       estado: "",
       cep: "",
       categoria: "tecnico",
-      especialidades: "",
-      certificacoes: "",
+      especialidades: [],
+      certificacoes: [],
       experiencia: 0,
       salario: 0,
-      dataAdmissao: "",
+      data_admissao: "",
     },
   });
 
-  // Mock data - será substituído pelo Supabase
-  const [prestadores, setPrestadores] = useState<Prestador[]>([
-    {
-      id: 1,
-      nome: "Dr. Carlos Mendes",
-      email: "carlos@evolight.com",
-      telefone: "(11) 99999-1111",
-      cpf: "123.456.789-01",
-      endereco: "Rua A, 100",
-      cidade: "São Paulo",
-      estado: "SP",
-      cep: "01234-567",
-      categoria: "engenharia",
-      especialidades: "Sistemas Fotovoltaicos, Análise de Performance",
-      certificacoes: "CREA-SP, Certificação ABNT",
-      experiencia: 8,
-      salario: 12000,
-      dataAdmissao: "2022-01-15",
-      status: "ativo"
-    },
-    {
-      id: 2,
-      nome: "Ana Paula Costa",
-      email: "ana@evolight.com",
-      telefone: "(11) 99999-2222",
-      cpf: "987.654.321-01",
-      endereco: "Rua B, 200",
-      cidade: "São Paulo",
-      estado: "SP",
-      cep: "02345-678",
-      categoria: "supervisao",
-      especialidades: "Gestão de Equipes, Planejamento de Manutenção",
-      certificacoes: "PMP, Green Belt",
-      experiencia: 6,
-      salario: 8000,
-      dataAdmissao: "2022-03-20",
-      status: "ativo"
-    },
-    {
-      id: 3,
-      nome: "João Santos",
-      email: "joao@evolight.com",
-      telefone: "(11) 99999-3333",
-      cpf: "456.789.123-01",
-      endereco: "Rua C, 300",
-      cidade: "São Paulo",
-      estado: "SP",
-      cep: "03456-789",
-      categoria: "tecnico",
-      especialidades: "Manutenção de Inversores, Limpeza de Painéis",
-      certificacoes: "NR-35, NR-10",
-      experiencia: 4,
-      salario: 4500,
-      dataAdmissao: "2023-01-10",
-      status: "ativo"
-    }
-  ]);
+  const fetchPrestadores = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('prestadores')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-  const onSubmit = (data: PrestadorForm) => {
-    if (editingPrestador) {
-      const updatedPrestador: Prestador = { ...data, id: editingPrestador.id, status: "ativo" };
-      setPrestadores(prev => prev.map(prestador => 
-        prestador.id === editingPrestador.id ? updatedPrestador : prestador
-      ));
-    } else {
-      const newPrestador: Prestador = {
-        id: Date.now(),
-        ...data,
-        status: "ativo"
-      };
-      setPrestadores(prev => [...prev, newPrestador]);
+      if (error) {
+        toast.error('Erro ao carregar prestadores');
+        console.error('Error fetching prestadores:', error);
+        return;
+      }
+
+      setPrestadores(data || []);
+    } catch (error) {
+      toast.error('Erro ao carregar prestadores');
+      console.error('Error:', error);
+    } finally {
+      setLoading(false);
     }
-    
-    form.reset();
-    setIsDialogOpen(false);
-    setEditingPrestador(null);
+  };
+
+  useEffect(() => {
+    fetchPrestadores();
+  }, []);
+
+  const onSubmit = async (data: PrestadorForm) => {
+    try {
+      if (editingPrestador) {
+        // Atualizar prestador existente
+        const { error } = await supabase
+          .from('prestadores')
+          .update(data)
+          .eq('id', editingPrestador.id);
+
+        if (error) {
+          toast.error('Erro ao atualizar prestador');
+          console.error('Error updating prestador:', error);
+          return;
+        }
+
+        toast.success("Prestador atualizado com sucesso!");
+      } else {
+        // Criar novo prestador
+        const { error } = await supabase
+          .from('prestadores')
+          .insert([{ ...data, ativo: true }]);
+
+        if (error) {
+          toast.error('Erro ao criar prestador');
+          console.error('Error creating prestador:', error);
+          return;
+        }
+
+        toast.success("Prestador criado com sucesso!");
+      }
+      
+      form.reset();
+      setIsDialogOpen(false);
+      setEditingPrestador(null);
+      fetchPrestadores();
+    } catch (error) {
+      toast.error('Erro ao salvar prestador');
+      console.error('Error:', error);
+    }
   };
 
   const handleEdit = (prestador: any) => {
@@ -146,8 +142,25 @@ const Prestadores = () => {
     setIsDialogOpen(true);
   };
 
-  const handleDelete = (id: number) => {
-    setPrestadores(prev => prev.filter(prestador => prestador.id !== id));
+  const handleDelete = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('prestadores')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        toast.error('Erro ao remover prestador');
+        console.error('Error deleting prestador:', error);
+        return;
+      }
+
+      toast.success("Prestador removido com sucesso!");
+      fetchPrestadores();
+    } catch (error) {
+      toast.error('Erro ao remover prestador');
+      console.error('Error:', error);
+    }
   };
 
   const getCategoriaColor = (categoria: string) => {
@@ -171,7 +184,8 @@ const Prestadores = () => {
   const filteredPrestadores = prestadores.filter(prestador => {
     const matchesSearch = prestador.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          prestador.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         prestador.especialidades.toLowerCase().includes(searchTerm.toLowerCase());
+                         (prestador.especialidades && Array.isArray(prestador.especialidades) ? 
+                          prestador.especialidades.join(' ').toLowerCase().includes(searchTerm.toLowerCase()) : false);
     
     if (activeTab === "todos") return matchesSearch;
     return matchesSearch && prestador.categoria === activeTab;
@@ -184,6 +198,16 @@ const Prestadores = () => {
     tecnico: prestadores.filter(p => p.categoria === "tecnico").length,
   };
 
+  if (loading) {
+    return (
+      <div className="p-6 space-y-6">
+        <div className="flex justify-center items-center h-64">
+          <div className="text-lg">Carregando prestadores...</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -194,7 +218,10 @@ const Prestadores = () => {
         
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-gradient-solar shadow-solar">
+            <Button className="bg-gradient-solar shadow-solar" onClick={() => {
+              setEditingPrestador(null);
+              form.reset();
+            }}>
               <Plus className="h-4 w-4 mr-2" />
               Novo Prestador
             </Button>
@@ -418,7 +445,7 @@ const Prestadores = () => {
                   
                   <FormField
                     control={form.control}
-                    name="dataAdmissao"
+                    name="data_admissao"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Data de Admissão</FormLabel>
@@ -484,85 +511,102 @@ const Prestadores = () => {
         <TabsContent value={activeTab} className="mt-6">
           <div className="grid gap-4">
             {filteredPrestadores.map((prestador) => {
-              const IconComponent = getCategoriaIcon(prestador.categoria);
+              const CategoriaIcon = getCategoriaIcon(prestador.categoria);
+              
               return (
-                <Card key={prestador.id} className="hover:shadow-md transition-shadow">
-                  <CardContent className="p-6">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1 space-y-3">
-                        <div className="flex items-center space-x-3">
-                          <IconComponent className="h-5 w-5 text-primary" />
-                          <h3 className="text-lg font-semibold">{prestador.nome}</h3>
-                          <Badge className={getCategoriaColor(prestador.categoria)}>
-                            {prestador.categoria === "engenharia" ? "Engenharia" :
-                             prestador.categoria === "supervisao" ? "Supervisão" : "Técnico"}
-                          </Badge>
-                          <Badge variant="outline" className="text-xs">
-                            {prestador.experiencia} anos
-                          </Badge>
+                <Card key={prestador.id} className="border-border/50 shadow-sm hover:shadow-md transition-shadow">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-primary/10">
+                          <CategoriaIcon className="h-5 w-5 text-primary" />
                         </div>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-muted-foreground">
-                          <div className="flex items-center space-x-2">
+                        <div>
+                          <CardTitle className="text-lg font-semibold">{prestador.nome}</CardTitle>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <Mail className="h-4 w-4" />
-                            <span>{prestador.email}</span>
+                            {prestador.email}
                           </div>
-                          <div className="flex items-center space-x-2">
-                            <Phone className="h-4 w-4" />
-                            <span>{prestador.telefone}</span>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <MapPin className="h-4 w-4" />
-                            <span>{prestador.cidade}, {prestador.estado}</span>
-                          </div>
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <p className="text-sm">
-                            <span className="font-medium">Especialidades:</span> {prestador.especialidades}
-                          </p>
-                          <p className="text-sm">
-                            <span className="font-medium">Certificações:</span> {prestador.certificacoes}
-                          </p>
-                          <p className="text-sm">
-                            <span className="font-medium">Admissão:</span> {new Date(prestador.dataAdmissao).toLocaleDateString('pt-BR')}
-                          </p>
                         </div>
                       </div>
                       
-                      <div className="flex space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEdit(prestador)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleDelete(prestador.id)}
-                          className="text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                      <div className="flex items-center gap-2">
+                        <Badge className={getCategoriaColor(prestador.categoria)}>
+                          {prestador.categoria === 'engenharia' ? 'Engenharia' :
+                           prestador.categoria === 'supervisao' ? 'Supervisão' : 'Técnico'}
+                        </Badge>
+                        <div className="flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEdit(prestador)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDelete(prestador.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
+                  </CardHeader>
+                  
+                  <CardContent className="pt-0">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                      <div className="flex items-center gap-2">
+                        <Phone className="h-4 w-4 text-muted-foreground" />
+                        <span>{prestador.telefone}</span>
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        <MapPin className="h-4 w-4 text-muted-foreground" />
+                        <span>{prestador.cidade}, {prestador.estado}</span>
+                      </div>
+                      
+                      <div>
+                        <span className="font-medium">Experiência:</span> {prestador.experiencia} anos
+                      </div>
+                      
+                      <div>
+                        <span className="font-medium">Admissão:</span> {new Date(prestador.data_admissao).toLocaleDateString()}
+                      </div>
+                    </div>
+                    
+                    {prestador.especialidades && (
+                      <div className="mt-3 pt-3 border-t border-border/50">
+                        <div className="text-sm">
+                          <span className="font-medium text-muted-foreground">Especialidades:</span> {prestador.especialidades}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {prestador.certificacoes && (
+                      <div className="mt-2">
+                        <div className="text-sm">
+                          <span className="font-medium text-muted-foreground">Certificações:</span> {prestador.certificacoes}
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               );
             })}
+            
+            {filteredPrestadores.length === 0 && (
+              <Card className="p-6 text-center">
+                <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <h3 className="text-lg font-semibold mb-2">Nenhum prestador encontrado</h3>
+                <p className="text-muted-foreground">
+                  {searchTerm ? "Ajuste sua busca ou " : ""}
+                  Adicione um novo prestador para começar.
+                </p>
+              </Card>
+            )}
           </div>
-
-          {filteredPrestadores.length === 0 && (
-            <div className="text-center py-12">
-              <Users className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-xl font-semibold mb-2">Nenhum prestador encontrado</h3>
-              <p className="text-muted-foreground">
-                {searchTerm ? "Tente ajustar sua busca" : "Comece cadastrando um prestador de serviço"}
-              </p>
-            </div>
-          )}
         </TabsContent>
       </Tabs>
     </div>
