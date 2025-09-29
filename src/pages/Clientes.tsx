@@ -1,152 +1,231 @@
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Building2, Plus, Search, MapPin, Phone, Mail, Edit, Trash2 } from "lucide-react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import React, { useState, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { Pencil, Trash2, Building2, Phone, Mail, MapPin, FileText, Calendar, Clock, User, Plus, Search, Edit } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 
 const clienteSchema = z.object({
-  nomeEmpresa: z.string().min(2, "Nome da empresa deve ter pelo menos 2 caracteres"),
-  cnpj: z.string().min(14, "CNPJ deve ter 14 dígitos"),
-  nomeResponsavel: z.string().min(2, "Nome do responsável é obrigatório"),
-  email: z.string().email("Email inválido"),
-  telefone: z.string().min(10, "Telefone deve ter pelo menos 10 dígitos"),
+  empresa: z.string().min(2, "Nome da empresa deve ter pelo menos 2 caracteres"),
+  cnpj_cpf: z.string().min(11, "CNPJ/CPF é obrigatório"),
   endereco: z.string().min(5, "Endereço é obrigatório"),
   cidade: z.string().min(2, "Cidade é obrigatória"),
   estado: z.string().min(2, "Estado é obrigatório"),
   cep: z.string().min(8, "CEP deve ter 8 dígitos"),
-  tipo: z.enum(["residencial", "comercial", "industrial"]),
-  capacidadeInstalada: z.number().min(0, "Capacidade deve ser positiva"),
+  telefone: z.string().optional(),
+  email: z.string().email("Email inválido").optional().or(z.literal("")),
   observacoes: z.string().optional(),
 });
 
 type ClienteForm = z.infer<typeof clienteSchema>;
 
 interface Cliente extends ClienteForm {
-  id: number;
-  status: string;
+  id: string;
+  status: 'ativo' | 'inativo';
+  profile?: {
+    id: string;
+    nome: string;
+    email: string;
+    telefone?: string;
+  };
 }
 
-const Clientes = () => {
-  const [searchTerm, setSearchTerm] = useState("");
+export default function Clientes() {
+  const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingClient, setEditingClient] = useState<any>(null);
+  const [editingClient, setEditingClient] = useState<Cliente | null>(null);
+  const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+
+  // Carregar clientes do banco de dados
+  useEffect(() => {
+    fetchClientes();
+  }, []);
+
+  const fetchClientes = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('clientes')
+        .select(`
+          *,
+          profiles!clientes_profile_id_fkey(id, nome, email, telefone)
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const clientesFormatted = data?.map(cliente => ({
+        id: cliente.id,
+        empresa: cliente.empresa || '',
+        cnpj_cpf: cliente.cnpj_cpf || '',
+        endereco: cliente.endereco || '',
+        cidade: cliente.cidade || '',
+        estado: cliente.estado || '',
+        cep: cliente.cep || '',
+        telefone: cliente.profiles?.telefone || '',
+        email: cliente.profiles?.email || '',
+        observacoes: '',
+        status: 'ativo' as const,
+        profile: cliente.profiles
+      })) || [];
+
+      setClientes(clientesFormatted);
+    } catch (error) {
+      console.error('Erro ao carregar clientes:', error);
+      toast.error('Erro ao carregar clientes');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const form = useForm<ClienteForm>({
     resolver: zodResolver(clienteSchema),
     defaultValues: {
-      nomeEmpresa: "",
-      cnpj: "",
-      nomeResponsavel: "",
-      email: "",
-      telefone: "",
-      endereco: "",
-      cidade: "",
-      estado: "",
-      cep: "",
-      tipo: "comercial",
-      capacidadeInstalada: 0,
-      observacoes: "",
-    },
+      empresa: '',
+      cnpj_cpf: '',
+      endereco: '',
+      cidade: '',
+      estado: '',
+      cep: '',
+      telefone: '',
+      email: '',
+      observacoes: ''
+    }
   });
 
-  // Mock data - será substituído pelo Supabase
-  const [clientes, setClientes] = useState<Cliente[]>([
-    {
-      id: 1,
-      nomeEmpresa: "Solar Tech Ltda",
-      cnpj: "12.345.678/0001-90",
-      nomeResponsavel: "João Silva",
-      email: "joao@solartech.com",
-      telefone: "(11) 99999-9999",
-      endereco: "Av. Paulista, 1000",
-      cidade: "São Paulo",
-      estado: "SP",
-      cep: "01310-100",
-      tipo: "comercial",
-      capacidadeInstalada: 500,
-      observacoes: "Cliente prioritário",
-      status: "ativo"
-    },
-    {
-      id: 2,
-      nomeEmpresa: "Green Energy Corp",
-      cnpj: "98.765.432/0001-10",
-      nomeResponsavel: "Maria Santos",
-      email: "maria@greenenergy.com",
-      telefone: "(11) 88888-8888",
-      endereco: "Rua das Flores, 500",
-      cidade: "São Paulo",
-      estado: "SP",
-      cep: "04567-890",
-      tipo: "industrial",
-      capacidadeInstalada: 1200,
-      observacoes: "",
-      status: "ativo"
-    }
-  ]);
+  const onSubmit = async (data: ClienteForm) => {
+    try {
+      if (editingClient) {
+        // Editar cliente existente
+        if (editingClient.profile?.id) {
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .update({
+              nome: data.empresa,
+              email: data.email || data.empresa.toLowerCase().replace(/\s+/g, '') + '@cliente.com',
+              telefone: data.telefone
+            })
+            .eq('id', editingClient.profile.id);
 
-  const onSubmit = (data: ClienteForm) => {
-    if (editingClient) {
-      // Atualizar cliente existente
-      const updatedClient: Cliente = { ...data, id: editingClient.id, status: "ativo" };
-      setClientes(prev => prev.map(cliente => 
-        cliente.id === editingClient.id ? updatedClient : cliente
-      ));
-    } else {
-      // Criar novo cliente
-      const newClient: Cliente = {
-        id: Date.now(),
-        ...data,
-        status: "ativo"
-      };
-      setClientes(prev => [...prev, newClient]);
+          if (profileError) throw profileError;
+        }
+
+        const { error: clienteError } = await supabase
+          .from('clientes')
+          .update({
+            empresa: data.empresa,
+            cnpj_cpf: data.cnpj_cpf,
+            endereco: data.endereco,
+            cidade: data.cidade,
+            estado: data.estado,
+            cep: data.cep
+          })
+          .eq('id', editingClient.id);
+
+        if (clienteError) throw clienteError;
+
+        toast.success('Cliente atualizado com sucesso!');
+      } else {
+        // Criar novo perfil para o cliente
+        const { data: newProfile, error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            nome: data.empresa,
+            email: data.email || data.empresa.toLowerCase().replace(/\s+/g, '') + '@cliente.com',
+            telefone: data.telefone || data.cnpj_cpf,
+            role: 'cliente',
+            user_id: crypto.randomUUID() // Temporary user_id para clientes administrativos
+          })
+          .select()
+          .single();
+
+        if (profileError) throw profileError;
+
+        // Criar registro do cliente
+        const { error: clienteError } = await supabase
+          .from('clientes')
+          .insert({
+            profile_id: newProfile.id,
+            empresa: data.empresa,
+            cnpj_cpf: data.cnpj_cpf,
+            endereco: data.endereco,
+            cidade: data.cidade,
+            estado: data.estado,
+            cep: data.cep
+          });
+
+        if (clienteError) throw clienteError;
+
+        toast.success('Cliente adicionado com sucesso!');
+      }
+
+      setIsDialogOpen(false);
+      setEditingClient(null);
+      form.reset();
+      fetchClientes(); // Recarregar lista
+    } catch (error) {
+      console.error('Erro ao salvar cliente:', error);
+      toast.error('Erro ao salvar cliente');
     }
-    
-    form.reset();
-    setIsDialogOpen(false);
-    setEditingClient(null);
   };
 
-  const handleEdit = (cliente: any) => {
+  const handleEdit = (cliente: Cliente) => {
     setEditingClient(cliente);
-    form.reset(cliente);
+    form.reset({
+      empresa: cliente.empresa,
+      cnpj_cpf: cliente.cnpj_cpf,
+      endereco: cliente.endereco,
+      cidade: cliente.cidade,
+      estado: cliente.estado,
+      cep: cliente.cep,
+      telefone: cliente.telefone,
+      email: cliente.email,
+      observacoes: cliente.observacoes
+    });
     setIsDialogOpen(true);
   };
 
-  const handleDelete = (id: number) => {
-    setClientes(prev => prev.filter(cliente => cliente.id !== id));
+  const handleDelete = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('clientes')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      toast.success('Cliente removido com sucesso!');
+      fetchClientes(); // Recarregar lista
+    } catch (error) {
+      console.error('Erro ao remover cliente:', error);
+      toast.error('Erro ao remover cliente');
+    }
   };
 
   const filteredClientes = clientes.filter(cliente =>
-    cliente.nomeEmpresa.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    cliente.nomeResponsavel.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    cliente.email.toLowerCase().includes(searchTerm.toLowerCase())
+    cliente.empresa.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    cliente.cnpj_cpf.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    cliente.cidade.toLowerCase().includes(searchTerm.toLowerCase())
   );
-
-  const getTipoColor = (tipo: string) => {
-    switch (tipo) {
-      case "residencial": return "bg-green-100 text-green-800";
-      case "comercial": return "bg-blue-100 text-blue-800";
-      case "industrial": return "bg-purple-100 text-purple-800";
-      default: return "bg-muted text-muted-foreground";
-    }
-  };
 
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Cadastro de Clientes</h1>
-          <p className="text-muted-foreground">Gerencie os clientes da Evolight</p>
+          <p className="text-muted-foreground">Gerencie os clientes da empresa</p>
         </div>
         
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -168,7 +247,7 @@ const Clientes = () => {
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
-                    name="nomeEmpresa"
+                    name="empresa"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Nome da Empresa</FormLabel>
@@ -182,10 +261,10 @@ const Clientes = () => {
                   
                   <FormField
                     control={form.control}
-                    name="cnpj"
+                    name="cnpj_cpf"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>CNPJ</FormLabel>
+                        <FormLabel>CNPJ/CPF</FormLabel>
                         <FormControl>
                           <Input {...field} />
                         </FormControl>
@@ -196,20 +275,6 @@ const Clientes = () => {
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="nomeResponsavel"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Nome do Responsável</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
                   <FormField
                     control={form.control}
                     name="email"
@@ -223,9 +288,7 @@ const Clientes = () => {
                       </FormItem>
                     )}
                   />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
+                  
                   <FormField
                     control={form.control}
                     name="telefone"
@@ -235,29 +298,6 @@ const Clientes = () => {
                         <FormControl>
                           <Input {...field} />
                         </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="tipo"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Tipo</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="residencial">Residencial</SelectItem>
-                            <SelectItem value="comercial">Comercial</SelectItem>
-                            <SelectItem value="industrial">Industrial</SelectItem>
-                          </SelectContent>
-                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -300,7 +340,7 @@ const Clientes = () => {
                       <FormItem>
                         <FormLabel>Estado</FormLabel>
                         <FormControl>
-                          <Input {...field} />
+                          <Input {...field} placeholder="SP" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -314,31 +354,13 @@ const Clientes = () => {
                       <FormItem>
                         <FormLabel>CEP</FormLabel>
                         <FormControl>
-                          <Input {...field} />
+                          <Input {...field} placeholder="00000-000" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
                 </div>
-
-                <FormField
-                  control={form.control}
-                  name="capacidadeInstalada"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Capacidade Instalada (kW)</FormLabel>
-                      <FormControl>
-                        <Input 
-                          type="number" 
-                          {...field}
-                          onChange={(e) => field.onChange(Number(e.target.value))}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
 
                 <FormField
                   control={form.control}
@@ -391,81 +413,103 @@ const Clientes = () => {
         </Badge>
       </div>
 
-      <div className="grid gap-4">
-        {filteredClientes.map((cliente) => (
-          <Card key={cliente.id} className="hover:shadow-md transition-shadow">
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between">
-                <div className="flex-1 space-y-2">
-                  <div className="flex items-center space-x-3">
-                    <Building2 className="h-5 w-5 text-primary" />
-                    <h3 className="text-lg font-semibold">{cliente.nomeEmpresa}</h3>
-                    <Badge className={getTipoColor(cliente.tipo)}>
-                      {cliente.tipo}
-                    </Badge>
-                    <Badge variant="outline" className="text-xs">
-                      {cliente.capacidadeInstalada} kW
-                    </Badge>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-muted-foreground">
-                    <div className="flex items-center space-x-2">
-                      <MapPin className="h-4 w-4" />
-                      <span>{cliente.cidade}, {cliente.estado}</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Phone className="h-4 w-4" />
-                      <span>{cliente.telefone}</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Mail className="h-4 w-4" />
-                      <span>{cliente.email}</span>
-                    </div>
-                  </div>
-                  
-                  <p className="font-medium">Responsável: {cliente.nomeResponsavel}</p>
-                  
-                  {cliente.observacoes && (
-                    <p className="text-sm text-muted-foreground bg-muted p-2 rounded">
-                      {cliente.observacoes}
-                    </p>
-                  )}
-                </div>
-                
-                <div className="flex space-x-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleEdit(cliente)}
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleDelete(cliente.id)}
-                    className="text-destructive hover:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      <div className="space-y-4">
+        <Badge variant="secondary" className="mb-4">
+          {filteredClientes.length} cliente{filteredClientes.length !== 1 ? 's' : ''} encontrado{filteredClientes.length !== 1 ? 's' : ''}
+        </Badge>
 
-      {filteredClientes.length === 0 && (
-        <div className="text-center py-12">
-          <Building2 className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-          <h3 className="text-xl font-semibold mb-2">Nenhum cliente encontrado</h3>
-          <p className="text-muted-foreground">
-            {searchTerm ? "Tente ajustar sua busca" : "Comece cadastrando seu primeiro cliente"}
-          </p>
-        </div>
-      )}
+        {loading ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <p>Carregando clientes...</p>
+          </div>
+        ) : filteredClientes.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <Building2 className="mx-auto h-12 w-12 mb-4 opacity-50" />
+            <p>Nenhum cliente encontrado</p>
+            <p className="text-sm">Adicione seu primeiro cliente usando o botão acima</p>
+          </div>
+        ) : (
+          <div className="grid gap-4">
+            {filteredClientes.map((cliente) => (
+              <Card key={cliente.id} className="hover:shadow-md transition-shadow">
+                <CardContent className="p-6">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 space-y-3">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Building2 className="h-4 w-4" />
+                        <span>{cliente.empresa}</span>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2 text-sm">
+                            <FileText className="h-4 w-4 text-muted-foreground" />
+                            <span>CNPJ/CPF: {cliente.cnpj_cpf}</span>
+                          </div>
+                          
+                          <div className="flex items-center gap-2 text-sm">
+                            <MapPin className="h-4 w-4 text-muted-foreground" />
+                            <span>{cliente.endereco}</span>
+                          </div>
+                          
+                          <div className="flex items-center gap-2 text-sm">
+                            <span className="text-muted-foreground">📍</span>
+                            <span>{cliente.cidade}, {cliente.estado} - {cliente.cep}</span>
+                          </div>
+
+                          {cliente.profile && (
+                            <>
+                              <div className="flex items-center gap-2 text-sm">
+                                <Mail className="h-4 w-4 text-muted-foreground" />
+                                <span>{cliente.profile.email}</span>
+                              </div>
+                              
+                              {cliente.profile.telefone && (
+                                <div className="flex items-center gap-2 text-sm">
+                                  <Phone className="h-4 w-4 text-muted-foreground" />
+                                  <span>{cliente.profile.telefone}</span>
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </div>
+
+                        <div className="space-y-2">
+                          <Badge 
+                            variant={cliente.status === 'ativo' ? 'default' : 'secondary'}
+                            className="text-xs"
+                          >
+                            {cliente.status === 'ativo' ? 'Ativo' : 'Inativo'}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex space-x-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleEdit(cliente)}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDelete(cliente.id)}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
-};
-
-export default Clientes;
+}
