@@ -387,7 +387,15 @@ const Tickets = () => {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Cliente</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
+                        <Select onValueChange={(value) => {
+                          field.onChange(value);
+                          // Auto-preencher endereço baseado no cliente selecionado
+                          const clienteSelecionado = clientes.find(c => c.id === value);
+                          if (clienteSelecionado) {
+                            const endereco = `${clienteSelecionado.endereco || ''}, ${clienteSelecionado.cidade || ''}, ${clienteSelecionado.estado || ''} - ${clienteSelecionado.cep || ''}`.trim().replace(/^,\s*|,\s*$/, '');
+                            form.setValue('endereco_servico', endereco);
+                          }
+                        }} value={field.value}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Selecione um cliente" />
