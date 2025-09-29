@@ -14,6 +14,98 @@ export type Database = {
   }
   public: {
     Tables: {
+      aprovacoes: {
+        Row: {
+          aprovador_id: string
+          created_at: string
+          data_aprovacao: string
+          id: string
+          observacoes: string | null
+          status: string
+          ticket_id: string
+        }
+        Insert: {
+          aprovador_id: string
+          created_at?: string
+          data_aprovacao?: string
+          id?: string
+          observacoes?: string | null
+          status: string
+          ticket_id: string
+        }
+        Update: {
+          aprovador_id?: string
+          created_at?: string
+          data_aprovacao?: string
+          id?: string
+          observacoes?: string | null
+          status?: string
+          ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "aprovacoes_aprovador_id_fkey"
+            columns: ["aprovador_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "aprovacoes_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clientes: {
+        Row: {
+          cep: string | null
+          cidade: string | null
+          cnpj_cpf: string | null
+          created_at: string
+          empresa: string | null
+          endereco: string | null
+          estado: string | null
+          id: string
+          profile_id: string
+          updated_at: string
+        }
+        Insert: {
+          cep?: string | null
+          cidade?: string | null
+          cnpj_cpf?: string | null
+          created_at?: string
+          empresa?: string | null
+          endereco?: string | null
+          estado?: string | null
+          id?: string
+          profile_id: string
+          updated_at?: string
+        }
+        Update: {
+          cep?: string | null
+          cidade?: string | null
+          cnpj_cpf?: string | null
+          created_at?: string
+          empresa?: string | null
+          endereco?: string | null
+          estado?: string | null
+          id?: string
+          profile_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clientes_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       insumos: {
         Row: {
           categoria: string
@@ -113,6 +205,96 @@ export type Database = {
           },
         ]
       }
+      ordens_servico: {
+        Row: {
+          created_at: string
+          data_emissao: string
+          data_programada: string | null
+          id: string
+          numero_os: string
+          pdf_url: string | null
+          qr_code: string | null
+          tecnico_id: string
+          ticket_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          data_emissao?: string
+          data_programada?: string | null
+          id?: string
+          numero_os: string
+          pdf_url?: string | null
+          qr_code?: string | null
+          tecnico_id: string
+          ticket_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          data_emissao?: string
+          data_programada?: string | null
+          id?: string
+          numero_os?: string
+          pdf_url?: string | null
+          qr_code?: string | null
+          tecnico_id?: string
+          ticket_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ordens_servico_tecnico_id_fkey"
+            columns: ["tecnico_id"]
+            isOneToOne: false
+            referencedRelation: "tecnicos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ordens_servico_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          email: string
+          id: string
+          nome: string
+          role: Database["public"]["Enums"]["user_role"]
+          telefone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          email: string
+          id?: string
+          nome: string
+          role?: Database["public"]["Enums"]["user_role"]
+          telefone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          email?: string
+          id?: string
+          nome?: string
+          role?: Database["public"]["Enums"]["user_role"]
+          telefone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       responsaveis: {
         Row: {
           ativo: boolean | null
@@ -146,15 +328,290 @@ export type Database = {
         }
         Relationships: []
       }
+      rme_relatorios: {
+        Row: {
+          anexos_tecnicos: string[] | null
+          assinatura_cliente: string | null
+          assinatura_tecnico: string | null
+          condicoes_encontradas: string
+          created_at: string
+          data_execucao: string
+          data_preenchimento: string
+          fotos_antes: string[] | null
+          fotos_depois: string[] | null
+          id: string
+          materiais_utilizados: Json | null
+          medicoes_eletricas: Json | null
+          nome_cliente_assinatura: string | null
+          observacoes_tecnicas: string | null
+          ordem_servico_id: string
+          pdf_url: string | null
+          servicos_executados: string
+          tecnico_id: string
+          testes_realizados: string | null
+          ticket_id: string
+          updated_at: string
+        }
+        Insert: {
+          anexos_tecnicos?: string[] | null
+          assinatura_cliente?: string | null
+          assinatura_tecnico?: string | null
+          condicoes_encontradas: string
+          created_at?: string
+          data_execucao: string
+          data_preenchimento?: string
+          fotos_antes?: string[] | null
+          fotos_depois?: string[] | null
+          id?: string
+          materiais_utilizados?: Json | null
+          medicoes_eletricas?: Json | null
+          nome_cliente_assinatura?: string | null
+          observacoes_tecnicas?: string | null
+          ordem_servico_id: string
+          pdf_url?: string | null
+          servicos_executados: string
+          tecnico_id: string
+          testes_realizados?: string | null
+          ticket_id: string
+          updated_at?: string
+        }
+        Update: {
+          anexos_tecnicos?: string[] | null
+          assinatura_cliente?: string | null
+          assinatura_tecnico?: string | null
+          condicoes_encontradas?: string
+          created_at?: string
+          data_execucao?: string
+          data_preenchimento?: string
+          fotos_antes?: string[] | null
+          fotos_depois?: string[] | null
+          id?: string
+          materiais_utilizados?: Json | null
+          medicoes_eletricas?: Json | null
+          nome_cliente_assinatura?: string | null
+          observacoes_tecnicas?: string | null
+          ordem_servico_id?: string
+          pdf_url?: string | null
+          servicos_executados?: string
+          tecnico_id?: string
+          testes_realizados?: string | null
+          ticket_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rme_relatorios_ordem_servico_id_fkey"
+            columns: ["ordem_servico_id"]
+            isOneToOne: false
+            referencedRelation: "ordens_servico"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rme_relatorios_tecnico_id_fkey"
+            columns: ["tecnico_id"]
+            isOneToOne: false
+            referencedRelation: "tecnicos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rme_relatorios_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      status_historico: {
+        Row: {
+          alterado_por: string
+          data_alteracao: string
+          id: string
+          observacoes: string | null
+          status_anterior: Database["public"]["Enums"]["ticket_status"] | null
+          status_novo: Database["public"]["Enums"]["ticket_status"]
+          ticket_id: string
+        }
+        Insert: {
+          alterado_por: string
+          data_alteracao?: string
+          id?: string
+          observacoes?: string | null
+          status_anterior?: Database["public"]["Enums"]["ticket_status"] | null
+          status_novo: Database["public"]["Enums"]["ticket_status"]
+          ticket_id: string
+        }
+        Update: {
+          alterado_por?: string
+          data_alteracao?: string
+          id?: string
+          observacoes?: string | null
+          status_anterior?: Database["public"]["Enums"]["ticket_status"] | null
+          status_novo?: Database["public"]["Enums"]["ticket_status"]
+          ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "status_historico_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tecnicos: {
+        Row: {
+          created_at: string
+          especialidades: string[] | null
+          id: string
+          profile_id: string
+          regiao_atuacao: string | null
+          registro_profissional: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          especialidades?: string[] | null
+          id?: string
+          profile_id: string
+          regiao_atuacao?: string | null
+          registro_profissional?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          especialidades?: string[] | null
+          id?: string
+          profile_id?: string
+          regiao_atuacao?: string | null
+          registro_profissional?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tecnicos_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tickets: {
+        Row: {
+          anexos: string[] | null
+          cliente_id: string
+          created_at: string
+          created_by: string
+          data_abertura: string
+          data_vencimento: string | null
+          descricao: string
+          endereco_servico: string
+          equipamento_tipo: Database["public"]["Enums"]["equipamento_tipo"]
+          id: string
+          numero_ticket: string
+          observacoes: string | null
+          prioridade: Database["public"]["Enums"]["prioridade_tipo"]
+          status: Database["public"]["Enums"]["ticket_status"]
+          tecnico_responsavel_id: string | null
+          tempo_estimado: number | null
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          anexos?: string[] | null
+          cliente_id: string
+          created_at?: string
+          created_by: string
+          data_abertura?: string
+          data_vencimento?: string | null
+          descricao: string
+          endereco_servico: string
+          equipamento_tipo: Database["public"]["Enums"]["equipamento_tipo"]
+          id?: string
+          numero_ticket: string
+          observacoes?: string | null
+          prioridade?: Database["public"]["Enums"]["prioridade_tipo"]
+          status?: Database["public"]["Enums"]["ticket_status"]
+          tecnico_responsavel_id?: string | null
+          tempo_estimado?: number | null
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          anexos?: string[] | null
+          cliente_id?: string
+          created_at?: string
+          created_by?: string
+          data_abertura?: string
+          data_vencimento?: string | null
+          descricao?: string
+          endereco_servico?: string
+          equipamento_tipo?: Database["public"]["Enums"]["equipamento_tipo"]
+          id?: string
+          numero_ticket?: string
+          observacoes?: string | null
+          prioridade?: Database["public"]["Enums"]["prioridade_tipo"]
+          status?: Database["public"]["Enums"]["ticket_status"]
+          tecnico_responsavel_id?: string | null
+          tempo_estimado?: number | null
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tickets_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tickets_tecnico_responsavel_id_fkey"
+            columns: ["tecnico_responsavel_id"]
+            isOneToOne: false
+            referencedRelation: "tecnicos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      gerar_numero_os: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      gerar_numero_ticket: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
     }
     Enums: {
-      [_ in never]: never
+      equipamento_tipo:
+        | "painel_solar"
+        | "inversor"
+        | "controlador_carga"
+        | "bateria"
+        | "cabeamento"
+        | "estrutura"
+        | "monitoramento"
+        | "outros"
+      prioridade_tipo: "baixa" | "media" | "alta" | "critica"
+      ticket_status:
+        | "aberto"
+        | "aguardando_aprovacao"
+        | "aprovado"
+        | "rejeitado"
+        | "ordem_servico_gerada"
+        | "em_execucao"
+        | "aguardando_rme"
+        | "concluido"
+        | "cancelado"
+      user_role: "admin" | "tecnico_campo" | "area_tecnica" | "cliente"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -281,6 +738,30 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      equipamento_tipo: [
+        "painel_solar",
+        "inversor",
+        "controlador_carga",
+        "bateria",
+        "cabeamento",
+        "estrutura",
+        "monitoramento",
+        "outros",
+      ],
+      prioridade_tipo: ["baixa", "media", "alta", "critica"],
+      ticket_status: [
+        "aberto",
+        "aguardando_aprovacao",
+        "aprovado",
+        "rejeitado",
+        "ordem_servico_gerada",
+        "em_execucao",
+        "aguardando_rme",
+        "concluido",
+        "cancelado",
+      ],
+      user_role: ["admin", "tecnico_campo", "area_tecnica", "cliente"],
+    },
   },
 } as const
