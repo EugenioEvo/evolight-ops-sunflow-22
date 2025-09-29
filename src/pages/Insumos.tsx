@@ -345,10 +345,22 @@ export default function Insumos() {
 
   const getCategoriaIcon = (categoria: string) => {
     switch (categoria) {
-      case "medicamentos":
-        return <PillIcon className="h-4 w-4" />;
-      case "equipamentos":
+      case "paineis_solares":
+        return <Package className="h-4 w-4" />;
+      case "inversores":
         return <Wrench className="h-4 w-4" />;
+      case "estruturas_montagem":
+        return <Package className="h-4 w-4" />;
+      case "cabos_conectores":
+        return <Package className="h-4 w-4" />;
+      case "equipamentos_medicao":
+        return <Wrench className="h-4 w-4" />;
+      case "ferramentas":
+        return <Wrench className="h-4 w-4" />;
+      case "componentes_eletricos":
+        return <Package className="h-4 w-4" />;
+      case "manutencao":
+        return <Package className="h-4 w-4" />;
       default:
         return <Package className="h-4 w-4" />;
     }
@@ -356,14 +368,22 @@ export default function Insumos() {
 
   const getCategoriaColor = (categoria: string) => {
     switch (categoria) {
-      case "medicamentos":
+      case "paineis_solares":
         return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300";
-      case "equipamentos":
+      case "inversores":
         return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300";
-      case "suprimentos":
+      case "estruturas_montagem":
         return "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300";
-      case "limpeza":
+      case "cabos_conectores":
         return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300";
+      case "equipamentos_medicao":
+        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300";
+      case "ferramentas":
+        return "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300";
+      case "componentes_eletricos":
+        return "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300";
+      case "manutencao":
+        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300";
       default:
         return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300";
     }
@@ -383,10 +403,14 @@ export default function Insumos() {
 
   const categoriaCounts = {
     todos: insumos.length,
-    medicamentos: insumos.filter(i => i.categoria === "medicamentos").length,
-    equipamentos: insumos.filter(i => i.categoria === "equipamentos").length,
-    suprimentos: insumos.filter(i => i.categoria === "suprimentos").length,
-    limpeza: insumos.filter(i => i.categoria === "limpeza").length,
+    paineis_solares: insumos.filter(i => i.categoria === "paineis_solares").length,
+    inversores: insumos.filter(i => i.categoria === "inversores").length,
+    estruturas_montagem: insumos.filter(i => i.categoria === "estruturas_montagem").length,
+    cabos_conectores: insumos.filter(i => i.categoria === "cabos_conectores").length,
+    equipamentos_medicao: insumos.filter(i => i.categoria === "equipamentos_medicao").length,
+    ferramentas: insumos.filter(i => i.categoria === "ferramentas").length,
+    componentes_eletricos: insumos.filter(i => i.categoria === "componentes_eletricos").length,
+    manutencao: insumos.filter(i => i.categoria === "manutencao").length,
     "estoque-baixo": insumos.filter(i => {
       const status = getEstoqueStatus(i.quantidade, i.estoque_minimo, i.estoque_critico);
       return status === "baixo" || status === "critico";
@@ -538,10 +562,14 @@ export default function Insumos() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="medicamentos">Medicamentos</SelectItem>
-                              <SelectItem value="equipamentos">Equipamentos</SelectItem>
-                              <SelectItem value="suprimentos">Suprimentos</SelectItem>
-                              <SelectItem value="limpeza">Limpeza</SelectItem>
+                              <SelectItem value="paineis_solares">Painéis Solares</SelectItem>
+                              <SelectItem value="inversores">Inversores</SelectItem>
+                              <SelectItem value="estruturas_montagem">Estruturas de Montagem</SelectItem>
+                              <SelectItem value="cabos_conectores">Cabos e Conectores</SelectItem>
+                              <SelectItem value="equipamentos_medicao">Equipamentos de Medição</SelectItem>
+                              <SelectItem value="ferramentas">Ferramentas</SelectItem>
+                              <SelectItem value="componentes_eletricos">Componentes Elétricos</SelectItem>
+                              <SelectItem value="manutencao">Manutenção</SelectItem>
                             </SelectContent>
                           </Select>
                           <FormMessage />
@@ -803,17 +831,29 @@ export default function Insumos() {
             <TabsTrigger value="todos">
               Todos ({categoriaCounts.todos})
             </TabsTrigger>
-            <TabsTrigger value="medicamentos">
-              Medicamentos ({categoriaCounts.medicamentos})
+            <TabsTrigger value="paineis_solares">
+              Painéis Solares ({categoriaCounts.paineis_solares})
             </TabsTrigger>
-            <TabsTrigger value="equipamentos">
-              Equipamentos ({categoriaCounts.equipamentos})
+            <TabsTrigger value="inversores">
+              Inversores ({categoriaCounts.inversores})
             </TabsTrigger>
-            <TabsTrigger value="suprimentos">
-              Suprimentos ({categoriaCounts.suprimentos})
+            <TabsTrigger value="estruturas_montagem">
+              Estruturas ({categoriaCounts.estruturas_montagem})
             </TabsTrigger>
-            <TabsTrigger value="limpeza">
-              Limpeza ({categoriaCounts.limpeza})
+            <TabsTrigger value="cabos_conectores">
+              Cabos/Conectores ({categoriaCounts.cabos_conectores})
+            </TabsTrigger>
+            <TabsTrigger value="equipamentos_medicao">
+              Medição ({categoriaCounts.equipamentos_medicao})
+            </TabsTrigger>
+            <TabsTrigger value="ferramentas">
+              Ferramentas ({categoriaCounts.ferramentas})
+            </TabsTrigger>
+            <TabsTrigger value="componentes_eletricos">
+              Componentes ({categoriaCounts.componentes_eletricos})
+            </TabsTrigger>
+            <TabsTrigger value="manutencao">
+              Manutenção ({categoriaCounts.manutencao})
             </TabsTrigger>
             <TabsTrigger value="estoque-baixo" className="text-red-600 dark:text-red-400">
               Estoque Baixo ({categoriaCounts["estoque-baixo"]})
