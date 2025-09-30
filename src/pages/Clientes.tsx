@@ -138,31 +138,12 @@ export default function Clientes() {
 
         toast.success('Cliente atualizado com sucesso!');
       } else {
-        // Criar novo cliente - gerar user_id único
-        const newUserId = crypto.randomUUID();
-        const email = data.email || `${data.empresa.toLowerCase().replace(/\s+/g, '')}_${Date.now()}@cliente.com`;
-
-        // Criar profile primeiro
-        const { data: newProfile, error: profileError } = await supabase
-          .from('profiles')
-          .insert({
-            user_id: newUserId,
-            nome: data.empresa,
-            email: email,
-            telefone: data.telefone || data.cnpj_cpf,
-            role: 'cliente',
-            ativo: true
-          })
-          .select()
-          .single();
-
-        if (profileError) throw profileError;
-
-        // Criar cliente
+        // Criar novo cliente diretamente sem profile
+        // O profile será criado quando o cliente fizer login pela primeira vez
         const { error: clienteError } = await supabase
           .from('clientes')
           .insert({
-            profile_id: newProfile.id,
+            profile_id: null,
             empresa: data.empresa,
             cnpj_cpf: data.cnpj_cpf,
             endereco: data.endereco,
@@ -171,11 +152,7 @@ export default function Clientes() {
             cep: data.cep
           });
 
-        if (clienteError) {
-          // Rollback: deletar o profile criado
-          await supabase.from('profiles').delete().eq('id', newProfile.id);
-          throw clienteError;
-        }
+        if (clienteError) throw clienteError;
 
         toast.success('Cliente adicionado com sucesso!');
       }

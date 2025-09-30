@@ -69,7 +69,7 @@ export type Database = {
           endereco: string | null
           estado: string | null
           id: string
-          profile_id: string
+          profile_id: string | null
           updated_at: string
         }
         Insert: {
@@ -81,7 +81,7 @@ export type Database = {
           endereco?: string | null
           estado?: string | null
           id?: string
-          profile_id: string
+          profile_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -93,7 +93,7 @@ export type Database = {
           endereco?: string | null
           estado?: string | null
           id?: string
-          profile_id?: string
+          profile_id?: string | null
           updated_at?: string
         }
         Relationships: [
