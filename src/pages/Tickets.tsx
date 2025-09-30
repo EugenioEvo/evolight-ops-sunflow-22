@@ -60,13 +60,18 @@ const Tickets = () => {
     try {
       setLoading(true);
       
-      // Carregar clientes
+      // Carregar clientes com endereço completo
       const { data: clientesData } = await supabase
         .from('clientes')
         .select(`
           id,
           empresa,
-          profiles!inner(nome, email)
+          endereco,
+          cidade,
+          estado,
+          cep,
+          cnpj_cpf,
+          profiles(nome, email, telefone)
         `);
       setClientes(clientesData || []);
 
