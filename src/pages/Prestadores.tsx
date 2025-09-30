@@ -14,6 +14,34 @@ import { z } from "zod";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
+const especialidadesOptions = [
+  "Sistemas Fotovoltaicos",
+  "Inversores",
+  "Instalação Elétrica",
+  "Manutenção Preventiva",
+  "Manutenção Corretiva",
+  "Gestão de Projetos",
+  "Supervisão de Obra",
+  "Comissionamento",
+];
+
+const certificacoesOptions = [
+  "CREA",
+  "NR-10",
+  "NR-35",
+  "CAT",
+  "Fotovoltaica",
+  "Gestão de Projetos",
+];
+
+const experienciaOptions = [
+  "0-1 ano",
+  "1-3 anos",
+  "3-5 anos",
+  "5-10 anos",
+  "Mais de 10 anos",
+];
+
 const prestadorSchema = z.object({
   nome: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
   email: z.string().email("Email inválido"),
@@ -26,8 +54,7 @@ const prestadorSchema = z.object({
   categoria: z.string().min(1, "Categoria é obrigatória"),
   especialidades: z.array(z.string()).optional(),
   certificacoes: z.array(z.string()).optional(),
-  experiencia: z.number().min(0, "Experiência deve ser positiva").optional(),
-  salario: z.number().min(0, "Salário deve ser positivo").optional(),
+  experiencia: z.string().optional(),
   data_admissao: z.string().optional(),
 });
 
@@ -63,8 +90,7 @@ const Prestadores = () => {
       categoria: "",
       especialidades: [],
       certificacoes: [],
-      experiencia: 0,
-      salario: 0,
+      experiencia: "",
       data_admissao: "",
     },
   });
@@ -366,10 +392,10 @@ const Prestadores = () => {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Categoria</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger>
-                              <SelectValue />
+                              <SelectValue placeholder="Selecione a categoria" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
@@ -388,14 +414,21 @@ const Prestadores = () => {
                     name="experiencia"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Experiência (anos)</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            {...field}
-                            onChange={(e) => field.onChange(Number(e.target.value))}
-                          />
-                        </FormControl>
+                        <FormLabel>Experiência</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione a experiência" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {experienciaOptions.map((exp) => (
+                              <SelectItem key={exp} value={exp}>
+                                {exp}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -408,9 +441,41 @@ const Prestadores = () => {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Especialidades</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="Ex: Sistemas Fotovoltaicos, Inversores..." />
-                      </FormControl>
+                      <Select
+                        onValueChange={(value) => {
+                          const currentValues = field.value || [];
+                          if (!currentValues.includes(value)) {
+                            field.onChange([...currentValues, value]);
+                          }
+                        }}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione especialidades" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {especialidadesOptions.map((esp) => (
+                            <SelectItem key={esp} value={esp}>
+                              {esp}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {field.value?.map((esp) => (
+                          <Badge
+                            key={esp}
+                            variant="secondary"
+                            className="cursor-pointer"
+                            onClick={() => {
+                              field.onChange(field.value?.filter((e) => e !== esp));
+                            }}
+                          >
+                            {esp} ✕
+                          </Badge>
+                        ))}
+                      </div>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -422,47 +487,59 @@ const Prestadores = () => {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Certificações</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="Ex: CREA, NR-10, NR-35..." />
-                      </FormControl>
+                      <Select
+                        onValueChange={(value) => {
+                          const currentValues = field.value || [];
+                          if (!currentValues.includes(value)) {
+                            field.onChange([...currentValues, value]);
+                          }
+                        }}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione certificações" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {certificacoesOptions.map((cert) => (
+                            <SelectItem key={cert} value={cert}>
+                              {cert}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {field.value?.map((cert) => (
+                          <Badge
+                            key={cert}
+                            variant="secondary"
+                            className="cursor-pointer"
+                            onClick={() => {
+                              field.onChange(field.value?.filter((c) => c !== cert));
+                            }}
+                          >
+                            {cert} ✕
+                          </Badge>
+                        ))}
+                      </div>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
 
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="salario"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Salário (R$)</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            {...field}
-                            onChange={(e) => field.onChange(Number(e.target.value))}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="data_admissao"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Data de Admissão</FormLabel>
-                        <FormControl>
-                          <Input type="date" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+                <FormField
+                  control={form.control}
+                  name="data_admissao"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Data de Admissão</FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
                 <div className="flex gap-2 pt-4">
                   <Button type="submit" className="bg-gradient-solar">

@@ -341,10 +341,9 @@ export type Database = {
           endereco: string | null
           especialidades: string[] | null
           estado: string | null
-          experiencia: number | null
+          experiencia: string | null
           id: string
           nome: string
-          salario: number | null
           telefone: string | null
           updated_at: string
         }
@@ -361,10 +360,9 @@ export type Database = {
           endereco?: string | null
           especialidades?: string[] | null
           estado?: string | null
-          experiencia?: number | null
+          experiencia?: string | null
           id?: string
           nome: string
-          salario?: number | null
           telefone?: string | null
           updated_at?: string
         }
@@ -381,10 +379,9 @@ export type Database = {
           endereco?: string | null
           especialidades?: string[] | null
           estado?: string | null
-          experiencia?: number | null
+          experiencia?: string | null
           id?: string
           nome?: string
-          salario?: number | null
           telefone?: string | null
           updated_at?: string
         }
