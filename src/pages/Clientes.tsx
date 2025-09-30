@@ -46,7 +46,7 @@ export default function Clientes() {
   const [editingClient, setEditingClient] = useState<Cliente | null>(null);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
-  const { user } = useAuth();
+  const { user, session } = useAuth();
 
   // Carregar clientes do banco de dados
   useEffect(() => {
@@ -138,7 +138,12 @@ export default function Clientes() {
 
         toast.success('Cliente atualizado com sucesso!');
       } else {
-        // Criar novo cliente usando a função backend
+        // Verificar se usuário está autenticado
+        if (!session?.access_token) {
+          throw new Error('Usuário não autenticado. Por favor, faça login novamente.');
+        }
+
+        // Criar novo cliente usando a função backend com token explícito
         const { data: result, error: functionError } = await supabase.functions.invoke('criar-cliente', {
           body: {
             empresa: data.empresa,
@@ -149,6 +154,9 @@ export default function Clientes() {
             cep: data.cep,
             email: data.email,
             telefone: data.telefone
+          },
+          headers: {
+            Authorization: `Bearer ${session.access_token}`
           }
         });
 
