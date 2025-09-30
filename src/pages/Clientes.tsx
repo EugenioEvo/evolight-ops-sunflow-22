@@ -108,7 +108,7 @@ export default function Clientes() {
   const onSubmit = async (data: ClienteForm) => {
     try {
       if (editingClient) {
-        // Editar cliente existente
+        // Atualizar cliente existente
         if (editingClient.profile?.id) {
           const { error: profileError } = await supabase
             .from('profiles')
@@ -138,44 +138,28 @@ export default function Clientes() {
 
         toast.success('Cliente atualizado com sucesso!');
       } else {
-        // Criar novo perfil para o cliente
-        const { data: newProfile, error: profileError } = await supabase
-          .from('profiles')
-          .insert({
-            nome: data.empresa,
-            email: data.email || data.empresa.toLowerCase().replace(/\s+/g, '') + '@cliente.com',
-            telefone: data.telefone || data.cnpj_cpf,
-            role: 'cliente',
-            user_id: (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
-              ? crypto.randomUUID()
-              : (window as any)?.crypto?.randomUUID?.()
-          })
-          .select()
-          .single();
-
-        if (profileError) {
-          console.error('Erro ao criar perfil do cliente:', profileError);
-          throw new Error(`Perfil: ${profileError.message}`);
-        }
-
-        // Criar registro do cliente
-        const { error: clienteError } = await supabase
-          .from('clientes')
-          .insert({
-            profile_id: newProfile.id,
+        // Criar novo cliente usando a função backend
+        const { data: result, error: functionError } = await supabase.functions.invoke('criar-cliente', {
+          body: {
             empresa: data.empresa,
             cnpj_cpf: data.cnpj_cpf,
             endereco: data.endereco,
             cidade: data.cidade,
             estado: data.estado,
-            cep: data.cep
-          })
-          .select()
-          .single();
+            cep: data.cep,
+            email: data.email,
+            telefone: data.telefone
+          }
+        });
 
-        if (clienteError) {
-          console.error('Erro ao criar cliente:', clienteError);
-          throw new Error(`Cliente: ${clienteError.message}`);
+        if (functionError) {
+          console.error('Erro ao chamar função criar-cliente:', functionError);
+          throw new Error(functionError.message || 'Erro ao criar cliente');
+        }
+
+        if (!result?.success) {
+          console.error('Função retornou erro:', result);
+          throw new Error(result?.error || 'Erro ao criar cliente');
         }
 
         toast.success('Cliente adicionado com sucesso!');
@@ -184,10 +168,10 @@ export default function Clientes() {
       setIsDialogOpen(false);
       setEditingClient(null);
       form.reset();
-      fetchClientes(); // Recarregar lista
-    } catch (error) {
+      fetchClientes();
+    } catch (error: any) {
       console.error('Erro ao salvar cliente:', error);
-      toast.error('Erro ao salvar cliente');
+      toast.error(error.message || 'Erro ao salvar cliente');
     }
   };
 
