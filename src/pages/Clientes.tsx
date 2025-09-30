@@ -146,12 +146,17 @@ export default function Clientes() {
             email: data.email || data.empresa.toLowerCase().replace(/\s+/g, '') + '@cliente.com',
             telefone: data.telefone || data.cnpj_cpf,
             role: 'cliente',
-            user_id: crypto.randomUUID() // Temporary user_id para clientes administrativos
+            user_id: (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+              ? crypto.randomUUID()
+              : (window as any)?.crypto?.randomUUID?.()
           })
           .select()
           .single();
 
-        if (profileError) throw profileError;
+        if (profileError) {
+          console.error('Erro ao criar perfil do cliente:', profileError);
+          throw new Error(`Perfil: ${profileError.message}`);
+        }
 
         // Criar registro do cliente
         const { error: clienteError } = await supabase
@@ -164,9 +169,14 @@ export default function Clientes() {
             cidade: data.cidade,
             estado: data.estado,
             cep: data.cep
-          });
+          })
+          .select()
+          .single();
 
-        if (clienteError) throw clienteError;
+        if (clienteError) {
+          console.error('Erro ao criar cliente:', clienteError);
+          throw new Error(`Cliente: ${clienteError.message}`);
+        }
 
         toast.success('Cliente adicionado com sucesso!');
       }
