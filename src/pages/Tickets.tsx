@@ -52,6 +52,8 @@ const Tickets = () => {
       equipamento_tipo: 'painel_solar',
       prioridade: 'media',
       endereco_servico: '',
+      data_vencimento: '',
+      tempo_estimado: undefined,
       observacoes: '',
     },
   });
@@ -85,20 +87,29 @@ const Tickets = () => {
         `);
       setTecnicos(tecnicosData || []);
 
-      // Carregar tickets
-      const { data: ticketsData } = await supabase
+      // Carregar tickets (usar left join para incluir clientes sem profile)
+      const { data: ticketsData, error: ticketsError } = await supabase
         .from('tickets')
         .select(`
           *,
-          clientes!inner(
+          clientes(
             empresa,
-            profiles!inner(nome, email)
+            endereco,
+            cidade,
+            estado,
+            cep,
+            profiles(nome, email)
           ),
           tecnicos(
-            profiles!inner(nome)
+            profiles(nome)
           )
         `)
         .order('created_at', { ascending: false });
+
+      if (ticketsError) {
+        console.error('Erro ao carregar tickets:', ticketsError);
+        throw ticketsError;
+      }
 
       setTickets(ticketsData || []);
     } catch (error) {
@@ -300,9 +311,10 @@ const Tickets = () => {
   };
 
   const filteredTickets = tickets.filter(ticket => {
+    const clienteNome = ticket.clientes?.empresa || ticket.clientes?.profiles?.nome || '';
     const matchesSearch = ticket.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          ticket.numero_ticket.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         ticket.clientes?.profiles?.nome?.toLowerCase().includes(searchTerm.toLowerCase());
+                         clienteNome.toLowerCase().includes(searchTerm.toLowerCase());
     
     if (activeTab === 'todos') return matchesSearch;
     return matchesSearch && ticket.status === activeTab;
