@@ -5,7 +5,7 @@ import * as z from 'zod';
 import { Pencil, Trash2, Building2, Phone, Mail, MapPin, FileText, Calendar, Clock, User, Plus, Search, Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -163,7 +163,9 @@ export default function Clientes() {
       fetchClientes();
     } catch (error: any) {
       console.error('Erro ao salvar cliente:', error);
-      toast.error(error.message || 'Erro ao salvar cliente');
+      const errorMessage = error?.message || 'Erro desconhecido';
+      const errorCode = error?.code || '';
+      toast.error(`Erro ao salvar cliente: ${errorMessage} ${errorCode ? `(${errorCode})` : ''}`);
     }
   };
 
@@ -226,6 +228,11 @@ export default function Clientes() {
               <DialogTitle>
                 {editingClient ? "Editar Cliente" : "Novo Cliente"}
               </DialogTitle>
+              <DialogDescription>
+                {editingClient 
+                  ? 'Atualize as informações do cliente abaixo.' 
+                  : 'Preencha os dados para cadastrar um novo cliente. Email e telefone são opcionais.'}
+              </DialogDescription>
             </DialogHeader>
             
             <Form {...form}>
@@ -252,7 +259,26 @@ export default function Clientes() {
                       <FormItem>
                         <FormLabel>CNPJ/CPF</FormLabel>
                         <FormControl>
-                          <Input {...field} />
+                          <Input 
+                            {...field}
+                            placeholder="00.000.000/0000-00"
+                            onChange={(e) => {
+                              let value = e.target.value.replace(/\D/g, '');
+                              if (value.length <= 11) {
+                                // CPF: 000.000.000-00
+                                value = value.replace(/(\d{3})(\d)/, '$1.$2');
+                                value = value.replace(/(\d{3})(\d)/, '$1.$2');
+                                value = value.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+                              } else {
+                                // CNPJ: 00.000.000/0000-00
+                                value = value.replace(/^(\d{2})(\d)/, '$1.$2');
+                                value = value.replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3');
+                                value = value.replace(/\.(\d{3})(\d)/, '.$1/$2');
+                                value = value.replace(/(\d{4})(\d)/, '$1-$2');
+                              }
+                              field.onChange(value);
+                            }}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -266,9 +292,9 @@ export default function Clientes() {
                     name="email"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Email</FormLabel>
+                        <FormLabel>Email (Opcional)</FormLabel>
                         <FormControl>
-                          <Input type="email" {...field} />
+                          <Input type="email" placeholder="cliente@email.com" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -280,9 +306,19 @@ export default function Clientes() {
                     name="telefone"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Telefone</FormLabel>
+                        <FormLabel>Telefone (Opcional)</FormLabel>
                         <FormControl>
-                          <Input {...field} />
+                          <Input 
+                            {...field}
+                            placeholder="(00) 00000-0000"
+                            maxLength={15}
+                            onChange={(e) => {
+                              let value = e.target.value.replace(/\D/g, '');
+                              value = value.replace(/^(\d{2})(\d)/, '($1) $2');
+                              value = value.replace(/(\d{5})(\d)/, '$1-$2');
+                              field.onChange(value);
+                            }}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -340,7 +376,16 @@ export default function Clientes() {
                       <FormItem>
                         <FormLabel>CEP</FormLabel>
                         <FormControl>
-                          <Input {...field} placeholder="00000-000" />
+                          <Input 
+                            {...field}
+                            placeholder="00000-000"
+                            maxLength={9}
+                            onChange={(e) => {
+                              let value = e.target.value.replace(/\D/g, '');
+                              value = value.replace(/^(\d{5})(\d)/, '$1-$2');
+                              field.onChange(value);
+                            }}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
