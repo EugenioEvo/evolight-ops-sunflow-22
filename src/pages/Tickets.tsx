@@ -621,17 +621,22 @@ const Tickets = () => {
                 {(profile?.role === 'admin' || profile?.role === 'area_tecnica') && (
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Técnico Responsável</label>
-                    <Select value={selectedTechnicianForTicket} onValueChange={setSelectedTechnicianForTicket}>
+                    <Select value={selectedTechnicianForTicket || undefined} onValueChange={setSelectedTechnicianForTicket}>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione um técnico (opcional)" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Nenhum</SelectItem>
-                        {tecnicos.map((tecnico) => (
-                          <SelectItem key={tecnico.id} value={tecnico.id}>
-                            {tecnico.profiles?.nome}
-                          </SelectItem>
-                        ))}
+                        {tecnicos.length === 0 ? (
+                          <div className="p-2 text-sm text-muted-foreground text-center">
+                            Nenhum técnico disponível
+                          </div>
+                        ) : (
+                          tecnicos.map((tecnico) => (
+                            <SelectItem key={tecnico.id} value={tecnico.id}>
+                              {tecnico.profiles?.nome}
+                            </SelectItem>
+                          ))
+                        )}
                       </SelectContent>
                     </Select>
                   </div>
