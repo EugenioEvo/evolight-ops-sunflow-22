@@ -138,36 +138,43 @@ export default function Clientes() {
 
         toast.success('Cliente atualizado com sucesso!');
       } else {
-        // Verificar se usuário está autenticado
-        if (!session?.access_token) {
-          throw new Error('Usuário não autenticado. Por favor, faça login novamente.');
-        }
+        // Criar novo cliente - gerar user_id único
+        const newUserId = crypto.randomUUID();
+        const email = data.email || `${data.empresa.toLowerCase().replace(/\s+/g, '')}_${Date.now()}@cliente.com`;
 
-        // Criar novo cliente usando a função backend com token explícito
-        const { data: result, error: functionError } = await supabase.functions.invoke('criar-cliente', {
-          body: {
+        // Criar profile primeiro
+        const { data: newProfile, error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            user_id: newUserId,
+            nome: data.empresa,
+            email: email,
+            telefone: data.telefone || data.cnpj_cpf,
+            role: 'cliente',
+            ativo: true
+          })
+          .select()
+          .single();
+
+        if (profileError) throw profileError;
+
+        // Criar cliente
+        const { error: clienteError } = await supabase
+          .from('clientes')
+          .insert({
+            profile_id: newProfile.id,
             empresa: data.empresa,
             cnpj_cpf: data.cnpj_cpf,
             endereco: data.endereco,
             cidade: data.cidade,
             estado: data.estado,
-            cep: data.cep,
-            email: data.email,
-            telefone: data.telefone
-          },
-          headers: {
-            Authorization: `Bearer ${session.access_token}`
-          }
-        });
+            cep: data.cep
+          });
 
-        if (functionError) {
-          console.error('Erro ao chamar função criar-cliente:', functionError);
-          throw new Error(functionError.message || 'Erro ao criar cliente');
-        }
-
-        if (!result?.success) {
-          console.error('Função retornou erro:', result);
-          throw new Error(result?.error || 'Erro ao criar cliente');
+        if (clienteError) {
+          // Rollback: deletar o profile criado
+          await supabase.from('profiles').delete().eq('id', newProfile.id);
+          throw clienteError;
         }
 
         toast.success('Cliente adicionado com sucesso!');
