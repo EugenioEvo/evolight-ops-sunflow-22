@@ -14,6 +14,7 @@ import Tickets from "./pages/Tickets";
 import Equipamentos from "./pages/Equipamentos";
 import Insumos from "./pages/Insumos";
 import Prestadores from "./pages/Prestadores";
+import Tecnicos from "./pages/Tecnicos";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 import RME from "./pages/RME";
@@ -46,6 +47,7 @@ const App = () => (
                           <Route path="/routes" element={<RoutesPage />} />
                           <Route path="/clientes" element={<Clientes />} />
                           <Route path="/prestadores" element={<Prestadores />} />
+                          <Route path="/tecnicos" element={<Tecnicos />} />
                           <Route path="/equipamentos" element={<Equipamentos />} />
                           <Route path="/insumos" element={<Insumos />} />
                           <Route path="/rme" element={<RME />} />

@@ -79,15 +79,26 @@ const Tickets = () => {
         `);
       setClientes(clientesData || []);
 
-      // Carregar técnicos
+      // Carregar técnicos ativos com seus perfis
       const { data: tecnicosData } = await supabase
         .from('tecnicos')
         .select(`
           id,
+          profile_id,
           registro_profissional,
-          profiles!inner(nome, email)
+          especialidades,
+          regiao_atuacao,
+          profiles:profile_id(
+            id,
+            nome,
+            email,
+            ativo
+          )
         `);
-      setTecnicos(tecnicosData || []);
+      
+      // Filtrar apenas técnicos com perfis ativos
+      const tecnicosAtivos = tecnicosData?.filter(t => t.profiles?.ativo) || [];
+      setTecnicos(tecnicosAtivos);
 
       // Carregar tickets (usar left join para incluir clientes sem profile)
       const { data: ticketsData, error: ticketsError } = await supabase
@@ -134,13 +145,17 @@ const Tickets = () => {
     try {
       setLoading(true);
 
+      // Definir técnico se selecionado, senão deixar null
+      const tecnico_id = selectedTechnicianForTicket || null;
+      
       const ticketData = {
         ...data,
         tempo_estimado: data.tempo_estimado || null,
         data_vencimento: data.data_vencimento ? new Date(data.data_vencimento).toISOString() : null,
         created_by: user?.id,
-        tecnico_responsavel_id: selectedTechnicianForTicket || null,
-        status: 'aguardando_aprovacao',
+        tecnico_responsavel_id: tecnico_id,
+        // Status: se tem técnico, vai para aprovação, senão fica aberto
+        status: tecnico_id ? 'aguardando_aprovacao' : 'aberto',
       };
 
       if (editingTicket) {
@@ -204,16 +219,28 @@ const Tickets = () => {
 
   const handleAssignTechnician = async (ticketId: string, technicianId: string) => {
     try {
+      if (!technicianId) {
+        toast({
+          title: 'Erro',
+          description: 'Selecione um técnico',
+          variant: 'destructive',
+        });
+        return;
+      }
+
       const { error } = await supabase
         .from('tickets')
-        .update({ tecnico_responsavel_id: technicianId })
+        .update({ 
+          tecnico_responsavel_id: technicianId,
+          status: 'aguardando_aprovacao'
+        })
         .eq('id', ticketId);
 
       if (error) throw error;
 
       toast({
         title: 'Sucesso',
-        description: 'Técnico atribuído com sucesso!',
+        description: 'Técnico atribuído e ticket enviado para aprovação',
       });
       loadData();
     } catch (error: any) {

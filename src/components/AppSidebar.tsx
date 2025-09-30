@@ -38,6 +38,7 @@ const mainItems = [
 const cadastroItems = [
   { title: "Clientes", url: "/clientes", icon: Building2 },
   { title: "Prestadores", url: "/prestadores", icon: Users },
+  { title: "Técnicos", url: "/tecnicos", icon: User },
   { title: "Equipamentos", url: "/equipamentos", icon: Zap },
   { title: "Insumos", url: "/insumos", icon: Package },
 ];
