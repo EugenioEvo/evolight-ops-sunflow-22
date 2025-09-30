@@ -60,7 +60,7 @@ const Prestadores = () => {
       cidade: "",
       estado: "",
       cep: "",
-      categoria: "tecnico",
+      categoria: "",
       especialidades: [],
       certificacoes: [],
       experiencia: 0,
@@ -115,7 +115,13 @@ const Prestadores = () => {
         // Criar novo prestador
         const { error } = await supabase
           .from('prestadores')
-          .insert([{ ...data, ativo: true }]);
+          .insert([{ 
+            ...data, 
+            ativo: true,
+            nome: data.nome || '',
+            email: data.email || '',
+            categoria: data.categoria || ''
+          }]);
 
         if (error) {
           toast.error('Erro ao criar prestador');

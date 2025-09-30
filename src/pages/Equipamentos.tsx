@@ -17,16 +17,16 @@ import { supabase } from "@/integrations/supabase/client";
 
 const equipamentoSchema = z.object({
   nome: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
-  modelo: z.string().min(1, "Modelo é obrigatório"),
-  fabricante: z.string().min(1, "Fabricante é obrigatório"),
-  numero_serie: z.string().min(1, "Número de série é obrigatório"),
+  modelo: z.string().optional(),
+  fabricante: z.string().optional(),
+  numero_serie: z.string().optional(),
   tipo: z.enum(["inversor", "painel_solar", "bateria", "cabeamento", "controlador_carga", "estrutura", "monitoramento", "outros"]),
   capacidade: z.string().optional(),
   tensao: z.string().optional(),
   corrente: z.string().optional(),
   data_instalacao: z.string().optional(),
   garantia: z.string().optional(),
-  cliente_id: z.string().optional(),
+  cliente_id: z.string().min(1, "Cliente é obrigatório"),
   localizacao: z.string().optional(),
   observacoes: z.string().optional(),
 });
@@ -155,7 +155,13 @@ const Equipamentos = () => {
         // Criar novo equipamento
         const { error } = await supabase
           .from('equipamentos')
-          .insert([{ ...data, status: 'ativo' }]);
+          .insert([{ 
+            ...data, 
+            status: 'ativo',
+            nome: data.nome || '',
+            tipo: data.tipo,
+            cliente_id: data.cliente_id || ''
+          }]);
 
         if (error) {
           toast.error('Erro ao criar equipamento');
