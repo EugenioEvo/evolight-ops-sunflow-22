@@ -1,4 +1,4 @@
-import { useState, useEffect, createContext, useContext } from 'react';
+import { useState, useEffect, createContext, useContext, useRef } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -23,10 +23,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
+  const attemptedProfileCreationRef = useRef(false);
 
   const fetchProfile = async (userId: string) => {
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('profiles')
         .select(`
           *,
@@ -34,11 +35,37 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           tecnicos(*)
         `)
         .eq('user_id', userId)
-        .single();
-      
-      setProfile(data);
+        .maybeSingle();
+
+      if (error) {
+        console.error('Erro ao buscar perfil:', error);
+      }
+
+      if (!data && !attemptedProfileCreationRef.current) {
+        // Cria o perfil automaticamente se não existir ainda
+        attemptedProfileCreationRef.current = true;
+        try {
+          await supabase.functions.invoke('create-user-profile');
+          // Rebuscar o perfil após criação
+          const { data: created } = await supabase
+            .from('profiles')
+            .select(`
+              *,
+              clientes(*),
+              tecnicos(*)
+            `)
+            .eq('user_id', userId)
+            .maybeSingle();
+          setProfile(created ?? null);
+          return;
+        } catch (fnErr) {
+          console.error('Erro ao criar perfil automaticamente:', fnErr);
+        }
+      }
+
+      setProfile(data ?? null);
     } catch (error) {
-      console.error('Erro ao buscar perfil:', error);
+      console.error('Erro ao buscar/criar perfil:', error);
     }
   };
 
