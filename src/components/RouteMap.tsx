@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { MapPin, Clock, Users, Route as RouteIcon } from "lucide-react";
+import { supabase } from '@/integrations/supabase/client';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -51,64 +52,94 @@ L.Marker.prototype.options.icon = defaultIcon;
 const RouteMap: React.FC = () => {
   const [selectedRoute, setSelectedRoute] = useState<number | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [ordensServico, setOrdensServico] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setMounted(true);
+    loadOrdensServico();
   }, []);
 
-  // Mock data para demonstração
-  const tickets = [
-    {
-      id: 1,
-      cliente: "Solar Tech Ltda",
-      endereco: "Av. Paulista, 1000 - São Paulo, SP",
-      coordenadas: [-23.5505, -46.6333] as [number, number],
-      prioridade: "alta",
-      tipo: "Manutenção Preventiva",
-      tecnico: "João Silva",
-      status: "pendente",
-      estimativa: "2h"
-    },
-    {
-      id: 2,
-      cliente: "Green Energy Corp",
-      endereco: "Rua das Flores, 500 - São Paulo, SP",
-      coordenadas: [-23.5615, -46.6565] as [number, number],
-      prioridade: "media",
-      tipo: "Inspeção",
-      tecnico: "Maria Santos",
-      status: "em_andamento",
-      estimativa: "1h"
-    },
-    {
-      id: 3,
-      cliente: "EcoSolar Brasil",
-      endereco: "Av. Faria Lima, 2000 - São Paulo, SP",
-      coordenadas: [-23.5735, -46.6865] as [number, number],
-      prioridade: "baixa",
-      tipo: "Instalação",
-      tecnico: "Pedro Costa",
-      status: "concluido",
-      estimativa: "4h"
-    }
-  ];
+  const loadOrdensServico = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('ordens_servico')
+        .select(`
+          *,
+          tickets!inner(
+            id,
+            numero_ticket,
+            titulo,
+            endereco_servico,
+            prioridade,
+            status,
+            tempo_estimado,
+            clientes!inner(
+              empresa
+            )
+          ),
+          tecnicos!inner(
+            profiles!inner(nome)
+          )
+        `)
+        .in('tickets.status', ['ordem_servico_gerada', 'em_execucao'])
+        .order('created_at', { ascending: false });
 
-  const rotasOtimizadas = [
+      if (error) throw error;
+      
+      console.log('Ordens carregadas:', data);
+      setOrdensServico(data || []);
+    } catch (error) {
+      console.error('Erro ao carregar ordens de serviço:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Convert OS to tickets format for map display
+  const tickets = ordensServico.map((os, index) => ({
+    id: os.id,
+    numero: os.tickets.numero_ticket,
+    cliente: os.tickets.clientes.empresa,
+    endereco: os.tickets.endereco_servico,
+    prioridade: os.tickets.prioridade,
+    status: os.tickets.status,
+    tipo: os.tickets.titulo,
+    tecnico: os.tecnicos?.profiles?.nome || 'Não atribuído',
+    estimativa: os.tickets.tempo_estimado ? `${os.tickets.tempo_estimado}h` : 'N/A',
+    // Mock coordinates - in production you'd geocode the addresses
+    coordenadas: [-23.5505 + (index * 0.02), -46.6333 + (index * 0.02)] as [number, number],
+  }));
+
+  // Group by technician
+  const rotasPorTecnico = ordensServico.reduce((acc: any[], os) => {
+    const tecnicoNome = os.tecnicos?.profiles?.nome || 'Sem técnico';
+    let rota = acc.find(r => r.tecnico === tecnicoNome);
+    
+    if (!rota) {
+      rota = {
+        id: acc.length + 1,
+        nome: `Rota - ${tecnicoNome}`,
+        tickets: [],
+        tecnico: tecnicoNome,
+        distanciaTotal: 'Calcular',
+        tempoEstimado: '0h'
+      };
+      acc.push(rota);
+    }
+    
+    rota.tickets.push(tickets.findIndex(t => t.id === os.id));
+    return acc;
+  }, []);
+
+  const rotasOtimizadas = rotasPorTecnico.length > 0 ? rotasPorTecnico : [
     {
       id: 1,
-      nome: "Rota Matinal",
-      tickets: [1, 2],
-      distanciaTotal: "15.2 km",
-      tempoEstimado: "3h 30min",
-      tecnico: "João Silva"
-    },
-    {
-      id: 2,
-      nome: "Rota Vespertina", 
-      tickets: [3],
-      distanciaTotal: "8.7 km",
-      tempoEstimado: "4h",
-      tecnico: "Pedro Costa"
+      nome: 'Ordens Pendentes',
+      tickets: tickets.map((_, idx) => idx),
+      distanciaTotal: 'Calcular',
+      tempoEstimado: 'A definir',
+      tecnico: 'Diversos'
     }
   ];
 
@@ -134,29 +165,28 @@ const RouteMap: React.FC = () => {
     const route = rotasOtimizadas.find(r => r.id === routeId);
     if (!route) return [];
     
-    const coordinates = route.tickets.map(ticketId => {
-      const ticket = tickets.find(t => t.id === ticketId);
+    const coordinates = route.tickets.map(ticketIdx => {
+      const ticket = tickets[ticketIdx];
       return ticket ? ticket.coordenadas : null;
     }).filter((coord): coord is [number, number] => coord !== null);
     
     return coordinates;
   };
 
-  // Don't render map until component is mounted (prevents SSR/hydration issues)
-  if (!mounted) {
+  if (loading || !mounted) {
     return (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[600px]">
         <div className="lg:col-span-1">
           <Card>
             <CardContent className="p-6">
-              <div className="text-center">Carregando mapa...</div>
+              <div className="text-center">Carregando rotas...</div>
             </CardContent>
           </Card>
         </div>
         <div className="lg:col-span-2">
           <Card className="h-full">
             <CardContent className="p-6 flex items-center justify-center">
-              <div className="text-center">Carregando...</div>
+              <div className="text-center">Carregando mapa...</div>
             </CardContent>
           </Card>
         </div>

@@ -28,6 +28,7 @@ serve(async (req) => {
     }
 
     const { ticketId } = await req.json()
+    console.log('Gerando OS para ticket:', ticketId)
 
     // Buscar dados do ticket
     const { data: ticket, error: ticketError } = await supabaseClient
@@ -47,7 +48,31 @@ serve(async (req) => {
       .eq('id', ticketId)
       .single()
 
-    if (ticketError) throw ticketError
+    if (ticketError || !ticket) {
+      console.error('Erro ao buscar ticket:', ticketError)
+      return new Response(
+        JSON.stringify({ error: 'Ticket não encontrado' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Validar que há um técnico atribuído
+    if (!ticket.tecnico_responsavel_id) {
+      console.error('Ticket sem técnico atribuído')
+      return new Response(
+        JSON.stringify({ error: 'É necessário atribuir um técnico antes de gerar a OS' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Validar que o ticket está aprovado
+    if (ticket.status !== 'aprovado') {
+      console.error('Ticket não aprovado:', ticket.status)
+      return new Response(
+        JSON.stringify({ error: 'Apenas tickets aprovados podem gerar OS' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
 
     // Gerar número da OS
     const { data: numeroOS } = await supabaseClient

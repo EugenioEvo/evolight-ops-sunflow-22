@@ -60,11 +60,35 @@ const RME = () => {
     },
   });
 
+  const handleAcceptOS = async (osId: string, ticketId: string) => {
+    try {
+      const { error } = await supabase
+        .from('tickets')
+        .update({ status: 'em_execucao' })
+        .eq('id', ticketId);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Sucesso',
+        description: 'OS aceita! Ticket em execução.',
+      });
+      loadData();
+    } catch (error: any) {
+      console.error('Erro ao aceitar OS:', error);
+      toast({
+        title: 'Erro',
+        description: 'Erro ao aceitar OS',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const loadData = async () => {
     try {
       setLoading(true);
 
-      // Carregar ordens de serviço pendentes de RME
+      // Carregar ordens de serviço pendentes de RME (incluir ordem_servico_gerada e em_execucao)
       const { data: osData } = await supabase
         .from('ordens_servico')
         .select(`
@@ -77,7 +101,7 @@ const RME = () => {
             )
           )
         `)
-        .eq('tickets.status', 'em_execucao')
+        .in('tickets.status', ['ordem_servico_gerada', 'em_execucao'])
         .order('created_at', { ascending: false });
 
       setOrdensServico(osData || []);
@@ -276,6 +300,29 @@ const RME = () => {
           <h1 className="text-3xl font-bold">RME - Relatório de Manutenção Elétrica</h1>
           <p className="text-muted-foreground">Gerencie relatórios técnicos de manutenção</p>
         </div>
+
+        {/* Ordens de Serviço Disponíveis */}
+        {profile?.role === 'tecnico_campo' && ordensServico.length > 0 && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle>Ordens de Serviço Disponíveis</CardTitle>
+              <CardDescription>Aceite uma OS para iniciar o trabalho</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {ordensServico.filter(os => os.tickets.status === 'ordem_servico_gerada').map((os) => (
+                <div key={os.id} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div>
+                    <p className="font-medium">{os.numero_os} - {os.tickets.titulo}</p>
+                    <p className="text-sm text-muted-foreground">{os.tickets.clientes.empresa}</p>
+                  </div>
+                  <Button onClick={() => handleAcceptOS(os.id, os.tickets.id)}>
+                    Aceitar OS
+                  </Button>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
         
         {profile?.role === 'tecnico_campo' && (
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

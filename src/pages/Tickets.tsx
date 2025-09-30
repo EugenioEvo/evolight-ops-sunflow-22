@@ -58,6 +58,8 @@ const Tickets = () => {
     },
   });
 
+  const [selectedTechnicianForTicket, setSelectedTechnicianForTicket] = useState<string>('');
+
   const loadData = async () => {
     try {
       setLoading(true);
@@ -137,6 +139,8 @@ const Tickets = () => {
         tempo_estimado: data.tempo_estimado || null,
         data_vencimento: data.data_vencimento ? new Date(data.data_vencimento).toISOString() : null,
         created_by: user?.id,
+        tecnico_responsavel_id: selectedTechnicianForTicket || null,
+        status: 'aguardando_aprovacao',
       };
 
       if (editingTicket) {
@@ -160,12 +164,13 @@ const Tickets = () => {
 
         toast({
           title: 'Sucesso',
-          description: 'Ticket criado com sucesso!',
+          description: 'Ticket criado aguardando aprovação!',
         });
       }
 
       setIsDialogOpen(false);
       setEditingTicket(null);
+      setSelectedTechnicianForTicket('');
       form.reset();
       loadData();
     } catch (error: any) {
@@ -182,6 +187,7 @@ const Tickets = () => {
 
   const handleEdit = (ticket: any) => {
     setEditingTicket(ticket);
+    setSelectedTechnicianForTicket(ticket.tecnico_responsavel_id || '');
     form.reset({
       titulo: ticket.titulo,
       descricao: ticket.descricao,
@@ -194,6 +200,30 @@ const Tickets = () => {
       observacoes: ticket.observacoes || '',
     });
     setIsDialogOpen(true);
+  };
+
+  const handleAssignTechnician = async (ticketId: string, technicianId: string) => {
+    try {
+      const { error } = await supabase
+        .from('tickets')
+        .update({ tecnico_responsavel_id: technicianId })
+        .eq('id', ticketId);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Sucesso',
+        description: 'Técnico atribuído com sucesso!',
+      });
+      loadData();
+    } catch (error: any) {
+      console.error('Erro ao atribuir técnico:', error);
+      toast({
+        title: 'Erro',
+        description: 'Erro ao atribuir técnico',
+        variant: 'destructive',
+      });
+    }
   };
 
   const handleApprove = async (ticketId: string) => {
@@ -561,6 +591,25 @@ const Tickets = () => {
                   )}
                 />
 
+                {(profile?.role === 'admin' || profile?.role === 'area_tecnica') && (
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Técnico Responsável</label>
+                    <Select value={selectedTechnicianForTicket} onValueChange={setSelectedTechnicianForTicket}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione um técnico (opcional)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">Nenhum</SelectItem>
+                        {tecnicos.map((tecnico) => (
+                          <SelectItem key={tecnico.id} value={tecnico.id}>
+                            {tecnico.profiles?.nome}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
                 <div className="flex justify-end space-x-2">
                   <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                     Cancelar
@@ -663,6 +712,29 @@ const Tickets = () => {
                         </div>
                       )}
 
+                      {(profile?.role === 'admin' || profile?.role === 'area_tecnica') && !ticket.tecnico_responsavel_id && (
+                        <div className="flex items-center gap-2 pt-2">
+                          <Select onValueChange={(value) => handleAssignTechnician(ticket.id, value)}>
+                            <SelectTrigger className="h-8 w-[200px]">
+                              <SelectValue placeholder="Atribuir técnico" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {tecnicos.map((tecnico) => (
+                                <SelectItem key={tecnico.id} value={tecnico.id}>
+                                  {tecnico.profiles?.nome}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+
+                      {ticket.tecnico_responsavel_id && ticket.tecnicos && (
+                        <p className="text-sm text-muted-foreground">
+                          <strong>Técnico:</strong> {ticket.tecnicos.profiles?.nome}
+                        </p>
+                      )}
+
                       {profile?.role === 'area_tecnica' && ticket.status === 'aguardando_aprovacao' && (
                         <div className="flex gap-2 pt-2 border-t">
                           <Button
@@ -688,7 +760,7 @@ const Tickets = () => {
                         </div>
                       )}
 
-                      {profile?.role === 'area_tecnica' && ticket.status === 'aprovado' && (
+                      {profile?.role === 'area_tecnica' && ticket.status === 'aprovado' && ticket.tecnico_responsavel_id && (
                         <div className="flex gap-2 pt-2 border-t">
                           <Button
                             size="sm"
@@ -700,6 +772,10 @@ const Tickets = () => {
                             Gerar Ordem de Serviço
                           </Button>
                         </div>
+                      )}
+
+                      {profile?.role === 'area_tecnica' && ticket.status === 'aprovado' && !ticket.tecnico_responsavel_id && (
+                        <Badge variant="secondary" className="mt-2">Atribua um técnico primeiro</Badge>
                       )}
 
                       <div className="flex justify-between items-center pt-2 border-t">
