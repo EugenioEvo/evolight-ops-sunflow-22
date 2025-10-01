@@ -232,7 +232,7 @@ const Tickets = () => {
         .from('tickets')
         .update({ 
           tecnico_responsavel_id: technicianId,
-          status: 'aguardando_aprovacao'
+          status: 'atribuido' as any
         })
         .eq('id', ticketId);
 
@@ -240,9 +240,11 @@ const Tickets = () => {
 
       toast({
         title: 'Sucesso',
-        description: 'Técnico atribuído e ticket enviado para aprovação',
+        description: 'Técnico atribuído com sucesso. Pronto para gerar OS.',
       });
-      loadData();
+
+      // Mudar para a aba de atribuídos
+      setActiveTab('atribuido' as any);
     } catch (error: any) {
       console.error('Erro ao atribuir técnico:', error);
       toast({
@@ -260,7 +262,7 @@ const Tickets = () => {
       // Atualizar status do ticket
       const { error: updateError } = await supabase
         .from('tickets')
-        .update({ status: 'aprovado' })
+        .update({ status: 'aguardando_atribuicao' as any })
         .eq('id', ticketId);
 
       if (updateError) throw updateError;
@@ -279,9 +281,11 @@ const Tickets = () => {
 
       toast({
         title: 'Sucesso',
-        description: 'Ticket aprovado com sucesso!',
+        description: 'Ticket aprovado. Aguardando atribuição de técnico.',
       });
 
+      // Mudar para a aba de aguardando atribuição
+      setActiveTab('aguardando_atribuicao' as any);
       loadData();
     } catch (error: any) {
       toast({
@@ -323,6 +327,8 @@ const Tickets = () => {
         description: 'Ticket rejeitado',
       });
 
+      // Manter na mesma aba ou mostrar todos
+      setActiveTab('todos');
       loadData();
     } catch (error: any) {
       toast({
@@ -355,6 +361,8 @@ const Tickets = () => {
         window.open(data.pdfUrl, '_blank');
       }
 
+      // Mudar para a aba de OS gerada
+      setActiveTab('ordem_servico_gerada');
       loadData();
     } catch (error: any) {
       toast({
@@ -385,6 +393,8 @@ const Tickets = () => {
         description: "Ticket excluído com sucesso",
       });
 
+      // Voltar para aba "todos"
+      setActiveTab('todos');
       loadData();
     } catch (error: any) {
       toast({
