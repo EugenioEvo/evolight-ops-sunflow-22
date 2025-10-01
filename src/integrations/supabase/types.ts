@@ -699,7 +699,7 @@ export type Database = {
             foreignKeyName: "tickets_tecnico_responsavel_id_fkey"
             columns: ["tecnico_responsavel_id"]
             isOneToOne: false
-            referencedRelation: "tecnicos"
+            referencedRelation: "prestadores"
             referencedColumns: ["id"]
           },
         ]

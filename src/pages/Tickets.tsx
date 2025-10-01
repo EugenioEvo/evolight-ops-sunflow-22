@@ -88,7 +88,7 @@ const Tickets = () => {
       
       setPrestadores(prestadoresData || []);
 
-      // Carregar tickets
+      // Carregar tickets com informações do técnico atribuído
       const { data: ticketsData, error: ticketsError } = await supabase
         .from('tickets')
         .select(`
@@ -100,6 +100,11 @@ const Tickets = () => {
             estado,
             cep,
             profiles(nome, email)
+          ),
+          prestadores:tecnico_responsavel_id(
+            id,
+            nome,
+            email
           )
         `)
         .order('created_at', { ascending: false });
@@ -745,9 +750,9 @@ const Tickets = () => {
                         </div>
                       )}
 
-                      {ticket.tecnico_responsavel_id && (
+                      {ticket.tecnico_responsavel_id && ticket.prestadores && (
                         <p className="text-sm text-muted-foreground">
-                          <strong>Técnico atribuído:</strong> Sim
+                          <strong>Técnico:</strong> {ticket.prestadores.nome}
                         </p>
                       )}
 
