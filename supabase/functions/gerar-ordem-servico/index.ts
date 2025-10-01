@@ -30,19 +30,24 @@ serve(async (req) => {
     const { ticketId } = await req.json()
     console.log('Gerando OS para ticket:', ticketId)
 
-    // Buscar dados do ticket
+    // Buscar dados do ticket com cliente e técnico
     const { data: ticket, error: ticketError } = await supabaseClient
       .from('tickets')
       .select(`
         *,
-        clientes!inner(
+        clientes(
           empresa,
           cnpj_cpf,
           endereco,
           cidade,
           estado,
           cep,
-          profiles!inner(nome, email, telefone)
+          profiles(nome, email, telefone)
+        ),
+        prestadores:tecnico_responsavel_id(
+          nome,
+          email,
+          telefone
         )
       `)
       .eq('id', ticketId)
@@ -110,10 +115,15 @@ serve(async (req) => {
     doc.setFontSize(10)
     
     const cliente = ticket.clientes
-    doc.text(`Cliente: ${cliente.empresa || cliente.profiles.nome}`, 20, 65)
-    doc.text(`Email: ${cliente.profiles.email}`, 20, 72)
-    doc.text(`Telefone: ${cliente.profiles.telefone || 'N/A'}`, 20, 79)
+    doc.text(`Cliente: ${cliente.empresa || cliente.profiles?.nome || 'N/A'}`, 20, 65)
+    doc.text(`Email: ${cliente.profiles?.email || 'N/A'}`, 20, 72)
+    doc.text(`Telefone: ${cliente.profiles?.telefone || 'N/A'}`, 20, 79)
     doc.text(`CNPJ/CPF: ${cliente.cnpj_cpf || 'N/A'}`, 20, 86)
+    
+    // Dados do técnico
+    if (ticket.prestadores) {
+      doc.text(`Técnico: ${ticket.prestadores.nome}`, 20, 93)
+    }
     
     // Endereço
     doc.text('ENDEREÇO DO SERVIÇO:', 20, 100)
