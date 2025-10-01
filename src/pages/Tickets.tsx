@@ -154,8 +154,8 @@ const Tickets = () => {
         data_vencimento: data.data_vencimento ? new Date(data.data_vencimento).toISOString() : null,
         created_by: user?.id,
         tecnico_responsavel_id: tecnico_id,
-        // Status: se tem técnico, vai para aprovação, senão fica aberto
-        status: tecnico_id ? 'aguardando_aprovacao' : 'aberto',
+        // Status: sempre inicia como aberto
+        status: 'aberto',
       };
 
       if (editingTicket) {
@@ -231,8 +231,7 @@ const Tickets = () => {
       const { error } = await supabase
         .from('tickets')
         .update({ 
-          tecnico_responsavel_id: technicianId,
-          status: 'atribuido' as any
+          tecnico_responsavel_id: technicianId
         })
         .eq('id', ticketId);
 
@@ -243,8 +242,8 @@ const Tickets = () => {
         description: 'Técnico atribuído com sucesso. Pronto para gerar OS.',
       });
 
-      // Mudar para a aba de atribuídos
-      setActiveTab('atribuido' as any);
+      // Recarregar dados
+      loadData();
     } catch (error: any) {
       console.error('Erro ao atribuir técnico:', error);
       toast({
@@ -262,7 +261,7 @@ const Tickets = () => {
       // Atualizar status do ticket
       const { error: updateError } = await supabase
         .from('tickets')
-        .update({ status: 'aguardando_atribuicao' as any })
+        .update({ status: 'aprovado' })
         .eq('id', ticketId);
 
       if (updateError) throw updateError;
@@ -281,11 +280,11 @@ const Tickets = () => {
 
       toast({
         title: 'Sucesso',
-        description: 'Ticket aprovado. Aguardando atribuição de técnico.',
+        description: 'Ticket aprovado. Agora pode atribuir um técnico.',
       });
 
-      // Mudar para a aba de aguardando atribuição
-      setActiveTab('aguardando_atribuicao' as any);
+      // Mudar para a aba de aprovados
+      setActiveTab('aprovado');
       loadData();
     } catch (error: any) {
       toast({
@@ -689,8 +688,7 @@ const Tickets = () => {
         <TabsList>
           <TabsTrigger value="todos">Todos</TabsTrigger>
           <TabsTrigger value="aberto">Abertos</TabsTrigger>
-          <TabsTrigger value="aguardando_atribuicao">Aguardando Atribuição</TabsTrigger>
-          <TabsTrigger value="atribuido">Atribuídos</TabsTrigger>
+          <TabsTrigger value="aprovado">Aprovados</TabsTrigger>
           <TabsTrigger value="ordem_servico_gerada">OS Gerada</TabsTrigger>
           <TabsTrigger value="em_execucao">Em Execução</TabsTrigger>
           <TabsTrigger value="concluido">Concluídos</TabsTrigger>
@@ -809,7 +807,7 @@ const Tickets = () => {
                             </>
                           )}
 
-                          {ticket.status === 'aguardando_atribuicao' && (
+                          {ticket.status === 'aprovado' && !ticket.tecnico_responsavel_id && (
                             <>
                               <Select onValueChange={(value) => handleAssignTechnician(ticket.id, value)}>
                                 <SelectTrigger className="h-8 w-[200px]">
@@ -833,7 +831,7 @@ const Tickets = () => {
                             </>
                           )}
 
-                          {ticket.status === 'atribuido' && (
+                          {ticket.status === 'aprovado' && ticket.tecnico_responsavel_id && (
                             <>
                               <Button
                                 size="sm"

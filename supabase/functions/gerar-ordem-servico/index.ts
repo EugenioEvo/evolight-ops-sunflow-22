@@ -65,11 +65,11 @@ serve(async (req) => {
       )
     }
 
-    // Validar que o ticket está atribuído
-    if (ticket.status !== 'atribuido') {
-      console.error('Ticket não está atribuído:', ticket.status)
+    // Validar que o ticket está aprovado
+    if (ticket.status !== 'aprovado') {
+      console.error('Ticket não está aprovado:', ticket.status)
       return new Response(
-        JSON.stringify({ error: 'Apenas tickets atribuídos podem gerar OS' }),
+        JSON.stringify({ error: 'Apenas tickets aprovados com técnico atribuído podem gerar OS' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
