@@ -33,7 +33,7 @@ type TicketForm = z.infer<typeof ticketSchema>;
 const Tickets = () => {
   const [tickets, setTickets] = useState<any[]>([]);
   const [clientes, setClientes] = useState<any[]>([]);
-  const [tecnicos, setTecnicos] = useState<any[]>([]);
+  const [prestadores, setPrestadores] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('todos');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -79,28 +79,16 @@ const Tickets = () => {
         `);
       setClientes(clientesData || []);
 
-      // Carregar técnicos ativos com seus perfis
-      const { data: tecnicosData } = await supabase
-        .from('tecnicos')
-        .select(`
-          id,
-          profile_id,
-          registro_profissional,
-          especialidades,
-          regiao_atuacao,
-          profiles:profile_id(
-            id,
-            nome,
-            email,
-            ativo
-          )
-        `);
+      // Carregar prestadores ativos com categoria técnico
+      const { data: prestadoresData } = await supabase
+        .from('prestadores')
+        .select('*')
+        .eq('categoria', 'tecnico')
+        .eq('ativo', true);
       
-      // Filtrar apenas técnicos com perfis ativos
-      const tecnicosAtivos = tecnicosData?.filter(t => t.profiles?.ativo) || [];
-      setTecnicos(tecnicosAtivos);
+      setPrestadores(prestadoresData || []);
 
-      // Carregar tickets (usar left join para incluir clientes sem profile)
+      // Carregar tickets
       const { data: ticketsData, error: ticketsError } = await supabase
         .from('tickets')
         .select(`
@@ -112,9 +100,6 @@ const Tickets = () => {
             estado,
             cep,
             profiles(nome, email)
-          ),
-          tecnicos(
-            profiles(nome)
           )
         `)
         .order('created_at', { ascending: false });
@@ -760,9 +745,9 @@ const Tickets = () => {
                         </div>
                       )}
 
-                      {ticket.tecnico_responsavel_id && ticket.tecnicos && (
+                      {ticket.tecnico_responsavel_id && (
                         <p className="text-sm text-muted-foreground">
-                          <strong>Técnico:</strong> {ticket.tecnicos.profiles?.nome}
+                          <strong>Técnico atribuído:</strong> Sim
                         </p>
                       )}
 
@@ -814,9 +799,9 @@ const Tickets = () => {
                                   <SelectValue placeholder="Atribuir técnico" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {tecnicos.map((tecnico) => (
-                                    <SelectItem key={tecnico.id} value={tecnico.id}>
-                                      {tecnico.profiles?.nome}
+                                  {prestadores.map((prestador) => (
+                                    <SelectItem key={prestador.id} value={prestador.id}>
+                                      {prestador.nome}
                                     </SelectItem>
                                   ))}
                                 </SelectContent>
