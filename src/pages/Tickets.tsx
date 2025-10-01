@@ -367,6 +367,36 @@ const Tickets = () => {
     }
   };
 
+  const handleDeleteTicket = async (ticketId: string) => {
+    if (!confirm("Tem certeza que deseja excluir este ticket?")) return;
+
+    try {
+      setLoading(true);
+      
+      const { error } = await supabase
+        .from("tickets")
+        .delete()
+        .eq("id", ticketId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Sucesso",
+        description: "Ticket excluído com sucesso",
+      });
+
+      loadData();
+    } catch (error: any) {
+      toast({
+        title: "Erro ao excluir ticket",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const filteredTickets = tickets.filter(ticket => {
     const clienteNome = ticket.clientes?.empresa || ticket.clientes?.profiles?.nome || '';
     const matchesSearch = ticket.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -618,29 +648,6 @@ const Tickets = () => {
                   )}
                 />
 
-                {(profile?.role === 'admin' || profile?.role === 'area_tecnica') && (
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Técnico Responsável</label>
-                    <Select value={selectedTechnicianForTicket || undefined} onValueChange={setSelectedTechnicianForTicket}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione um técnico (opcional)" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {tecnicos.length === 0 ? (
-                          <div className="p-2 text-sm text-muted-foreground text-center">
-                            Nenhum técnico disponível
-                          </div>
-                        ) : (
-                          tecnicos.map((tecnico) => (
-                            <SelectItem key={tecnico.id} value={tecnico.id}>
-                              {tecnico.profiles?.nome}
-                            </SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
 
                 <div className="flex justify-end space-x-2">
                   <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
@@ -672,8 +679,9 @@ const Tickets = () => {
         <TabsList>
           <TabsTrigger value="todos">Todos</TabsTrigger>
           <TabsTrigger value="aberto">Abertos</TabsTrigger>
-          <TabsTrigger value="aguardando_aprovacao">Aguardando Aprovação</TabsTrigger>
-          <TabsTrigger value="aprovado">Aprovados</TabsTrigger>
+          <TabsTrigger value="aguardando_atribuicao">Aguardando Atribuição</TabsTrigger>
+          <TabsTrigger value="atribuido">Atribuídos</TabsTrigger>
+          <TabsTrigger value="ordem_servico_gerada">OS Gerada</TabsTrigger>
           <TabsTrigger value="em_execucao">Em Execução</TabsTrigger>
           <TabsTrigger value="concluido">Concluídos</TabsTrigger>
         </TabsList>
@@ -744,80 +752,127 @@ const Tickets = () => {
                         </div>
                       )}
 
-                      {(profile?.role === 'admin' || profile?.role === 'area_tecnica') && !ticket.tecnico_responsavel_id && (
-                        <div className="flex items-center gap-2 pt-2">
-                          <Select onValueChange={(value) => handleAssignTechnician(ticket.id, value)}>
-                            <SelectTrigger className="h-8 w-[200px]">
-                              <SelectValue placeholder="Atribuir técnico" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {tecnicos.map((tecnico) => (
-                                <SelectItem key={tecnico.id} value={tecnico.id}>
-                                  {tecnico.profiles?.nome}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      )}
-
                       {ticket.tecnico_responsavel_id && ticket.tecnicos && (
                         <p className="text-sm text-muted-foreground">
                           <strong>Técnico:</strong> {ticket.tecnicos.profiles?.nome}
                         </p>
                       )}
 
-                      {profile?.role === 'area_tecnica' && ticket.status === 'aguardando_aprovacao' && (
-                        <div className="flex gap-2 pt-2 border-t">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleApprove(ticket.id)}
-                            disabled={loading}
-                            className="flex items-center gap-2"
-                          >
-                            <CheckCircle className="h-4 w-4" />
-                            Aprovar
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleReject(ticket.id)}
-                            disabled={loading}
-                            className="flex items-center gap-2"
-                          >
-                            <XCircle className="h-4 w-4" />
-                            Rejeitar
-                          </Button>
+                      {/* Botões de ação conforme status e role */}
+                      {(profile?.role === 'admin' || profile?.role === 'area_tecnica') && (
+                        <div className="flex flex-wrap gap-2 pt-2 border-t">
+                          {ticket.status === 'aberto' && (
+                            <>
+                              <Button
+                                size="sm"
+                                onClick={() => handleApprove(ticket.id)}
+                                disabled={loading}
+                                className="flex items-center gap-2"
+                              >
+                                <CheckCircle className="h-4 w-4" />
+                                Aprovar
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => handleReject(ticket.id)}
+                                disabled={loading}
+                                className="flex items-center gap-2"
+                              >
+                                <XCircle className="h-4 w-4" />
+                                Rejeitar
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleEdit(ticket)}
+                              >
+                                Editar
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => handleDeleteTicket(ticket.id)}
+                              >
+                                Excluir
+                              </Button>
+                            </>
+                          )}
+
+                          {ticket.status === 'aguardando_atribuicao' && (
+                            <>
+                              <Select onValueChange={(value) => handleAssignTechnician(ticket.id, value)}>
+                                <SelectTrigger className="h-8 w-[200px]">
+                                  <SelectValue placeholder="Atribuir técnico" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {tecnicos.map((tecnico) => (
+                                    <SelectItem key={tecnico.id} value={tecnico.id}>
+                                      {tecnico.profiles?.nome}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleEdit(ticket)}
+                              >
+                                Editar
+                              </Button>
+                            </>
+                          )}
+
+                          {ticket.status === 'atribuido' && (
+                            <>
+                              <Button
+                                size="sm"
+                                onClick={() => handleGenerateOS(ticket.id)}
+                                disabled={loading}
+                                className="flex items-center gap-2"
+                              >
+                                <FileText className="h-4 w-4" />
+                                Gerar Ordem de Serviço
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleEdit(ticket)}
+                              >
+                                Editar
+                              </Button>
+                            </>
+                          )}
+
+                          {(ticket.status === 'ordem_servico_gerada' || ticket.status === 'em_execucao' || ticket.status === 'concluido') && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleEdit(ticket)}
+                            >
+                              Editar
+                            </Button>
+                          )}
+
+                          {ticket.status === 'rejeitado' && (
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => handleDeleteTicket(ticket.id)}
+                            >
+                              Excluir
+                            </Button>
+                          )}
                         </div>
                       )}
 
-                      {profile?.role === 'area_tecnica' && ticket.status === 'aprovado' && ticket.tecnico_responsavel_id && (
-                        <div className="flex gap-2 pt-2 border-t">
-                          <Button
-                            size="sm"
-                            onClick={() => handleGenerateOS(ticket.id)}
-                            disabled={loading}
-                            className="flex items-center gap-2"
-                          >
-                            <FileText className="h-4 w-4" />
-                            Gerar Ordem de Serviço
-                          </Button>
+                      {profile?.role !== 'admin' && profile?.role !== 'area_tecnica' && (
+                        <div className="flex justify-end pt-2 border-t">
+                          <span className="text-xs text-muted-foreground">
+                            Criado em {new Date(ticket.created_at).toLocaleString('pt-BR')}
+                          </span>
                         </div>
                       )}
-
-                      {profile?.role === 'area_tecnica' && ticket.status === 'aprovado' && !ticket.tecnico_responsavel_id && (
-                        <Badge variant="secondary" className="mt-2">Atribua um técnico primeiro</Badge>
-                      )}
-
-                      <div className="flex justify-between items-center pt-2 border-t">
-                        <span className="text-xs text-muted-foreground">
-                          Criado em {new Date(ticket.created_at).toLocaleString('pt-BR')}
-                        </span>
-                        <Button variant="outline" size="sm" onClick={() => handleEdit(ticket)}>
-                          Editar
-                        </Button>
-                      </div>
                     </div>
                   </CardContent>
                 </Card>

@@ -42,12 +42,9 @@ interface Tecnico {
 
 const Tecnicos = () => {
   const [tecnicos, setTecnicos] = useState<Tecnico[]>([]);
-  const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [convertDialogOpen, setConvertDialogOpen] = useState(false);
   const [selectedTecnico, setSelectedTecnico] = useState<Tecnico | null>(null);
-  const [selectedProfileId, setSelectedProfileId] = useState<string>("");
   const { profile } = useAuth();
   const { toast } = useToast();
 
@@ -81,18 +78,7 @@ const Tecnicos = () => {
 
       if (tecnicosError) throw tecnicosError;
 
-      // Carregar perfis que não são técnicos para conversão
-      const { data: profilesData, error: profilesError } = await supabase
-        .from("profiles")
-        .select("*")
-        .neq("role", "tecnico_campo")
-        .eq("ativo", true)
-        .order("nome");
-
-      if (profilesError) throw profilesError;
-
       setTecnicos(tecnicosData || []);
-      setProfiles(profilesData || []);
     } catch (error: any) {
       toast({
         title: "Erro ao carregar dados",
@@ -101,35 +87,6 @@ const Tecnicos = () => {
       });
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleConvertToTechnician = async () => {
-    if (!selectedProfileId) return;
-
-    try {
-      // Atualizar role do perfil para tecnico_campo (trigger criará registro em tecnicos)
-      const { error } = await supabase
-        .from("profiles")
-        .update({ role: "tecnico_campo" })
-        .eq("id", selectedProfileId);
-
-      if (error) throw error;
-
-      toast({
-        title: "Sucesso",
-        description: "Usuário convertido para técnico com sucesso",
-      });
-
-      setConvertDialogOpen(false);
-      setSelectedProfileId("");
-      loadData();
-    } catch (error: any) {
-      toast({
-        title: "Erro ao converter usuário",
-        description: error.message,
-        variant: "destructive",
-      });
     }
   };
 
@@ -222,16 +179,11 @@ const Tecnicos = () => {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Técnicos de Campo</h1>
-          <p className="text-muted-foreground">
-            Gerencie os técnicos que podem ser atribuídos a tickets
-          </p>
-        </div>
-        <Button onClick={() => setConvertDialogOpen(true)}>
-          Converter Usuário para Técnico
-        </Button>
+      <div>
+        <h1 className="text-3xl font-bold">Técnicos de Campo</h1>
+        <p className="text-muted-foreground">
+          Gerencie os técnicos que podem ser atribuídos a tickets
+        </p>
       </div>
 
       {tecnicos.length === 0 ? (
@@ -388,55 +340,6 @@ const Tecnicos = () => {
               </div>
             </form>
           )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog para converter usuário para técnico */}
-      <Dialog open={convertDialogOpen} onOpenChange={setConvertDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Converter Usuário para Técnico</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="profile">Selecione um Usuário</Label>
-              <Select value={selectedProfileId} onValueChange={setSelectedProfileId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione um usuário" />
-                </SelectTrigger>
-                <SelectContent>
-                  {profiles.map((profile) => (
-                    <SelectItem key={profile.id} value={profile.id}>
-                      {profile.nome} - {profile.email} ({profile.role})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <p className="text-sm text-muted-foreground">
-              Ao converter, o usuário receberá a role "tecnico_campo" e poderá ser
-              atribuído a tickets e ordens de serviço.
-            </p>
-
-            <div className="flex gap-2 justify-end">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setConvertDialogOpen(false);
-                  setSelectedProfileId("");
-                }}
-              >
-                Cancelar
-              </Button>
-              <Button
-                onClick={handleConvertToTechnician}
-                disabled={!selectedProfileId}
-              >
-                Converter
-              </Button>
-            </div>
-          </div>
         </DialogContent>
       </Dialog>
     </div>
