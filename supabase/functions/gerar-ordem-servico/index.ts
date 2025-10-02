@@ -28,9 +28,50 @@ serve(async (req) => {
     }
 
     const { ticketId } = await req.json()
-    console.log('Gerando OS para ticket:', ticketId)
+    console.log('[gerar-ordem-servico] Iniciando geração de OS para ticket:', ticketId)
+
+    // Verificar se já existe OS para este ticket
+    const { data: existingOS, error: osCheckError } = await supabaseClient
+      .from('ordens_servico')
+      .select('*, pdf_url')
+      .eq('ticket_id', ticketId)
+      .maybeSingle()
+
+    if (osCheckError) {
+      console.error('[gerar-ordem-servico] Erro ao verificar OS existente:', osCheckError)
+    }
+
+    if (existingOS) {
+      console.log('[gerar-ordem-servico] OS já existe:', existingOS.numero_os)
+      
+      // Gerar URL assinada para o PDF existente
+      let signedUrl = null
+      if (existingOS.pdf_url) {
+        const fileName = existingOS.pdf_url.split('/').pop()
+        const { data: signedData, error: signedError } = await supabaseClient.storage
+          .from('ordens-servico')
+          .createSignedUrl(fileName, 60 * 60 * 24 * 7) // 7 dias
+
+        if (signedError) {
+          console.error('[gerar-ordem-servico] Erro ao gerar URL assinada para OS existente:', signedError)
+        } else {
+          signedUrl = signedData.signedUrl
+        }
+      }
+
+      return new Response(JSON.stringify({ 
+        success: true, 
+        ordemServico: existingOS,
+        pdfUrl: signedUrl,
+        message: 'Ordem de serviço já existente'
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200,
+      })
+    }
 
     // Buscar dados do ticket com cliente e técnico
+    console.log('[gerar-ordem-servico] Buscando dados do ticket')
     const { data: ticket, error: ticketError } = await supabaseClient
       .from('tickets')
       .select(`
@@ -54,16 +95,18 @@ serve(async (req) => {
       .single()
 
     if (ticketError || !ticket) {
-      console.error('Erro ao buscar ticket:', ticketError)
+      console.error('[gerar-ordem-servico] Erro ao buscar ticket:', ticketError)
       return new Response(
         JSON.stringify({ error: 'Ticket não encontrado' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
+    console.log('[gerar-ordem-servico] Ticket encontrado:', ticket.numero_ticket)
+
     // Validar que há um técnico atribuído
     if (!ticket.tecnico_responsavel_id) {
-      console.error('Ticket sem técnico atribuído')
+      console.error('[gerar-ordem-servico] Ticket sem técnico atribuído')
       return new Response(
         JSON.stringify({ error: 'É necessário atribuir um técnico antes de gerar a OS' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -72,16 +115,20 @@ serve(async (req) => {
 
     // Validar que o ticket está aprovado
     if (ticket.status !== 'aprovado') {
-      console.error('Ticket não está aprovado:', ticket.status)
+      console.error('[gerar-ordem-servico] Ticket não está aprovado:', ticket.status)
       return new Response(
         JSON.stringify({ error: 'Apenas tickets aprovados com técnico atribuído podem gerar OS' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
+    console.log('[gerar-ordem-servico] Validações concluídas, gerando número da OS')
+
     // Gerar número da OS
     const { data: numeroOS } = await supabaseClient
       .rpc('gerar_numero_os')
+
+    console.log('[gerar-ordem-servico] Número da OS gerado:', numeroOS)
 
     // Criar ordem de serviço no banco
     const { data: ordemServico, error: osError } = await supabaseClient
@@ -96,9 +143,15 @@ serve(async (req) => {
       .select()
       .single()
 
-    if (osError) throw osError
+    if (osError) {
+      console.error('[gerar-ordem-servico] Erro ao criar OS no banco:', osError)
+      throw osError
+    }
+
+    console.log('[gerar-ordem-servico] OS criada no banco, ID:', ordemServico.id)
 
     // Gerar PDF
+    console.log('[gerar-ordem-servico] Gerando PDF')
     const doc = new jsPDF()
     
     // Cabeçalho
@@ -172,6 +225,8 @@ serve(async (req) => {
     // Converter para buffer
     const pdfBuffer = doc.output('arraybuffer')
     
+    console.log('[gerar-ordem-servico] PDF gerado, iniciando upload')
+
     // Upload para storage
     const fileName = `OS_${numeroOS}_${Date.now()}.pdf`
     const { data: uploadData, error: uploadError } = await supabaseClient.storage
@@ -180,28 +235,51 @@ serve(async (req) => {
         contentType: 'application/pdf'
       })
 
-    if (uploadError) throw uploadError
+    if (uploadError) {
+      console.error('[gerar-ordem-servico] Erro ao fazer upload do PDF:', uploadError)
+      throw uploadError
+    }
 
-    // Atualizar OS com URL do PDF
-    const { data: publicURL } = supabaseClient.storage
+    console.log('[gerar-ordem-servico] PDF enviado para storage:', fileName)
+
+    // Gerar URL assinada (válida por 7 dias)
+    const { data: signedUrlData, error: signedUrlError } = await supabaseClient.storage
       .from('ordens-servico')
-      .getPublicUrl(fileName)
+      .createSignedUrl(fileName, 60 * 60 * 24 * 7) // 7 dias
 
+    if (signedUrlError) {
+      console.error('[gerar-ordem-servico] Erro ao gerar URL assinada:', signedUrlError)
+    }
+
+    const signedUrl = signedUrlData?.signedUrl || null
+    console.log('[gerar-ordem-servico] URL assinada gerada:', signedUrl ? 'sim' : 'não')
+
+    // Atualizar OS com caminho do arquivo
     await supabaseClient
       .from('ordens_servico')
-      .update({ pdf_url: publicURL.publicUrl })
+      .update({ pdf_url: fileName })
       .eq('id', ordemServico.id)
 
+    console.log('[gerar-ordem-servico] OS atualizada com caminho do PDF')
+
     // Atualizar status do ticket
-    await supabaseClient
+    const { error: updateTicketError } = await supabaseClient
       .from('tickets')
       .update({ status: 'ordem_servico_gerada' })
       .eq('id', ticketId)
 
+    if (updateTicketError) {
+      console.error('[gerar-ordem-servico] Erro ao atualizar status do ticket:', updateTicketError)
+    } else {
+      console.log('[gerar-ordem-servico] Status do ticket atualizado para ordem_servico_gerada')
+    }
+
+    console.log('[gerar-ordem-servico] Processo concluído com sucesso')
+
     return new Response(JSON.stringify({ 
       success: true, 
       ordemServico,
-      pdfUrl: publicURL.publicUrl
+      pdfUrl: signedUrl
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,

@@ -39,6 +39,7 @@ const Tickets = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTicket, setEditingTicket] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [generatingOsId, setGeneratingOsId] = useState<string | null>(null);
 
   const { user, profile } = useAuth();
   const { toast } = useToast();
@@ -332,35 +333,50 @@ const Tickets = () => {
 
   const handleGenerateOS = async (ticketId: string) => {
     try {
-      setLoading(true);
+      console.log('[handleGenerateOS] Iniciando geração de OS para ticket:', ticketId);
+      setGeneratingOsId(ticketId);
       
       const { data, error } = await supabase.functions.invoke('gerar-ordem-servico', {
         body: { ticketId }
       });
 
+      console.log('[handleGenerateOS] Resposta recebida:', { data, error });
+
       if (error) throw error;
+
+      const isExisting = data?.message === 'Ordem de serviço já existente';
 
       toast({
         title: 'Sucesso',
-        description: 'Ordem de serviço gerada com sucesso!',
+        description: isExisting 
+          ? 'Ordem de serviço já foi gerada anteriormente!' 
+          : 'Ordem de serviço gerada com sucesso!',
       });
 
-      // Abrir PDF em nova aba
-      if (data.pdfUrl) {
+      // Abrir PDF em nova aba se disponível
+      if (data?.pdfUrl) {
+        console.log('[handleGenerateOS] Abrindo PDF em nova aba');
         window.open(data.pdfUrl, '_blank');
+      } else {
+        console.log('[handleGenerateOS] PDF não disponível no momento');
+        toast({
+          title: 'Informação',
+          description: 'A OS foi gerada. O PDF estará disponível em breve na aba "OS Gerada".',
+        });
       }
 
       // Mudar para a aba de OS gerada
       setActiveTab('ordem_servico_gerada');
       loadData();
     } catch (error: any) {
+      console.error('[handleGenerateOS] Erro:', error);
       toast({
         title: 'Erro',
         description: error.message || 'Erro ao gerar ordem de serviço',
         variant: 'destructive',
       });
     } finally {
-      setLoading(false);
+      setGeneratingOsId(null);
     }
   };
 
@@ -826,11 +842,11 @@ const Tickets = () => {
                               <Button
                                 size="sm"
                                 onClick={() => handleGenerateOS(ticket.id)}
-                                disabled={loading}
+                                disabled={generatingOsId === ticket.id}
                                 className="flex items-center gap-2"
                               >
                                 <FileText className="h-4 w-4" />
-                                Gerar Ordem de Serviço
+                                {generatingOsId === ticket.id ? 'Gerando...' : 'Gerar Ordem de Serviço'}
                               </Button>
                               <Button
                                 size="sm"
