@@ -8,6 +8,11 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
+  console.log('[gerar-ordem-servico] ===== REQUISIÇÃO RECEBIDA =====', {
+    method: req.method,
+    hasAuth: !!req.headers.get('Authorization')
+  });
+
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
@@ -24,8 +29,11 @@ serve(async (req) => {
     const user = data.user
 
     if (!user) {
+      console.error('[gerar-ordem-servico] Usuário não autenticado');
       throw new Error('Usuário não encontrado')
     }
+
+    console.log('[gerar-ordem-servico] Usuário autenticado:', user.id);
 
     const { ticketId } = await req.json()
     console.log('[gerar-ordem-servico] Iniciando geração de OS para ticket:', ticketId)
@@ -130,13 +138,30 @@ serve(async (req) => {
 
     console.log('[gerar-ordem-servico] Número da OS gerado:', numeroOS)
 
+    // Buscar ID do técnico na tabela tecnicos
+    console.log('[gerar-ordem-servico] Buscando técnico_id do prestador:', ticket.tecnico_responsavel_id);
+    const { data: tecnicoData, error: tecnicoError } = await supabaseClient
+      .from('tecnicos')
+      .select('id')
+      .eq('id', ticket.tecnico_responsavel_id)
+      .single();
+
+    if (tecnicoError || !tecnicoData) {
+      console.error('[gerar-ordem-servico] Erro ao buscar técnico:', tecnicoError);
+      // Se não encontrar na tabela tecnicos, usar diretamente o ID do prestador
+      console.log('[gerar-ordem-servico] Usando prestador_id diretamente');
+    }
+
+    const tecnicoIdFinal = tecnicoData?.id || ticket.tecnico_responsavel_id;
+    console.log('[gerar-ordem-servico] Técnico ID final:', tecnicoIdFinal);
+
     // Criar ordem de serviço no banco
     const { data: ordemServico, error: osError } = await supabaseClient
       .from('ordens_servico')
       .insert({
         ticket_id: ticketId,
         numero_os: numeroOS,
-        tecnico_id: ticket.tecnico_responsavel_id,
+        tecnico_id: tecnicoIdFinal,
         data_programada: ticket.data_vencimento,
         qr_code: `OS-${numeroOS}-${ticketId}`
       })

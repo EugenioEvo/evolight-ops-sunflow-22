@@ -14,7 +14,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Clock, MapPin, Plus, Search, Settings, FileText, CheckCircle, XCircle } from 'lucide-react';
+import { Calendar, Clock, MapPin, Plus, Search, Settings, FileText, CheckCircle, XCircle, Download } from 'lucide-react';
 
 const ticketSchema = z.object({
   titulo: z.string().min(1, 'Título é obrigatório'),
@@ -333,16 +333,30 @@ const Tickets = () => {
 
   const handleGenerateOS = async (ticketId: string) => {
     try {
-      console.log('[handleGenerateOS] Iniciando geração de OS para ticket:', ticketId);
+      console.log('[Tickets] ===== INICIANDO GERAÇÃO DE OS =====');
+      console.log('[Tickets] Ticket ID:', ticketId);
       setGeneratingOsId(ticketId);
       
+      const { data: { session } } = await supabase.auth.getSession();
+      console.log('[Tickets] Sessão presente:', !!session);
+      console.log('[Tickets] Token presente:', !!session?.access_token);
+      
+      console.log('[Tickets] Invocando função gerar-ordem-servico...');
       const { data, error } = await supabase.functions.invoke('gerar-ordem-servico', {
         body: { ticketId }
       });
 
-      console.log('[handleGenerateOS] Resposta recebida:', { data, error });
+      console.log('[Tickets] Resposta recebida:', { 
+        success: !!data, 
+        hasError: !!error,
+        data: data,
+        errorDetails: error 
+      });
 
-      if (error) throw error;
+      if (error) {
+        console.error('[Tickets] Erro da função:', error);
+        throw error;
+      }
 
       const isExisting = data?.message === 'Ordem de serviço já existente';
 
@@ -858,14 +872,95 @@ const Tickets = () => {
                             </>
                           )}
 
-                          {(ticket.status === 'ordem_servico_gerada' || ticket.status === 'em_execucao' || ticket.status === 'concluido') && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleEdit(ticket)}
-                            >
-                              Editar
-                            </Button>
+                          {ticket.status === 'ordem_servico_gerada' && (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="default"
+                                onClick={async () => {
+                                  try {
+                                    const { data: os } = await supabase
+                                      .from('ordens_servico')
+                                      .select('pdf_url, numero_os')
+                                      .eq('ticket_id', ticket.id)
+                                      .single();
+                                    
+                                    if (os?.pdf_url) {
+                                      const { data: signedUrlData } = await supabase.storage
+                                        .from('ordens-servico')
+                                        .createSignedUrl(os.pdf_url, 60 * 60 * 24 * 7);
+                                      
+                                      if (signedUrlData?.signedUrl) {
+                                        window.open(signedUrlData.signedUrl, '_blank');
+                                      } else {
+                                        toast({
+                                          title: 'Aviso',
+                                          description: 'PDF ainda não disponível',
+                                          variant: 'default'
+                                        });
+                                      }
+                                    }
+                                  } catch (error) {
+                                    console.error('Erro ao abrir OS:', error);
+                                    toast({
+                                      title: 'Erro',
+                                      description: 'Erro ao abrir OS',
+                                      variant: 'destructive'
+                                    });
+                                  }
+                                }}
+                              >
+                                <Download className="h-4 w-4 mr-1" />
+                                Ver OS
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleEdit(ticket)}
+                              >
+                                Editar
+                              </Button>
+                            </>
+                          )}
+
+                          {(ticket.status === 'em_execucao' || ticket.status === 'concluido') && (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                onClick={async () => {
+                                  try {
+                                    const { data: os } = await supabase
+                                      .from('ordens_servico')
+                                      .select('pdf_url')
+                                      .eq('ticket_id', ticket.id)
+                                      .single();
+                                    
+                                    if (os?.pdf_url) {
+                                      const { data: signedUrlData } = await supabase.storage
+                                        .from('ordens-servico')
+                                        .createSignedUrl(os.pdf_url, 60 * 60 * 24 * 7);
+                                      
+                                      if (signedUrlData?.signedUrl) {
+                                        window.open(signedUrlData.signedUrl, '_blank');
+                                      }
+                                    }
+                                  } catch (error) {
+                                    console.error('Erro ao abrir OS:', error);
+                                  }
+                                }}
+                              >
+                                <Download className="h-4 w-4 mr-1" />
+                                Ver OS
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleEdit(ticket)}
+                              >
+                                Editar
+                              </Button>
+                            </>
                           )}
 
                           {ticket.status === 'rejeitado' && (
