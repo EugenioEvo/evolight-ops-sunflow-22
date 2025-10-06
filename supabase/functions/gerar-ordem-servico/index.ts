@@ -137,23 +137,7 @@ serve(async (req) => {
       .rpc('gerar_numero_os')
 
     console.log('[gerar-ordem-servico] Número da OS gerado:', numeroOS)
-
-    // Buscar ID do técnico na tabela tecnicos
-    console.log('[gerar-ordem-servico] Buscando técnico_id do prestador:', ticket.tecnico_responsavel_id);
-    const { data: tecnicoData, error: tecnicoError } = await supabaseClient
-      .from('tecnicos')
-      .select('id')
-      .eq('id', ticket.tecnico_responsavel_id)
-      .single();
-
-    if (tecnicoError || !tecnicoData) {
-      console.error('[gerar-ordem-servico] Erro ao buscar técnico:', tecnicoError);
-      // Se não encontrar na tabela tecnicos, usar diretamente o ID do prestador
-      console.log('[gerar-ordem-servico] Usando prestador_id diretamente');
-    }
-
-    const tecnicoIdFinal = tecnicoData?.id || ticket.tecnico_responsavel_id;
-    console.log('[gerar-ordem-servico] Técnico ID final:', tecnicoIdFinal);
+    console.log('[gerar-ordem-servico] Usando prestador_id:', ticket.tecnico_responsavel_id)
 
     // Criar ordem de serviço no banco
     const { data: ordemServico, error: osError } = await supabaseClient
@@ -161,7 +145,7 @@ serve(async (req) => {
       .insert({
         ticket_id: ticketId,
         numero_os: numeroOS,
-        tecnico_id: tecnicoIdFinal,
+        tecnico_id: ticket.tecnico_responsavel_id,
         data_programada: ticket.data_vencimento,
         qr_code: `OS-${numeroOS}-${ticketId}`
       })
