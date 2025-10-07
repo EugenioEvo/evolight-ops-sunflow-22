@@ -140,44 +140,30 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+              
+              {/* Logout Button */}
+              <SidebarMenuItem>
+                <SidebarMenuButton onClick={signOut} className="text-destructive hover:text-destructive hover:bg-destructive/10">
+                  <LogOut className="h-4 w-4" />
+                  {!collapsed && <span>Sair</span>}
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 
         {/* Footer com informações do usuário */}
-        {profile && (
+        {profile && !collapsed && (
           <div className="mt-auto p-4 border-t">
-            {!collapsed ? (
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm">
-                  <User className="h-4 w-4" />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">{profile.nome}</p>
-                    <p className="text-xs text-muted-foreground capitalize">
-                      {profile.role?.replace('_', ' ')}
-                    </p>
-                  </div>
-                </div>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={signOut}
-                  className="w-full justify-start"
-                >
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Sair
-                </Button>
+            <div className="flex items-center gap-2 text-sm">
+              <User className="h-4 w-4 text-muted-foreground" />
+              <div className="flex-1 min-w-0">
+                <p className="font-medium truncate">{profile.nome}</p>
+                <p className="text-xs text-muted-foreground capitalize">
+                  {profile.role?.replace('_', ' ')}
+                </p>
               </div>
-            ) : (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={signOut}
-                className="w-full justify-center p-2"
-              >
-                <LogOut className="h-4 w-4" />
-              </Button>
-            )}
+            </div>
           </div>
         )}
       </SidebarContent>
