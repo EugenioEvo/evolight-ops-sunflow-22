@@ -54,19 +54,24 @@ const Index = () => {
   }
 
   return (
-    <div className="p-6 space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold text-foreground mb-2">Dashboard Evolight</h1>
-        <p className="text-muted-foreground">Sistema de Controle O&M Solar</p>
+    <div className="p-6 space-y-8 animate-fade-in">
+      <div className="space-y-2">
+        <h1 className="text-4xl font-bold bg-gradient-solar bg-clip-text text-transparent">
+          Dashboard Evolight
+        </h1>
+        <p className="text-muted-foreground flex items-center gap-2">
+          <Activity className="h-4 w-4" />
+          Sistema de Controle O&M Solar
+        </p>
       </div>
       
       <DashboardStats />
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
+        <Card className="shadow-lg hover:shadow-xl transition-shadow border-muted">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Activity className="h-5 w-5" />
+              <Activity className="h-5 w-5 text-primary" />
               Atividade Recente
             </CardTitle>
             <CardDescription>Últimas atualizações de status</CardDescription>
@@ -96,10 +101,10 @@ const Index = () => {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="shadow-lg hover:shadow-xl transition-shadow border-muted">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5" />
+              <TrendingUp className="h-5 w-5 text-success" />
               Performance
             </CardTitle>
             <CardDescription>Métricas de eficiência do sistema</CardDescription>
