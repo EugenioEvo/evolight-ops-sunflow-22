@@ -25,73 +25,76 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const attemptedProfileCreationRef = useRef(false);
 
-  const fetchProfile = async (userId: string) => {
+  const fetchProfile = async (userId: string, maxAttempts = 6) => {
     try {
-      // Buscar perfil com dados relacionados E role da tabela user_roles
-      const { data, error } = await supabase
-        .from('profiles')
-        .select(`
-          *,
-          clientes(*),
-          tecnicos(*)
-        `)
-        .eq('user_id', userId)
-        .maybeSingle();
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        // Buscar perfil com dados relacionados
+        const { data, error } = await supabase
+          .from('profiles')
+          .select(`
+            *,
+            clientes(*),
+            tecnicos(*)
+          `)
+          .eq('user_id', userId)
+          .maybeSingle();
 
-      if (error) {
-        console.error('Erro ao buscar perfil:', error);
-      }
+        if (error) {
+          console.error('Erro ao buscar perfil:', error);
+        }
 
-      if (!data && !attemptedProfileCreationRef.current) {
-        // Cria o perfil automaticamente se não existir ainda
-        attemptedProfileCreationRef.current = true;
-        try {
-          await supabase.functions.invoke('create-user-profile');
-          
-          // Aguardar um pouco para garantir que tudo foi criado
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          
-          // Rebuscar o perfil após criação
-          const { data: created } = await supabase
-            .from('profiles')
-            .select(`
-              *,
-              clientes(*),
-              tecnicos(*)
-            `)
+        // Se não existe perfil na primeira tentativa, criar
+        if (!data && attempt === 0 && !attemptedProfileCreationRef.current) {
+          attemptedProfileCreationRef.current = true;
+          try {
+            await supabase.functions.invoke('create-user-profile');
+            // Continuar para próxima tentativa
+            await new Promise(resolve => setTimeout(resolve, 500));
+            continue;
+          } catch (fnErr) {
+            console.error('Erro ao criar perfil automaticamente:', fnErr);
+          }
+        }
+
+        // Se encontrou o perfil, buscar role separadamente
+        if (data) {
+          const { data: roleData } = await supabase
+            .from('user_roles')
+            .select('role')
             .eq('user_id', userId)
             .maybeSingle();
-            
-          if (created) {
-            // Buscar role separadamente
-            const { data: roleData } = await supabase
-              .from('user_roles')
-              .select('role')
-              .eq('user_id', userId)
-              .maybeSingle();
-              
-            setProfile({ ...created, role: roleData?.role });
+
+          // Se tem role, sucesso!
+          if (roleData?.role) {
+            setProfile({ ...data, role: roleData.role });
+            return;
           }
-          return;
-        } catch (fnErr) {
-          console.error('Erro ao criar perfil automaticamente:', fnErr);
+
+          // Se não tem role ainda e não é última tentativa, aguardar
+          if (!roleData?.role && attempt < maxAttempts - 1) {
+            await new Promise(resolve => setTimeout(resolve, 500));
+            continue;
+          }
+
+          // Última tentativa sem role
+          if (attempt === maxAttempts - 1) {
+            console.warn('Profile encontrado mas role não foi carregado');
+            setProfile(data);
+            return;
+          }
+        }
+
+        // Se não tem dados, aguardar antes da próxima tentativa
+        if (!data && attempt < maxAttempts - 1) {
+          await new Promise(resolve => setTimeout(resolve, 500));
         }
       }
 
-      if (data) {
-        // Buscar role da tabela user_roles
-        const { data: roleData } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', userId)
-          .maybeSingle();
-          
-        setProfile({ ...data, role: roleData?.role });
-      } else {
-        setProfile(null);
-      }
+      // Após todas as tentativas, se não encontrou nada
+      setProfile(null);
     } catch (error) {
       console.error('Erro ao buscar/criar perfil:', error);
+      setProfile(null);
     }
   };
 

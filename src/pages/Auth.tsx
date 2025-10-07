@@ -104,9 +104,40 @@ const Auth = () => {
       if (data.user) {
         toast({
           title: "Cadastro realizado com sucesso!",
-          description: "Sua conta foi criada. Você já pode fazer login.",
+          description: "Fazendo login...",
         });
-        setIsLogin(true);
+
+        // Login automático após signup
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (signInError) throw signInError;
+
+        // Aguardar profile ser criado com polling (máximo 3 segundos)
+        let attempts = 0;
+        while (attempts < 6) {
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('id, user_roles(role)')
+            .eq('user_id', data.user.id)
+            .maybeSingle();
+          
+          if (profileData?.user_roles) {
+            break;
+          }
+          
+          await new Promise(r => setTimeout(r, 500));
+          attempts++;
+        }
+
+        toast({
+          title: "Bem-vindo!",
+          description: "Login realizado com sucesso.",
+        });
+
+        navigate('/');
       }
     } catch (error: any) {
       toast({
