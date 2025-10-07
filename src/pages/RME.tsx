@@ -228,6 +228,36 @@ const RME = () => {
 
   const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>, type: 'before' | 'after') => {
     const files = Array.from(event.target.files || []);
+    const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+    const MAX_FILES = 10;
+    const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    
+    const currentCount = type === 'before' ? fotosBefore.length : fotosAfter.length;
+    
+    // Validar quantidade
+    if (currentCount + files.length > MAX_FILES) {
+      toast({
+        title: "Limite excedido",
+        description: `Máximo de ${MAX_FILES} fotos por tipo.`,
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Validar arquivos
+    const invalidFiles = files.filter(f => 
+      !ALLOWED_TYPES.includes(f.type) || f.size > MAX_FILE_SIZE
+    );
+    
+    if (invalidFiles.length > 0) {
+      toast({
+        title: "Arquivos inválidos",
+        description: "Use apenas JPG/PNG/WEBP até 5MB.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     if (type === 'before') {
       setFotosBefore(prev => [...prev, ...files]);
     } else {
@@ -254,10 +284,29 @@ const RME = () => {
   };
 
   const saveSignature = (type: 'tecnico' | 'cliente') => {
-    if (type === 'tecnico' && sigCanvasTecnico) {
-      setTecnicoSignature(sigCanvasTecnico.toDataURL());
-    } else if (type === 'cliente' && sigCanvasCliente) {
-      setClienteSignature(sigCanvasCliente.toDataURL());
+    const canvas = type === 'tecnico' ? sigCanvasTecnico : sigCanvasCliente;
+    
+    if (!canvas || canvas.isEmpty()) {
+      toast({
+        title: "Assinatura vazia",
+        description: "Por favor, assine antes de salvar.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (type === 'tecnico') {
+      setTecnicoSignature(canvas.toDataURL());
+      toast({
+        title: "Assinatura salva!",
+        description: "Assinatura do técnico registrada.",
+      });
+    } else {
+      setClienteSignature(canvas.toDataURL());
+      toast({
+        title: "Assinatura salva!",
+        description: "Assinatura do cliente registrada.",
+      });
     }
   };
 

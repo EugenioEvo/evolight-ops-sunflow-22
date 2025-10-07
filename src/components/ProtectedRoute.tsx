@@ -21,9 +21,17 @@ export const ProtectedRoute = ({ children, roles }: ProtectedRouteProps) => {
     return <Navigate to="/auth" />;
   }
 
-  // Verificar se profile existe e tem role antes de validar permissões
-  if (roles && profile?.role && !roles.includes(profile.role)) {
-    return <Navigate to="/" />;
+  // Verificar permissões de role
+  if (roles && roles.length > 0) {
+    // Se profile não tem role definido, redirecionar para auth
+    if (!profile?.role) {
+      return <Navigate to="/auth" />;
+    }
+    
+    // Se role não está na lista permitida, redirecionar para home
+    if (!roles.includes(profile.role)) {
+      return <Navigate to="/" />;
+    }
   }
 
   return <>{children}</>;

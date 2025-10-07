@@ -28,6 +28,9 @@ interface OrdemServico {
     data_inicio_execucao: string | null;
     clientes: {
       empresa: string;
+      profiles?: {
+        telefone?: string;
+      };
     };
   };
 }
@@ -72,7 +75,8 @@ const MinhasOS = () => {
             status,
             data_inicio_execucao,
             clientes (
-              empresa
+              empresa,
+              profiles!clientes_profile_id_fkey(telefone)
             )
           )
         `)
@@ -159,12 +163,16 @@ const MinhasOS = () => {
     }
   };
 
-  const handleLigarCliente = () => {
-    toast({
-      title: "Telefone não disponível",
-      description: "Funcionalidade em desenvolvimento.",
-      variant: "destructive",
-    });
+  const handleLigarCliente = (telefone?: string) => {
+    if (!telefone) {
+      toast({
+        title: "Telefone não disponível",
+        description: "Este cliente não possui telefone cadastrado.",
+        variant: "destructive",
+      });
+      return;
+    }
+    window.location.href = `tel:${telefone}`;
   };
 
   const handleAbrirMapa = (endereco: string) => {
@@ -270,7 +278,7 @@ const MinhasOS = () => {
             <Button
               size="sm"
               variant="outline"
-              onClick={handleLigarCliente}
+              onClick={() => handleLigarCliente(os.tickets.clientes.profiles?.telefone)}
               className="flex-1"
             >
               <Phone className="h-4 w-4 mr-1" />
