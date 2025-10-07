@@ -1,8 +1,50 @@
-import StatsCards from "@/components/StatsCards";
+import DashboardStats from "@/components/DashboardStats";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BarChart3, Settings } from "lucide-react";
+import { BarChart3, TrendingUp, Activity } from "lucide-react";
+import { useTicketsRealtime } from "@/hooks/useTicketsRealtime";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 const Index = () => {
+  const [recentActivity, setRecentActivity] = useState<any[]>([]);
+  
+  const loadRecentActivity = async () => {
+    const { data } = await supabase
+      .from('status_historico')
+      .select(`
+        *,
+        tickets(numero_ticket, titulo),
+        profiles:alterado_por(nome)
+      `)
+      .order('data_alteracao', { ascending: false })
+      .limit(5);
+    
+    setRecentActivity(data || []);
+  };
+
+  useEffect(() => {
+    loadRecentActivity();
+  }, []);
+
+  useTicketsRealtime({
+    onTicketChange: loadRecentActivity
+  });
+
+  const getStatusLabel = (status: string) => {
+    const labels: Record<string, string> = {
+      'aberto': 'Aberto',
+      'aguardando_aprovacao': 'Aguardando Aprovação',
+      'aprovado': 'Aprovado',
+      'rejeitado': 'Rejeitado',
+      'ordem_servico_gerada': 'OS Gerada',
+      'em_execucao': 'Em Execução',
+      'concluido': 'Concluído',
+      'cancelado': 'Cancelado'
+    };
+    return labels[status] || status;
+  };
+
   return (
     <div className="p-6 space-y-8">
       <div>
@@ -10,36 +52,58 @@ const Index = () => {
         <p className="text-muted-foreground">Sistema de Controle O&M Solar</p>
       </div>
       
-      <StatsCards />
+      <DashboardStats />
       
-      <Tabs defaultValue="analytics" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 lg:w-400">
-          <TabsTrigger value="analytics" className="flex items-center space-x-2">
-            <BarChart3 className="h-4 w-4" />
-            <span>Analytics</span>
-          </TabsTrigger>
-          <TabsTrigger value="settings" className="flex items-center space-x-2">
-            <Settings className="h-4 w-4" />
-            <span>Config</span>
-          </TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="analytics" className="mt-6">
-          <div className="text-center py-12">
-            <BarChart3 className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-xl font-semibold mb-2">Analytics Dashboard</h3>
-            <p className="text-muted-foreground">Métricas de performance e relatórios em desenvolvimento</p>
-          </div>
-        </TabsContent>
-        
-        <TabsContent value="settings" className="mt-6">
-          <div className="text-center py-12">
-            <Settings className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-xl font-semibold mb-2">Configurações</h3>
-            <p className="text-muted-foreground">Configurações do sistema e integrações</p>
-          </div>
-        </TabsContent>
-      </Tabs>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Activity className="h-5 w-5" />
+              Atividade Recente
+            </CardTitle>
+            <CardDescription>Últimas atualizações de status</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {recentActivity.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Nenhuma atividade recente</p>
+              ) : (
+                recentActivity.map((activity) => (
+                  <div key={activity.id} className="flex items-start gap-3 pb-3 border-b last:border-0">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">
+                        {activity.tickets?.numero_ticket} - {activity.tickets?.titulo}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {getStatusLabel(activity.status_anterior)} → {getStatusLabel(activity.status_novo)}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(activity.data_alteracao).toLocaleString('pt-BR')}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5" />
+              Performance
+            </CardTitle>
+            <CardDescription>Métricas de eficiência do sistema</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-center py-8">
+              <BarChart3 className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+              <p className="text-sm text-muted-foreground">Gráficos de performance em desenvolvimento</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };

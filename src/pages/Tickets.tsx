@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { useTicketsRealtime } from '@/hooks/useTicketsRealtime';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -14,7 +15,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Clock, MapPin, Plus, Search, Settings, FileText, CheckCircle, XCircle, Download } from 'lucide-react';
+import { Calendar, Clock, MapPin, Plus, Search, Settings, FileText, CheckCircle, XCircle, Download, Eye, ExternalLink } from 'lucide-react';
+import TicketFilters from '@/components/TicketFilters';
 
 const ticketSchema = z.object({
   titulo: z.string().min(1, 'Título é obrigatório'),
@@ -40,6 +42,8 @@ const Tickets = () => {
   const [editingTicket, setEditingTicket] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [generatingOsId, setGeneratingOsId] = useState<string | null>(null);
+  const [selectedCliente, setSelectedCliente] = useState('todos');
+  const [selectedPrioridade, setSelectedPrioridade] = useState('todas');
 
   const { user, profile } = useAuth();
   const { toast } = useToast();
@@ -94,6 +98,7 @@ const Tickets = () => {
         .from('tickets')
         .select(`
           *,
+          ordens_servico(numero_os, id, pdf_url),
           clientes(
             empresa,
             endereco,
@@ -131,6 +136,11 @@ const Tickets = () => {
   useEffect(() => {
     loadData();
   }, []);
+
+  // Realtime subscription - mover depois da definição de loadData
+  useTicketsRealtime({
+    onTicketChange: loadData
+  });
 
   const onSubmit = async (data: TicketForm) => {
     try {
@@ -432,8 +442,11 @@ const Tickets = () => {
                          ticket.numero_ticket.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          clienteNome.toLowerCase().includes(searchTerm.toLowerCase());
     
-    if (activeTab === 'todos') return matchesSearch;
-    return matchesSearch && ticket.status === activeTab;
+    const matchesCliente = selectedCliente === 'todos' || ticket.cliente_id === selectedCliente;
+    const matchesPrioridade = selectedPrioridade === 'todas' || ticket.prioridade === selectedPrioridade;
+    
+    if (activeTab === 'todos') return matchesSearch && matchesCliente && matchesPrioridade;
+    return matchesSearch && matchesCliente && matchesPrioridade && ticket.status === activeTab;
   });
 
   const getStatusColor = (status: string) => {
@@ -744,13 +757,19 @@ const Tickets = () => {
                           Cliente: {ticket.clientes?.empresa || ticket.clientes?.profiles?.nome}
                         </CardDescription>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-col items-end gap-2">
                         <Badge className={getStatusColor(ticket.status)}>
                           {ticket.status.replace('_', ' ').toUpperCase()}
                         </Badge>
                         <Badge className={getPrioridadeColor(ticket.prioridade)}>
                           {ticket.prioridade.toUpperCase()}
                         </Badge>
+                        {(ticket.status === 'ordem_servico_gerada' || ticket.status === 'em_execucao' || ticket.status === 'concluido') && ticket.ordens_servico?.[0] && (
+                          <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+                            <FileText className="h-3 w-3 mr-1" />
+                            {ticket.ordens_servico[0].numero_os}
+                          </Badge>
+                        )}
                       </div>
                     </div>
                   </CardHeader>
@@ -872,23 +891,35 @@ const Tickets = () => {
                             </>
                           )}
 
-                          {ticket.status === 'ordem_servico_gerada' && (
+                          {(ticket.status === 'ordem_servico_gerada' || ticket.status === 'em_execucao' || ticket.status === 'concluido') && (
                             <>
                               <Button
                                 size="sm"
                                 variant="default"
                                 onClick={async () => {
                                   try {
-                                    const { data: os } = await supabase
-                                      .from('ordens_servico')
-                                      .select('pdf_url, numero_os')
-                                      .eq('ticket_id', ticket.id)
-                                      .single();
-                                    
-                                    if (os?.pdf_url) {
-                                      const { data: signedUrlData } = await supabase.storage
+                                    const os = ticket.ordens_servico?.[0];
+                                    if (!os) {
+                                      toast({
+                                        title: 'Aviso',
+                                        description: 'OS não encontrada',
+                                        variant: 'default'
+                                      });
+                                      return;
+                                    }
+
+                                    if (os.pdf_url) {
+                                      // Extrair apenas o caminho do arquivo
+                                      const filePath = os.pdf_url.replace('ordens-servico/', '');
+                                      
+                                      const { data: signedUrlData, error } = await supabase.storage
                                         .from('ordens-servico')
-                                        .createSignedUrl(os.pdf_url, 60 * 60 * 24 * 7);
+                                        .createSignedUrl(filePath, 60 * 60 * 24 * 7);
+                                      
+                                      if (error) {
+                                        console.error('Erro ao gerar URL:', error);
+                                        throw error;
+                                      }
                                       
                                       if (signedUrlData?.signedUrl) {
                                         window.open(signedUrlData.signedUrl, '_blank');
@@ -899,19 +930,25 @@ const Tickets = () => {
                                           variant: 'default'
                                         });
                                       }
+                                    } else {
+                                      toast({
+                                        title: 'Aviso',
+                                        description: 'PDF ainda não gerado',
+                                        variant: 'default'
+                                      });
                                     }
-                                  } catch (error) {
+                                  } catch (error: any) {
                                     console.error('Erro ao abrir OS:', error);
                                     toast({
                                       title: 'Erro',
-                                      description: 'Erro ao abrir OS',
+                                      description: 'Erro ao abrir OS: ' + error.message,
                                       variant: 'destructive'
                                     });
                                   }
                                 }}
                               >
-                                <Download className="h-4 w-4 mr-1" />
-                                Ver OS
+                                <Eye className="h-4 w-4 mr-1" />
+                                Ver OS {ticket.ordens_servico?.[0]?.numero_os}
                               </Button>
                               <Button
                                 size="sm"

@@ -552,7 +552,7 @@ export type Database = {
       }
       status_historico: {
         Row: {
-          alterado_por: string
+          alterado_por: string | null
           data_alteracao: string
           id: string
           observacoes: string | null
@@ -561,7 +561,7 @@ export type Database = {
           ticket_id: string
         }
         Insert: {
-          alterado_por: string
+          alterado_por?: string | null
           data_alteracao?: string
           id?: string
           observacoes?: string | null
@@ -570,7 +570,7 @@ export type Database = {
           ticket_id: string
         }
         Update: {
-          alterado_por?: string
+          alterado_por?: string | null
           data_alteracao?: string
           id?: string
           observacoes?: string | null
@@ -633,6 +633,8 @@ export type Database = {
           created_at: string
           created_by: string
           data_abertura: string
+          data_conclusao: string | null
+          data_inicio_execucao: string | null
           data_vencimento: string | null
           descricao: string
           endereco_servico: string
@@ -653,6 +655,8 @@ export type Database = {
           created_at?: string
           created_by: string
           data_abertura?: string
+          data_conclusao?: string | null
+          data_inicio_execucao?: string | null
           data_vencimento?: string | null
           descricao: string
           endereco_servico: string
@@ -673,6 +677,8 @@ export type Database = {
           created_at?: string
           created_by?: string
           data_abertura?: string
+          data_conclusao?: string | null
+          data_inicio_execucao?: string | null
           data_vencimento?: string | null
           descricao?: string
           endereco_servico?: string
