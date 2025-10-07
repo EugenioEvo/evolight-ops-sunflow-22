@@ -1,0 +1,207 @@
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { ClipboardList, Clock, CheckCircle2, AlertCircle, MapPin, FileText } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+
+interface OSStats {
+  pendentes: number;
+  emExecucao: number;
+  concluidasHoje: number;
+  totalConcluidas: number;
+}
+
+const TechnicianDashboard = () => {
+  const [stats, setStats] = useState<OSStats>({ pendentes: 0, emExecucao: 0, concluidasHoje: 0, totalConcluidas: 0 });
+  const [recentOS, setRecentOS] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { profile } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    loadDashboardData();
+  }, [profile]);
+
+  const loadDashboardData = async () => {
+    try {
+      setLoading(true);
+
+      // Buscar ID do técnico
+      const { data: tecnicoData } = await supabase
+        .from("tecnicos")
+        .select("id")
+        .eq("profile_id", profile?.id)
+        .single();
+
+      if (!tecnicoData) return;
+
+      // Buscar todas as OS do técnico
+      const { data: osData } = await supabase
+        .from("ordens_servico")
+        .select(`
+          *,
+          tickets!inner(
+            status,
+            titulo,
+            numero_ticket,
+            endereco_servico,
+            prioridade,
+            data_conclusao,
+            clientes(empresa)
+          )
+        `)
+        .eq("tecnico_id", tecnicoData.id)
+        .order("created_at", { ascending: false });
+
+      if (osData) {
+        const hoje = new Date().toISOString().split('T')[0];
+        
+        setStats({
+          pendentes: osData.filter(os => os.tickets.status === 'ordem_servico_gerada').length,
+          emExecucao: osData.filter(os => os.tickets.status === 'em_execucao').length,
+          concluidasHoje: osData.filter(os => 
+            os.tickets.status === 'concluido' && 
+            os.tickets.data_conclusao?.startsWith(hoje)
+          ).length,
+          totalConcluidas: osData.filter(os => os.tickets.status === 'concluido').length,
+        });
+
+        // OS recentes (não concluídas)
+        setRecentOS(osData.filter(os => os.tickets.status !== 'concluido').slice(0, 5));
+      }
+    } catch (error) {
+      console.error("Erro ao carregar dashboard:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return <div className="p-6">Carregando...</div>;
+  }
+
+  return (
+    <div className="p-6 space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold text-foreground mb-2">Meu Dashboard</h1>
+        <p className="text-muted-foreground">Bem-vindo, {profile?.nome}</p>
+      </div>
+
+      {/* Cards de Estatísticas */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">OS Pendentes</CardTitle>
+            <ClipboardList className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.pendentes}</div>
+            <p className="text-xs text-muted-foreground">Aguardando início</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Em Execução</CardTitle>
+            <Clock className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.emExecucao}</div>
+            <p className="text-xs text-muted-foreground">Trabalhos ativos</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Concluídas Hoje</CardTitle>
+            <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.concluidasHoje}</div>
+            <p className="text-xs text-muted-foreground">Trabalhos finalizados</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Concluídas</CardTitle>
+            <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.totalConcluidas}</div>
+            <p className="text-xs text-muted-foreground">Histórico completo</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Ações Rápidas */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Ações Rápidas</CardTitle>
+          <CardDescription>Acesso rápido às suas funções principais</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-3">
+          <Button onClick={() => navigate("/minhas-os")} className="flex-1 min-w-[200px]">
+            <ClipboardList className="mr-2 h-4 w-4" />
+            Ver Minhas OS
+          </Button>
+          <Button onClick={() => navigate("/rotas")} variant="outline" className="flex-1 min-w-[200px]">
+            <MapPin className="mr-2 h-4 w-4" />
+            Ver Rotas do Dia
+          </Button>
+          <Button onClick={() => navigate("/rme")} variant="outline" className="flex-1 min-w-[200px]">
+            <FileText className="mr-2 h-4 w-4" />
+            Preencher RME
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* OS Recentes */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <AlertCircle className="h-5 w-5" />
+            Ordens de Serviço Ativas
+          </CardTitle>
+          <CardDescription>Suas OS pendentes e em execução</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {recentOS.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              Nenhuma OS ativa no momento
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {recentOS.map((os) => (
+                <div key={os.id} className="flex items-start justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <p className="font-medium text-sm">{os.numero_os}</p>
+                      <Badge variant={os.tickets.status === 'em_execucao' ? 'default' : 'outline'}>
+                        {os.tickets.status === 'em_execucao' ? 'Em Execução' : 'Pendente'}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">{os.tickets.titulo}</p>
+                    <p className="text-xs text-muted-foreground">{os.tickets.clientes?.empresa}</p>
+                  </div>
+                  <Button 
+                    size="sm" 
+                    onClick={() => navigate("/minhas-os")}
+                    variant="ghost"
+                  >
+                    Ver Detalhes
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+export default TechnicianDashboard;

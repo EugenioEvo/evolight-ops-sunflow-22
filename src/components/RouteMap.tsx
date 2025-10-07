@@ -3,8 +3,10 @@ import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MapPin, Clock, Users, Route as RouteIcon } from "lucide-react";
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -54,15 +56,19 @@ const RouteMap: React.FC = () => {
   const [mounted, setMounted] = useState(false);
   const [ordensServico, setOrdensServico] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dateFilter, setDateFilter] = useState('today');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const { profile } = useAuth();
 
   useEffect(() => {
     setMounted(true);
     loadOrdensServico();
-  }, []);
+  }, [dateFilter, statusFilter, profile]);
 
   const loadOrdensServico = async () => {
     try {
-      const { data, error } = await supabase
+      // Se for técnico de campo, buscar apenas suas OS
+      let query = supabase
         .from('ordens_servico')
         .select(`
           *,
@@ -79,15 +85,48 @@ const RouteMap: React.FC = () => {
             )
           ),
           tecnicos!inner(
+            id,
             profiles!inner(nome)
           )
-        `)
-        .in('tickets.status', ['ordem_servico_gerada', 'em_execucao'])
-        .order('created_at', { ascending: false });
+        `);
+
+      // Filtrar por técnico se for técnico de campo
+      if (profile?.role === 'tecnico_campo') {
+        const { data: tecnicoData } = await supabase
+          .from('tecnicos')
+          .select('id')
+          .eq('profile_id', profile?.id)
+          .single();
+        
+        if (tecnicoData) {
+          query = query.eq('tecnico_id', tecnicoData.id);
+        }
+      }
+
+      // Filtro de status
+      if (statusFilter === 'pendente') {
+        query = query.eq('tickets.status', 'ordem_servico_gerada');
+      } else if (statusFilter === 'execucao') {
+        query = query.eq('tickets.status', 'em_execucao');
+      } else {
+        query = query.in('tickets.status', ['ordem_servico_gerada', 'em_execucao']);
+      }
+
+      // Filtro de data
+      if (dateFilter === 'today') {
+        const today = new Date().toISOString().split('T')[0];
+        query = query.gte('data_programada', today);
+      } else if (dateFilter === 'week') {
+        const today = new Date();
+        const weekEnd = new Date(today);
+        weekEnd.setDate(weekEnd.getDate() + 7);
+        query = query.lte('data_programada', weekEnd.toISOString());
+      }
+
+      const { data, error } = await query.order('created_at', { ascending: false });
 
       if (error) throw error;
       
-      console.log('Ordens carregadas:', data);
       setOrdensServico(data || []);
     } catch (error) {
       console.error('Erro ao carregar ordens de serviço:', error);
@@ -195,17 +234,53 @@ const RouteMap: React.FC = () => {
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[600px]">
-      {/* Lista de Rotas */}
-      <div className="lg:col-span-1 space-y-4 overflow-y-auto">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <RouteIcon className="h-5 w-5" />
-              <span>Rotas Otimizadas</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
+    <div className="space-y-4">
+      {/* Filtros */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Período</label>
+              <Select value={dateFilter} onValueChange={setDateFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o período" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="today">Hoje</SelectItem>
+                  <SelectItem value="week">Esta Semana</SelectItem>
+                  <SelectItem value="month">Este Mês</SelectItem>
+                  <SelectItem value="all">Todas</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Status</label>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="pendente">Pendente</SelectItem>
+                  <SelectItem value="execucao">Em Execução</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[600px]">
+        {/* Lista de Rotas */}
+        <div className="lg:col-span-1 space-y-4 overflow-y-auto">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <RouteIcon className="h-5 w-5" />
+                <span>Rotas Otimizadas</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
             {rotasOtimizadas.map((rota) => (
               <div 
                 key={rota.id}
@@ -336,6 +411,7 @@ const RouteMap: React.FC = () => {
             </div>
           </CardContent>
         </Card>
+        </div>
       </div>
     </div>
   );

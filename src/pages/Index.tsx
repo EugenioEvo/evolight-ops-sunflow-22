@@ -1,13 +1,16 @@
 import DashboardStats from "@/components/DashboardStats";
+import TechnicianDashboard from "@/components/TechnicianDashboard";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarChart3, TrendingUp, Activity } from "lucide-react";
 import { useTicketsRealtime } from "@/hooks/useTicketsRealtime";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 const Index = () => {
   const [recentActivity, setRecentActivity] = useState<any[]>([]);
+  const { profile } = useAuth();
   
   const loadRecentActivity = async () => {
     const { data } = await supabase
@@ -44,6 +47,11 @@ const Index = () => {
     };
     return labels[status] || status;
   };
+
+  // Se for técnico, mostrar dashboard específico
+  if (profile?.role === 'tecnico_campo') {
+    return <TechnicianDashboard />;
+  }
 
   return (
     <div className="p-6 space-y-8">
