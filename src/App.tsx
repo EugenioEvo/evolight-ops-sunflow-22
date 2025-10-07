@@ -45,14 +45,38 @@ const App = () => (
                           <Route path="/" element={<Index />} />
                           <Route path="/tickets" element={<Tickets />} />
                           <Route path="/routes" element={<RoutesPage />} />
-                          <Route path="/clientes" element={<Clientes />} />
-                          <Route path="/prestadores" element={<Prestadores />} />
-                          <Route path="/tecnicos" element={<Tecnicos />} />
+                          <Route path="/clientes" element={
+                            <ProtectedRoute roles={['admin', 'area_tecnica']}>
+                              <Clientes />
+                            </ProtectedRoute>
+                          } />
+                          <Route path="/prestadores" element={
+                            <ProtectedRoute roles={['admin', 'area_tecnica']}>
+                              <Prestadores />
+                            </ProtectedRoute>
+                          } />
+                          <Route path="/tecnicos" element={
+                            <ProtectedRoute roles={['admin', 'area_tecnica']}>
+                              <Tecnicos />
+                            </ProtectedRoute>
+                          } />
                           <Route path="/minhas-os" element={<MinhasOS />} />
-                          <Route path="/equipamentos" element={<Equipamentos />} />
-                          <Route path="/insumos" element={<Insumos />} />
+                          <Route path="/equipamentos" element={
+                            <ProtectedRoute roles={['admin', 'area_tecnica']}>
+                              <Equipamentos />
+                            </ProtectedRoute>
+                          } />
+                          <Route path="/insumos" element={
+                            <ProtectedRoute roles={['admin', 'area_tecnica']}>
+                              <Insumos />
+                            </ProtectedRoute>
+                          } />
                           <Route path="/rme" element={<RME />} />
-                          <Route path="/relatorios" element={<Relatorios />} />
+                          <Route path="/relatorios" element={
+                            <ProtectedRoute roles={['admin', 'area_tecnica']}>
+                              <Relatorios />
+                            </ProtectedRoute>
+                          } />
                           <Route path="*" element={<NotFound />} />
                         </Routes>
                       </main>
