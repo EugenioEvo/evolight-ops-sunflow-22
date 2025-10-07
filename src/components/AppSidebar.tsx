@@ -10,7 +10,8 @@ import {
   Home,
   FileText,
   LogOut,
-  User
+  User,
+  ClipboardList
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -54,6 +55,8 @@ export function AppSidebar() {
   const currentPath = location.pathname;
   const collapsed = !open;
 
+  const isTecnico = profile?.role === "tecnico_campo";
+
   const isActive = (path: string) => currentPath === path;
   const getNavClass = (path: string) =>
     isActive(path) 
@@ -91,6 +94,16 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+              {isTecnico && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild>
+                    <NavLink to="/minhas-os" className={getNavClass("/minhas-os")}>
+                      <ClipboardList className="h-4 w-4" />
+                      {!collapsed && <span>Minhas OS</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

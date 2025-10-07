@@ -15,6 +15,7 @@ import Equipamentos from "./pages/Equipamentos";
 import Insumos from "./pages/Insumos";
 import Prestadores from "./pages/Prestadores";
 import Tecnicos from "./pages/Tecnicos";
+import MinhasOS from "./pages/MinhasOS";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 import RME from "./pages/RME";
@@ -48,6 +49,7 @@ const App = () => (
                           <Route path="/clientes" element={<Clientes />} />
                           <Route path="/prestadores" element={<Prestadores />} />
                           <Route path="/tecnicos" element={<Tecnicos />} />
+                          <Route path="/minhas-os" element={<MinhasOS />} />
                           <Route path="/equipamentos" element={<Equipamentos />} />
                           <Route path="/insumos" element={<Insumos />} />
                           <Route path="/rme" element={<RME />} />
