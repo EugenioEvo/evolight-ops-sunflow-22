@@ -21,7 +21,8 @@ export const ProtectedRoute = ({ children, roles }: ProtectedRouteProps) => {
     return <Navigate to="/auth" />;
   }
 
-  if (roles && profile && !roles.includes(profile.role)) {
+  // Verificar se profile existe e tem role antes de validar permissões
+  if (roles && profile?.role && !roles.includes(profile.role)) {
     return <Navigate to="/" />;
   }
 

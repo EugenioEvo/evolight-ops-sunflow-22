@@ -31,7 +31,7 @@ serve(async (req) => {
       .from('profiles')
       .select('id')
       .eq('user_id', user.id)
-      .single()
+      .maybeSingle()
 
     if (existingProfile) {
       return new Response(JSON.stringify({ success: true, profile: existingProfile }), {
@@ -42,6 +42,7 @@ serve(async (req) => {
 
     // Criar perfil baseado nos metadados do usuário
     const metadata = user.user_metadata || {}
+    const userRole = metadata.role || 'cliente'
     
     const { data: profile, error: profileError } = await supabaseClient
       .from('profiles')
@@ -50,15 +51,24 @@ serve(async (req) => {
         nome: metadata.nome || user.email?.split('@')[0] || '',
         email: user.email!,
         telefone: metadata.telefone,
-        role: metadata.role || 'cliente',
       })
       .select()
       .single()
 
     if (profileError) throw profileError
 
+    // Criar role na tabela user_roles
+    const { error: roleError } = await supabaseClient
+      .from('user_roles')
+      .insert({
+        user_id: user.id,
+        role: userRole,
+      })
+
+    if (roleError) throw roleError
+
     // Se for cliente, criar registro na tabela clientes
-    if (metadata.role === 'cliente') {
+    if (userRole === 'cliente') {
       const { error: clienteError } = await supabaseClient
         .from('clientes')
         .insert({
@@ -74,15 +84,15 @@ serve(async (req) => {
       if (clienteError) throw clienteError
     }
 
-    // Se for técnico, criar registro na tabela tecnicos
-    if (metadata.role === 'tecnico_campo') {
+    // Se for técnico, criar registro na tabela tecnicos DIRETAMENTE
+    if (userRole === 'tecnico_campo') {
       const { error: tecnicoError } = await supabaseClient
         .from('tecnicos')
         .insert({
           profile_id: profile.id,
-          registro_profissional: metadata.registro_profissional,
-          especialidades: metadata.especialidades,
-          regiao_atuacao: metadata.regiao_atuacao,
+          registro_profissional: metadata.registro_profissional || '',
+          especialidades: metadata.especialidades || [],
+          regiao_atuacao: metadata.regiao_atuacao || '',
         })
 
       if (tecnicoError) throw tecnicoError

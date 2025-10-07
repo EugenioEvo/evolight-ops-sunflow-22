@@ -27,6 +27,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const fetchProfile = async (userId: string) => {
     try {
+      // Buscar perfil com dados relacionados E role da tabela user_roles
       const { data, error } = await supabase
         .from('profiles')
         .select(`
@@ -46,6 +47,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         attemptedProfileCreationRef.current = true;
         try {
           await supabase.functions.invoke('create-user-profile');
+          
+          // Aguardar um pouco para garantir que tudo foi criado
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
           // Rebuscar o perfil após criação
           const { data: created } = await supabase
             .from('profiles')
@@ -56,14 +61,35 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             `)
             .eq('user_id', userId)
             .maybeSingle();
-          setProfile(created ?? null);
+            
+          if (created) {
+            // Buscar role separadamente
+            const { data: roleData } = await supabase
+              .from('user_roles')
+              .select('role')
+              .eq('user_id', userId)
+              .maybeSingle();
+              
+            setProfile({ ...created, role: roleData?.role });
+          }
           return;
         } catch (fnErr) {
           console.error('Erro ao criar perfil automaticamente:', fnErr);
         }
       }
 
-      setProfile(data ?? null);
+      if (data) {
+        // Buscar role da tabela user_roles
+        const { data: roleData } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', userId)
+          .maybeSingle();
+          
+        setProfile({ ...data, role: roleData?.role });
+      } else {
+        setProfile(null);
+      }
     } catch (error) {
       console.error('Erro ao buscar/criar perfil:', error);
     }
