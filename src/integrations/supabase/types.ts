@@ -480,10 +480,12 @@ export type Database = {
       rme_relatorios: {
         Row: {
           anexos_tecnicos: string[] | null
+          aprovado_por: string | null
           assinatura_cliente: string | null
           assinatura_tecnico: string | null
           condicoes_encontradas: string
           created_at: string
+          data_aprovacao: string | null
           data_execucao: string
           data_preenchimento: string
           equipamento_id: string | null
@@ -493,10 +495,12 @@ export type Database = {
           materiais_utilizados: Json | null
           medicoes_eletricas: Json | null
           nome_cliente_assinatura: string | null
+          observacoes_aprovacao: string | null
           observacoes_tecnicas: string | null
           ordem_servico_id: string
           pdf_url: string | null
           servicos_executados: string
+          status_aprovacao: string
           tecnico_id: string
           testes_realizados: string | null
           ticket_id: string
@@ -504,10 +508,12 @@ export type Database = {
         }
         Insert: {
           anexos_tecnicos?: string[] | null
+          aprovado_por?: string | null
           assinatura_cliente?: string | null
           assinatura_tecnico?: string | null
           condicoes_encontradas: string
           created_at?: string
+          data_aprovacao?: string | null
           data_execucao: string
           data_preenchimento?: string
           equipamento_id?: string | null
@@ -517,10 +523,12 @@ export type Database = {
           materiais_utilizados?: Json | null
           medicoes_eletricas?: Json | null
           nome_cliente_assinatura?: string | null
+          observacoes_aprovacao?: string | null
           observacoes_tecnicas?: string | null
           ordem_servico_id: string
           pdf_url?: string | null
           servicos_executados: string
+          status_aprovacao?: string
           tecnico_id: string
           testes_realizados?: string | null
           ticket_id: string
@@ -528,10 +536,12 @@ export type Database = {
         }
         Update: {
           anexos_tecnicos?: string[] | null
+          aprovado_por?: string | null
           assinatura_cliente?: string | null
           assinatura_tecnico?: string | null
           condicoes_encontradas?: string
           created_at?: string
+          data_aprovacao?: string | null
           data_execucao?: string
           data_preenchimento?: string
           equipamento_id?: string | null
@@ -541,10 +551,12 @@ export type Database = {
           materiais_utilizados?: Json | null
           medicoes_eletricas?: Json | null
           nome_cliente_assinatura?: string | null
+          observacoes_aprovacao?: string | null
           observacoes_tecnicas?: string | null
           ordem_servico_id?: string
           pdf_url?: string | null
           servicos_executados?: string
+          status_aprovacao?: string
           tecnico_id?: string
           testes_realizados?: string | null
           ticket_id?: string
