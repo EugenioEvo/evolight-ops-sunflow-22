@@ -28,12 +28,21 @@ class MapErrorBoundary extends React.Component<{ children: React.ReactNode }, { 
       return (
         <Card className="h-full">
           <CardContent className="p-6 flex items-center justify-center">
-            <div className="text-center text-sm">Falha ao carregar o mapa.</div>
+            <div className="text-center">
+              <p className="text-sm text-muted-foreground mb-4">Falha ao carregar o mapa.</p>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => window.location.reload()}
+              >
+                Recarregar página
+              </Button>
+            </div>
           </CardContent>
         </Card>
       );
     }
-    return this.props.children as any;
+    return <>{this.props.children}</>;
   }
 }
 
@@ -246,6 +255,24 @@ const RouteMap: React.FC = () => {
     );
   }
 
+  if (tickets.length === 0) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="text-center space-y-4">
+            <MapPin className="h-12 w-12 mx-auto text-muted-foreground" />
+            <div>
+              <h3 className="font-semibold mb-2">Nenhuma ordem de serviço encontrada</h3>
+              <p className="text-sm text-muted-foreground">
+                Altere os filtros ou aguarde novas atribuições
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <div className="space-y-4">
       {/* Filtros */}
@@ -284,7 +311,7 @@ const RouteMap: React.FC = () => {
       </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[600px]">
-        {/* Lista de Rotas */}
+        {/* Lista de Rotas e Tickets - 1/3 */}
         <div className="lg:col-span-1 space-y-4 overflow-y-auto">
           <Card>
             <CardHeader>
@@ -385,69 +412,69 @@ const RouteMap: React.FC = () => {
             ))}
           </CardContent>
         </Card>
-      </div>
+        </div>
 
-      {/* Mapa */}
-      <div className="lg:col-span-2">
-        <Card className="h-full">
-          <CardContent className="p-0 h-full">
-            <div className="w-full h-full rounded-lg overflow-hidden">
-              <MapErrorBoundary>
-                <MapContainer
-                  key="main-map"
-                  center={[-23.5505, -46.6333]}
-                  zoom={12}
-                  className="w-full h-full"
-                  scrollWheelZoom={true}
-                >
-                  <TileLayer
-                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                  />
-                  
-                  {/* Marcadores dos tickets */}
-                  {tickets.map((ticket) => (
-                    <Marker key={`marker-${ticket.id}`} position={ticket.coordenadas}>
-                      <Popup>
-                        <div className="p-2">
-                          <h6 className="font-semibold mb-1">{ticket.cliente}</h6>
-                          <p className="text-sm text-gray-600 mb-1">{ticket.tipo}</p>
-                          <p className="text-xs text-gray-500 mb-2">{ticket.endereco}</p>
-                          
-                          {!ticket.hasRealCoords && (
-                            <Badge variant="outline" className="text-xs mb-2">
-                              📍 Localização aproximada
-                            </Badge>
-                          )}
-                          
-                          <div className="flex space-x-1">
-                            <Badge className={getPrioridadeColor(ticket.prioridade)}>
-                              {ticket.prioridade}
-                            </Badge>
-                            <Badge className={getStatusColor(ticket.status)}>
-                              {ticket.status.replace('_', ' ')}
-                            </Badge>
-                          </div>
-                        </div>
-                      </Popup>
-                    </Marker>
-                  ))}
-                  
-                  {/* Linha da rota selecionada */}
-                  {selectedRoute && getRouteCoordinates(selectedRoute).length > 1 && (
-                    <Polyline
-                      key={`route-${selectedRoute}`}
-                      positions={getRouteCoordinates(selectedRoute)}
-                      color="#3b82f6"
-                      weight={4}
-                      opacity={0.7}
+        {/* Mapa - 2/3 */}
+        <div className="lg:col-span-2">
+          <Card className="h-full">
+            <CardContent className="p-0 h-full">
+              <div className="w-full h-[600px] rounded-lg overflow-hidden">
+                <MapErrorBoundary>
+                  <MapContainer
+                    key={`map-${dateFilter}-${statusFilter}-${ordensServico.length}`}
+                    center={[-23.5505, -46.6333]}
+                    zoom={12}
+                    className="w-full h-full"
+                    scrollWheelZoom={true}
+                  >
+                    <TileLayer
+                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                     />
-                  )}
-                </MapContainer>
-              </MapErrorBoundary>
-            </div>
-          </CardContent>
-        </Card>
+                    
+                    {/* Marcadores dos tickets */}
+                    {tickets.map((ticket) => (
+                      <Marker key={`marker-${ticket.id}`} position={ticket.coordenadas}>
+                        <Popup>
+                          <div className="p-2">
+                            <h6 className="font-semibold mb-1">{ticket.cliente}</h6>
+                            <p className="text-sm text-gray-600 mb-1">{ticket.tipo}</p>
+                            <p className="text-xs text-gray-500 mb-2">{ticket.endereco}</p>
+                            
+                            {!ticket.hasRealCoords && (
+                              <Badge variant="outline" className="text-xs mb-2">
+                                📍 Localização aproximada
+                              </Badge>
+                            )}
+                            
+                            <div className="flex space-x-1">
+                              <Badge className={getPrioridadeColor(ticket.prioridade)}>
+                                {ticket.prioridade}
+                              </Badge>
+                              <Badge className={getStatusColor(ticket.status)}>
+                                {ticket.status.replace('_', ' ')}
+                              </Badge>
+                            </div>
+                          </div>
+                        </Popup>
+                      </Marker>
+                    ))}
+                    
+                    {/* Linha da rota selecionada */}
+                    {selectedRoute && getRouteCoordinates(selectedRoute).length > 1 && (
+                      <Polyline
+                        key={`route-${selectedRoute}`}
+                        positions={getRouteCoordinates(selectedRoute)}
+                        color="#3b82f6"
+                        weight={4}
+                        opacity={0.7}
+                      />
+                    )}
+                  </MapContainer>
+                </MapErrorBoundary>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>
