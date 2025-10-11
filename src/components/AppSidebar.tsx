@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   Building2, 
   Users, 
@@ -12,8 +12,11 @@ import {
   LogOut,
   User,
   ClipboardList,
-  Calendar
+  Calendar,
+  CheckSquare
 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { Badge } from "@/components/ui/badge";
 import { NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -36,6 +39,7 @@ const mainItems = [
   { title: "RME", url: "/rme", icon: BarChart3 },
   { title: "Rotas", url: "/routes", icon: Route },
   { title: "Agenda", url: "/agenda", icon: Calendar, adminOnly: true },
+  { title: "Aprovar RMEs", url: "/gerenciar-rme", icon: CheckSquare, adminOnly: true },
 ];
 
 const cadastroItems = [
@@ -56,9 +60,37 @@ export function AppSidebar() {
   const location = useLocation();
   const currentPath = location.pathname;
   const collapsed = !open;
+  const [pendingRMEsCount, setPendingRMEsCount] = useState(0);
 
   const isTecnico = profile?.role === "tecnico_campo";
   const isAdminOrAreaTecnica = profile?.role === "admin" || profile?.role === "area_tecnica";
+
+  useEffect(() => {
+    if (isAdminOrAreaTecnica) {
+      loadPendingRMEsCount();
+      
+      const channel = supabase
+        .channel('rme-changes')
+        .on('postgres_changes', { 
+          event: '*', 
+          schema: 'public', 
+          table: 'rme_relatorios',
+          filter: 'status_aprovacao=eq.pendente'
+        }, loadPendingRMEsCount)
+        .subscribe();
+      
+      return () => { supabase.removeChannel(channel); };
+    }
+  }, [isAdminOrAreaTecnica]);
+
+  const loadPendingRMEsCount = async () => {
+    const { count } = await supabase
+      .from('rme_relatorios')
+      .select('*', { count: 'exact', head: true })
+      .eq('status_aprovacao', 'pendente');
+    
+    setPendingRMEsCount(count || 0);
+  };
 
   const isActive = (path: string) => currentPath === path;
   const getNavClass = (path: string) =>
@@ -95,6 +127,11 @@ export function AppSidebar() {
                       <NavLink to={item.url} className={getNavClass(item.url)}>
                         <item.icon className="h-4 w-4" />
                         {!collapsed && <span>{item.title}</span>}
+                        {item.title === "Aprovar RMEs" && pendingRMEsCount > 0 && !collapsed && (
+                          <Badge variant="destructive" className="ml-auto">
+                            {pendingRMEsCount}
+                          </Badge>
+                        )}
                       </NavLink>
                     </SidebarMenuButton>
                   </SidebarMenuItem>

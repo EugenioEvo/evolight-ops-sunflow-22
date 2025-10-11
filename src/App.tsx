@@ -22,6 +22,7 @@ import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 import RME from "./pages/RME";
 import Relatorios from "./pages/Relatorios";
+import GerenciarRME from "./pages/GerenciarRME";
 
 const queryClient = new QueryClient();
 
@@ -78,6 +79,11 @@ const App = () => (
                             </ProtectedRoute>
                           } />
                           <Route path="/rme" element={<RME />} />
+                          <Route path="/gerenciar-rme" element={
+                            <ProtectedRoute roles={['admin', 'area_tecnica']}>
+                              <GerenciarRME />
+                            </ProtectedRoute>
+                          } />
                           <Route path="/relatorios" element={
                             <ProtectedRoute roles={['admin', 'area_tecnica']}>
                               <Relatorios />

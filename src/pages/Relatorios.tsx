@@ -77,6 +77,8 @@ const Relatorios = () => {
         .from('rme_relatorios')
         .select(`
           *,
+          status_aprovacao,
+          data_aprovacao,
           tickets!inner(titulo, numero_ticket),
           tecnicos!inner(profiles!inner(nome))
         `)
@@ -324,6 +326,7 @@ const Relatorios = () => {
         <TabsList>
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           <TabsTrigger value="tecnicos">Produtividade</TabsTrigger>
+          <TabsTrigger value="rmes">RMEs e Aprovações</TabsTrigger>
           <TabsTrigger value="detalhes">Detalhes</TabsTrigger>
         </TabsList>
 
@@ -439,6 +442,36 @@ const Relatorios = () => {
               </Card>
             ))}
           </div>
+        </TabsContent>
+
+        <TabsContent value="rmes" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Status de Aprovação dos RMEs</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-3 gap-4 mb-6">
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-yellow-600">
+                    {rmes.filter(r => r.status_aprovacao === 'pendente').length}
+                  </div>
+                  <p className="text-sm text-muted-foreground">Pendentes</p>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-green-600">
+                    {rmes.filter(r => r.status_aprovacao === 'aprovado').length}
+                  </div>
+                  <p className="text-sm text-muted-foreground">Aprovados</p>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-red-600">
+                    {rmes.filter(r => r.status_aprovacao === 'rejeitado').length}
+                  </div>
+                  <p className="text-sm text-muted-foreground">Rejeitados</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="detalhes" className="space-y-6">

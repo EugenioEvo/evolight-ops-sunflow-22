@@ -43,6 +43,9 @@ const TechnicianDashboard = () => {
         .from("ordens_servico")
         .select(`
           *,
+          data_programada,
+          hora_inicio,
+          hora_fim,
           tickets!inner(
             status,
             titulo,
@@ -54,7 +57,7 @@ const TechnicianDashboard = () => {
           )
         `)
         .eq("tecnico_id", tecnicoData.id)
-        .order("created_at", { ascending: false });
+        .order("data_programada", { ascending: true });
 
       if (osData) {
         const hoje = new Date().toISOString().split('T')[0];

@@ -9,6 +9,7 @@ import { format, startOfMonth, endOfMonth, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { CalendarIcon, Clock, User, MapPin } from 'lucide-react';
 import { ScheduleModal } from '@/components/ScheduleModal';
+import { useTicketsRealtime } from '@/hooks/useTicketsRealtime';
 
 interface OrdemServico {
   id: string;

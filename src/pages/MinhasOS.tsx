@@ -66,6 +66,9 @@ const MinhasOS = () => {
         .from("ordens_servico")
         .select(`
           *,
+          data_programada,
+          hora_inicio,
+          hora_fim,
           tickets (
             id,
             numero_ticket,

@@ -118,6 +118,10 @@ const RME = () => {
         .from('rme_relatorios')
         .select(`
           *,
+          status_aprovacao,
+          aprovado_por,
+          data_aprovacao,
+          observacoes_aprovacao,
           tickets!inner(
             titulo,
             numero_ticket,
@@ -127,7 +131,8 @@ const RME = () => {
           ),
           tecnicos!inner(
             profiles!inner(nome)
-          )
+          ),
+          profiles:aprovado_por(nome)
         `)
         .order('created_at', { ascending: false });
 
@@ -444,13 +449,17 @@ const RME = () => {
     return (requiredFilled / 6) * 60 + (optionalFilled / 4) * 40;
   };
 
-  if (profile?.role !== 'tecnico_campo') {
+  const canAccessRME = profile?.role === 'tecnico_campo' || 
+                       profile?.role === 'admin' || 
+                       profile?.role === 'area_tecnica';
+  
+  if (!canAccessRME) {
     return (
       <div className="p-6">
         <Card>
           <CardContent className="pt-6">
             <p className="text-muted-foreground">
-              Esta página é exclusiva para técnicos de campo.
+              Acesso negado. Esta página é para técnicos de campo, administradores e área técnica.
             </p>
           </CardContent>
         </Card>
