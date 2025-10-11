@@ -750,7 +750,7 @@ const RME = () => {
                     <FormItem>
                       <FormLabel>Serviços Executados *</FormLabel>
                       <FormControl>
-                        <Textarea {...field} placeholder="Descreva detalhadamente os serviços executados..." rows={4} />
+                        <Textarea {...field} placeholder="Descreva os serviços realizados..." rows={4} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -787,11 +787,11 @@ const RME = () => {
               </CardContent>
             </Card>
 
-            {/* Upload de Fotos */}
+            {/* Fotos */}
             <Card>
               <CardHeader>
-                <CardTitle>Fotos do Serviço</CardTitle>
-                <CardDescription>Adicione fotos antes e depois do serviço</CardDescription>
+                <CardTitle>Fotos</CardTitle>
+                <CardDescription>Adicione fotos do antes e depois do serviço</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -923,10 +923,7 @@ const RME = () => {
               </CardContent>
             </Card>
 
-            <div className="flex justify-end space-x-3 sticky bottom-6 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 p-4 rounded-lg border">
-              <Button type="button" variant="outline" onClick={() => setSelectedOS(null)}>
-                Cancelar
-              </Button>
+            <div className="flex justify-end">
               <Button type="submit" disabled={loading || progress < 100}>
                 {loading ? 'Salvando...' : 'Concluir e Enviar RME'}
               </Button>
@@ -949,7 +946,6 @@ const RME = () => {
           open={showQuickAdd}
           onClose={() => setShowQuickAdd(false)}
           onSuccess={(equipmentId) => {
-            // Buscar o equipamento recém-criado
             supabase
               .from('equipamentos')
               .select('*')
