@@ -12,9 +12,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Badge } from '@/components/ui/badge';
-import { Upload, X, FileText, Download, Search, ArrowLeft } from 'lucide-react';
+import { Upload, X, FileText, Download, Search, ArrowLeft, QrCode, Plus, Trash2 } from 'lucide-react';
 import SignatureCanvas from 'react-signature-canvas';
 import { Progress } from '@/components/ui/progress';
+import { QRCodeScanner } from '@/components/QRCodeScanner';
+import { EquipmentQuickAdd } from '@/components/EquipmentQuickAdd';
 
 const rmeSchema = z.object({
   condicoes_encontradas: z.string().min(1, 'Campo obrigatório'),
@@ -23,6 +25,11 @@ const rmeSchema = z.object({
   observacoes_tecnicas: z.string().optional(),
   data_execucao: z.string().min(1, 'Data de execução obrigatória'),
   nome_cliente_assinatura: z.string().min(1, 'Nome do cliente obrigatório'),
+  tensao_entrada: z.string().optional(),
+  tensao_saida: z.string().optional(),
+  corrente: z.string().optional(),
+  potencia: z.string().optional(),
+  frequencia: z.string().optional(),
 });
 
 type RMEForm = z.infer<typeof rmeSchema>;
@@ -40,6 +47,10 @@ const RME = () => {
   const [fotosAfter, setFotosAfter] = useState<File[]>([]);
   const [tecnicoSignature, setTecnicoSignature] = useState<string>('');
   const [clienteSignature, setClienteSignature] = useState<string>('');
+  const [showScanner, setShowScanner] = useState(false);
+  const [scannedEquipment, setScannedEquipment] = useState<any>(null);
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [materiais, setMateriais] = useState<Array<{ insumo_id: string; nome: string; quantidade: number }>>([]);
 
   const { user, profile } = useAuth();
   const { toast } = useToast();
@@ -56,6 +67,11 @@ const RME = () => {
       observacoes_tecnicas: '',
       data_execucao: new Date().toISOString().split('T')[0],
       nome_cliente_assinatura: '',
+      tensao_entrada: '',
+      tensao_saida: '',
+      corrente: '',
+      potencia: '',
+      frequencia: '',
     },
   });
 
@@ -172,16 +188,39 @@ const RME = () => {
         .eq('profile_id', profile?.id)
         .single();
 
+      // Preparar medições elétricas
+      const medicoesEletricas = {
+        tensao_entrada: data.tensao_entrada,
+        tensao_saida: data.tensao_saida,
+        corrente: data.corrente,
+        potencia: data.potencia,
+        frequencia: data.frequencia,
+      };
+
+      // Preparar materiais utilizados
+      const materiaisUtilizados = materiais.map(m => ({
+        insumo_id: m.insumo_id,
+        nome: m.nome,
+        quantidade: m.quantidade,
+      }));
+
       const rmeData = {
-        ...data,
+        condicoes_encontradas: data.condicoes_encontradas,
+        servicos_executados: data.servicos_executados,
+        testes_realizados: data.testes_realizados,
+        observacoes_tecnicas: data.observacoes_tecnicas,
+        nome_cliente_assinatura: data.nome_cliente_assinatura,
         ticket_id: selectedOS.ticket_id,
         ordem_servico_id: selectedOS.id,
         tecnico_id: tecnicoData?.id,
+        equipamento_id: scannedEquipment?.id || null,
         fotos_antes: fotosAntesUrls,
         fotos_depois: fotosDepoisUrls,
         assinatura_tecnico: tecnicoSignature,
         assinatura_cliente: clienteSignature,
         data_execucao: new Date(data.data_execucao).toISOString(),
+        medicoes_eletricas: medicoesEletricas,
+        materiais_utilizados: materiaisUtilizados,
       };
 
       const { error } = await supabase
@@ -210,6 +249,8 @@ const RME = () => {
       setFotosAfter([]);
       setTecnicoSignature('');
       setClienteSignature('');
+      setScannedEquipment(null);
+      setMateriais([]);
       form.reset();
       
       // Voltar para Minhas OS
@@ -310,6 +351,70 @@ const RME = () => {
     }
   };
 
+  const handleQRCodeScan = async (decodedText: string) => {
+    try {
+      setShowScanner(false);
+      
+      // Tentar parsear como JSON
+      let qrData;
+      try {
+        qrData = JSON.parse(decodedText);
+      } catch {
+        // Se não for JSON, assumir que é um número de série
+        qrData = { numero_serie: decodedText };
+      }
+
+      // Buscar equipamento no banco
+      let query = supabase.from('equipamentos').select('*');
+      
+      if (qrData.id) {
+        query = query.eq('id', qrData.id);
+      } else if (qrData.numero_serie) {
+        query = query.eq('numero_serie', qrData.numero_serie);
+      }
+
+      const { data: equipment, error } = await query.maybeSingle();
+
+      if (error) throw error;
+
+      if (equipment) {
+        setScannedEquipment(equipment);
+        toast({
+          title: 'Equipamento encontrado!',
+          description: `${equipment.nome} - ${equipment.modelo || 'N/A'}`,
+        });
+      } else {
+        // Equipamento não encontrado, oferecer cadastro rápido
+        toast({
+          title: 'Equipamento não encontrado',
+          description: 'Deseja cadastrar este equipamento?',
+        });
+        setShowQuickAdd(true);
+      }
+    } catch (error: any) {
+      console.error('Erro ao processar QR Code:', error);
+      toast({
+        title: 'Erro',
+        description: 'Erro ao processar QR Code',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const addMaterial = () => {
+    setMateriais([...materiais, { insumo_id: '', nome: '', quantidade: 1 }]);
+  };
+
+  const removeMaterial = (index: number) => {
+    setMateriais(materiais.filter((_, i) => i !== index));
+  };
+
+  const updateMaterial = (index: number, field: string, value: any) => {
+    const updated = [...materiais];
+    updated[index] = { ...updated[index], [field]: value };
+    setMateriais(updated);
+  };
+
   const filteredRMEs = rmes.filter(rme => 
     rme.tickets?.titulo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     rme.tickets?.numero_ticket?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -319,16 +424,24 @@ const RME = () => {
   // Calcular progresso do formulário
   const calculateProgress = () => {
     const values = form.watch();
-    const filled = [
+    const requiredFilled = [
       values.condicoes_encontradas,
       values.servicos_executados,
       values.data_execucao,
       values.nome_cliente_assinatura,
       tecnicoSignature,
       clienteSignature,
-      fotosBefore.length > 0 || fotosAfter.length > 0
     ].filter(Boolean).length;
-    return (filled / 7) * 100;
+    
+    const optionalFilled = [
+      fotosBefore.length > 0 || fotosAfter.length > 0,
+      scannedEquipment !== null,
+      values.tensao_entrada || values.tensao_saida || values.corrente,
+      materiais.length > 0,
+    ].filter(Boolean).length;
+
+    // 6 campos obrigatórios = 60%, 4 opcionais = 40%
+    return (requiredFilled / 6) * 60 + (optionalFilled / 4) * 40;
   };
 
   if (profile?.role !== 'tecnico_campo') {
@@ -419,6 +532,195 @@ const RME = () => {
                     )}
                   />
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Seção de Equipamento com QR Code */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <span>Equipamento</span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowScanner(true)}
+                  >
+                    <QrCode className="h-4 w-4 mr-2" />
+                    Escanear QR Code
+                  </Button>
+                </CardTitle>
+                <CardDescription>
+                  Escaneie o QR Code do equipamento ou cadastre manualmente
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {scannedEquipment ? (
+                  <div className="p-4 bg-muted rounded-lg space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium">{scannedEquipment.nome}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {scannedEquipment.tipo} - {scannedEquipment.modelo || 'N/A'}
+                        </p>
+                        {scannedEquipment.numero_serie && (
+                          <p className="text-xs text-muted-foreground">
+                            S/N: {scannedEquipment.numero_serie}
+                          </p>
+                        )}
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setScannedEquipment(null)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    Nenhum equipamento selecionado
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Medições Elétricas */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Medições Elétricas</CardTitle>
+                <CardDescription>Registre as medições realizadas durante o serviço</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="tensao_entrada"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Tensão Entrada (V)</FormLabel>
+                        <FormControl>
+                          <Input {...field} type="number" step="0.01" placeholder="Ex: 220" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="tensao_saida"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Tensão Saída (V)</FormLabel>
+                        <FormControl>
+                          <Input {...field} type="number" step="0.01" placeholder="Ex: 220" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="corrente"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Corrente (A)</FormLabel>
+                        <FormControl>
+                          <Input {...field} type="number" step="0.01" placeholder="Ex: 10.5" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="potencia"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Potência (W)</FormLabel>
+                        <FormControl>
+                          <Input {...field} type="number" step="0.01" placeholder="Ex: 2000" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="frequencia"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Frequência (Hz)</FormLabel>
+                        <FormControl>
+                          <Input {...field} type="number" step="0.01" placeholder="Ex: 60" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Materiais Utilizados */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <span>Materiais Utilizados</span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={addMaterial}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Adicionar Material
+                  </Button>
+                </CardTitle>
+                <CardDescription>
+                  Liste os insumos e materiais utilizados no serviço
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {materiais.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    Nenhum material adicionado
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {materiais.map((material, index) => (
+                      <div key={index} className="flex gap-2 items-end">
+                        <div className="flex-1">
+                          <label className="text-sm font-medium">Material/Insumo</label>
+                          <Input
+                            placeholder="Nome do material"
+                            value={material.nome}
+                            onChange={(e) => updateMaterial(index, 'nome', e.target.value)}
+                          />
+                        </div>
+                        <div className="w-32">
+                          <label className="text-sm font-medium">Quantidade</label>
+                          <Input
+                            type="number"
+                            min="1"
+                            value={material.quantidade}
+                            onChange={(e) => updateMaterial(index, 'quantidade', parseInt(e.target.value) || 1)}
+                          />
+                        </div>
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="icon"
+                          onClick={() => removeMaterial(index)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -631,6 +933,35 @@ const RME = () => {
             </div>
           </form>
         </Form>
+
+        {/* Modal do Scanner QR Code */}
+        {showScanner && (
+          <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <QRCodeScanner
+              onScanSuccess={handleQRCodeScan}
+              onClose={() => setShowScanner(false)}
+            />
+          </div>
+        )}
+
+        {/* Modal de Cadastro Rápido */}
+        <EquipmentQuickAdd
+          open={showQuickAdd}
+          onClose={() => setShowQuickAdd(false)}
+          onSuccess={(equipmentId) => {
+            // Buscar o equipamento recém-criado
+            supabase
+              .from('equipamentos')
+              .select('*')
+              .eq('id', equipmentId)
+              .single()
+              .then(({ data }) => {
+                if (data) setScannedEquipment(data);
+              });
+            setShowQuickAdd(false);
+          }}
+          clienteId={selectedOS?.tickets?.cliente_id || ''}
+        />
       </div>
     );
   }

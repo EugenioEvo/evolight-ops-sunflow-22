@@ -121,6 +121,7 @@ export type Database = {
           nome: string
           numero_serie: string | null
           observacoes: string | null
+          qr_code_data: Json | null
           status: string
           tensao: string | null
           tipo: Database["public"]["Enums"]["equipamento_tipo"]
@@ -140,6 +141,7 @@ export type Database = {
           nome: string
           numero_serie?: string | null
           observacoes?: string | null
+          qr_code_data?: Json | null
           status?: string
           tensao?: string | null
           tipo: Database["public"]["Enums"]["equipamento_tipo"]
@@ -159,6 +161,7 @@ export type Database = {
           nome?: string
           numero_serie?: string | null
           observacoes?: string | null
+          qr_code_data?: Json | null
           status?: string
           tensao?: string | null
           tipo?: Database["public"]["Enums"]["equipamento_tipo"]
@@ -465,6 +468,7 @@ export type Database = {
           created_at: string
           data_execucao: string
           data_preenchimento: string
+          equipamento_id: string | null
           fotos_antes: string[] | null
           fotos_depois: string[] | null
           id: string
@@ -488,6 +492,7 @@ export type Database = {
           created_at?: string
           data_execucao: string
           data_preenchimento?: string
+          equipamento_id?: string | null
           fotos_antes?: string[] | null
           fotos_depois?: string[] | null
           id?: string
@@ -511,6 +516,7 @@ export type Database = {
           created_at?: string
           data_execucao?: string
           data_preenchimento?: string
+          equipamento_id?: string | null
           fotos_antes?: string[] | null
           fotos_depois?: string[] | null
           id?: string
@@ -527,6 +533,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "rme_relatorios_equipamento_id_fkey"
+            columns: ["equipamento_id"]
+            isOneToOne: false
+            referencedRelation: "equipamentos"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "rme_relatorios_ordem_servico_id_fkey"
             columns: ["ordem_servico_id"]
