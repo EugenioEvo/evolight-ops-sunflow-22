@@ -68,7 +68,10 @@ export type Database = {
           empresa: string | null
           endereco: string | null
           estado: string | null
+          geocoded_at: string | null
           id: string
+          latitude: number | null
+          longitude: number | null
           profile_id: string | null
           updated_at: string
         }
@@ -80,7 +83,10 @@ export type Database = {
           empresa?: string | null
           endereco?: string | null
           estado?: string | null
+          geocoded_at?: string | null
           id?: string
+          latitude?: number | null
+          longitude?: number | null
           profile_id?: string | null
           updated_at?: string
         }
@@ -92,7 +98,10 @@ export type Database = {
           empresa?: string | null
           endereco?: string | null
           estado?: string | null
+          geocoded_at?: string | null
           id?: string
+          latitude?: number | null
+          longitude?: number | null
           profile_id?: string | null
           updated_at?: string
         }
@@ -281,6 +290,9 @@ export type Database = {
           created_at: string
           data_emissao: string
           data_programada: string | null
+          duracao_estimada_min: number | null
+          hora_fim: string | null
+          hora_inicio: string | null
           id: string
           numero_os: string
           pdf_url: string | null
@@ -293,6 +305,9 @@ export type Database = {
           created_at?: string
           data_emissao?: string
           data_programada?: string | null
+          duracao_estimada_min?: number | null
+          hora_fim?: string | null
+          hora_inicio?: string | null
           id?: string
           numero_os: string
           pdf_url?: string | null
@@ -305,6 +320,9 @@ export type Database = {
           created_at?: string
           data_emissao?: string
           data_programada?: string | null
+          duracao_estimada_min?: number | null
+          hora_fim?: string | null
+          hora_inicio?: string | null
           id?: string
           numero_os?: string
           pdf_url?: string | null
@@ -652,7 +670,10 @@ export type Database = {
           descricao: string
           endereco_servico: string
           equipamento_tipo: Database["public"]["Enums"]["equipamento_tipo"]
+          geocoded_at: string | null
           id: string
+          latitude: number | null
+          longitude: number | null
           numero_ticket: string
           observacoes: string | null
           prioridade: Database["public"]["Enums"]["prioridade_tipo"]
@@ -674,7 +695,10 @@ export type Database = {
           descricao: string
           endereco_servico: string
           equipamento_tipo: Database["public"]["Enums"]["equipamento_tipo"]
+          geocoded_at?: string | null
           id?: string
+          latitude?: number | null
+          longitude?: number | null
           numero_ticket: string
           observacoes?: string | null
           prioridade?: Database["public"]["Enums"]["prioridade_tipo"]
@@ -696,7 +720,10 @@ export type Database = {
           descricao?: string
           endereco_servico?: string
           equipamento_tipo?: Database["public"]["Enums"]["equipamento_tipo"]
+          geocoded_at?: string | null
           id?: string
+          latitude?: number | null
+          longitude?: number | null
           numero_ticket?: string
           observacoes?: string | null
           prioridade?: Database["public"]["Enums"]["prioridade_tipo"]
@@ -749,6 +776,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_schedule_conflict: {
+        Args: {
+          p_data: string
+          p_hora_fim: string
+          p_hora_inicio: string
+          p_os_id?: string
+          p_tecnico_id: string
+        }
+        Returns: boolean
+      }
       gerar_numero_os: {
         Args: Record<PropertyKey, never>
         Returns: string
@@ -756,6 +793,16 @@ export type Database = {
       gerar_numero_ticket: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      get_technician_workload: {
+        Args: { p_end_date: string; p_start_date: string; p_tecnico_id: string }
+        Returns: {
+          data: string
+          os_concluidas: number
+          os_pendentes: number
+          total_minutos: number
+          total_os: number
+        }[]
       }
       get_user_role: {
         Args: { _user_id: string }

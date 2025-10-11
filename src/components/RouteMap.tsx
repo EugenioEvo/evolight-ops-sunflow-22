@@ -4,9 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MapPin, Clock, Users, Route as RouteIcon } from "lucide-react";
+import { MapPin, Clock, Users, Route as RouteIcon, RefreshCw } from "lucide-react";
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useGeocoding } from '@/hooks/useGeocoding';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -59,6 +60,7 @@ const RouteMap: React.FC = () => {
   const [dateFilter, setDateFilter] = useState('today');
   const [statusFilter, setStatusFilter] = useState('all');
   const { profile } = useAuth();
+  const { geocodeAddress, loading: geocoding } = useGeocoding();
 
   useEffect(() => {
     setMounted(true);
@@ -77,6 +79,9 @@ const RouteMap: React.FC = () => {
             numero_ticket,
             titulo,
             endereco_servico,
+            latitude,
+            longitude,
+            geocoded_at,
             prioridade,
             status,
             tempo_estimado,
@@ -126,8 +131,27 @@ const RouteMap: React.FC = () => {
       const { data, error } = await query.order('created_at', { ascending: false });
 
       if (error) throw error;
-      
-      setOrdensServico(data || []);
+
+      // Geocodificar tickets sem coordenadas
+      const ticketsToGeocode = data?.filter(os => 
+        !os.tickets.latitude || !os.tickets.longitude
+      ) || [];
+
+      if (ticketsToGeocode.length > 0) {
+        console.log(`Geocodificando ${ticketsToGeocode.length} tickets...`);
+        
+        for (const os of ticketsToGeocode) {
+          await geocodeAddress(os.tickets.endereco_servico, os.tickets.id);
+          // Delay de 1s para respeitar rate limit do Nominatim
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+
+        // Recarregar dados após geocodificação
+        const { data: updatedData } = await query.order('created_at', { ascending: false });
+        setOrdensServico(updatedData || []);
+      } else {
+        setOrdensServico(data || []);
+      }
     } catch (error) {
       console.error('Erro ao carregar ordens de serviço:', error);
     } finally {
@@ -136,19 +160,27 @@ const RouteMap: React.FC = () => {
   };
 
   // Convert OS to tickets format for map display
-  const tickets = ordensServico.map((os, index) => ({
-    id: os.id,
-    numero: os.tickets.numero_ticket,
-    cliente: os.tickets.clientes.empresa,
-    endereco: os.tickets.endereco_servico,
-    prioridade: os.tickets.prioridade,
-    status: os.tickets.status,
-    tipo: os.tickets.titulo,
-    tecnico: os.tecnicos?.profiles?.nome || 'Não atribuído',
-    estimativa: os.tickets.tempo_estimado ? `${os.tickets.tempo_estimado}h` : 'N/A',
-    // Mock coordinates - in production you'd geocode the addresses
-    coordenadas: [-23.5505 + (index * 0.02), -46.6333 + (index * 0.02)] as [number, number],
-  }));
+  const tickets = ordensServico.map((os, index) => {
+    const hasCoords = os.tickets.latitude && os.tickets.longitude;
+    
+    return {
+      id: os.id,
+      ticketId: os.tickets.id,
+      numero: os.tickets.numero_ticket,
+      cliente: os.tickets.clientes.empresa,
+      endereco: os.tickets.endereco_servico,
+      prioridade: os.tickets.prioridade,
+      status: os.tickets.status,
+      tipo: os.tickets.titulo,
+      tecnico: os.tecnicos?.profiles?.nome || 'Não atribuído',
+      estimativa: os.tickets.tempo_estimado ? `${os.tickets.tempo_estimado}h` : 'N/A',
+      // Usar coordenadas reais ou fallback para São Paulo
+      coordenadas: hasCoords 
+        ? [os.tickets.latitude, os.tickets.longitude] as [number, number]
+        : [-23.5505, -46.6333] as [number, number], // Fallback: Centro de SP
+      hasRealCoords: hasCoords
+    };
+  });
 
   // Group by technician
   const rotasPorTecnico = ordensServico.reduce((acc: any[], os) => {
@@ -313,12 +345,23 @@ const RouteMap: React.FC = () => {
                   variant="outline" 
                   size="sm" 
                   className="w-full mt-3"
-                  onClick={(e) => {
+                  disabled={geocoding}
+                  onClick={async (e) => {
                     e.stopPropagation();
-                    // Função para iniciar navegação
+                    const ticketsInRoute = rota.tickets.map((idx: number) => tickets[idx]);
+                    
+                    for (const ticket of ticketsInRoute) {
+                      if (!ticket.hasRealCoords) {
+                        await geocodeAddress(ticket.endereco, ticket.ticketId);
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                      }
+                    }
+                    
+                    loadOrdensServico();
                   }}
                 >
-                  Iniciar Rota
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  {geocoding ? 'Atualizando...' : 'Atualizar Localizações'}
                 </Button>
               </div>
             ))}
@@ -383,6 +426,13 @@ const RouteMap: React.FC = () => {
                           <h6 className="font-semibold mb-1">{ticket.cliente}</h6>
                           <p className="text-sm text-gray-600 mb-1">{ticket.tipo}</p>
                           <p className="text-xs text-gray-500 mb-2">{ticket.endereco}</p>
+                          
+                          {!ticket.hasRealCoords && (
+                            <Badge variant="outline" className="text-xs mb-2">
+                              📍 Localização aproximada
+                            </Badge>
+                          )}
+                          
                           <div className="flex space-x-1">
                             <Badge className={getPrioridadeColor(ticket.prioridade)}>
                               {ticket.prioridade}

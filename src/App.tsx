@@ -10,6 +10,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import RoutesPage from "./pages/Routes";
+import Agenda from "./pages/Agenda";
 import Clientes from "./pages/Clientes";
 import Tickets from "./pages/Tickets";
 import Equipamentos from "./pages/Equipamentos";
@@ -45,6 +46,11 @@ const App = () => (
                           <Route path="/" element={<Index />} />
                           <Route path="/tickets" element={<Tickets />} />
                           <Route path="/routes" element={<RoutesPage />} />
+                          <Route path="/agenda" element={
+                            <ProtectedRoute roles={['admin', 'area_tecnica']}>
+                              <Agenda />
+                            </ProtectedRoute>
+                          } />
                           <Route path="/clientes" element={
                             <ProtectedRoute roles={['admin', 'area_tecnica']}>
                               <Clientes />

@@ -11,7 +11,8 @@ import {
   FileText,
   LogOut,
   User,
-  ClipboardList
+  ClipboardList,
+  Calendar
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -34,6 +35,7 @@ const mainItems = [
   { title: "Tickets", url: "/tickets", icon: Package },
   { title: "RME", url: "/rme", icon: BarChart3 },
   { title: "Rotas", url: "/routes", icon: Route },
+  { title: "Agenda", url: "/agenda", icon: Calendar, adminOnly: true },
 ];
 
 const cadastroItems = [
@@ -85,16 +87,18 @@ export function AppSidebar() {
           <SidebarGroupLabel>Principal</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {mainItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink to={item.url} className={getNavClass(item.url)}>
-                      <item.icon className="h-4 w-4" />
-                      {!collapsed && <span>{item.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {mainItems
+                .filter(item => !item.adminOnly || isAdminOrAreaTecnica)
+                .map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild>
+                      <NavLink to={item.url} className={getNavClass(item.url)}>
+                        <item.icon className="h-4 w-4" />
+                        {!collapsed && <span>{item.title}</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
               {isTecnico && (
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild>
