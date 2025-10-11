@@ -69,11 +69,11 @@ const GerenciarRME = () => {
     }
   };
 
+  useTicketsRealtime({ onTicketChange: loadRMEs });
+
   useEffect(() => {
     loadRMEs();
   }, [statusFilter]);
-
-  useTicketsRealtime({ onTicketChange: loadRMEs });
 
   const handleViewDetails = (rme: any) => {
     setSelectedRME(rme);

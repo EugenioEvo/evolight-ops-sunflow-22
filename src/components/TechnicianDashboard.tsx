@@ -140,6 +140,84 @@ const TechnicianDashboard = () => {
         </Card>
       </div>
 
+      {/* Horário de Hoje */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Clock className="h-5 w-5" />
+            Meu Horário de Hoje
+          </CardTitle>
+          <CardDescription>Suas OS agendadas para hoje em ordem de execução</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {recentOS
+            .filter(os => {
+              if (!os.data_programada) return false;
+              const today = new Date().toISOString().split('T')[0];
+              return os.data_programada.startsWith(today);
+            })
+            .sort((a, b) => {
+              if (!a.hora_inicio || !b.hora_inicio) return 0;
+              return a.hora_inicio.localeCompare(b.hora_inicio);
+            })
+            .length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              Nenhuma OS agendada para hoje
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {recentOS
+                .filter(os => {
+                  if (!os.data_programada) return false;
+                  const today = new Date().toISOString().split('T')[0];
+                  return os.data_programada.startsWith(today);
+                })
+                .sort((a, b) => {
+                  if (!a.hora_inicio || !b.hora_inicio) return 0;
+                  return a.hora_inicio.localeCompare(b.hora_inicio);
+                })
+                .map((os) => (
+                  <div key={os.id} className="flex items-center justify-between p-3 border rounded-lg bg-card">
+                    <div className="flex items-center gap-3 flex-1">
+                      <div className="flex items-center justify-center w-16 h-16 rounded-lg bg-primary/10">
+                        <div className="text-center">
+                          <div className="text-lg font-bold text-primary">
+                            {os.hora_inicio ? os.hora_inicio.substring(0, 5) : '--:--'}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {os.hora_fim ? os.hora_fim.substring(0, 5) : '--:--'}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="font-medium text-sm truncate">{os.numero_os}</p>
+                          <Badge variant={os.tickets.status === 'em_execucao' ? 'default' : 'outline'} className="flex-shrink-0">
+                            {os.tickets.status === 'em_execucao' ? 'Em Execução' : 'Pendente'}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground truncate">{os.tickets.titulo}</p>
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                          <MapPin className="h-3 w-3 flex-shrink-0" />
+                          <span className="truncate">{os.tickets.endereco_servico}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          )}
+          <Button 
+            onClick={() => navigate("/routes")} 
+            variant="outline" 
+            className="w-full mt-4"
+          >
+            <MapPin className="mr-2 h-4 w-4" />
+            Ver Rota Completa no Mapa
+          </Button>
+        </CardContent>
+      </Card>
+
       {/* Ações Rápidas */}
       <Card>
         <CardHeader>
@@ -151,9 +229,9 @@ const TechnicianDashboard = () => {
             <ClipboardList className="mr-2 h-4 w-4" />
             Ver Minhas OS
           </Button>
-          <Button onClick={() => navigate("/routes")} variant="outline" className="flex-1 min-w-[200px]">
-            <MapPin className="mr-2 h-4 w-4" />
-            Ver Rotas do Dia
+          <Button onClick={() => navigate("/agenda")} variant="outline" className="flex-1 min-w-[200px]">
+            <Clock className="mr-2 h-4 w-4" />
+            Ver Agenda
           </Button>
           <Button onClick={() => navigate("/rme")} variant="outline" className="flex-1 min-w-[200px]">
             <FileText className="mr-2 h-4 w-4" />

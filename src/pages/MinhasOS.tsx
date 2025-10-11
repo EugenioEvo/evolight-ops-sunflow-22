@@ -259,11 +259,16 @@ const MinhasOS = () => {
               </span>
             </div>
             {os.data_programada && (
-              <div className="flex items-center gap-2 text-muted-foreground">
+              <div className="flex items-center gap-2 text-primary font-medium">
                 <Calendar className="h-4 w-4" />
                 <span>
-                  Programada: {format(new Date(os.data_programada), "dd/MM/yyyy", { locale: ptBR })}
+                  Agendada: {format(new Date(os.data_programada), "dd/MM/yyyy", { locale: ptBR })}
+                  {/* @ts-ignore */}
+                  {os.hora_inicio && os.hora_fim && ` às ${os.hora_inicio} - ${os.hora_fim}`}
                 </span>
+                {new Date(os.data_programada).toDateString() === new Date().toDateString() && (
+                  <Badge variant="default" className="ml-2">HOJE</Badge>
+                )}
               </div>
             )}
             {os.tickets.data_inicio_execucao && (

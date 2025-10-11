@@ -132,26 +132,7 @@ const RouteMap: React.FC = () => {
 
       if (error) throw error;
 
-      // Geocodificar tickets sem coordenadas
-      const ticketsToGeocode = data?.filter(os => 
-        !os.tickets.latitude || !os.tickets.longitude
-      ) || [];
-
-      if (ticketsToGeocode.length > 0) {
-        console.log(`Geocodificando ${ticketsToGeocode.length} tickets...`);
-        
-        for (const os of ticketsToGeocode) {
-          await geocodeAddress(os.tickets.endereco_servico, os.tickets.id);
-          // Delay de 1s para respeitar rate limit do Nominatim
-          await new Promise(resolve => setTimeout(resolve, 1000));
-        }
-
-        // Recarregar dados após geocodificação
-        const { data: updatedData } = await query.order('created_at', { ascending: false });
-        setOrdensServico(updatedData || []);
-      } else {
-        setOrdensServico(data || []);
-      }
+      setOrdensServico(data || []);
     } catch (error) {
       console.error('Erro ao carregar ordens de serviço:', error);
     } finally {
@@ -341,28 +322,34 @@ const RouteMap: React.FC = () => {
                   </div>
                 </div>
                 
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="w-full mt-3"
-                  disabled={geocoding}
-                  onClick={async (e) => {
-                    e.stopPropagation();
-                    const ticketsInRoute = rota.tickets.map((idx: number) => tickets[idx]);
-                    
-                    for (const ticket of ticketsInRoute) {
-                      if (!ticket.hasRealCoords) {
-                        await geocodeAddress(ticket.endereco, ticket.ticketId);
-                        await new Promise(resolve => setTimeout(resolve, 1000));
+                {rota.tickets.some((idx: number) => !tickets[idx]?.hasRealCoords) && (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="w-full mt-3"
+                    disabled={geocoding}
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      const ticketsInRoute = rota.tickets.map((idx: number) => tickets[idx]);
+                      let geocoded = 0;
+                      
+                      for (const ticket of ticketsInRoute) {
+                        if (!ticket.hasRealCoords) {
+                          await geocodeAddress(ticket.endereco, ticket.ticketId);
+                          geocoded++;
+                          console.log(`Geocodificado ${geocoded}/${ticketsInRoute.filter(t => !t.hasRealCoords).length}`);
+                          // Delay de 1s para respeitar rate limit do Nominatim
+                          await new Promise(resolve => setTimeout(resolve, 1000));
+                        }
                       }
-                    }
-                    
-                    loadOrdensServico();
-                  }}
-                >
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  {geocoding ? 'Atualizando...' : 'Atualizar Localizações'}
-                </Button>
+                      
+                      loadOrdensServico();
+                    }}
+                  >
+                    <RefreshCw className={`h-4 w-4 mr-2 ${geocoding ? 'animate-spin' : ''}`} />
+                    {geocoding ? 'Geocodificando...' : 'Geocodificar Endereços'}
+                  </Button>
+                )}
               </div>
             ))}
           </CardContent>
