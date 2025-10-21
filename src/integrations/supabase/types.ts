@@ -330,7 +330,7 @@ export type Database = {
           numero_os: string
           pdf_url: string | null
           qr_code: string | null
-          tecnico_id: string
+          tecnico_id: string | null
           ticket_id: string
           updated_at: string
         }
@@ -345,7 +345,7 @@ export type Database = {
           numero_os: string
           pdf_url?: string | null
           qr_code?: string | null
-          tecnico_id: string
+          tecnico_id?: string | null
           ticket_id: string
           updated_at?: string
         }
@@ -360,7 +360,7 @@ export type Database = {
           numero_os?: string
           pdf_url?: string | null
           qr_code?: string | null
-          tecnico_id?: string
+          tecnico_id?: string | null
           ticket_id?: string
           updated_at?: string
         }
@@ -369,7 +369,7 @@ export type Database = {
             foreignKeyName: "ordens_servico_tecnico_id_fkey"
             columns: ["tecnico_id"]
             isOneToOne: false
-            referencedRelation: "prestadores"
+            referencedRelation: "tecnicos"
             referencedColumns: ["id"]
           },
           {

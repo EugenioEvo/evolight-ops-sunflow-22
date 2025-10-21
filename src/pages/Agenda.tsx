@@ -19,9 +19,11 @@ interface OrdemServico {
   hora_fim: string | null;
   duracao_estimada_min: number | null;
   tecnico_id: string;
-  prestadores: {
+  tecnicos: {
     id: string;
-    nome: string;
+    profiles: {
+      nome: string;
+    };
   } | null;
   tickets: {
     numero_ticket: string;
@@ -79,9 +81,9 @@ const Agenda = () => {
         .from('ordens_servico')
         .select(`
           *,
-          prestadores!tecnico_id(
+          tecnicos!tecnico_id(
             id,
-            nome
+            profiles!inner(nome)
           ),
           tickets!inner(
             numero_ticket,
@@ -244,7 +246,7 @@ const Agenda = () => {
                           </div>
                           <div className="flex items-center gap-2 text-muted-foreground">
                             <User className="h-4 w-4" />
-                            {os.prestadores?.nome || 'Não atribuído'}
+                            {os.tecnicos?.profiles?.nome || 'Não atribuído'}
                           </div>
                           <div className="flex items-center gap-2 text-muted-foreground col-span-2">
                             <MapPin className="h-4 w-4" />

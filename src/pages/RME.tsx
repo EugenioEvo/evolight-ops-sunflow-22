@@ -135,7 +135,7 @@ const RME = () => {
           tecnicos!inner(
             profiles!inner(nome)
           ),
-          aprovador:profiles!rme_relatorios_aprovado_por_fkey(nome)
+          
         `)
         .order('created_at', { ascending: false });
 
