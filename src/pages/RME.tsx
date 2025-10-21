@@ -135,7 +135,7 @@ const RME = () => {
           tecnicos!inner(
             profiles!inner(nome)
           ),
-          
+          aprovador:profiles(nome)
         `)
         .order('created_at', { ascending: false });
 
