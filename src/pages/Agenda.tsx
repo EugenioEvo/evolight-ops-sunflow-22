@@ -47,7 +47,9 @@ const Agenda = () => {
   const [tecnicos, setTecnicos] = useState<Tecnico[]>([]);
   const [loading, setLoading] = useState(true);
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
-  const [selectedOS, setSelectedOS] = useState<string | null>(null);
+  const [selectedOS, setSelectedOS] = useState<OrdemServico | null>(null);
+  
+  useTicketsRealtime();
 
   useEffect(() => {
     loadTecnicos();
@@ -256,7 +258,7 @@ const Agenda = () => {
                             size="sm" 
                             variant="outline"
                             onClick={() => {
-                              setSelectedOS(os.id);
+                              setSelectedOS(os);
                               setScheduleModalOpen(true);
                             }}
                           >
@@ -280,8 +282,11 @@ const Agenda = () => {
             setScheduleModalOpen(false);
             setSelectedOS(null);
           }}
-          osId={selectedOS}
-          currentData={selectedDate}
+          osId={selectedOS.id}
+          currentTecnicoId={selectedOS.tecnico_id}
+          currentData={selectedOS.data_programada ? new Date(selectedOS.data_programada) : undefined}
+          currentHoraInicio={selectedOS.hora_inicio || undefined}
+          currentDuracao={selectedOS.duracao_estimada_min || undefined}
           onSuccess={loadOrdensServico}
         />
       )}

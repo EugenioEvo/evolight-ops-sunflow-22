@@ -16,6 +16,8 @@ interface ScheduleModalProps {
   osId: string;
   currentTecnicoId?: string;
   currentData?: Date;
+  currentHoraInicio?: string;
+  currentDuracao?: number;
   onSuccess?: () => void;
 }
 
@@ -32,14 +34,24 @@ export const ScheduleModal = ({
   osId, 
   currentTecnicoId,
   currentData,
+  currentHoraInicio,
+  currentDuracao,
   onSuccess 
 }: ScheduleModalProps) => {
   const [tecnicos, setTecnicos] = useState<Tecnico[]>([]);
   const [selectedTecnico, setSelectedTecnico] = useState<string>(currentTecnicoId || '');
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(currentData);
-  const [horaInicio, setHoraInicio] = useState('08:00');
-  const [duracaoHoras, setDuracaoHoras] = useState('2');
+  const [horaInicio, setHoraInicio] = useState(currentHoraInicio || '08:00');
+  const [duracaoHoras, setDuracaoHoras] = useState(currentDuracao ? String(currentDuracao / 60) : '2');
   const { scheduleOS, loading } = useSchedule();
+
+  // Atualizar estados quando props mudarem
+  useEffect(() => {
+    if (currentTecnicoId) setSelectedTecnico(currentTecnicoId);
+    if (currentData) setSelectedDate(currentData);
+    if (currentHoraInicio) setHoraInicio(currentHoraInicio);
+    if (currentDuracao) setDuracaoHoras(String(currentDuracao / 60));
+  }, [currentTecnicoId, currentData, currentHoraInicio, currentDuracao]);
 
   useEffect(() => {
     loadTecnicos();

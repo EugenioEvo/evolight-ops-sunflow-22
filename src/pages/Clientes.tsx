@@ -15,14 +15,30 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
+// Estados brasileiros
+const ESTADOS_BR = [
+  'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 
+  'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 
+  'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
+] as const;
+
 const clienteSchema = z.object({
   empresa: z.string().min(2, "Nome da empresa deve ter pelo menos 2 caracteres"),
-  cnpj_cpf: z.string().min(11, "CNPJ/CPF é obrigatório"),
+  cnpj_cpf: z.string()
+    .min(11, "CNPJ/CPF deve ter pelo menos 11 dígitos")
+    .refine(val => {
+      const digits = val.replace(/\D/g, '');
+      return digits.length === 11 || digits.length === 14;
+    }, "CNPJ deve ter 14 dígitos ou CPF 11 dígitos"),
   endereco: z.string().min(5, "Endereço é obrigatório"),
   cidade: z.string().min(2, "Cidade é obrigatória"),
-  estado: z.string().min(2, "Estado é obrigatório"),
-  cep: z.string().min(8, "CEP deve ter 8 dígitos"),
-  telefone: z.string().optional(),
+  estado: z.enum(ESTADOS_BR, { errorMap: () => ({ message: "Selecione um estado válido" }) }),
+  cep: z.string()
+    .min(8, "CEP é obrigatório")
+    .refine(val => /^\d{5}-?\d{3}$/.test(val.replace(/\D/g, '').replace(/(\d{5})(\d{3})/, '$1-$2')), "CEP inválido (formato: 00000-000)"),
+  telefone: z.string()
+    .optional()
+    .refine(val => !val || /^\(?\d{2}\)?\s?\d{4,5}-?\d{4}$/.test(val), "Telefone inválido (formato: (00) 00000-0000)"),
   email: z.string().email("Email inválido").optional().or(z.literal("")),
   observacoes: z.string().optional(),
 });
@@ -72,7 +88,7 @@ export default function Clientes() {
         cnpj_cpf: cliente.cnpj_cpf || '',
         endereco: cliente.endereco || '',
         cidade: cliente.cidade || '',
-        estado: cliente.estado || '',
+        estado: (cliente.estado || 'SP') as typeof ESTADOS_BR[number],
         cep: cliente.cep || '',
         telefone: cliente.profiles?.telefone || '',
         email: cliente.profiles?.email || '',
@@ -97,7 +113,7 @@ export default function Clientes() {
       cnpj_cpf: '',
       endereco: '',
       cidade: '',
-      estado: '',
+      estado: 'SP',
       cep: '',
       telefone: '',
       email: '',
@@ -361,9 +377,20 @@ export default function Clientes() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Estado</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="SP" />
-                        </FormControl>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {ESTADOS_BR.map(estado => (
+                              <SelectItem key={estado} value={estado}>
+                                {estado}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}

@@ -1,7 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Bell } from 'lucide-react';
+import { Bell, Check, Trash2, CheckCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,114 +8,40 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
-import { format } from 'date-fns';
+import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { useNotifications } from '@/hooks/useNotifications';
+import { formatDistanceToNow } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { useNavigate } from 'react-router-dom';
+import { cn } from '@/lib/utils';
 
-interface Notification {
-  id: string;
-  type: string;
-  title: string;
-  message: string;
-  created_at: string;
-  read: boolean;
-}
+export const NotificationBell = () => {
+  const { notificacoes, naoLidas, marcarComoLida, marcarTodasComoLidas, deletarNotificacao } = useNotifications();
+  const navigate = useNavigate();
 
-export const NotificationBell: React.FC = () => {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const { profile } = useAuth();
-
-  useEffect(() => {
-    loadNotifications();
-    subscribeToNotifications();
-  }, [profile]);
-
-  const loadNotifications = async () => {
-    if (!profile) return;
-
-    // Para supervisores: notificar sobre RMEs pendentes
-    if (profile.role === 'admin' || profile.role === 'area_tecnica') {
-      const { data: pendingRMEs } = await supabase
-        .from('rme_relatorios')
-        .select('id, created_at, tickets(numero_ticket, titulo)')
-        .eq('status_aprovacao', 'pendente')
-        .order('created_at', { ascending: false })
-        .limit(5);
-
-      if (pendingRMEs) {
-        const notifs: Notification[] = pendingRMEs.map((rme: any) => ({
-          id: rme.id,
-          type: 'rme_pending',
-          title: 'Novo RME para aprovar',
-          message: `${rme.tickets?.numero_ticket}: ${rme.tickets?.titulo}`,
-          created_at: rme.created_at,
-          read: false,
-        }));
-        setNotifications(notifs);
-        setUnreadCount(notifs.length);
-      }
+  const handleNotificationClick = (notificacao: any) => {
+    if (!notificacao.lida) {
+      marcarComoLida(notificacao.id);
     }
-
-    // Para técnicos: notificar sobre RMEs aprovados/rejeitados
-    if (profile.role === 'tecnico_campo') {
-      const { data: tecnicoData } = await supabase
-        .from('tecnicos')
-        .select('id')
-        .eq('profile_id', profile.id)
-        .single();
-
-      if (tecnicoData) {
-        const { data: rmeUpdates } = await supabase
-          .from('rme_relatorios')
-          .select('id, status_aprovacao, data_aprovacao, tickets(numero_ticket)')
-          .eq('tecnico_id', tecnicoData.id)
-          .in('status_aprovacao', ['aprovado', 'rejeitado'])
-          .gte(
-            'data_aprovacao',
-            new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
-          )
-          .order('data_aprovacao', { ascending: false })
-          .limit(5);
-
-        if (rmeUpdates) {
-          const notifs: Notification[] = rmeUpdates.map((rme: any) => ({
-            id: rme.id,
-            type: `rme_${rme.status_aprovacao}`,
-            title:
-              rme.status_aprovacao === 'aprovado' ? 'RME Aprovado' : 'RME Rejeitado',
-            message: `${rme.tickets?.numero_ticket} foi ${
-              rme.status_aprovacao === 'aprovado' ? 'aprovado' : 'rejeitado'
-            }`,
-            created_at: rme.data_aprovacao,
-            read: false,
-          }));
-          setNotifications(notifs);
-          setUnreadCount(notifs.length);
-        }
-      }
+    if (notificacao.link) {
+      navigate(notificacao.link);
     }
   };
 
-  const subscribeToNotifications = () => {
-    const channel = supabase
-      .channel('notifications')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'rme_relatorios',
-        },
-        () => {
-          loadNotifications();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+  const getNotificationIcon = (tipo: string) => {
+    switch (tipo) {
+      case 'rme_aprovado':
+        return '✅';
+      case 'rme_rejeitado':
+        return '❌';
+      case 'os_atribuida':
+        return '📋';
+      case 'ticket_atribuido':
+        return '🎫';
+      default:
+        return '🔔';
+    }
   };
 
   return (
@@ -125,33 +49,103 @@ export const NotificationBell: React.FC = () => {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="h-5 w-5" />
-          {unreadCount > 0 && (
+          {naoLidas > 0 && (
             <Badge
               variant="destructive"
-              className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
+              className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
             >
-              {unreadCount}
+              {naoLidas > 9 ? '9+' : naoLidas}
             </Badge>
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-80">
-        <DropdownMenuLabel>Notificações</DropdownMenuLabel>
+      <DropdownMenuContent align="end" className="w-[380px]">
+        <DropdownMenuLabel className="flex items-center justify-between">
+          <span>Notificações</span>
+          {naoLidas > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={marcarTodasComoLidas}
+              className="h-8 text-xs"
+            >
+              <CheckCheck className="h-3 w-3 mr-1" />
+              Marcar todas como lidas
+            </Button>
+          )}
+        </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        {notifications.length === 0 ? (
-          <div className="p-4 text-center text-sm text-muted-foreground">
+        
+        {notificacoes.length === 0 ? (
+          <div className="py-8 text-center text-sm text-muted-foreground">
             Nenhuma notificação
           </div>
         ) : (
-          notifications.map((notif) => (
-            <DropdownMenuItem key={notif.id} className="flex flex-col items-start p-3">
-              <div className="font-medium text-sm">{notif.title}</div>
-              <div className="text-xs text-muted-foreground">{notif.message}</div>
-              <div className="text-xs text-muted-foreground mt-1">
-                {format(new Date(notif.created_at), 'dd/MM/yyyy HH:mm')}
+          <ScrollArea className="h-[400px]">
+            {notificacoes.map((notificacao) => (
+              <div key={notificacao.id} className="relative group">
+                <DropdownMenuItem
+                  className={cn(
+                    "flex flex-col items-start gap-2 p-4 cursor-pointer",
+                    !notificacao.lida && "bg-primary/5"
+                  )}
+                  onClick={() => handleNotificationClick(notificacao)}
+                >
+                  <div className="flex items-start gap-3 w-full">
+                    <div className="text-2xl flex-shrink-0">
+                      {getNotificationIcon(notificacao.tipo)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="font-medium text-sm truncate">
+                          {notificacao.titulo}
+                        </p>
+                        {!notificacao.lida && (
+                          <div className="h-2 w-2 rounded-full bg-primary flex-shrink-0" />
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
+                        {notificacao.mensagem}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {formatDistanceToNow(new Date(notificacao.created_at), {
+                          addSuffix: true,
+                          locale: ptBR,
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                </DropdownMenuItem>
+                
+                <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                  {!notificacao.lida && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        marcarComoLida(notificacao.id);
+                      }}
+                    >
+                      <Check className="h-3 w-3" />
+                    </Button>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-destructive hover:text-destructive"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deletarNotificacao(notificacao.id);
+                    }}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </div>
               </div>
-            </DropdownMenuItem>
-          ))
+            ))}
+          </ScrollArea>
         )}
       </DropdownMenuContent>
     </DropdownMenu>
