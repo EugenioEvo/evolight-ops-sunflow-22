@@ -4,8 +4,13 @@ import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ClipboardList, Clock, CheckCircle2, AlertCircle, MapPin, FileText } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { LoadingState } from "./LoadingState";
+import { EmptyState } from "./EmptyState";
+import { ClipboardList, Clock, CheckCircle2, AlertCircle, MapPin, FileText, Calendar, TrendingUp } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 interface OSStats {
   pendentes: number;
@@ -83,15 +88,39 @@ const TechnicianDashboard = () => {
   };
 
   if (loading) {
-    return <div className="p-6">Carregando...</div>;
+    return (
+      <div className="p-4 sm:p-6 space-y-6">
+        <div className="space-y-2">
+          <h1 className="text-2xl sm:text-3xl font-bold">Meu Dashboard</h1>
+          <p className="text-sm text-muted-foreground">Carregando seus dados...</p>
+        </div>
+        <LoadingState variant="card" count={4} />
+      </div>
+    );
   }
 
+  const hasNoOS = stats.pendentes === 0 && stats.emExecucao === 0 && stats.totalConcluidas === 0;
+
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-foreground mb-2">Meu Dashboard</h1>
-        <p className="text-muted-foreground">Bem-vindo, {profile?.nome}</p>
+        <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-2 flex items-center gap-2">
+          <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8" />
+          Meu Dashboard
+        </h1>
+        <p className="text-sm sm:text-base text-muted-foreground">
+          Bem-vindo, <span className="font-medium">{profile?.nome}</span>
+        </p>
       </div>
+
+      {hasNoOS && (
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Você ainda não possui ordens de serviço atribuídas. Aguarde a atribuição de uma OS pela equipe técnica.
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Cards de Estatísticas */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

@@ -6,12 +6,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, FileText, Eye, Calendar, MapPin, User, Play, Edit, Phone, Navigation, ClipboardList } from "lucide-react";
+import { Loader2, FileText, Eye, Calendar, MapPin, User, Play, Edit, Phone, Navigation, ClipboardList, AlertCircle, CheckCircle2, Info, Filter } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
+import { LoadingState } from "@/components/LoadingState";
+import { TechnicianBreadcrumb } from "@/components/TechnicianBreadcrumb";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
+import { useTechnicianStore } from "@/hooks/useTechnicianStore";
 
 interface OrdemServico {
   id: string;
@@ -40,9 +45,12 @@ interface OrdemServico {
 const MinhasOS = () => {
   const [ordensServico, setOrdensServico] = useState<OrdemServico[]>([]);
   const [loading, setLoading] = useState(true);
+  const [prioridadeFiltro, setPrioridadeFiltro] = useState<string>('todas');
+  const [periodoFiltro, setPeriodoFiltro] = useState<string>('todos');
   const { profile } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { tecnicoId, setTecnicoId, shouldRefetch, setOrdensServico: setCachedOS } = useTechnicianStore();
 
   const isTecnico = profile?.role === "tecnico_campo";
 
@@ -217,22 +225,31 @@ const MinhasOS = () => {
 
     return (
       <Card key={os.id} className="hover:shadow-lg transition-shadow">
-        <CardHeader>
-          <div className="flex items-start justify-between">
-            <div className="space-y-1">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                {os.numero_os}
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between gap-2">
+            <div className="space-y-1 min-w-0 flex-1">
+              <CardTitle className="text-base sm:text-lg flex items-center gap-2 truncate">
+                <FileText className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+                <span className="truncate">{os.numero_os}</span>
               </CardTitle>
-              <Badge variant="outline" className="text-xs">
-                Ticket: {os.tickets.numero_ticket}
-              </Badge>
+              <div className="flex flex-wrap gap-1">
+                <Badge variant="outline" className="text-xs">
+                  {os.tickets.numero_ticket}
+                </Badge>
+                {isPendente && (
+                  <Badge variant="secondary" className="text-xs flex items-center gap-1">
+                    <Info className="h-3 w-3" />
+                    <span className="hidden sm:inline">Próximo: Iniciar</span>
+                    <span className="sm:hidden">Iniciar</span>
+                  </Badge>
+                )}
+              </div>
             </div>
-            <div className="flex flex-col gap-2 items-end">
-              <Badge variant={getPrioridadeColor(os.tickets.prioridade)}>
+            <div className="flex flex-col gap-1 items-end flex-shrink-0">
+              <Badge variant={getPrioridadeColor(os.tickets.prioridade)} className="text-xs">
                 {os.tickets.prioridade}
               </Badge>
-              <Badge variant={statusBadge.variant as any}>
+              <Badge variant={statusBadge.variant as any} className="text-xs">
                 {statusBadge.label}
               </Badge>
             </div>
@@ -381,32 +398,88 @@ const MinhasOS = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="p-4 sm:p-6 space-y-6">
+        <TechnicianBreadcrumb current="minhas-os" />
+        <LoadingState variant="card" count={6} />
       </div>
     );
   }
 
-  const pendentes = ordensServico.filter(os => os.tickets.status === 'ordem_servico_gerada');
-  const emExecucao = ordensServico.filter(os => os.tickets.status === 'em_execucao');
-  const concluidas = ordensServico.filter(os => os.tickets.status === 'concluido');
+  // Aplicar filtros
+  let osFiltradas = ordensServico;
+  
+  if (prioridadeFiltro !== 'todas') {
+    osFiltradas = osFiltradas.filter(os => os.tickets.prioridade === prioridadeFiltro);
+  }
+
+  const pendentes = osFiltradas.filter(os => os.tickets.status === 'ordem_servico_gerada');
+  const emExecucao = osFiltradas.filter(os => os.tickets.status === 'em_execucao');
+  const concluidas = osFiltradas.filter(os => os.tickets.status === 'concluido');
 
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Minhas Ordens de Serviço</h1>
-        <p className="text-muted-foreground">
-          Gerencie suas ordens de serviço por status
-        </p>
-      </div>
+    <TooltipProvider>
+      <div className="p-4 sm:p-6 space-y-6">
+        <TechnicianBreadcrumb current="minhas-os" />
+        
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
+            <ClipboardList className="h-6 w-6 sm:h-8 sm:w-8" />
+            Minhas Ordens de Serviço
+          </h1>
+          <p className="text-sm sm:text-base text-muted-foreground mt-1">
+            Gerencie suas ordens de serviço por status
+          </p>
+        </div>
 
-      {ordensServico.length === 0 ? (
-        <EmptyState
-          icon={FileText}
-          title="Nenhuma OS atribuída"
-          description="Você ainda não possui ordens de serviço atribuídas. Aguarde a atribuição de uma OS pela equipe técnica."
-        />
-      ) : (
+        {/* Filtros */}
+        {ordensServico.length > 0 && (
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex-1">
+                  <label className="text-sm font-medium mb-2 flex items-center gap-2">
+                    <Filter className="h-4 w-4" />
+                    Prioridade
+                  </label>
+                  <Select value={prioridadeFiltro} onValueChange={setPrioridadeFiltro}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Todas as prioridades" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todas">Todas</SelectItem>
+                      <SelectItem value="critica">Crítica</SelectItem>
+                      <SelectItem value="alta">Alta</SelectItem>
+                      <SelectItem value="media">Média</SelectItem>
+                      <SelectItem value="baixa">Baixa</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {(prioridadeFiltro !== 'todas') && (
+                  <div className="flex items-end">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        setPrioridadeFiltro('todas');
+                        setPeriodoFiltro('todos');
+                      }}
+                    >
+                      Limpar Filtros
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {ordensServico.length === 0 ? (
+          <EmptyState
+            icon={FileText}
+            title="Nenhuma OS atribuída"
+            description="Você ainda não possui ordens de serviço atribuídas. Aguarde a atribuição de uma OS pela equipe técnica."
+          />
+        ) : (
         <Tabs defaultValue="pendentes" className="w-full">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="pendentes" className="relative">
@@ -478,7 +551,8 @@ const MinhasOS = () => {
           </TabsContent>
         </Tabs>
       )}
-    </div>
+      </div>
+    </TooltipProvider>
   );
 };
 

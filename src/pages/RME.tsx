@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -12,11 +12,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Badge } from '@/components/ui/badge';
-import { Upload, X, FileText, Download, Search, ArrowLeft, QrCode, Plus, Trash2 } from 'lucide-react';
+import { Upload, X, FileText, Download, Search, ArrowLeft, QrCode, Plus, Trash2, CheckCircle2, Circle, AlertCircle } from 'lucide-react';
 import SignatureCanvas from 'react-signature-canvas';
 import { Progress } from '@/components/ui/progress';
 import { QRCodeScanner } from '@/components/QRCodeScanner';
 import { EquipmentQuickAdd } from '@/components/EquipmentQuickAdd';
+import { TechnicianBreadcrumb } from '@/components/TechnicianBreadcrumb';
+import { LoadingState } from '@/components/LoadingState';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const rmeSchema = z.object({
   condicoes_encontradas: z.string().min(1, 'Campo obrigatório'),
@@ -132,7 +135,7 @@ const RME = () => {
           tecnicos!inner(
             profiles!inner(nome)
           ),
-          aprovador:aprovado_por(nome)
+          aprovador:profiles!rme_relatorios_aprovado_por_fkey(nome)
         `)
         .order('created_at', { ascending: false });
 
@@ -472,7 +475,9 @@ const RME = () => {
     const progress = calculateProgress();
 
     return (
-      <div className="p-6 space-y-6 max-w-4xl mx-auto">
+      <div className="p-4 sm:p-6 space-y-6 max-w-7xl mx-auto">
+        <TechnicianBreadcrumb current="rme" osNumber={selectedOS.numero_os} />
+        
         <div className="flex items-center gap-4">
           <Button
             variant="ghost"
@@ -483,28 +488,41 @@ const RME = () => {
             }}
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Voltar
+            <span className="hidden sm:inline">Voltar</span>
           </Button>
-          <div className="flex-1">
-            <h1 className="text-2xl font-bold">Preencher RME</h1>
-            <p className="text-sm text-muted-foreground">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold truncate">Preencher RME</h1>
+            <p className="text-xs sm:text-sm text-muted-foreground truncate">
               OS: {selectedOS.numero_os} - {selectedOS.tickets?.titulo}
             </p>
           </div>
         </div>
 
-        {/* Barra de Progresso */}
-        <Card>
-          <CardContent className="pt-6">
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Progresso do formulário</span>
-                <span className="font-medium">{Math.round(progress)}%</span>
-              </div>
-              <Progress value={progress} />
-            </div>
-          </CardContent>
-        </Card>
+        {progress < 100 && (
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              Preencha todos os campos obrigatórios e adicione as assinaturas para completar o RME.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Grid com Progresso e Checklist */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Formulário (2 colunas no desktop) */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Barra de Progresso */}
+            <Card>
+              <CardContent className="pt-6">
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Progresso do formulário</span>
+                    <span className="font-medium">{Math.round(progress)}%</span>
+                  </div>
+                  <Progress value={progress} className="h-2" />
+                </div>
+              </CardContent>
+            </Card>
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -933,12 +951,130 @@ const RME = () => {
             </Card>
 
             <div className="flex justify-end">
-              <Button type="submit" disabled={loading || progress < 100}>
+              <Button type="submit" disabled={loading || progress < 100} className="w-full sm:w-auto">
                 {loading ? 'Salvando...' : 'Concluir e Enviar RME'}
               </Button>
             </div>
           </form>
         </Form>
+        </div>
+
+        {/* Checklist Lateral (1 coluna no desktop) */}
+        <div className="lg:col-span-1">
+          <Card className="sticky top-4">
+            <CardHeader>
+              <CardTitle className="text-sm flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Checklist do RME
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3 text-xs">
+                <div className="flex items-start gap-2">
+                  {form.watch('data_execucao') ? (
+                    <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
+                  ) : (
+                    <Circle className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                  )}
+                  <span className={form.watch('data_execucao') ? 'text-foreground' : 'text-muted-foreground'}>
+                    Data de execução
+                  </span>
+                </div>
+
+                <div className="flex items-start gap-2">
+                  {form.watch('nome_cliente_assinatura') ? (
+                    <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
+                  ) : (
+                    <Circle className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                  )}
+                  <span className={form.watch('nome_cliente_assinatura') ? 'text-foreground' : 'text-muted-foreground'}>
+                    Nome do cliente
+                  </span>
+                </div>
+
+                <div className="flex items-start gap-2">
+                  {form.watch('condicoes_encontradas') ? (
+                    <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
+                  ) : (
+                    <Circle className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                  )}
+                  <span className={form.watch('condicoes_encontradas') ? 'text-foreground' : 'text-muted-foreground'}>
+                    Condições encontradas
+                  </span>
+                </div>
+
+                <div className="flex items-start gap-2">
+                  {form.watch('servicos_executados') ? (
+                    <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
+                  ) : (
+                    <Circle className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                  )}
+                  <span className={form.watch('servicos_executados') ? 'text-foreground' : 'text-muted-foreground'}>
+                    Serviços executados
+                  </span>
+                </div>
+
+                <div className="flex items-start gap-2">
+                  {tecnicoSignature ? (
+                    <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
+                  ) : (
+                    <Circle className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                  )}
+                  <span className={tecnicoSignature ? 'text-foreground' : 'text-muted-foreground'}>
+                    Assinatura do técnico
+                  </span>
+                </div>
+
+                <div className="flex items-start gap-2">
+                  {clienteSignature ? (
+                    <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
+                  ) : (
+                    <Circle className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                  )}
+                  <span className={clienteSignature ? 'text-foreground' : 'text-muted-foreground'}>
+                    Assinatura do cliente
+                  </span>
+                </div>
+
+                <div className="pt-3 border-t">
+                  <div className="flex items-start gap-2">
+                    {fotosBefore.length > 0 ? (
+                      <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
+                    ) : (
+                      <Circle className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                    )}
+                    <span className={fotosBefore.length > 0 ? 'text-foreground' : 'text-muted-foreground'}>
+                      Fotos antes ({fotosBefore.length})
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2">
+                  {fotosAfter.length > 0 ? (
+                    <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
+                  ) : (
+                    <Circle className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                  )}
+                  <span className={fotosAfter.length > 0 ? 'text-foreground' : 'text-muted-foreground'}>
+                    Fotos depois ({fotosAfter.length})
+                  </span>
+                </div>
+
+                <div className="flex items-start gap-2">
+                  {scannedEquipment ? (
+                    <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
+                  ) : (
+                    <Circle className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                  )}
+                  <span className={scannedEquipment ? 'text-foreground' : 'text-muted-foreground'}>
+                    Equipamento escaneado
+                  </span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
 
         {/* Modal do Scanner QR Code */}
         {showScanner && (

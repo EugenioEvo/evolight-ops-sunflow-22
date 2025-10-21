@@ -62,6 +62,11 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        tech: {
+          pending: "hsl(38, 92%, 50%)",
+          active: "hsl(217, 91%, 60%)",
+          complete: "hsl(142, 76%, 36%)",
+        },
       },
       backgroundImage: {
         'gradient-solar': 'var(--gradient-solar)',
