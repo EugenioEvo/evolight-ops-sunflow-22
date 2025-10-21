@@ -45,7 +45,7 @@ const GerenciarRME = () => {
           tecnicos!inner(
             profiles!inner(nome)
           ),
-          profiles:aprovado_por(nome)
+          aprovador:aprovado_por(nome)
         `)
         .order('created_at', { ascending: false });
 
@@ -276,7 +276,7 @@ const GerenciarRME = () => {
                               {rme.status_aprovacao === 'aprovado' ? 'Aprovado' : 'Rejeitado'} em:
                             </strong>{' '}
                             {format(new Date(rme.data_aprovacao), 'dd/MM/yyyy HH:mm')}
-                            {rme.profiles && ` por ${rme.profiles.nome}`}
+                            {rme.aprovador && ` por ${rme.aprovador.nome}`}
                           </div>
                         )}
                         {rme.observacoes_aprovacao && (

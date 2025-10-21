@@ -98,9 +98,9 @@ const RouteMap: React.FC = () => {
               empresa
             )
           ),
-          tecnicos!inner(
+          prestadores:tecnico_id(
             id,
-            profiles!inner(nome)
+            nome
           )
         `);
 
