@@ -47,6 +47,7 @@ const MinhasOS = () => {
   const [loading, setLoading] = useState(true);
   const [prioridadeFiltro, setPrioridadeFiltro] = useState<string>('todas');
   const [periodoFiltro, setPeriodoFiltro] = useState<string>('todos');
+  const [activeTab, setActiveTab] = useState<string>('pendentes');
   const { profile } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -124,9 +125,12 @@ const MinhasOS = () => {
 
       toast({
         title: "Execução iniciada!",
-        description: "A ordem de serviço foi iniciada com sucesso.",
+        description: "A OS foi movida para a aba 'Em Execução'. Agora você pode preencher o RME.",
       });
 
+      // Mudar para a aba "Em Execução"
+      setActiveTab('execucao');
+      
       loadOrdensServico();
     } catch (error: any) {
       toast({
@@ -481,7 +485,7 @@ const MinhasOS = () => {
             description="Você ainda não possui ordens de serviço atribuídas. Aguarde a atribuição de uma OS pela equipe técnica."
           />
         ) : (
-        <Tabs defaultValue="pendentes" className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="pendentes" className="relative">
               Pendentes
