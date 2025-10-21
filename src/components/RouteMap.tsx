@@ -157,7 +157,7 @@ const RouteMap: React.FC = () => {
       id: os.id,
       ticketId: os.tickets.id,
       numero: os.tickets.numero_ticket,
-      cliente: os.tickets.clientes.empresa,
+      cliente: os.tickets.clientes?.empresa || 'Cliente não definido',
       endereco: os.tickets.endereco_servico,
       prioridade: os.tickets.prioridade,
       status: os.tickets.status,

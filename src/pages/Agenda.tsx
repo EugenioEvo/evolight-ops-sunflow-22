@@ -255,7 +255,7 @@ const Agenda = () => {
                         </div>
 
                         <div className="mt-3 pt-3 border-t flex justify-between items-center">
-                          <span className="text-sm font-medium">{os.tickets.clientes.empresa}</span>
+                          <span className="text-sm font-medium">{os.tickets.clientes?.empresa || 'Cliente não definido'}</span>
                           <Button 
                             size="sm" 
                             variant="outline"
