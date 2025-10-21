@@ -87,7 +87,7 @@ const MinhasOS = () => {
             prioridade,
             status,
             data_inicio_execucao,
-            clientes!inner (
+            clientes (
               empresa,
               profiles!clientes_profile_id_fkey(telefone)
             )
