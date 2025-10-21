@@ -25,7 +25,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const attemptedProfileCreationRef = useRef(false);
 
-  const fetchProfile = async (userId: string, maxAttempts = 6) => {
+  const fetchProfile = async (userId: string, maxAttempts = 10) => {
     try {
       for (let attempt = 0; attempt < maxAttempts; attempt++) {
         // Buscar perfil com dados relacionados
@@ -76,10 +76,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             continue;
           }
 
-          // Última tentativa sem role
+          // Última tentativa sem role - permitir acesso como cliente
           if (attempt === maxAttempts - 1) {
-            console.warn('Profile encontrado mas role não foi carregado');
-            setProfile(data);
+            console.warn('Profile encontrado mas role não foi carregado após 10 tentativas. Usando perfil sem role.');
+            // Define role padrão como cliente se não foi carregado
+            setProfile({ ...data, role: data.role || 'cliente' });
             return;
           }
         }

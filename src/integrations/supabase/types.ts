@@ -831,6 +831,10 @@ export type Database = {
         Args: { _user_id: string }
         Returns: boolean
       }
+      is_admin_safe: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "admin" | "area_tecnica" | "tecnico_campo" | "cliente"

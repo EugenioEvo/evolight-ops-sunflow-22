@@ -19,12 +19,10 @@ interface OrdemServico {
   hora_fim: string | null;
   duracao_estimada_min: number | null;
   tecnico_id: string;
-  tecnicos: {
+  prestadores: {
     id: string;
-    profiles: {
-      nome: string;
-    };
-  }[];
+    nome: string;
+  } | null;
   tickets: {
     numero_ticket: string;
     titulo: string;
@@ -39,9 +37,7 @@ interface OrdemServico {
 
 interface Tecnico {
   id: string;
-  profiles: {
-    nome: string;
-  };
+  nome: string;
 }
 
 const Agenda = () => {
@@ -63,9 +59,10 @@ const Agenda = () => {
 
   const loadTecnicos = async () => {
     const { data } = await supabase
-      .from('tecnicos')
-      .select('id, profiles!inner(nome)')
-      .order('profiles(nome)');
+      .from('prestadores')
+      .select('id, nome')
+      .eq('categoria', 'tecnico')
+      .order('nome');
     
     if (data) setTecnicos(data as any);
   };
@@ -80,9 +77,9 @@ const Agenda = () => {
         .from('ordens_servico')
         .select(`
           *,
-          tecnicos!inner(
+          prestadores!tecnico_id(
             id,
-            profiles!inner(nome)
+            nome
           ),
           tickets!inner(
             numero_ticket,
@@ -185,7 +182,7 @@ const Agenda = () => {
                     <SelectItem value="todos">Todos os Técnicos</SelectItem>
                     {tecnicos.map(tec => (
                       <SelectItem key={tec.id} value={tec.id}>
-                        {tec.profiles.nome}
+                        {tec.nome}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -245,7 +242,7 @@ const Agenda = () => {
                           </div>
                           <div className="flex items-center gap-2 text-muted-foreground">
                             <User className="h-4 w-4" />
-                            {os.tecnicos[0]?.profiles?.nome || 'Não atribuído'}
+                            {os.prestadores?.nome || 'Não atribuído'}
                           </div>
                           <div className="flex items-center gap-2 text-muted-foreground col-span-2">
                             <MapPin className="h-4 w-4" />
