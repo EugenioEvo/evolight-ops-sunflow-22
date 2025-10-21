@@ -48,6 +48,7 @@ const MinhasOS = () => {
   const [prioridadeFiltro, setPrioridadeFiltro] = useState<string>('todas');
   const [periodoFiltro, setPeriodoFiltro] = useState<string>('todos');
   const [activeTab, setActiveTab] = useState<string>('pendentes');
+  const [startingId, setStartingId] = useState<string | null>(null);
   const { profile } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -112,6 +113,7 @@ const MinhasOS = () => {
   };
 
   const handleIniciarExecucao = async (os: OrdemServico) => {
+    setStartingId(os.id);
     try {
       const { error } = await supabase
         .from("tickets")
@@ -123,6 +125,22 @@ const MinhasOS = () => {
 
       if (error) throw error;
 
+      // Atualiza o estado local imediatamente (UI otimista)
+      setOrdensServico((prev) =>
+        prev.map((item) =>
+          item.id === os.id
+            ? {
+                ...item,
+                tickets: {
+                  ...item.tickets,
+                  status: 'em_execucao',
+                  data_inicio_execucao: new Date().toISOString(),
+                },
+              }
+            : item
+        )
+      );
+
       toast({
         title: "Execução iniciada!",
         description: "A OS foi movida para a aba 'Em Execução'. Agora você pode preencher o RME.",
@@ -130,7 +148,8 @@ const MinhasOS = () => {
 
       // Mudar para a aba "Em Execução"
       setActiveTab('execucao');
-      
+
+      // Recarrega em segundo plano para garantir sincronização
       loadOrdensServico();
     } catch (error: any) {
       toast({
@@ -138,6 +157,8 @@ const MinhasOS = () => {
         description: error.message,
         variant: "destructive",
       });
+    } finally {
+      setStartingId(null);
     }
   };
 
@@ -336,9 +357,19 @@ const MinhasOS = () => {
                     <Button
                       onClick={() => handleIniciarExecucao(os)}
                       className="w-full"
+                      disabled={startingId === os.id}
                     >
-                      <Play className="h-4 w-4 mr-2" />
-                      Iniciar Execução
+                      {startingId === os.id ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Iniciando...
+                        </>
+                      ) : (
+                        <>
+                          <Play className="h-4 w-4 mr-2" />
+                          Iniciar Execução
+                        </>
+                      )}
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
