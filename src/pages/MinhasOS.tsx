@@ -150,7 +150,9 @@ const MinhasOS = () => {
       setActiveTab('execucao');
 
       // Recarrega em segundo plano para garantir sincronização
-      loadOrdensServico();
+      setTimeout(() => {
+        loadOrdensServico();
+      }, 1200);
     } catch (error: any) {
       toast({
         title: "Erro ao iniciar execução",
