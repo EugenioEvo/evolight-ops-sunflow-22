@@ -79,7 +79,7 @@ const MinhasOS = () => {
           data_programada,
           hora_inicio,
           hora_fim,
-          tickets (
+          tickets!inner (
             id,
             numero_ticket,
             titulo,
@@ -87,7 +87,7 @@ const MinhasOS = () => {
             prioridade,
             status,
             data_inicio_execucao,
-            clientes (
+            clientes!inner (
               empresa,
               profiles!clientes_profile_id_fkey(telefone)
             )
@@ -261,7 +261,7 @@ const MinhasOS = () => {
             <div className="space-y-2 text-sm text-muted-foreground">
               <div className="flex items-start gap-2">
                 <User className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                <span className="line-clamp-1">{os.tickets.clientes.empresa}</span>
+                <span className="line-clamp-1">{os.tickets.clientes?.empresa || 'Cliente não definido'}</span>
               </div>
               <div className="flex items-start gap-2">
                 <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" />
@@ -305,7 +305,8 @@ const MinhasOS = () => {
             <Button
               size="sm"
               variant="outline"
-              onClick={() => handleLigarCliente(os.tickets.clientes.profiles?.telefone)}
+              onClick={() => handleLigarCliente(os.tickets.clientes?.profiles?.telefone)}
+              disabled={!os.tickets.clientes?.profiles?.telefone}
               className="flex-1"
             >
               <Phone className="h-4 w-4 mr-1" />
