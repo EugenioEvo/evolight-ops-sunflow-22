@@ -55,7 +55,7 @@ const RME = () => {
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [materiais, setMateriais] = useState<Array<{ insumo_id: string; nome: string; quantidade: number }>>([]);
 
-  const { user, profile } = useAuth();
+  const { user, profile, loading: authLoading } = useAuth();
   const { toast } = useToast();
 
   let sigCanvasTecnico: SignatureCanvas | null = null;
@@ -455,7 +455,17 @@ const RME = () => {
                        profile?.role === 'admin' || 
                        profile?.role === 'area_tecnica';
   
-  if (!canAccessRME) {
+  const osLoading = !!osIdFromUrl && !selectedOS;
+
+  if (authLoading || osLoading) {
+    return (
+      <div className="p-6">
+        <LoadingState />
+      </div>
+    );
+  }
+  
+  if (!canAccessRME && !selectedOS) {
     return (
       <div className="p-6">
         <Card>
