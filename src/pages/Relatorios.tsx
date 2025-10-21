@@ -8,6 +8,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import { exportToExcel, exportToCSV, exportToPDF } from '@/utils/exportHelpers';
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { 
   BarChart, 
   Bar, 
@@ -201,30 +208,37 @@ const Relatorios = () => {
     return technicianStats.filter(stat => stat.tickets_atribuidos > 0 || stat.rmes_completados > 0);
   };
 
-  const exportData = () => {
-    const data = {
-      periodo: `${dateRange.start} a ${dateRange.end}`,
-      resumo: {
-        total_tickets: tickets.length,
-        total_rmes: rmes.length,
-        total_ordens_servico: ordensServico.length,
-        tickets_por_status: getTicketsByStatus(),
-        tickets_por_prioridade: getTicketsByPriority(),
-      },
-      detalhes: {
-        tickets,
-        rmes,
-        ordens_servico: ordensServico
-      }
-    };
+  const handleExport = (format: 'excel' | 'csv' | 'pdf') => {
+    const ticketsData = tickets.map(t => ({
+      'Número': t.numero_ticket,
+      'Título': t.titulo,
+      'Status': t.status,
+      'Prioridade': t.prioridade,
+      'Cliente': t.clientes?.empresa || t.clientes?.profiles?.nome,
+      'Criado em': new Date(t.created_at).toLocaleDateString('pt-BR')
+    }));
 
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `relatorio_${dateRange.start}_${dateRange.end}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
+    const filename = `relatorio_tickets_${dateRange.start}_${dateRange.end}`;
+
+    if (format === 'excel') {
+      exportToExcel(ticketsData, filename);
+      toast({ title: 'Exportado com sucesso!', description: 'Relatório exportado para Excel.' });
+    } else if (format === 'csv') {
+      exportToCSV(ticketsData, filename);
+      toast({ title: 'Exportado com sucesso!', description: 'Relatório exportado para CSV.' });
+    } else if (format === 'pdf') {
+      const columns = [
+        { header: 'Número', dataKey: 'Número' },
+        { header: 'Título', dataKey: 'Título' },
+        { header: 'Status', dataKey: 'Status' },
+        { header: 'Prioridade', dataKey: 'Prioridade' },
+        { header: 'Cliente', dataKey: 'Cliente' },
+        { header: 'Criado em', dataKey: 'Criado em' }
+      ];
+      exportToPDF(ticketsData, filename, 'Relatório de Tickets', columns);
+      toast({ title: 'Exportado com sucesso!', description: 'Relatório exportado para PDF.' });
+    }
+  };
 
     toast({
       title: 'Sucesso',
@@ -258,10 +272,25 @@ const Relatorios = () => {
               className="w-40"
             />
           </div>
-          <Button onClick={exportData} variant="outline">
-            <Download className="h-4 w-4 mr-2" />
-            Exportar
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                <Download className="h-4 w-4 mr-2" />
+                Exportar
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem onClick={() => handleExport('excel')}>
+                Exportar Excel
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('csv')}>
+                Exportar CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('pdf')}>
+                Exportar PDF
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 

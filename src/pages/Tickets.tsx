@@ -17,6 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Calendar, Clock, MapPin, Plus, Search, Settings, FileText, CheckCircle, XCircle, Download, Eye, ExternalLink } from 'lucide-react';
 import TicketFilters from '@/components/TicketFilters';
+import { LoadingState } from '@/components/LoadingState';
 
 const ticketSchema = z.object({
   titulo: z.string().min(1, 'Título é obrigatório'),
@@ -36,14 +37,22 @@ const Tickets = () => {
   const [tickets, setTickets] = useState<any[]>([]);
   const [clientes, setClientes] = useState<any[]>([]);
   const [prestadores, setPrestadores] = useState<any[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [activeTab, setActiveTab] = useState('todos');
+  const [searchTerm, setSearchTerm] = useState(localStorage.getItem('tickets_search') || '');
+  const [activeTab, setActiveTab] = useState(localStorage.getItem('tickets_tab') || 'todos');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTicket, setEditingTicket] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [generatingOsId, setGeneratingOsId] = useState<string | null>(null);
-  const [selectedCliente, setSelectedCliente] = useState('todos');
-  const [selectedPrioridade, setSelectedPrioridade] = useState('todas');
+  const [selectedCliente, setSelectedCliente] = useState(localStorage.getItem('tickets_cliente') || 'todos');
+  const [selectedPrioridade, setSelectedPrioridade] = useState(localStorage.getItem('tickets_prioridade') || 'todas');
+
+  // Persistir filtros
+  useEffect(() => {
+    localStorage.setItem('tickets_search', searchTerm);
+    localStorage.setItem('tickets_tab', activeTab);
+    localStorage.setItem('tickets_cliente', selectedCliente);
+    localStorage.setItem('tickets_prioridade', selectedPrioridade);
+  }, [searchTerm, activeTab, selectedCliente, selectedPrioridade]);
 
   const { user, profile } = useAuth();
   const { toast } = useToast();
