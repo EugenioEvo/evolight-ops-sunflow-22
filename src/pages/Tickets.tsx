@@ -5,19 +5,22 @@ import { z } from 'zod';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { useDebounce } from '@/hooks/useDebounce';
 import { useTicketsRealtime } from '@/hooks/useTicketsRealtime';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Clock, MapPin, Plus, Search, Settings, FileText, CheckCircle, XCircle, Download, Eye, ExternalLink } from 'lucide-react';
+import { Calendar, Clock, MapPin, Plus, Search, Settings, FileText, CheckCircle, XCircle, Download, Eye, ExternalLink, Ticket as TicketIcon } from 'lucide-react';
 import TicketFilters from '@/components/TicketFilters';
 import { LoadingState } from '@/components/LoadingState';
+import { EmptyState } from '@/components/EmptyState';
 
 const ticketSchema = z.object({
   titulo: z.string().min(1, 'Título é obrigatório'),
@@ -38,6 +41,7 @@ const Tickets = () => {
   const [clientes, setClientes] = useState<any[]>([]);
   const [prestadores, setPrestadores] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState(localStorage.getItem('tickets_search') || '');
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
   const [activeTab, setActiveTab] = useState(localStorage.getItem('tickets_tab') || 'todos');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTicket, setEditingTicket] = useState<any>(null);
@@ -414,8 +418,6 @@ const Tickets = () => {
   };
 
   const handleDeleteTicket = async (ticketId: string) => {
-    if (!confirm("Tem certeza que deseja excluir este ticket?")) return;
-
     try {
       setLoading(true);
       
@@ -431,7 +433,6 @@ const Tickets = () => {
         description: "Ticket excluído com sucesso",
       });
 
-      // Voltar para aba "todos"
       setActiveTab('todos');
       loadData();
     } catch (error: any) {
@@ -447,9 +448,9 @@ const Tickets = () => {
 
   const filteredTickets = tickets.filter(ticket => {
     const clienteNome = ticket.clientes?.empresa || ticket.clientes?.profiles?.nome || '';
-    const matchesSearch = ticket.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         ticket.numero_ticket.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         clienteNome.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = ticket.titulo.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+                         ticket.numero_ticket.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+                         clienteNome.toLowerCase().includes(debouncedSearchTerm.toLowerCase());
     
     const matchesCliente = selectedCliente === 'todos' || ticket.cliente_id === selectedCliente;
     const matchesPrioridade = selectedPrioridade === 'todas' || ticket.prioridade === selectedPrioridade;
@@ -738,17 +739,13 @@ const Tickets = () => {
 
         <TabsContent value={activeTab} className="space-y-4">
           {filteredTickets.length === 0 ? (
-            <Card>
-              <CardContent className="flex items-center justify-center py-12">
-                <div className="text-center">
-                  <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-medium">Nenhum ticket encontrado</h3>
-                  <p className="text-muted-foreground">
-                    {searchTerm ? 'Tente ajustar os filtros de busca' : 'Crie seu primeiro ticket'}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+            <EmptyState
+              icon={TicketIcon}
+              title="Nenhum ticket encontrado"
+              description={debouncedSearchTerm ? 'Tente ajustar os filtros de busca' : 'Crie seu primeiro ticket para começar'}
+              actionLabel={!debouncedSearchTerm ? "Criar Ticket" : undefined}
+              onAction={!debouncedSearchTerm ? () => setIsDialogOpen(true) : undefined}
+            />
           ) : (
             <div className="grid gap-4">
               {filteredTickets.map((ticket) => (
@@ -845,13 +842,27 @@ const Tickets = () => {
                               >
                                 Editar
                               </Button>
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                onClick={() => handleDeleteTicket(ticket.id)}
-                              >
-                                Excluir
-                              </Button>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button size="sm" variant="destructive">
+                                    Excluir
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Tem certeza que deseja excluir este ticket? Esta ação não pode ser desfeita.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleDeleteTicket(ticket.id)}>
+                                      Excluir
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
                             </>
                           )}
 
