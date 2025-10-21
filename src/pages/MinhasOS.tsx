@@ -6,7 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, FileText, Eye, Calendar, MapPin, User, Play, Edit, Phone, Navigation } from "lucide-react";
+import { Loader2, FileText, Eye, Calendar, MapPin, User, Play, Edit, Phone, Navigation, ClipboardList } from "lucide-react";
+import { EmptyState } from "@/components/EmptyState";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
@@ -306,13 +308,22 @@ const MinhasOS = () => {
           {/* Botões de Ação Principal */}
           <div className="space-y-2">
             {isPendente && (
-              <Button
-                onClick={() => handleIniciarExecucao(os)}
-                className="w-full"
-              >
-                <Play className="h-4 w-4 mr-2" />
-                Iniciar Execução
-              </Button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      onClick={() => handleIniciarExecucao(os)}
+                      className="w-full"
+                    >
+                      <Play className="h-4 w-4 mr-2" />
+                      Iniciar Execução
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Inicie a execução para depois preencher o RME</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             )}
 
             {emExecucao && (
@@ -323,6 +334,20 @@ const MinhasOS = () => {
                 <Edit className="h-4 w-4 mr-2" />
                 Preencher RME
               </Button>
+            )}
+
+            {isPendente && (
+              <Badge variant="outline" className="w-full justify-center py-2">
+                <ClipboardList className="h-3 w-3 mr-1" />
+                Próximo: Iniciar Execução
+              </Badge>
+            )}
+
+            {emExecucao && (
+              <Badge variant="default" className="w-full justify-center py-2">
+                <Edit className="h-3 w-3 mr-1" />
+                Próximo: Preencher RME
+              </Badge>
             )}
 
             <Button
@@ -376,13 +401,11 @@ const MinhasOS = () => {
       </div>
 
       {ordensServico.length === 0 ? (
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-muted-foreground text-center">
-              Você ainda não possui ordens de serviço atribuídas.
-            </p>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={FileText}
+          title="Nenhuma OS atribuída"
+          description="Você ainda não possui ordens de serviço atribuídas. Aguarde a atribuição de uma OS pela equipe técnica."
+        />
       ) : (
         <Tabs defaultValue="pendentes" className="w-full">
           <TabsList className="grid w-full grid-cols-3">
@@ -414,13 +437,11 @@ const MinhasOS = () => {
 
           <TabsContent value="pendentes" className="mt-6">
             {pendentes.length === 0 ? (
-              <Card>
-                <CardContent className="pt-6">
-                  <p className="text-muted-foreground text-center">
-                    Nenhuma OS pendente no momento.
-                  </p>
-                </CardContent>
-              </Card>
+              <EmptyState
+                icon={Calendar}
+                title="Nenhuma OS pendente"
+                description="Todas as suas ordens de serviço já foram iniciadas ou concluídas."
+              />
             ) : (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {pendentes.map(renderOSCard)}
@@ -430,13 +451,11 @@ const MinhasOS = () => {
 
           <TabsContent value="execucao" className="mt-6">
             {emExecucao.length === 0 ? (
-              <Card>
-                <CardContent className="pt-6">
-                  <p className="text-muted-foreground text-center">
-                    Nenhuma OS em execução no momento.
-                  </p>
-                </CardContent>
-              </Card>
+              <EmptyState
+                icon={Play}
+                title="Nenhuma OS em execução"
+                description="Inicie a execução de uma OS pendente para que ela apareça aqui."
+              />
             ) : (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {emExecucao.map(renderOSCard)}
@@ -446,13 +465,11 @@ const MinhasOS = () => {
 
           <TabsContent value="concluidas" className="mt-6">
             {concluidas.length === 0 ? (
-              <Card>
-                <CardContent className="pt-6">
-                  <p className="text-muted-foreground text-center">
-                    Nenhuma OS concluída ainda.
-                  </p>
-                </CardContent>
-              </Card>
+              <EmptyState
+                icon={FileText}
+                title="Nenhuma OS concluída"
+                description="As ordens de serviço concluídas aparecerão aqui após o preenchimento do RME."
+              />
             ) : (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {concluidas.map(renderOSCard)}
