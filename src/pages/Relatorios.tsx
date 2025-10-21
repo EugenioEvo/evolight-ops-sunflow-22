@@ -240,12 +240,6 @@ const Relatorios = () => {
     }
   };
 
-    toast({
-      title: 'Sucesso',
-      description: 'Relatório exportado com sucesso!',
-    });
-  };
-
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
   return (
