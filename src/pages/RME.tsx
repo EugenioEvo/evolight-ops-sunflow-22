@@ -92,7 +92,7 @@ const RME = () => {
 
   const loadOSFromUrl = async (osId: string) => {
     try {
-      const { data: osData } = await supabase
+      const { data: osData, error } = await supabase
         .from('ordens_servico')
         .select(`
           *,
@@ -104,11 +104,30 @@ const RME = () => {
         .eq('id', osId)
         .single();
 
+      if (error) throw error;
+
+      // NOVA VALIDAÇÃO: Verificar se o ticket está em execução
+      if (osData && osData.tickets.status !== 'em_execucao') {
+        toast({
+          title: 'RME não disponível',
+          description: 'Esta ordem de serviço ainda não foi iniciada. Inicie a execução primeiro.',
+          variant: 'destructive',
+        });
+        navigate('/minhas-os');
+        return;
+      }
+
       if (osData) {
         setSelectedOS(osData);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao carregar OS:', error);
+      toast({
+        title: 'Erro ao carregar OS',
+        description: error.message,
+        variant: 'destructive',
+      });
+      navigate('/minhas-os');
     }
   };
 

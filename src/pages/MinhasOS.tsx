@@ -49,6 +49,7 @@ const MinhasOS = () => {
   const [periodoFiltro, setPeriodoFiltro] = useState<string>('todos');
   const [activeTab, setActiveTab] = useState<string>('pendentes');
   const [startingId, setStartingId] = useState<string | null>(null);
+  const [navigating, setNavigating] = useState<string | null>(null);
   const { profile } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -125,34 +126,16 @@ const MinhasOS = () => {
 
       if (error) throw error;
 
-      // Atualiza o estado local imediatamente (UI otimista)
-      setOrdensServico((prev) =>
-        prev.map((item) =>
-          item.id === os.id
-            ? {
-                ...item,
-                tickets: {
-                  ...item.tickets,
-                  status: 'em_execucao',
-                  data_inicio_execucao: new Date().toISOString(),
-                },
-              }
-            : item
-        )
-      );
+      // Recarregar IMEDIATAMENTE após a atualização
+      await loadOrdensServico();
 
       toast({
         title: "Execução iniciada!",
         description: "A OS foi movida para a aba 'Em Execução'. Agora você pode preencher o RME.",
       });
 
-      // Mudar para a aba "Em Execução"
+      // Mudar para a aba "Em Execução" APÓS recarregar
       setActiveTab('execucao');
-
-      // Recarrega em segundo plano para garantir sincronização
-      setTimeout(() => {
-        loadOrdensServico();
-      }, 1200);
     } catch (error: any) {
       toast({
         title: "Erro ao iniciar execução",
@@ -164,7 +147,10 @@ const MinhasOS = () => {
     }
   };
 
-  const handlePreencherRME = (os: OrdemServico) => {
+  const handlePreencherRME = async (os: OrdemServico) => {
+    setNavigating(os.id);
+    // Pequeno delay para garantir que o banco está sincronizado
+    await new Promise(resolve => setTimeout(resolve, 300));
     navigate(`/rme?os=${os.id}`);
   };
 
@@ -385,9 +371,19 @@ const MinhasOS = () => {
               <Button
                 onClick={() => handlePreencherRME(os)}
                 className="w-full"
+                disabled={navigating === os.id}
               >
-                <Edit className="h-4 w-4 mr-2" />
-                Preencher RME
+                {navigating === os.id ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Carregando RME...
+                  </>
+                ) : (
+                  <>
+                    <Edit className="h-4 w-4 mr-2" />
+                    Preencher RME
+                  </>
+                )}
               </Button>
             )}
 
