@@ -106,15 +106,13 @@ const RME = () => {
 
       if (error) throw error;
 
-      // NOVA VALIDAÇÃO: Verificar se o ticket está em execução
+      // Verificar status da OS. Se ainda não estiver em execução, manter na página e informar o usuário
       if (osData && osData.tickets.status !== 'em_execucao') {
         toast({
-          title: 'RME não disponível',
-          description: 'Esta ordem de serviço ainda não foi iniciada. Inicie a execução primeiro.',
-          variant: 'destructive',
+          title: 'Aguardando status',
+          description: 'Estamos aguardando a atualização para "Em Execução". Isso pode levar alguns segundos.',
         });
-        navigate('/minhas-os');
-        return;
+        // Não navegar. Vamos exibir um aviso na UI e permitir atualizar o status
       }
 
       if (osData) {
@@ -525,6 +523,23 @@ const RME = () => {
             </p>
           </div>
         </div>
+
+        {selectedOS?.tickets?.status !== 'em_execucao' && (
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              Aguardando atualização para status "Em Execução". Isso pode levar alguns segundos.
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-2"
+                onClick={() => loadOSFromUrl(selectedOS.id)}
+              >
+                Atualizar status
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
 
         {progress < 100 && (
           <Alert>
