@@ -818,6 +818,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_tech_view_cliente: {
+        Args: { p_cliente_id: string; p_user_id: string }
+        Returns: boolean
+      }
       check_schedule_conflict: {
         Args: {
           p_data: string
