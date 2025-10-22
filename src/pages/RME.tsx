@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useTicketsRealtime } from '@/hooks/useTicketsRealtime';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -58,6 +59,15 @@ const RME = () => {
   const { user, profile, loading: authLoading } = useAuth();
   const { toast } = useToast();
 
+  // Auto-reload quando houver mudanças em tickets/OS
+  useTicketsRealtime({
+    onTicketChange: () => {
+      if (osIdFromUrl) {
+        loadOSFromUrl(osIdFromUrl);
+      }
+    }
+  });
+
   let sigCanvasTecnico: SignatureCanvas | null = null;
   let sigCanvasCliente: SignatureCanvas | null = null;
 
@@ -98,16 +108,35 @@ const RME = () => {
           *,
           tickets!inner(
             *,
-            clientes!inner(empresa)
+            clientes(empresa)
           )
         `)
         .eq('id', osId)
-        .single();
+        .maybeSingle();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erro ao carregar OS:', error);
+        toast({
+          title: 'Erro ao carregar OS',
+          description: 'Não foi possível carregar a OS. Tente novamente.',
+          variant: 'destructive',
+        });
+        setSelectedOS(null);
+        return;
+      }
+
+      if (!osData) {
+        toast({
+          title: 'OS não encontrada',
+          description: 'A ordem de serviço não foi encontrada no momento.',
+          variant: 'destructive',
+        });
+        setSelectedOS(null);
+        return;
+      }
 
       // Verificar status da OS. Se ainda não estiver em execução, manter na página e informar o usuário
-      if (osData && osData.tickets.status !== 'em_execucao') {
+      if (osData.tickets.status !== 'em_execucao') {
         toast({
           title: 'Aguardando status',
           description: 'Estamos aguardando a atualização para "Em Execução". Isso pode levar alguns segundos.',
@@ -115,17 +144,15 @@ const RME = () => {
         // Não navegar. Vamos exibir um aviso na UI e permitir atualizar o status
       }
 
-      if (osData) {
-        setSelectedOS(osData);
-      }
+      setSelectedOS(osData);
     } catch (error: any) {
-      console.error('Erro ao carregar OS:', error);
+      console.error('Erro inesperado ao carregar OS:', error);
       toast({
-        title: 'Erro ao carregar OS',
-        description: error.message,
+        title: 'Erro inesperado',
+        description: 'Ocorreu um erro inesperado. Tente novamente.',
         variant: 'destructive',
       });
-      navigate('/minhas-os');
+      setSelectedOS(null);
     }
   };
 
@@ -145,7 +172,7 @@ const RME = () => {
           tickets!inner(
             titulo,
             numero_ticket,
-            clientes!inner(
+            clientes(
               empresa
             )
           ),
