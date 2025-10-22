@@ -23,6 +23,7 @@ import Auth from "./pages/Auth";
 import RME from "./pages/RME";
 import Relatorios from "./pages/Relatorios";
 import GerenciarRME from "./pages/GerenciarRME";
+import Configuracoes from "./pages/Configuracoes";
 
 const queryClient = new QueryClient();
 
@@ -89,6 +90,7 @@ const App = () => (
                               <Relatorios />
                             </ProtectedRoute>
                           } />
+                          <Route path="/configuracoes" element={<Configuracoes />} />
                           <Route path="*" element={<NotFound />} />
                         </Routes>
                       </main>
