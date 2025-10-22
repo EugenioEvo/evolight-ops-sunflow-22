@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useTicketsRealtime } from "@/hooks/useTicketsRealtime";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -56,6 +57,15 @@ const MinhasOS = () => {
   const { tecnicoId, setTecnicoId, shouldRefetch, setOrdensServico: setCachedOS } = useTechnicianStore();
 
   const isTecnico = profile?.role === "tecnico_campo";
+
+  // Auto-reload quando houver mudanças em tickets/OS
+  useTicketsRealtime({
+    onTicketChange: () => {
+      if (isTecnico) {
+        loadOrdensServico();
+      }
+    }
+  });
 
   useEffect(() => {
     if (isTecnico) {
@@ -124,7 +134,19 @@ const MinhasOS = () => {
         })
         .eq("id", os.ticket_id);
 
-      if (error) throw error;
+      if (error) {
+        // Mensagem de erro específica para permissão negada
+        if (error.code === '42501' || error.message?.includes('permission') || error.message?.includes('policy')) {
+          toast({
+            title: "Sem permissão para iniciar execução",
+            description: "Você não tem permissão para alterar o status deste ticket. Fale com o administrador.",
+            variant: "destructive",
+          });
+        } else {
+          throw error;
+        }
+        return;
+      }
 
       // Recarregar IMEDIATAMENTE após a atualização
       await loadOrdensServico();
