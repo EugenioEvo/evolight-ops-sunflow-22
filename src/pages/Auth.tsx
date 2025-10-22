@@ -155,13 +155,8 @@ const Auth = () => {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="flex items-center justify-center gap-2 mb-4">
-            <div className="relative">
-              <Zap className="h-8 w-8 text-primary animate-pulse" />
-              <div className="absolute inset-0 bg-primary/20 rounded-full blur-xl"></div>
-            </div>
-            <span className="text-3xl font-bold bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 bg-clip-text text-transparent">
-              SunFlow
-            </span>
+            <Zap className="h-8 w-8 text-primary" />
+            <span className="text-2xl font-bold">SolarTech</span>
           </div>
           <CardTitle>{isLogin ? 'Entrar' : 'Criar Conta'}</CardTitle>
           <CardDescription>

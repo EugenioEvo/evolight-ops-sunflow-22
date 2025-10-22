@@ -44,7 +44,8 @@ const GerenciarRME = () => {
           ),
           tecnicos!inner(
             profiles!inner(nome)
-          )
+          ),
+          aprovador:profiles(nome)
         `)
         .order('created_at', { ascending: false });
 

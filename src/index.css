@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* SunFlow Solar O&M Design System - All colors MUST be HSL */
+/* Evolight Solar O&M Design System - All colors MUST be HSL */
 
 @layer base {
   :root {

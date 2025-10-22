@@ -166,8 +166,8 @@ const Index = () => {
   return (
     <div className="p-6 space-y-8 animate-fade-in">
       <div className="space-y-2">
-        <h1 className="text-4xl font-bold bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 bg-clip-text text-transparent">
-          Dashboard SunFlow
+        <h1 className="text-4xl font-bold bg-gradient-solar bg-clip-text text-transparent">
+          Dashboard Evolight
         </h1>
         <p className="text-muted-foreground flex items-center gap-2">
           <Activity className="h-4 w-4" />

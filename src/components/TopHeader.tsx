@@ -25,14 +25,15 @@ export const TopHeader = () => {
           
           <div className="hidden md:flex items-center gap-3">
             <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-amber-500 to-orange-600 rounded-lg blur-sm opacity-50"></div>
-              <div className="relative p-2 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600">
-                <Zap className="h-5 w-5 text-white" />
+              <div className="absolute inset-0 bg-gradient-solar rounded-lg blur-sm opacity-50"></div>
+              <div className="relative p-2 rounded-lg bg-gradient-solar">
+                <Sun className="h-5 w-5 text-white" />
+                <Zap className="h-3 w-3 text-yellow-300 absolute -top-1 -right-1" />
               </div>
             </div>
             <div>
-              <h1 className="font-bold text-lg bg-gradient-to-r from-amber-500 to-orange-600 bg-clip-text text-transparent">
-                SunFlow
+              <h1 className="font-bold text-lg bg-gradient-solar bg-clip-text text-transparent">
+                Evolight
               </h1>
               <p className="text-xs text-muted-foreground">Solar O&M Control</p>
             </div>
