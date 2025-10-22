@@ -80,7 +80,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           if (attempt === maxAttempts - 1) {
             console.warn('Profile encontrado mas role não foi carregado após 10 tentativas. Usando perfil sem role.');
             // Define role padrão como cliente se não foi carregado
-            setProfile({ ...data, role: data.role || 'cliente' });
+            setProfile({ ...data, role: roleData?.role || 'cliente' });
             return;
           }
         }

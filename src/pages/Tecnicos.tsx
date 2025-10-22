@@ -27,7 +27,6 @@ interface Profile {
   nome: string;
   email: string;
   telefone: string | null;
-  role: string;
   ativo: boolean;
 }
 
@@ -70,7 +69,6 @@ const Tecnicos = () => {
             nome,
             email,
             telefone,
-            role,
             ativo
           )
         `)
