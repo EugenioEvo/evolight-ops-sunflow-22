@@ -103,12 +103,15 @@ export function AppSidebar() {
       <SidebarContent className="bg-card border-r">
         <div className="p-4 border-b">
           <div className="flex items-center space-x-3">
-            <div className="p-2 rounded-lg bg-gradient-solar">
+            <div className="relative p-2 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600">
               <Zap className="h-6 w-6 text-white" />
+              <div className="absolute inset-0 bg-amber-400/20 rounded-lg blur"></div>
             </div>
             {!collapsed && (
               <div>
-                <h2 className="font-bold text-lg text-foreground">Evolight</h2>
+                <h2 className="font-bold text-lg bg-gradient-to-r from-amber-500 to-orange-600 bg-clip-text text-transparent">
+                  SunFlow
+                </h2>
                 <p className="text-xs text-muted-foreground">Solar O&M</p>
               </div>
             )}
