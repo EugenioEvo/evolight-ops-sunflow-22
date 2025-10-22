@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Camera, X, Loader2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Camera, X, Loader2, RefreshCw, KeyboardIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface QRCodeScannerProps {
@@ -13,6 +14,8 @@ interface QRCodeScannerProps {
 export const QRCodeScanner = ({ onScanSuccess, onClose }: QRCodeScannerProps) => {
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState<string>('');
+  const [manualInput, setManualInput] = useState(false);
+  const [manualCode, setManualCode] = useState('');
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const { toast } = useToast();
 
@@ -28,6 +31,7 @@ export const QRCodeScanner = ({ onScanSuccess, onClose }: QRCodeScannerProps) =>
     try {
       setScanning(true);
       setError('');
+      setManualInput(false);
 
       const html5QrCode = new Html5Qrcode('qr-reader');
       scannerRef.current = html5QrCode;
@@ -35,8 +39,9 @@ export const QRCodeScanner = ({ onScanSuccess, onClose }: QRCodeScannerProps) =>
       await html5QrCode.start(
         { facingMode: 'environment' },
         {
-          fps: 10,
-          qrbox: { width: 250, height: 250 },
+          fps: 15,
+          qrbox: { width: 280, height: 280 },
+          aspectRatio: 1.0,
         },
         (decodedText) => {
           toast({
@@ -52,12 +57,34 @@ export const QRCodeScanner = ({ onScanSuccess, onClose }: QRCodeScannerProps) =>
       );
     } catch (err: any) {
       console.error('Erro ao iniciar scanner:', err);
-      setError('Erro ao acessar câmera. Verifique as permissões.');
+      
+      let errorMessage = 'Não foi possível acessar a câmera.';
+      if (err.name === 'NotAllowedError') {
+        errorMessage = 'Permissão de câmera negada. Clique em "Permitir" quando o navegador solicitar.';
+      } else if (err.name === 'NotFoundError') {
+        errorMessage = 'Nenhuma câmera encontrada no dispositivo.';
+      } else if (err.name === 'NotReadableError') {
+        errorMessage = 'Câmera está sendo usada por outro aplicativo.';
+      }
+      
+      setError(errorMessage);
+      setScanning(false);
       toast({
         title: 'Erro na câmera',
-        description: 'Não foi possível acessar a câmera. Verifique as permissões do navegador.',
+        description: errorMessage,
         variant: 'destructive',
       });
+    }
+  };
+
+  const handleManualSubmit = () => {
+    if (manualCode.trim()) {
+      toast({
+        title: 'Código inserido!',
+        description: 'Processando informações...',
+      });
+      onScanSuccess(manualCode.trim());
+      stopScanner();
     }
   };
 
@@ -93,27 +120,104 @@ export const QRCodeScanner = ({ onScanSuccess, onClose }: QRCodeScannerProps) =>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div
-          id="qr-reader"
-          className="w-full rounded-lg overflow-hidden border-2 border-primary"
-        />
-        
-        {scanning && (
-          <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Aguardando QR Code...
+        {!manualInput ? (
+          <>
+            <div
+              id="qr-reader"
+              className="w-full rounded-lg overflow-hidden border-2 border-primary"
+            />
+            
+            {scanning && (
+              <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Aguardando QR Code...
+              </div>
+            )}
+
+            {error && (
+              <div className="space-y-3">
+                <div className="p-3 bg-destructive/10 text-destructive rounded-md text-sm">
+                  {error}
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={startScanner}
+                    variant="outline"
+                    className="flex-1"
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Tentar Novamente
+                  </Button>
+                  <Button
+                    onClick={() => setManualInput(true)}
+                    variant="outline"
+                    className="flex-1"
+                  >
+                    <KeyboardIcon className="h-4 w-4 mr-2" />
+                    Digitar Código
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {!error && (
+              <div className="space-y-2">
+                <div className="text-xs text-muted-foreground text-center">
+                  Permita o acesso à câmera quando solicitado pelo navegador
+                </div>
+                <Button
+                  onClick={() => setManualInput(true)}
+                  variant="ghost"
+                  size="sm"
+                  className="w-full"
+                >
+                  <KeyboardIcon className="h-4 w-4 mr-2" />
+                  Ou digite o código manualmente
+                </Button>
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">
+                Digite o código do equipamento
+              </label>
+              <Input
+                value={manualCode}
+                onChange={(e) => setManualCode(e.target.value)}
+                placeholder="Ex: EQ-2024-001"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleManualSubmit();
+                  }
+                }}
+                autoFocus
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button
+                onClick={() => {
+                  setManualInput(false);
+                  setManualCode('');
+                  startScanner();
+                }}
+                variant="outline"
+                className="flex-1"
+              >
+                <Camera className="h-4 w-4 mr-2" />
+                Voltar para Câmera
+              </Button>
+              <Button
+                onClick={handleManualSubmit}
+                disabled={!manualCode.trim()}
+                className="flex-1"
+              >
+                Confirmar
+              </Button>
+            </div>
           </div>
         )}
-
-        {error && (
-          <div className="p-3 bg-destructive/10 text-destructive rounded-md text-sm">
-            {error}
-          </div>
-        )}
-
-        <div className="text-xs text-muted-foreground text-center">
-          Permita o acesso à câmera quando solicitado pelo navegador
-        </div>
       </CardContent>
     </Card>
   );
