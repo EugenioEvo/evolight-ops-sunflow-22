@@ -531,7 +531,20 @@ const RME = () => {
     rme.tickets?.clientes?.empresa?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Calcular progresso do formulário
+  // Validar se pode enviar (apenas campos obrigatórios)
+  const canSubmit = () => {
+    const values = form.watch();
+    return !!(
+      values.condicoes_encontradas &&
+      values.servicos_executados &&
+      values.data_execucao &&
+      values.nome_cliente_assinatura &&
+      tecnicoSignature &&
+      clienteSignature
+    );
+  };
+
+  // Calcular progresso do formulário (inclui opcionais)
   const calculateProgress = () => {
     const values = form.watch();
     const requiredFilled = [
@@ -1071,9 +1084,14 @@ const RME = () => {
             </Card>
 
             <div className="flex justify-end">
-              <Button type="submit" disabled={loading || progress < 100} className="w-full sm:w-auto">
+              <Button type="submit" disabled={loading || !canSubmit()} className="w-full sm:w-auto">
                 {loading ? 'Salvando...' : 'Concluir e Enviar RME'}
               </Button>
+              {canSubmit() && progress < 100 && (
+                <p className="text-xs text-muted-foreground">
+                  Campos obrigatórios preenchidos. Preencha os opcionais para melhorar a documentação.
+                </p>
+              )}
             </div>
           </form>
         </Form>
@@ -1157,6 +1175,8 @@ const RME = () => {
                 </div>
 
                 <div className="pt-3 border-t">
+                  <p className="text-xs font-medium text-muted-foreground mb-2">Campos Opcionais</p>
+                  
                   <div className="flex items-start gap-2">
                     {fotosBefore.length > 0 ? (
                       <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
@@ -1184,10 +1204,21 @@ const RME = () => {
                   {scannedEquipment ? (
                     <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
                   ) : (
-                    <AlertCircle className="h-4 w-4 text-yellow-500 flex-shrink-0 mt-0.5" />
+                    <Circle className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
                   )}
-                  <span className="text-muted-foreground">
-                    Equipamento (opcional)
+                  <span className={scannedEquipment ? 'text-foreground' : 'text-muted-foreground'}>
+                    Equipamento
+                  </span>
+                </div>
+
+                <div className="flex items-start gap-2">
+                  {(materiais.length > 0) ? (
+                    <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
+                  ) : (
+                    <Circle className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                  )}
+                  <span className={materiais.length > 0 ? 'text-foreground' : 'text-muted-foreground'}>
+                    Materiais utilizados
                   </span>
                 </div>
               </div>
