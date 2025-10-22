@@ -28,14 +28,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const fetchProfile = async (userId: string, maxAttempts = 10) => {
     try {
       for (let attempt = 0; attempt < maxAttempts; attempt++) {
-        // Buscar perfil com dados relacionados
+        // Buscar perfil SEM relações aninhadas para evitar recursão de RLS
         const { data, error } = await supabase
           .from('profiles')
-          .select(`
-            *,
-            clientes(*),
-            tecnicos(*)
-          `)
+          .select('*')
           .eq('user_id', userId)
           .maybeSingle();
 
@@ -43,14 +39,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           console.error('Erro ao buscar perfil:', error);
         }
 
-        // Se não existe perfil na primeira tentativa, criar
+        // Se não existe perfil na primeira tentativa, criar (só se tiver sessão)
         if (!data && attempt === 0 && !attemptedProfileCreationRef.current) {
           attemptedProfileCreationRef.current = true;
           try {
-            await supabase.functions.invoke('create-user-profile');
-            // Continuar para próxima tentativa
-            await new Promise(resolve => setTimeout(resolve, 500));
-            continue;
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session?.access_token) {
+              await supabase.functions.invoke('create-user-profile', {
+                headers: {
+                  Authorization: `Bearer ${session.access_token}`
+                }
+              });
+              // Continuar para próxima tentativa
+              await new Promise(resolve => setTimeout(resolve, 500));
+              continue;
+            }
           } catch (fnErr) {
             console.error('Erro ao criar perfil automaticamente:', fnErr);
           }

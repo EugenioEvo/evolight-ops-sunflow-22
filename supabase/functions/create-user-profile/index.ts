@@ -12,18 +12,30 @@ serve(async (req) => {
   }
 
   try {
+    const authHeader = req.headers.get('Authorization')
+    
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Authorization header ausente' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const authHeader = req.headers.get('Authorization')!
     const token = authHeader.replace('Bearer ', '')
-    const { data } = await supabaseClient.auth.getUser(token)
+    const { data, error: userError } = await supabaseClient.auth.getUser(token)
     const user = data.user
 
-    if (!user) {
-      throw new Error('Usuário não encontrado')
+    if (userError || !user) {
+      console.error('Erro ao obter usuário:', userError)
+      return new Response(
+        JSON.stringify({ error: 'Usuário não autenticado' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
     }
 
     // Verificar se o perfil já existe
