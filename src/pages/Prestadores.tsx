@@ -245,7 +245,7 @@ const Prestadores = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Prestadores de Serviço</h1>
-          <p className="text-muted-foreground">Gerencie a equipe da Evolight</p>
+          <p className="text-muted-foreground">Gerencie a equipe técnica</p>
         </div>
         
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

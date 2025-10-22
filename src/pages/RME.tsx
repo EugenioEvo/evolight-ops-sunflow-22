@@ -89,7 +89,7 @@ const RME = () => {
   });
 
   useEffect(() => {
-    if (profile?.role === 'tecnico_campo') {
+    if (profile && (profile.role === 'tecnico_campo' || profile.role === 'admin' || profile.role === 'area_tecnica')) {
       loadData();
     }
   }, [profile]);
@@ -171,10 +171,7 @@ const RME = () => {
           observacoes_aprovacao,
           tickets!inner(
             titulo,
-            numero_ticket,
-            clientes(
-              empresa
-            )
+            numero_ticket
           ),
           tecnicos!inner(
             profiles!inner(nome)
@@ -1277,8 +1274,7 @@ const RME = () => {
                       {rme.tickets?.titulo}
                     </CardTitle>
                     <CardDescription>
-                      Ticket: {rme.tickets?.numero_ticket} | 
-                      Cliente: {rme.tickets?.clientes?.empresa}
+                      Ticket: {rme.tickets?.numero_ticket}
                     </CardDescription>
                   </div>
                   <Badge variant="outline">
