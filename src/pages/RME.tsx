@@ -404,51 +404,110 @@ const RME = () => {
 
   const handleQRCodeScan = async (decodedText: string) => {
     try {
+      setLoading(true);
       setShowScanner(false);
       
       // Tentar parsear como JSON
-      let qrData;
+      let qrData: any = {};
       try {
         qrData = JSON.parse(decodedText);
       } catch {
-        // Se não for JSON, assumir que é um número de série
-        qrData = { numero_serie: decodedText };
+        // Se não for JSON, assumir que é um código de identificação (numero_serie ou id)
+        qrData = { codigo: decodedText };
       }
 
-      // Buscar equipamento no banco
+      // Validar se temos cliente da OS
+      if (!selectedOS?.tickets?.cliente_id) {
+        toast({
+          title: 'Erro',
+          description: 'Não foi possível identificar o cliente. Selecione uma OS primeiro.',
+          variant: 'destructive',
+        });
+        setLoading(false);
+        return;
+      }
+
+      // Buscar equipamento no banco usando múltiplos critérios
       let query = supabase.from('equipamentos').select('*');
       
-      if (qrData.id) {
-        query = query.eq('id', qrData.id);
-      } else if (qrData.numero_serie) {
-        query = query.eq('numero_serie', qrData.numero_serie);
+      // Critérios de busca em ordem de prioridade
+      const searchCriteria = [];
+      if (qrData.id) searchCriteria.push(`id.eq.${qrData.id}`);
+      if (qrData.numero_serie) searchCriteria.push(`numero_serie.eq.${qrData.numero_serie}`);
+      if (qrData.codigo) {
+        searchCriteria.push(`numero_serie.eq.${qrData.codigo}`);
+        searchCriteria.push(`id.eq.${qrData.codigo}`);
+      }
+
+      if (searchCriteria.length > 0) {
+        query = query.or(searchCriteria.join(','));
       }
 
       const { data: equipment, error } = await query.maybeSingle();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erro ao buscar equipamento:', error);
+        throw error;
+      }
 
       if (equipment) {
+        // Equipamento encontrado - vincular ao RME
         setScannedEquipment(equipment);
         toast({
           title: 'Equipamento encontrado!',
-          description: `${equipment.nome} - ${equipment.modelo || 'N/A'}`,
+          description: `${equipment.nome} - ${equipment.modelo || 'Sem modelo'}`,
         });
       } else {
-        // Equipamento não encontrado, oferecer cadastro rápido
+        // Equipamento não encontrado - preparar para cadastro
         toast({
-          title: 'Equipamento não encontrado',
-          description: 'Deseja cadastrar este equipamento?',
+          title: 'Equipamento não cadastrado',
+          description: 'Preencha os dados para cadastrar este equipamento.',
         });
+        
+        // Preparar dados iniciais baseados no QR code
+        const initialData: any = {};
+        
+        if (qrData.nome) initialData.nome = qrData.nome;
+        if (qrData.tipo) initialData.tipo = qrData.tipo;
+        if (qrData.modelo) initialData.modelo = qrData.modelo;
+        if (qrData.numero_serie || qrData.codigo) {
+          initialData.numero_serie = qrData.numero_serie || qrData.codigo;
+        }
+        if (qrData.fabricante) initialData.fabricante = qrData.fabricante;
+        if (qrData.observacoes) initialData.observacoes = qrData.observacoes;
+
+        // Se não tiver nome, criar um baseado no tipo ou usar genérico
+        if (!initialData.nome) {
+          if (qrData.tipo) {
+            const tipoMap: Record<string, string> = {
+              painel_solar: 'Painel Solar',
+              inversor: 'Inversor',
+              bateria: 'Bateria',
+              controlador_carga: 'Controlador de Carga',
+              estrutura: 'Estrutura',
+              cabeamento: 'Cabeamento',
+              monitoramento: 'Sistema de Monitoramento',
+              outros: 'Equipamento',
+            };
+            initialData.nome = tipoMap[qrData.tipo] || 'Novo Equipamento';
+          } else {
+            initialData.nome = `Equipamento ${qrData.codigo || 'Novo'}`;
+          }
+        }
+
+        // Armazenar dados temporários e abrir modal
+        setScannedEquipment(initialData);
         setShowQuickAdd(true);
       }
     } catch (error: any) {
       console.error('Erro ao processar QR Code:', error);
       toast({
-        title: 'Erro',
-        description: 'Erro ao processar QR Code',
+        title: 'Erro ao processar QR Code',
+        description: error.message || 'Não foi possível processar o código escaneado.',
         variant: 'destructive',
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -1157,22 +1216,37 @@ const RME = () => {
         )}
 
         {/* Modal de Cadastro Rápido */}
-        <EquipmentQuickAdd
-          open={showQuickAdd}
-          onClose={() => setShowQuickAdd(false)}
-          onSuccess={(equipmentId) => {
-            supabase
-              .from('equipamentos')
-              .select('*')
-              .eq('id', equipmentId)
-              .single()
-              .then(({ data }) => {
-                if (data) setScannedEquipment(data);
-              });
-            setShowQuickAdd(false);
-          }}
-          clienteId={selectedOS?.tickets?.cliente_id || ''}
-        />
+        {selectedOS?.tickets?.cliente_id && (
+          <EquipmentQuickAdd
+            open={showQuickAdd}
+            onClose={() => {
+              setShowQuickAdd(false);
+              // Limpar dados temporários se cancelar
+              if (scannedEquipment && !scannedEquipment.id) {
+                setScannedEquipment(null);
+              }
+            }}
+            onSuccess={async (equipmentId) => {
+              // Buscar equipamento recém-cadastrado
+              const { data: newEquip } = await supabase
+                .from('equipamentos')
+                .select('*')
+                .eq('id', equipmentId)
+                .single();
+              
+              if (newEquip) {
+                setScannedEquipment(newEquip);
+                toast({
+                  title: 'Equipamento cadastrado!',
+                  description: 'Equipamento vinculado ao RME com sucesso.',
+                });
+              }
+              setShowQuickAdd(false);
+            }}
+            clienteId={selectedOS.tickets.cliente_id}
+            initialData={scannedEquipment && !scannedEquipment.id ? scannedEquipment : undefined}
+          />
+        )}
       </div>
     );
   }
