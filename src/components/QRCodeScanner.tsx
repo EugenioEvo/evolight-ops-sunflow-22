@@ -19,6 +19,13 @@ export const QRCodeScanner = ({ onScanSuccess, onClose }: QRCodeScannerProps) =>
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const { toast } = useToast();
 
+  // Gera um código sugerido no formato EQ-YYYY-XXX
+  const getSuggestedCode = () => {
+    const year = new Date().getFullYear();
+    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    return `EQ-${year}-${random}`;
+  };
+
   useEffect(() => {
     startScanner();
 
@@ -152,6 +159,7 @@ export const QRCodeScanner = ({ onScanSuccess, onClose }: QRCodeScannerProps) =>
                   <Button
                     onClick={() => {
                       stopScanner();
+                      setManualCode(getSuggestedCode());
                       setManualInput(true);
                     }}
                     variant="outline"
@@ -172,6 +180,7 @@ export const QRCodeScanner = ({ onScanSuccess, onClose }: QRCodeScannerProps) =>
                 <Button
                   onClick={() => {
                     stopScanner();
+                    setManualCode(getSuggestedCode());
                     setManualInput(true);
                   }}
                   variant="ghost"
@@ -188,12 +197,15 @@ export const QRCodeScanner = ({ onScanSuccess, onClose }: QRCodeScannerProps) =>
           <div className="space-y-3">
             <div className="space-y-2">
               <label className="text-sm font-medium">
-                Digite o código do equipamento
+                Código do equipamento
               </label>
+              <div className="text-xs text-muted-foreground mb-2">
+                Use o formato: EQ-ANO-XXX (Ex: EQ-2025-001)
+              </div>
               <Input
                 value={manualCode}
-                onChange={(e) => setManualCode(e.target.value)}
-                placeholder="Ex: EQ-2024-001"
+                onChange={(e) => setManualCode(e.target.value.toUpperCase())}
+                placeholder="EQ-2025-001"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     handleManualSubmit();
