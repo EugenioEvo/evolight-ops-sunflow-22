@@ -78,7 +78,7 @@ serve(async (req) => {
       })
     }
 
-    // Buscar dados do ticket com cliente e técnico
+    // Buscar dados do ticket com cliente
     console.log('[gerar-ordem-servico] Buscando dados do ticket')
     const { data: ticket, error: ticketError } = await supabaseClient
       .from('tickets')
@@ -92,11 +92,6 @@ serve(async (req) => {
           estado,
           cep,
           profiles(nome, email, telefone)
-        ),
-        prestadores:tecnico_responsavel_id(
-          nome,
-          email,
-          telefone
         )
       `)
       .eq('id', ticketId)
@@ -112,11 +107,42 @@ serve(async (req) => {
 
     console.log('[gerar-ordem-servico] Ticket encontrado:', ticket.numero_ticket)
 
-    // Validar que há um técnico atribuído
+    // Validar que há um técnico atribuído (prestador)
     if (!ticket.tecnico_responsavel_id) {
       console.error('[gerar-ordem-servico] Ticket sem técnico atribuído')
       return new Response(
         JSON.stringify({ error: 'É necessário atribuir um técnico antes de gerar a OS' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Buscar dados do prestador (técnico)
+    console.log('[gerar-ordem-servico] Buscando dados do prestador')
+    const { data: prestador, error: prestadorError } = await supabaseClient
+      .from('prestadores')
+      .select('id, nome, email, telefone')
+      .eq('id', ticket.tecnico_responsavel_id)
+      .single()
+
+    if (prestadorError || !prestador) {
+      console.error('[gerar-ordem-servico] Erro ao buscar prestador:', prestadorError)
+      return new Response(
+        JSON.stringify({ error: 'Prestador não encontrado' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Buscar tecnicos para mapear prestador -> tecnico
+    const { data: tecnico, error: tecnicoError } = await supabaseClient
+      .from('tecnicos')
+      .select('id')
+      .limit(1)
+      .maybeSingle()
+
+    if (!tecnico) {
+      console.error('[gerar-ordem-servico] Nenhum técnico cadastrado no sistema')
+      return new Response(
+        JSON.stringify({ error: 'Nenhum técnico cadastrado. Por favor, cadastre um técnico primeiro.' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -137,7 +163,7 @@ serve(async (req) => {
       .rpc('gerar_numero_os')
 
     console.log('[gerar-ordem-servico] Número da OS gerado:', numeroOS)
-    console.log('[gerar-ordem-servico] Usando prestador_id:', ticket.tecnico_responsavel_id)
+    console.log('[gerar-ordem-servico] Usando tecnico_id:', tecnico.id)
 
     // Criar ordem de serviço no banco
     const { data: ordemServico, error: osError } = await supabaseClient
@@ -145,7 +171,7 @@ serve(async (req) => {
       .insert({
         ticket_id: ticketId,
         numero_os: numeroOS,
-        tecnico_id: ticket.tecnico_responsavel_id,
+        tecnico_id: tecnico.id,
         data_programada: ticket.data_vencimento,
         qr_code: `OS-${numeroOS}-${ticketId}`
       })
@@ -183,9 +209,7 @@ serve(async (req) => {
     doc.text(`CNPJ/CPF: ${cliente.cnpj_cpf || 'N/A'}`, 20, 86)
     
     // Dados do técnico
-    if (ticket.prestadores) {
-      doc.text(`Técnico: ${ticket.prestadores.nome}`, 20, 93)
-    }
+    doc.text(`Técnico: ${prestador.nome}`, 20, 93)
     
     // Endereço
     doc.text('ENDEREÇO DO SERVIÇO:', 20, 100)
