@@ -831,14 +831,8 @@ export type Database = {
         }
         Returns: boolean
       }
-      gerar_numero_os: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      gerar_numero_ticket: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      gerar_numero_os: { Args: never; Returns: string }
+      gerar_numero_ticket: { Args: never; Returns: string }
       get_technician_workload: {
         Args: { p_end_date: string; p_start_date: string; p_tecnico_id: string }
         Returns: {
@@ -860,14 +854,8 @@ export type Database = {
         }
         Returns: boolean
       }
-      is_admin: {
-        Args: { _user_id: string }
-        Returns: boolean
-      }
-      is_admin_safe: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
+      is_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_admin_safe: { Args: never; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "area_tecnica" | "tecnico_campo" | "cliente"
