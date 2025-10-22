@@ -268,7 +268,7 @@ const GerenciarRME = () => {
                         </div>
                         <div>
                           <strong>Preenchido em:</strong>{' '}
-                          {format(new Date(rme.data_preenchimento), 'dd/MM/yyyy HH:mm')}
+                          {format(new Date(rme.created_at), 'dd/MM/yyyy HH:mm')}
                         </div>
                         {rme.data_aprovacao && (
                           <div>
