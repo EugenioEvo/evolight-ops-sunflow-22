@@ -125,6 +125,7 @@ export const QRCodeScanner = ({ onScanSuccess, onClose }: QRCodeScannerProps) =>
             <div
               id="qr-reader"
               className="w-full rounded-lg overflow-hidden border-2 border-primary"
+              style={{ minHeight: '280px' }}
             />
             
             {scanning && (
@@ -149,7 +150,10 @@ export const QRCodeScanner = ({ onScanSuccess, onClose }: QRCodeScannerProps) =>
                     Tentar Novamente
                   </Button>
                   <Button
-                    onClick={() => setManualInput(true)}
+                    onClick={() => {
+                      stopScanner();
+                      setManualInput(true);
+                    }}
                     variant="outline"
                     className="flex-1"
                   >
@@ -166,7 +170,10 @@ export const QRCodeScanner = ({ onScanSuccess, onClose }: QRCodeScannerProps) =>
                   Permita o acesso à câmera quando solicitado pelo navegador
                 </div>
                 <Button
-                  onClick={() => setManualInput(true)}
+                  onClick={() => {
+                    stopScanner();
+                    setManualInput(true);
+                  }}
                   variant="ghost"
                   size="sm"
                   className="w-full"
