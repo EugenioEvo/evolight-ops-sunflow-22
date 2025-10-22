@@ -696,18 +696,9 @@ const RME = () => {
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
                   <span>Equipamento</span>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowScanner(true)}
-                  >
-                    <QrCode className="h-4 w-4 mr-2" />
-                    Escanear QR Code
-                  </Button>
                 </CardTitle>
                 <CardDescription>
-                  Escaneie o QR Code do equipamento ou cadastre manualmente
+                  Equipamento vinculado a este RME (opcional)
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -737,7 +728,7 @@ const RME = () => {
                   </div>
                 ) : (
                   <p className="text-sm text-muted-foreground text-center py-4">
-                    Nenhum equipamento selecionado
+                    Nenhum equipamento vinculado (funcionalidade de QR code temporariamente desabilitada)
                   </p>
                 )}
               </CardContent>
@@ -1193,10 +1184,10 @@ const RME = () => {
                   {scannedEquipment ? (
                     <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
                   ) : (
-                    <Circle className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                    <AlertCircle className="h-4 w-4 text-yellow-500 flex-shrink-0 mt-0.5" />
                   )}
-                  <span className={scannedEquipment ? 'text-foreground' : 'text-muted-foreground'}>
-                    Equipamento escaneado
+                  <span className="text-muted-foreground">
+                    Equipamento (opcional)
                   </span>
                 </div>
               </div>
@@ -1205,48 +1196,7 @@ const RME = () => {
         </div>
       </div>
 
-        {/* Modal do Scanner QR Code */}
-        {showScanner && (
-          <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <QRCodeScanner
-              onScanSuccess={handleQRCodeScan}
-              onClose={() => setShowScanner(false)}
-            />
-          </div>
-        )}
-
-        {/* Modal de Cadastro Rápido */}
-        {selectedOS?.tickets?.cliente_id && (
-          <EquipmentQuickAdd
-            open={showQuickAdd}
-            onClose={() => {
-              setShowQuickAdd(false);
-              // Limpar dados temporários se cancelar
-              if (scannedEquipment && !scannedEquipment.id) {
-                setScannedEquipment(null);
-              }
-            }}
-            onSuccess={async (equipmentId) => {
-              // Buscar equipamento recém-cadastrado
-              const { data: newEquip } = await supabase
-                .from('equipamentos')
-                .select('*')
-                .eq('id', equipmentId)
-                .single();
-              
-              if (newEquip) {
-                setScannedEquipment(newEquip);
-                toast({
-                  title: 'Equipamento cadastrado!',
-                  description: 'Equipamento vinculado ao RME com sucesso.',
-                });
-              }
-              setShowQuickAdd(false);
-            }}
-            clienteId={selectedOS.tickets.cliente_id}
-            initialData={scannedEquipment && !scannedEquipment.id ? scannedEquipment : undefined}
-          />
-        )}
+        {/* QR Code Scanner temporariamente desabilitado */}
       </div>
     );
   }
