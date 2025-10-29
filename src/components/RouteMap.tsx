@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MapPin, Clock, Users, Route as RouteIcon, RefreshCw } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
+import { MapPin, Clock, Users, Route as RouteIcon, RefreshCw, CheckCircle, AlertCircle } from "lucide-react";
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useGeocoding } from '@/hooks/useGeocoding';
@@ -61,6 +63,139 @@ const defaultIcon = L.icon({
 // Set the default icon for all markers
 L.Marker.prototype.options.icon = defaultIcon;
 
+// Create numbered marker icon
+const createNumberedIcon = (number: number, prioridade: string) => {
+  const colorMap: Record<string, string> = {
+    alta: '#ef4444',
+    media: '#eab308',
+    baixa: '#22c55e'
+  };
+  
+  const color = colorMap[prioridade] || '#3b82f6';
+  
+  return L.divIcon({
+    className: 'custom-numbered-icon',
+    html: `
+      <div style="
+        background-color: ${color};
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        border: 3px solid white;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 16px;
+        color: white;
+      ">
+        ${number}
+      </div>
+    `,
+    iconSize: [36, 36],
+    iconAnchor: [18, 18],
+    popupAnchor: [0, -18]
+  });
+};
+
+// Haversine distance calculation (km)
+const haversineDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+  const R = 6371; // Earth radius in km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+};
+
+// Optimize route using Nearest Neighbor algorithm
+const optimizeRoute = (tickets: any[]): any[] => {
+  if (tickets.length <= 1) return tickets.map((t, i) => ({ ...t, ordem: i + 1 }));
+  
+  const optimized: any[] = [];
+  const remaining = [...tickets];
+  
+  // Start with highest priority ticket
+  const prioMap: Record<string, number> = { alta: 3, media: 2, baixa: 1 };
+  remaining.sort((a, b) => prioMap[b.prioridade] - prioMap[a.prioridade]);
+  
+  let current = remaining[0];
+  optimized.push({ ...current, ordem: 1 });
+  remaining.splice(0, 1);
+  
+  // Find nearest neighbor
+  while (remaining.length > 0) {
+    let nearest = remaining[0];
+    let minDist = Infinity;
+    
+    for (const ticket of remaining) {
+      if (!ticket.hasRealCoords || !current.hasRealCoords) {
+        nearest = ticket;
+        break;
+      }
+      
+      const dist = haversineDistance(
+        current.coordenadas[0], current.coordenadas[1],
+        ticket.coordenadas[0], ticket.coordenadas[1]
+      );
+      
+      if (dist < minDist) {
+        minDist = dist;
+        nearest = ticket;
+      }
+    }
+    
+    optimized.push({ ...nearest, ordem: optimized.length + 1 });
+    remaining.splice(remaining.indexOf(nearest), 1);
+    current = nearest;
+  }
+  
+  return optimized;
+};
+
+// Calculate route totals (distance and time)
+const calculateRouteTotals = (tickets: any[]) => {
+  let totalDistance = 0;
+  let totalTime = 0;
+  
+  const ticketsWithCoords = tickets.filter(t => t.hasRealCoords);
+  
+  if (ticketsWithCoords.length < 2) {
+    return {
+      distance: '0 km',
+      time: '0h 0min'
+    };
+  }
+  
+  for (let i = 0; i < ticketsWithCoords.length - 1; i++) {
+    const dist = haversineDistance(
+      ticketsWithCoords[i].coordenadas[0], ticketsWithCoords[i].coordenadas[1],
+      ticketsWithCoords[i+1].coordenadas[0], ticketsWithCoords[i+1].coordenadas[1]
+    );
+    totalDistance += dist;
+    
+    // Estimate 30 km/h urban traffic + 15min per stop
+    const travelTime = (dist / 30) * 60; // minutes
+    totalTime += travelTime + 15; // +15min stop time
+  }
+  
+  // Add service time
+  const serviceTime = tickets.reduce((sum, t) => {
+    const tempo = parseInt(t.estimativa) || 0;
+    return sum + tempo * 60;
+  }, 0);
+  totalTime += serviceTime;
+  
+  return {
+    distance: `${totalDistance.toFixed(1)} km`,
+    time: `${Math.floor(totalTime / 60)}h ${Math.floor(totalTime % 60)}min`
+  };
+};
+
 const RouteMap: React.FC = () => {
   const [selectedRoute, setSelectedRoute] = useState<number | null>(null);
   const [mounted, setMounted] = useState(false);
@@ -68,6 +203,9 @@ const RouteMap: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [dateFilter, setDateFilter] = useState('today');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [geocodingProgress, setGeocodingProgress] = useState(0);
+  const [geocodedCount, setGeocodedCount] = useState(0);
+  const [totalToGeocode, setTotalToGeocode] = useState(0);
   const { profile } = useAuth();
   const { geocodeAddress, loading: geocoding } = useGeocoding();
 
@@ -149,60 +287,84 @@ const RouteMap: React.FC = () => {
     }
   };
 
-  // Convert OS to tickets format for map display
-  const tickets = ordensServico.map((os, index) => {
-    const hasCoords = os.tickets.latitude && os.tickets.longitude;
-    
-    return {
-      id: os.id,
-      ticketId: os.tickets.id,
-      numero: os.tickets.numero_ticket,
-      cliente: os.tickets.clientes?.empresa || 'Cliente não definido',
-      endereco: os.tickets.endereco_servico,
-      prioridade: os.tickets.prioridade,
-      status: os.tickets.status,
-      tipo: os.tickets.titulo,
-      tecnico: os.tecnicos?.profiles?.nome || 'Não atribuído',
-      estimativa: os.tickets.tempo_estimado ? `${os.tickets.tempo_estimado}h` : 'N/A',
-      // Usar coordenadas reais ou fallback para São Paulo
-      coordenadas: hasCoords 
-        ? [os.tickets.latitude, os.tickets.longitude] as [number, number]
-        : [-23.5505, -46.6333] as [number, number], // Fallback: Centro de SP
-      hasRealCoords: hasCoords
-    };
-  });
-
-  // Group by technician
-  const rotasPorTecnico = ordensServico.reduce((acc: any[], os) => {
-    const tecnicoNome = os.tecnicos?.profiles?.nome || 'Sem técnico';
-    let rota = acc.find(r => r.tecnico === tecnicoNome);
-    
-    if (!rota) {
-      rota = {
-        id: acc.length + 1,
-        nome: `Rota - ${tecnicoNome}`,
-        tickets: [],
-        tecnico: tecnicoNome,
-        distanciaTotal: 'Calcular',
-        tempoEstimado: '0h'
+  // Convert OS to tickets format for map display - memoized
+  const tickets = useMemo(() => {
+    return ordensServico.map((os, index) => {
+      const hasCoords = os.tickets.latitude && os.tickets.longitude;
+      
+      return {
+        id: os.id,
+        ticketId: os.tickets.id,
+        numeroOS: os.numero_os,
+        numero: os.tickets.numero_ticket,
+        cliente: os.tickets.clientes?.empresa || 'Cliente não definido',
+        endereco: os.tickets.endereco_servico,
+        prioridade: os.tickets.prioridade,
+        status: os.tickets.status,
+        tipo: os.tickets.titulo,
+        tecnico: os.tecnicos?.profiles?.nome || 'Não atribuído',
+        estimativa: os.tickets.tempo_estimado ? `${os.tickets.tempo_estimado}h` : 'N/A',
+        dataProgramada: os.data_programada,
+        // Usar coordenadas reais ou fallback para São Paulo
+        coordenadas: hasCoords 
+          ? [os.tickets.latitude, os.tickets.longitude] as [number, number]
+          : [-23.5505, -46.6333] as [number, number], // Fallback: Centro de SP
+        hasRealCoords: hasCoords
       };
-      acc.push(rota);
-    }
-    
-    rota.tickets.push(tickets.findIndex(t => t.id === os.id));
-    return acc;
-  }, []);
+    });
+  }, [ordensServico]);
 
-  const rotasOtimizadas = rotasPorTecnico.length > 0 ? rotasPorTecnico : [
-    {
-      id: 1,
-      nome: 'Ordens Pendentes',
-      tickets: tickets.map((_, idx) => idx),
-      distanciaTotal: 'Calcular',
-      tempoEstimado: 'A definir',
-      tecnico: 'Diversos'
-    }
-  ];
+  // Group by technician and optimize routes - memoized
+  const rotasOtimizadas = useMemo(() => {
+    const rotasPorTecnico = ordensServico.reduce((acc: any[], os) => {
+      const tecnicoNome = os.tecnicos?.profiles?.nome || 'Sem técnico';
+      let rota = acc.find(r => r.tecnico === tecnicoNome);
+      
+      if (!rota) {
+        rota = {
+          id: acc.length + 1,
+          nome: `Rota - ${tecnicoNome}`,
+          ticketsData: [],
+          tecnico: tecnicoNome
+        };
+        acc.push(rota);
+      }
+      
+      const ticketData = tickets.find(t => t.id === os.id);
+      if (ticketData) {
+        rota.ticketsData.push(ticketData);
+      }
+      
+      return acc;
+    }, []);
+
+    // Optimize each route and calculate totals
+    const optimizedRoutes = rotasPorTecnico.map(rota => {
+      const optimizedTickets = optimizeRoute(rota.ticketsData);
+      const totals = calculateRouteTotals(optimizedTickets);
+      const allGeocoded = optimizedTickets.every(t => t.hasRealCoords);
+      
+      return {
+        ...rota,
+        ticketsData: optimizedTickets,
+        distanciaTotal: totals.distance,
+        tempoEstimado: totals.time,
+        allGeocoded
+      };
+    });
+
+    return optimizedRoutes.length > 0 ? optimizedRoutes : [
+      {
+        id: 1,
+        nome: 'Ordens Pendentes',
+        ticketsData: optimizeRoute(tickets),
+        distanciaTotal: calculateRouteTotals(tickets).distance,
+        tempoEstimado: calculateRouteTotals(tickets).time,
+        tecnico: 'Diversos',
+        allGeocoded: tickets.every(t => t.hasRealCoords)
+      }
+    ];
+  }, [ordensServico, tickets]);
 
   const getPrioridadeColor = (prioridade: string) => {
     switch (prioridade) {
@@ -222,32 +384,36 @@ const RouteMap: React.FC = () => {
     }
   };
 
-  const getRouteCoordinates = (routeId: number) => {
-    const route = rotasOtimizadas.find(r => r.id === routeId);
-    if (!route) return [];
-    
-    const coordinates = route.tickets.map(ticketIdx => {
-      const ticket = tickets[ticketIdx];
-      return ticket ? ticket.coordenadas : null;
-    }).filter((coord): coord is [number, number] => coord !== null);
-    
-    return coordinates;
-  };
 
   if (loading || !mounted) {
     return (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[600px]">
         <div className="lg:col-span-1">
           <Card>
-            <CardContent className="p-6">
-              <div className="text-center">Carregando rotas...</div>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <RouteIcon className="h-5 w-5" />
+                <span>Rotas Otimizadas</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="space-y-2">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-3 w-1/2" />
+                  <Skeleton className="h-3 w-2/3" />
+                </div>
+              ))}
             </CardContent>
           </Card>
         </div>
         <div className="lg:col-span-2">
           <Card className="h-full">
             <CardContent className="p-6 flex items-center justify-center">
-              <div className="text-center">Carregando mapa...</div>
+              <div className="text-center">
+                <RefreshCw className="h-8 w-8 mx-auto mb-2 animate-spin text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">Carregando mapa...</p>
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -275,6 +441,22 @@ const RouteMap: React.FC = () => {
 
   return (
     <div className="space-y-4">
+      {/* Progress bar de geocodificação */}
+      {geocoding && (
+        <div className="fixed top-4 right-4 w-80 bg-card shadow-lg rounded-lg p-4 z-50 border">
+          <div className="flex items-center space-x-3">
+            <RefreshCw className="h-5 w-5 animate-spin text-primary" />
+            <div className="flex-1">
+              <p className="text-sm font-medium">Geocodificando endereços</p>
+              <Progress value={geocodingProgress} className="mt-2" />
+              <p className="text-xs text-muted-foreground mt-1">
+                {geocodedCount}/{totalToGeocode} concluídos
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Filtros */}
       <Card>
         <CardContent className="pt-6">
@@ -331,7 +513,20 @@ const RouteMap: React.FC = () => {
               >
                 <div className="flex items-center justify-between mb-2">
                   <h4 className="font-medium">{rota.nome}</h4>
-                  <Badge variant="outline">{rota.tickets.length} tickets</Badge>
+                  <div className="flex items-center space-x-2">
+                    <Badge variant="outline">{rota.ticketsData.length} OS</Badge>
+                    {rota.allGeocoded ? (
+                      <Badge variant="default" className="bg-green-500">
+                        <CheckCircle className="h-3 w-3 mr-1" />
+                        Pronto
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-yellow-600 border-yellow-600">
+                        <AlertCircle className="h-3 w-3 mr-1" />
+                        Pendente
+                      </Badge>
+                    )}
+                  </div>
                 </div>
                 
                 <div className="text-sm text-muted-foreground space-y-1">
@@ -349,7 +544,7 @@ const RouteMap: React.FC = () => {
                   </div>
                 </div>
                 
-                {rota.tickets.some((idx: number) => !tickets[idx]?.hasRealCoords) && (
+                {!rota.allGeocoded && (
                   <Button 
                     variant="outline" 
                     size="sm" 
@@ -357,17 +552,18 @@ const RouteMap: React.FC = () => {
                     disabled={geocoding}
                     onClick={async (e) => {
                       e.stopPropagation();
-                      const ticketsInRoute = rota.tickets.map((idx: number) => tickets[idx]);
-                      let geocoded = 0;
+                      const ticketsToGeocode = rota.ticketsData.filter(t => !t.hasRealCoords);
+                      setTotalToGeocode(ticketsToGeocode.length);
+                      setGeocodedCount(0);
+                      setGeocodingProgress(0);
                       
-                      for (const ticket of ticketsInRoute) {
-                        if (!ticket.hasRealCoords) {
-                          await geocodeAddress(ticket.endereco, ticket.ticketId);
-                          geocoded++;
-                          console.log(`Geocodificado ${geocoded}/${ticketsInRoute.filter(t => !t.hasRealCoords).length}`);
-                          // Delay de 1s para respeitar rate limit do Nominatim
-                          await new Promise(resolve => setTimeout(resolve, 1000));
-                        }
+                      for (let i = 0; i < ticketsToGeocode.length; i++) {
+                        const ticket = ticketsToGeocode[i];
+                        await geocodeAddress(ticket.endereco, ticket.ticketId);
+                        setGeocodedCount(i + 1);
+                        setGeocodingProgress(((i + 1) / ticketsToGeocode.length) * 100);
+                        // Delay de 1s para respeitar rate limit do Nominatim
+                        await new Promise(resolve => setTimeout(resolve, 1000));
                       }
                       
                       loadOrdensServico();
@@ -382,34 +578,62 @@ const RouteMap: React.FC = () => {
           </CardContent>
         </Card>
 
-        {/* Lista de Tickets */}
+        {/* Lista de Tickets com ordem otimizada */}
         <Card>
           <CardHeader>
-            <CardTitle>Tickets do Dia</CardTitle>
+            <CardTitle>Ordens do Dia (Otimizadas)</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {tickets.map((ticket) => (
-              <div key={ticket.id} className="p-3 rounded-lg border">
-                <div className="flex items-start justify-between mb-2">
-                  <h5 className="font-medium text-sm">{ticket.cliente}</h5>
-                  <div className="flex space-x-1">
-                    <Badge className={getPrioridadeColor(ticket.prioridade)}>
-                      {ticket.prioridade}
-                    </Badge>
-                    <Badge className={getStatusColor(ticket.status)}>
-                      {ticket.status.replace('_', ' ')}
-                    </Badge>
+            {selectedRoute ? (
+              rotasOtimizadas
+                .find(r => r.id === selectedRoute)
+                ?.ticketsData.map((ticket: any) => (
+                  <div key={ticket.id} className="p-3 rounded-lg border">
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex items-center space-x-2">
+                        <Badge variant="outline" className="font-bold">#{ticket.ordem}</Badge>
+                        <h5 className="font-medium text-sm">{ticket.cliente}</h5>
+                      </div>
+                      <div className="flex space-x-1">
+                        <Badge className={getPrioridadeColor(ticket.prioridade)}>
+                          {ticket.prioridade}
+                        </Badge>
+                      </div>
+                    </div>
+                    
+                    <div className="text-xs text-muted-foreground space-y-1">
+                      <p className="font-medium">OS: {ticket.numeroOS}</p>
+                      <p>{ticket.tipo}</p>
+                      <p>{ticket.endereco}</p>
+                      <p>Estimativa: {ticket.estimativa}</p>
+                    </div>
+                  </div>
+                ))
+            ) : (
+              tickets.map((ticket) => (
+                <div key={ticket.id} className="p-3 rounded-lg border">
+                  <div className="flex items-start justify-between mb-2">
+                    <h5 className="font-medium text-sm">{ticket.cliente}</h5>
+                    <div className="flex space-x-1">
+                      <Badge className={getPrioridadeColor(ticket.prioridade)}>
+                        {ticket.prioridade}
+                      </Badge>
+                      <Badge className={getStatusColor(ticket.status)}>
+                        {ticket.status.replace('_', ' ')}
+                      </Badge>
+                    </div>
+                  </div>
+                  
+                  <div className="text-xs text-muted-foreground space-y-1">
+                    <p className="font-medium">OS: {ticket.numeroOS}</p>
+                    <p>{ticket.tipo}</p>
+                    <p>{ticket.endereco}</p>
+                    <p>Técnico: {ticket.tecnico}</p>
+                    <p>Estimativa: {ticket.estimativa}</p>
                   </div>
                 </div>
-                
-                <div className="text-xs text-muted-foreground space-y-1">
-                  <p>{ticket.tipo}</p>
-                  <p>{ticket.endereco}</p>
-                  <p>Técnico: {ticket.tecnico}</p>
-                  <p>Estimativa: {ticket.estimativa}</p>
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </CardContent>
         </Card>
         </div>
@@ -418,10 +642,9 @@ const RouteMap: React.FC = () => {
         <div className="lg:col-span-2">
           <Card className="h-full">
             <CardContent className="p-0 h-full">
-              <div className="w-full h-[600px] rounded-lg overflow-hidden">
+              <div className="w-full h-[600px] rounded-lg overflow-hidden relative">
                 <MapErrorBoundary>
                   <MapContainer
-                    key={`map-${dateFilter}-${statusFilter}-${ordensServico.length}`}
                     center={[-23.5505, -46.6333]}
                     zoom={12}
                     className="w-full h-full"
@@ -432,37 +655,118 @@ const RouteMap: React.FC = () => {
                       url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                     />
                     
-                    {/* Marcadores dos tickets */}
-                    {tickets.map((ticket) => (
-                      <Marker key={`marker-${ticket.id}`} position={ticket.coordenadas}>
-                        <Popup>
-                          <div className="p-2">
-                            <h6 className="font-semibold mb-1">{ticket.cliente}</h6>
-                            <p className="text-sm text-gray-600 mb-1">{ticket.tipo}</p>
-                            <p className="text-xs text-gray-500 mb-2">{ticket.endereco}</p>
-                            
-                            {!ticket.hasRealCoords && (
-                              <Badge variant="outline" className="text-xs mb-2">
-                                📍 Localização aproximada
-                              </Badge>
-                            )}
-                            
-                            <div className="flex space-x-1">
-                              <Badge className={getPrioridadeColor(ticket.prioridade)}>
-                                {ticket.prioridade}
-                              </Badge>
-                              <Badge className={getStatusColor(ticket.status)}>
-                                {ticket.status.replace('_', ' ')}
-                              </Badge>
+                    {/* Marcadores dos tickets com numeração quando rota selecionada */}
+                    {selectedRoute ? (
+                      rotasOtimizadas
+                        .find(r => r.id === selectedRoute)
+                        ?.ticketsData.map((ticket: any) => (
+                          <Marker 
+                            key={`marker-${ticket.id}`} 
+                            position={ticket.coordenadas}
+                            icon={createNumberedIcon(ticket.ordem, ticket.prioridade)}
+                          >
+                            <Popup>
+                              <div className="p-2 min-w-[200px]">
+                                <div className="flex items-center space-x-2 mb-2">
+                                  <Badge variant="outline" className="font-bold">#{ticket.ordem}</Badge>
+                                  <h6 className="font-semibold">{ticket.cliente}</h6>
+                                </div>
+                                <p className="text-sm text-gray-600 mb-1">OS: {ticket.numeroOS}</p>
+                                <p className="text-sm text-gray-600 mb-1">{ticket.tipo}</p>
+                                <p className="text-xs text-gray-500 mb-2">{ticket.endereco}</p>
+                                
+                                {ticket.dataProgramada && (
+                                  <p className="text-xs text-gray-500 mb-2">
+                                    📅 {new Date(ticket.dataProgramada).toLocaleString('pt-BR', {
+                                      day: '2-digit',
+                                      month: '2-digit',
+                                      hour: '2-digit',
+                                      minute: '2-digit'
+                                    })}
+                                  </p>
+                                )}
+                                
+                                <p className="text-xs text-gray-500 mb-2">👷 {ticket.tecnico}</p>
+                                <p className="text-xs text-gray-500 mb-2">⏱️ {ticket.estimativa}</p>
+                                
+                                {!ticket.hasRealCoords && (
+                                  <Badge variant="outline" className="text-xs mb-2">
+                                    📍 Localização aproximada
+                                  </Badge>
+                                )}
+                                
+                                <Badge className={getPrioridadeColor(ticket.prioridade)}>
+                                  {ticket.prioridade}
+                                </Badge>
+                              </div>
+                            </Popup>
+                          </Marker>
+                        ))
+                    ) : (
+                      tickets.map((ticket) => (
+                        <Marker key={`marker-${ticket.id}`} position={ticket.coordenadas}>
+                          <Popup>
+                            <div className="p-2">
+                              <h6 className="font-semibold mb-1">{ticket.cliente}</h6>
+                              <p className="text-sm text-gray-600 mb-1">OS: {ticket.numeroOS}</p>
+                              <p className="text-sm text-gray-600 mb-1">{ticket.tipo}</p>
+                              <p className="text-xs text-gray-500 mb-2">{ticket.endereco}</p>
+                              
+                              {!ticket.hasRealCoords && (
+                                <Badge variant="outline" className="text-xs mb-2">
+                                  📍 Localização aproximada
+                                </Badge>
+                              )}
+                              
+                              <div className="flex space-x-1">
+                                <Badge className={getPrioridadeColor(ticket.prioridade)}>
+                                  {ticket.prioridade}
+                                </Badge>
+                                <Badge className={getStatusColor(ticket.status)}>
+                                  {ticket.status.replace('_', ' ')}
+                                </Badge>
+                              </div>
                             </div>
-                          </div>
-                        </Popup>
-                      </Marker>
-                    ))}
+                          </Popup>
+                        </Marker>
+                      ))
+                    )}
                     
                     {/* Linha da rota selecionada */}
-                    {selectedRoute && getRouteCoordinates(selectedRoute).length > 1 && (
-                      <Polyline
+                    {selectedRoute && (() => {
+                      const rota = rotasOtimizadas.find(r => r.id === selectedRoute);
+                      const coordinates = rota?.ticketsData
+                        .filter((t: any) => t.hasRealCoords)
+                        .map((t: any) => t.coordenadas) || [];
+                      return coordinates.length > 1 && (
+                        <Polyline
+                          positions={coordinates}
+                          color="#3b82f6"
+                          weight={3}
+                          opacity={0.7}
+                        />
+                      );
+                    })()}
+                  </MapContainer>
+                  
+                  {/* Legenda do mapa */}
+                  <div className="absolute bottom-4 left-4 bg-card p-3 rounded-lg shadow-lg z-[1000] border">
+                    <p className="text-xs font-semibold mb-2">Prioridade</p>
+                    <div className="space-y-1">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-4 h-4 rounded-full bg-red-500"></div>
+                        <span className="text-xs">Alta</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <div className="w-4 h-4 rounded-full bg-yellow-500"></div>
+                        <span className="text-xs">Média</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <div className="w-4 h-4 rounded-full bg-green-500"></div>
+                        <span className="text-xs">Baixa</span>
+                      </div>
+                    </div>
+                  </div>
                         key={`route-${selectedRoute}`}
                         positions={getRouteCoordinates(selectedRoute)}
                         color="#3b82f6"

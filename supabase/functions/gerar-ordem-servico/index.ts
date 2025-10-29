@@ -185,6 +185,41 @@ serve(async (req) => {
 
     console.log('[gerar-ordem-servico] OS criada no banco, ID:', ordemServico.id)
 
+    // Geocodificar endereço automaticamente se não tiver coordenadas
+    if (!ticket.latitude || !ticket.longitude) {
+      console.log('[gerar-ordem-servico] Iniciando geocodificação automática do endereço')
+      try {
+        const geocodeUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(ticket.endereco_servico)}&limit=1`
+        const geocodeResponse = await fetch(geocodeUrl, {
+          headers: { 'User-Agent': 'OrdemServicoApp/1.0' }
+        })
+        
+        const geocodeData = await geocodeResponse.json()
+        
+        if (geocodeData && geocodeData[0]) {
+          const latitude = parseFloat(geocodeData[0].lat)
+          const longitude = parseFloat(geocodeData[0].lon)
+          
+          // Atualizar ticket com coordenadas
+          await supabaseClient
+            .from('tickets')
+            .update({ 
+              latitude, 
+              longitude,
+              geocoded_at: new Date().toISOString()
+            })
+            .eq('id', ticketId)
+          
+          console.log('[gerar-ordem-servico] Endereço geocodificado com sucesso:', { latitude, longitude })
+        } else {
+          console.log('[gerar-ordem-servico] Não foi possível geocodificar o endereço')
+        }
+      } catch (geocodeError) {
+        console.error('[gerar-ordem-servico] Erro ao geocodificar:', geocodeError)
+        // Não interrompe o processo se a geocodificação falhar
+      }
+    }
+
     // Gerar PDF
     console.log('[gerar-ordem-servico] Gerando PDF')
     const doc = new jsPDF()
