@@ -1,6 +1,5 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import jsPDF from 'https://esm.sh/jspdf@2.5.1'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.58.0'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -8,11 +7,6 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
-  console.log('[gerar-ordem-servico] ===== REQUISIÇÃO RECEBIDA =====', {
-    method: req.method,
-    hasAuth: !!req.headers.get('Authorization')
-  });
-
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
@@ -29,42 +23,27 @@ serve(async (req) => {
     const user = data.user
 
     if (!user) {
-      console.error('[gerar-ordem-servico] Usuário não autenticado');
       throw new Error('Usuário não encontrado')
     }
 
-    console.log('[gerar-ordem-servico] Usuário autenticado:', user.id);
-
     const { ticketId } = await req.json()
-    console.log('[gerar-ordem-servico] Iniciando geração de OS para ticket:', ticketId)
 
-    // Verificar se já existe OS para este ticket
+    // Verificar se já existe OS
     const { data: existingOS, error: osCheckError } = await supabaseClient
       .from('ordens_servico')
       .select('*, pdf_url')
       .eq('ticket_id', ticketId)
       .maybeSingle()
 
-    if (osCheckError) {
-      console.error('[gerar-ordem-servico] Erro ao verificar OS existente:', osCheckError)
-    }
-
     if (existingOS) {
-      console.log('[gerar-ordem-servico] OS já existe:', existingOS.numero_os)
-      
-      // Gerar URL assinada para o PDF existente
       let signedUrl = null
       if (existingOS.pdf_url) {
-        const fileName = existingOS.pdf_url.split('/').pop()
-        const { data: signedData, error: signedError } = await supabaseClient.storage
+        const fileName = existingOS.pdf_url
+        const { data: signedData } = await supabaseClient.storage
           .from('ordens-servico')
-          .createSignedUrl(fileName, 60 * 60 * 24 * 7) // 7 dias
+          .createSignedUrl(fileName, 60 * 60 * 24 * 7)
 
-        if (signedError) {
-          console.error('[gerar-ordem-servico] Erro ao gerar URL assinada para OS existente:', signedError)
-        } else {
-          signedUrl = signedData.signedUrl
-        }
+        signedUrl = signedData?.signedUrl
       }
 
       return new Response(JSON.stringify({ 
@@ -79,7 +58,6 @@ serve(async (req) => {
     }
 
     // Buscar dados do ticket com cliente
-    console.log('[gerar-ordem-servico] Buscando dados do ticket')
     const { data: ticket, error: ticketError } = await supabaseClient
       .from('tickets')
       .select(`
@@ -98,26 +76,21 @@ serve(async (req) => {
       .single()
 
     if (ticketError || !ticket) {
-      console.error('[gerar-ordem-servico] Erro ao buscar ticket:', ticketError)
       return new Response(
         JSON.stringify({ error: 'Ticket não encontrado' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    console.log('[gerar-ordem-servico] Ticket encontrado:', ticket.numero_ticket)
-
-    // Validar que há um técnico atribuído (prestador)
+    // Validar técnico atribuído
     if (!ticket.tecnico_responsavel_id) {
-      console.error('[gerar-ordem-servico] Ticket sem técnico atribuído')
       return new Response(
         JSON.stringify({ error: 'É necessário atribuir um técnico antes de gerar a OS' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    // Buscar dados do prestador (técnico)
-    console.log('[gerar-ordem-servico] Buscando dados do prestador')
+    // Buscar prestador
     const { data: prestador, error: prestadorError } = await supabaseClient
       .from('prestadores')
       .select('id, nome, email, telefone')
@@ -125,47 +98,38 @@ serve(async (req) => {
       .single()
 
     if (prestadorError || !prestador) {
-      console.error('[gerar-ordem-servico] Erro ao buscar prestador:', prestadorError)
       return new Response(
         JSON.stringify({ error: 'Prestador não encontrado' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    // Buscar tecnicos para mapear prestador -> tecnico
-    const { data: tecnico, error: tecnicoError } = await supabaseClient
+    // Buscar técnico
+    const { data: tecnico } = await supabaseClient
       .from('tecnicos')
       .select('id')
       .limit(1)
       .maybeSingle()
 
     if (!tecnico) {
-      console.error('[gerar-ordem-servico] Nenhum técnico cadastrado no sistema')
       return new Response(
         JSON.stringify({ error: 'Nenhum técnico cadastrado. Por favor, cadastre um técnico primeiro.' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    // Validar que o ticket está aprovado
+    // Validar status aprovado
     if (ticket.status !== 'aprovado') {
-      console.error('[gerar-ordem-servico] Ticket não está aprovado:', ticket.status)
       return new Response(
         JSON.stringify({ error: 'Apenas tickets aprovados com técnico atribuído podem gerar OS' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    console.log('[gerar-ordem-servico] Validações concluídas, gerando número da OS')
-
     // Gerar número da OS
-    const { data: numeroOS } = await supabaseClient
-      .rpc('gerar_numero_os')
+    const { data: numeroOS } = await supabaseClient.rpc('gerar_numero_os')
 
-    console.log('[gerar-ordem-servico] Número da OS gerado:', numeroOS)
-    console.log('[gerar-ordem-servico] Usando tecnico_id:', tecnico.id)
-
-    // Criar ordem de serviço no banco
+    // Criar ordem de serviço
     const { data: ordemServico, error: osError } = await supabaseClient
       .from('ordens_servico')
       .insert({
@@ -179,15 +143,11 @@ serve(async (req) => {
       .single()
 
     if (osError) {
-      console.error('[gerar-ordem-servico] Erro ao criar OS no banco:', osError)
       throw osError
     }
 
-    console.log('[gerar-ordem-servico] OS criada no banco, ID:', ordemServico.id)
-
-    // Geocodificar endereço automaticamente se não tiver coordenadas
+    // Geocodificar se necessário
     if (!ticket.latitude || !ticket.longitude) {
-      console.log('[gerar-ordem-servico] Iniciando geocodificação automática do endereço')
       try {
         const geocodeUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(ticket.endereco_servico)}&limit=1`
         const geocodeResponse = await fetch(geocodeUrl, {
@@ -200,7 +160,6 @@ serve(async (req) => {
           const latitude = parseFloat(geocodeData[0].lat)
           const longitude = parseFloat(geocodeData[0].lon)
           
-          // Atualizar ticket com coordenadas
           await supabaseClient
             .from('tickets')
             .update({ 
@@ -209,118 +168,64 @@ serve(async (req) => {
               geocoded_at: new Date().toISOString()
             })
             .eq('id', ticketId)
-          
-          console.log('[gerar-ordem-servico] Endereço geocodificado com sucesso:', { latitude, longitude })
-        } else {
-          console.log('[gerar-ordem-servico] Não foi possível geocodificar o endereço')
         }
       } catch (geocodeError) {
-        console.error('[gerar-ordem-servico] Erro ao geocodificar:', geocodeError)
-        // Não interrompe o processo se a geocodificação falhar
+        console.error('Erro ao geocodificar:', geocodeError)
       }
     }
 
-    // Gerar PDF
-    console.log('[gerar-ordem-servico] Gerando PDF')
-    const doc = new jsPDF()
-    
-    // Cabeçalho
-    doc.setFontSize(20)
-    doc.text('ORDEM DE SERVIÇO', 20, 20)
-    
-    doc.setFontSize(12)
-    doc.text(`N°: ${numeroOS}`, 20, 35)
-    doc.text(`Data de Emissão: ${new Date().toLocaleDateString('pt-BR')}`, 120, 35)
-    
-    // Dados do cliente
-    doc.setFontSize(14)
-    doc.text('DADOS DO CLIENTE', 20, 55)
-    doc.setFontSize(10)
-    
-    const cliente = ticket.clientes
-    doc.text(`Cliente: ${cliente.empresa || cliente.profiles?.nome || 'N/A'}`, 20, 65)
-    doc.text(`Email: ${cliente.profiles?.email || 'N/A'}`, 20, 72)
-    doc.text(`Telefone: ${cliente.profiles?.telefone || 'N/A'}`, 20, 79)
-    doc.text(`CNPJ/CPF: ${cliente.cnpj_cpf || 'N/A'}`, 20, 86)
-    
-    // Dados do técnico
-    doc.text(`Técnico: ${prestador.nome}`, 20, 93)
-    
-    // Endereço
-    doc.text('ENDEREÇO DO SERVIÇO:', 20, 100)
-    doc.text(ticket.endereco_servico, 20, 107)
-    
-    // Dados do serviço
-    doc.setFontSize(14)
-    doc.text('DADOS DO SERVIÇO', 20, 125)
-    doc.setFontSize(10)
-    
-    doc.text(`Título: ${ticket.titulo}`, 20, 135)
-    doc.text(`Descrição: ${ticket.descricao}`, 20, 142)
-    doc.text(`Equipamento: ${ticket.equipamento_tipo.replace('_', ' ')}`, 20, 149)
-    doc.text(`Prioridade: ${ticket.prioridade.toUpperCase()}`, 20, 156)
-    
-    if (ticket.tempo_estimado) {
-      doc.text(`Tempo Estimado: ${ticket.tempo_estimado} horas`, 20, 163)
-    }
-    
-    if (ticket.data_vencimento) {
-      doc.text(`Data Programada: ${new Date(ticket.data_vencimento).toLocaleDateString('pt-BR')}`, 20, 170)
-    }
-    
-    // Observações
-    if (ticket.observacoes) {
-      doc.setFontSize(14)
-      doc.text('OBSERVAÇÕES', 20, 190)
-      doc.setFontSize(10)
-      doc.text(ticket.observacoes, 20, 200)
-    }
-    
-    // Assinaturas
-    doc.setFontSize(12)
-    doc.text('ASSINATURAS', 20, 230)
-    
-    doc.setFontSize(10)
-    doc.text('_________________________', 20, 250)
-    doc.text('Técnico Responsável', 20, 255)
-    
-    doc.text('_________________________', 120, 250)
-    doc.text('Cliente', 120, 255)
-    
-    // QR Code (simulado com texto)
-    doc.text(`QR Code: ${ordemServico.qr_code}`, 20, 270)
+    // Gerar documento de texto
+    const pdfContent = `
+ORDEM DE SERVIÇO
+N°: ${numeroOS}
+Data de Emissão: ${new Date().toLocaleDateString('pt-BR')}
 
-    // Converter para buffer
-    const pdfBuffer = doc.output('arraybuffer')
-    
-    console.log('[gerar-ordem-servico] PDF gerado, iniciando upload')
+DADOS DO CLIENTE
+Cliente: ${ticket.clientes.empresa || ticket.clientes.profiles?.nome || 'N/A'}
+Email: ${ticket.clientes.profiles?.email || 'N/A'}
+Telefone: ${ticket.clientes.profiles?.telefone || 'N/A'}
+CNPJ/CPF: ${ticket.clientes.cnpj_cpf || 'N/A'}
+Técnico: ${prestador.nome}
 
-    // Upload para storage
-    const fileName = `OS_${numeroOS}_${Date.now()}.pdf`
-    const { data: uploadData, error: uploadError } = await supabaseClient.storage
+ENDEREÇO DO SERVIÇO:
+${ticket.endereco_servico}
+
+DADOS DO SERVIÇO
+Título: ${ticket.titulo}
+Descrição: ${ticket.descricao}
+Equipamento: ${ticket.equipamento_tipo.replace('_', ' ')}
+Prioridade: ${ticket.prioridade.toUpperCase()}
+${ticket.tempo_estimado ? `Tempo Estimado: ${ticket.tempo_estimado} horas` : ''}
+${ticket.data_vencimento ? `Data Programada: ${new Date(ticket.data_vencimento).toLocaleDateString('pt-BR')}` : ''}
+
+${ticket.observacoes ? `OBSERVAÇÕES\n${ticket.observacoes}` : ''}
+
+ASSINATURAS
+_________________________    _________________________
+Técnico Responsável          Cliente
+
+QR Code: ${ordemServico.qr_code}
+`
+    
+    const pdfBuffer = new TextEncoder().encode(pdfContent)
+    const fileName = `OS_${numeroOS}_${Date.now()}.txt`
+    
+    const { error: uploadError } = await supabaseClient.storage
       .from('ordens-servico')
       .upload(fileName, pdfBuffer, {
-        contentType: 'application/pdf'
+        contentType: 'text/plain'
       })
 
     if (uploadError) {
-      console.error('[gerar-ordem-servico] Erro ao fazer upload do PDF:', uploadError)
       throw uploadError
     }
 
-    console.log('[gerar-ordem-servico] PDF enviado para storage:', fileName)
-
-    // Gerar URL assinada (válida por 7 dias)
-    const { data: signedUrlData, error: signedUrlError } = await supabaseClient.storage
+    // Gerar URL assinada
+    const { data: signedUrlData } = await supabaseClient.storage
       .from('ordens-servico')
-      .createSignedUrl(fileName, 60 * 60 * 24 * 7) // 7 dias
-
-    if (signedUrlError) {
-      console.error('[gerar-ordem-servico] Erro ao gerar URL assinada:', signedUrlError)
-    }
+      .createSignedUrl(fileName, 60 * 60 * 24 * 7)
 
     const signedUrl = signedUrlData?.signedUrl || null
-    console.log('[gerar-ordem-servico] URL assinada gerada:', signedUrl ? 'sim' : 'não')
 
     // Atualizar OS com caminho do arquivo
     await supabaseClient
@@ -328,21 +233,11 @@ serve(async (req) => {
       .update({ pdf_url: fileName })
       .eq('id', ordemServico.id)
 
-    console.log('[gerar-ordem-servico] OS atualizada com caminho do PDF')
-
     // Atualizar status do ticket
-    const { error: updateTicketError } = await supabaseClient
+    await supabaseClient
       .from('tickets')
       .update({ status: 'ordem_servico_gerada' })
       .eq('id', ticketId)
-
-    if (updateTicketError) {
-      console.error('[gerar-ordem-servico] Erro ao atualizar status do ticket:', updateTicketError)
-    } else {
-      console.log('[gerar-ordem-servico] Status do ticket atualizado para ordem_servico_gerada')
-    }
-
-    console.log('[gerar-ordem-servico] Processo concluído com sucesso')
 
     return new Response(JSON.stringify({ 
       success: true, 

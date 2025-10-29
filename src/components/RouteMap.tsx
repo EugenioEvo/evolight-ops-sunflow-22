@@ -767,14 +767,6 @@ const RouteMap: React.FC = () => {
                       </div>
                     </div>
                   </div>
-                        key={`route-${selectedRoute}`}
-                        positions={getRouteCoordinates(selectedRoute)}
-                        color="#3b82f6"
-                        weight={4}
-                        opacity={0.7}
-                      />
-                    )}
-                  </MapContainer>
                 </MapErrorBoundary>
               </div>
             </CardContent>
