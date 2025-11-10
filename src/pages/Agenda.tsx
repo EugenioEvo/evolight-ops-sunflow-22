@@ -7,9 +7,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { format, startOfMonth, endOfMonth, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CalendarIcon, Clock, User, MapPin } from 'lucide-react';
+import { CalendarIcon, Clock, User, MapPin, X } from 'lucide-react';
 import { ScheduleModal } from '@/components/ScheduleModal';
 import { useTicketsRealtime } from '@/hooks/useTicketsRealtime';
+import { useCancelOS } from '@/hooks/useCancelOS';
 
 interface OrdemServico {
   id: string;
@@ -52,6 +53,7 @@ const Agenda = () => {
   const [selectedOS, setSelectedOS] = useState<OrdemServico | null>(null);
   
   useTicketsRealtime();
+  const { cancelOS, loading: cancelLoading } = useCancelOS();
 
   useEffect(() => {
     loadTecnicos();
@@ -256,16 +258,34 @@ const Agenda = () => {
 
                         <div className="mt-3 pt-3 border-t flex justify-between items-center">
                           <span className="text-sm font-medium">{os.tickets.clientes?.empresa || 'Cliente não definido'}</span>
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => {
-                              setSelectedOS(os);
-                              setScheduleModalOpen(true);
-                            }}
-                          >
-                            Reagendar
-                          </Button>
+                          <div className="flex gap-2">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => {
+                                setSelectedOS(os);
+                                setScheduleModalOpen(true);
+                              }}
+                            >
+                              Reagendar
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="destructive"
+                              disabled={cancelLoading}
+                              onClick={async () => {
+                                if (confirm(`Deseja realmente cancelar a OS ${os.numero_os}? Os convites de calendário serão removidos.`)) {
+                                  const success = await cancelOS(os.id);
+                                  if (success) {
+                                    loadOrdensServico();
+                                  }
+                                }
+                              }}
+                            >
+                              <X className="h-4 w-4 mr-1" />
+                              Cancelar
+                            </Button>
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
