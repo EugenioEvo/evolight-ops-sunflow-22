@@ -11,6 +11,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import RoutesPage from "./pages/Routes";
 import Agenda from "./pages/Agenda";
+import CargaTrabalho from "./pages/CargaTrabalho";
 import Clientes from "./pages/Clientes";
 import Tickets from "./pages/Tickets";
 import Equipamentos from "./pages/Equipamentos";
@@ -50,6 +51,11 @@ const App = () => (
                           <Route path="/agenda" element={
                             <ProtectedRoute roles={['admin', 'area_tecnica']}>
                               <Agenda />
+                            </ProtectedRoute>
+                          } />
+                          <Route path="/carga-trabalho" element={
+                            <ProtectedRoute roles={['admin', 'area_tecnica']}>
+                              <CargaTrabalho />
                             </ProtectedRoute>
                           } />
                           <Route path="/clientes" element={

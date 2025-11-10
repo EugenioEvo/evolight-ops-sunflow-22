@@ -13,7 +13,8 @@ import {
   User,
   ClipboardList,
   Calendar,
-  CheckSquare
+  CheckSquare,
+  TrendingUp
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
@@ -39,6 +40,7 @@ const mainItems = [
   { title: "RME", url: "/rme", icon: BarChart3 },
   { title: "Rotas", url: "/routes", icon: Route },
   { title: "Agenda", url: "/agenda", icon: Calendar, adminOnly: true },
+  { title: "Carga de Trabalho", url: "/carga-trabalho", icon: TrendingUp, adminOnly: true },
   { title: "Aprovar RMEs", url: "/gerenciar-rme", icon: CheckSquare, adminOnly: true },
 ];
 
