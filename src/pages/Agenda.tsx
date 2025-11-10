@@ -7,10 +7,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { format, startOfMonth, endOfMonth, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CalendarIcon, Clock, User, MapPin, X, Mail, CheckCircle, Send, AlertCircle, AlertTriangle } from 'lucide-react';
+import { CalendarIcon, Clock, User, MapPin, X, Mail, CheckCircle, Send, AlertCircle, AlertTriangle, Edit } from 'lucide-react';
 import { ScheduleModal } from '@/components/ScheduleModal';
 import { useTicketsRealtime } from '@/hooks/useTicketsRealtime';
 import { useCancelOS } from '@/hooks/useCancelOS';
+import { useAgendaRealtime } from '@/hooks/useAgendaRealtime';
+import { EditTechnicianEmailDialog } from '@/components/EditTechnicianEmailDialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
 
@@ -28,6 +30,7 @@ interface OrdemServico {
   email_error_log: any[] | null;
   tecnicos: {
     id: string;
+    profile_id: string;
     profiles: {
       nome: string;
       email: string | null;
@@ -58,30 +61,19 @@ const Agenda = () => {
   const [loading, setLoading] = useState(true);
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
   const [selectedOS, setSelectedOS] = useState<OrdemServico | null>(null);
+  const [editEmailDialogOpen, setEditEmailDialogOpen] = useState(false);
+  const [selectedTecnicoForEmail, setSelectedTecnicoForEmail] = useState<{
+    id: string;
+    profileId: string;
+    nome: string;
+    email: string | null;
+  } | null>(null);
+  const [resendingInvite, setResendingInvite] = useState<string | null>(null);
   
-  useTicketsRealtime();
   const { cancelOS, loading: cancelLoading } = useCancelOS();
   const { toast } = useToast();
-  const [resendingInvite, setResendingInvite] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadTecnicos();
-  }, []);
-
-  useEffect(() => {
-    loadOrdensServico();
-  }, [selectedDate, selectedTecnico]);
-
-  const loadTecnicos = async () => {
-    const { data } = await supabase
-      .from('prestadores')
-      .select('id, nome')
-      .eq('categoria', 'tecnico')
-      .order('nome');
-    
-    if (data) setTecnicos(data as any);
-  };
-
+  // Função para recarregar ordens de serviço
   const loadOrdensServico = async () => {
     setLoading(true);
     try {
@@ -94,6 +86,7 @@ const Agenda = () => {
           *,
           tecnicos!tecnico_id(
             id,
+            profile_id,
             profiles!inner(nome, email)
           ),
           tickets!inner(
@@ -123,6 +116,28 @@ const Agenda = () => {
       setLoading(false);
     }
   };
+  
+  useTicketsRealtime();
+  useAgendaRealtime({ onUpdate: loadOrdensServico, selectedDate });
+
+  useEffect(() => {
+    loadTecnicos();
+  }, []);
+
+  useEffect(() => {
+    loadOrdensServico();
+  }, [selectedDate, selectedTecnico]);
+
+  const loadTecnicos = async () => {
+    const { data } = await supabase
+      .from('prestadores')
+      .select('id, nome')
+      .eq('categoria', 'tecnico')
+      .order('nome');
+    
+    if (data) setTecnicos(data as any);
+  };
+
 
   const osDoDia = ordensServico.filter(os => 
     isSameDay(new Date(os.data_programada), selectedDate)
@@ -383,7 +398,34 @@ const Agenda = () => {
                           </div>
                           <div className="flex items-center gap-2 text-muted-foreground">
                             <User className="h-4 w-4" />
-                            {os.tecnicos?.profiles?.nome || 'Não atribuído'}
+                            <span className="flex-1">{os.tecnicos?.profiles?.nome || 'Não atribuído'}</span>
+                            {os.tecnicos && (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-6 w-6 p-0"
+                                      onClick={() => {
+                                        setSelectedTecnicoForEmail({
+                                          id: os.tecnicos!.id,
+                                          profileId: os.tecnicos!.profile_id,
+                                          nome: os.tecnicos!.profiles.nome,
+                                          email: os.tecnicos!.profiles.email
+                                        });
+                                        setEditEmailDialogOpen(true);
+                                      }}
+                                    >
+                                      <Edit className="h-3 w-3" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    Editar email do técnico
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )}
                           </div>
                           <div className="flex items-center gap-2 text-muted-foreground col-span-2">
                             <MapPin className="h-4 w-4" />
@@ -464,6 +506,21 @@ const Agenda = () => {
           currentData={selectedOS.data_programada ? new Date(selectedOS.data_programada) : undefined}
           currentHoraInicio={selectedOS.hora_inicio || undefined}
           currentDuracao={selectedOS.duracao_estimada_min || undefined}
+          onSuccess={loadOrdensServico}
+        />
+      )}
+
+      {selectedTecnicoForEmail && (
+        <EditTechnicianEmailDialog
+          open={editEmailDialogOpen}
+          onClose={() => {
+            setEditEmailDialogOpen(false);
+            setSelectedTecnicoForEmail(null);
+          }}
+          tecnicoId={selectedTecnicoForEmail.id}
+          profileId={selectedTecnicoForEmail.profileId}
+          currentEmail={selectedTecnicoForEmail.email}
+          tecnicoNome={selectedTecnicoForEmail.nome}
           onSuccess={loadOrdensServico}
         />
       )}

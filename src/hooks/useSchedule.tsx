@@ -43,16 +43,60 @@ export const useSchedule = () => {
   const scheduleOS = async (params: ScheduleParams): Promise<boolean> => {
     setLoading(true);
     try {
-      // Buscar dados atuais da OS para saber se é update ou create
-      const { data: currentOS } = await supabase
+      // ===== VALIDAÇÕES PRÉ-AGENDAMENTO =====
+      
+      // 1. Validar data futura
+      const agora = new Date();
+      const dataAgendamento = new Date(params.data);
+      if (dataAgendamento < agora) {
+        toast({
+          title: 'Data inválida',
+          description: 'Não é possível agendar para uma data passada',
+          variant: 'destructive'
+        });
+        return false;
+      }
+
+      // 2. Buscar dados atuais da OS
+      const { data: currentOS, error: fetchError } = await supabase
         .from('ordens_servico')
-        .select('data_programada, hora_inicio, hora_fim')
+        .select(`
+          id,
+          data_programada, 
+          hora_inicio, 
+          hora_fim,
+          tickets!inner(status)
+        `)
         .eq('id', params.osId)
         .single();
 
+      if (fetchError) throw fetchError;
+
+      // 3. Validar se OS não está concluída
+      if (currentOS.tickets.status === 'concluido') {
+        toast({
+          title: 'OS já concluída',
+          description: 'Não é possível agendar uma OS já concluída',
+          variant: 'destructive'
+        });
+        return false;
+      }
+
+      // 4. Buscar email do técnico
+      const { data: tecnicoData, error: tecnicoError } = await supabase
+        .from('tecnicos')
+        .select('profiles!inner(email)')
+        .eq('id', params.tecnicoId)
+        .single();
+
+      if (tecnicoError) throw tecnicoError;
+
+      const tecnicoEmail = tecnicoData?.profiles?.email;
+      const hasEmail = !!tecnicoEmail;
+
       const isUpdate = currentOS?.data_programada && currentOS?.hora_inicio && currentOS?.hora_fim;
 
-      // Verificar conflito
+      // ===== VERIFICAR CONFLITO =====
       const hasConflict = await checkConflict(
         params.tecnicoId,
         params.data,
@@ -70,68 +114,78 @@ export const useSchedule = () => {
         return false;
       }
 
-      // Agendar/Reagendar OS
-      const { error } = await supabase
+      // ===== SALVAR AGENDAMENTO =====
+      const { error: updateError } = await supabase
         .from('ordens_servico')
         .update({
           data_programada: params.data.toISOString(),
           hora_inicio: params.horaInicio,
           hora_fim: params.horaFim,
-          duracao_estimada_min: params.duracaoMin
+          duracao_estimada_min: params.duracaoMin,
+          // Resetar calendar_invite_sent_at para indicar que precisa enviar novo
+          calendar_invite_sent_at: null
         })
         .eq('id', params.osId);
 
-      if (error) throw error;
+      if (updateError) throw updateError;
 
-      // Enviar convite de calendário (create ou update)
-      try {
-        const { data: inviteData, error: inviteError } = await supabase.functions.invoke('send-calendar-invite', {
-          body: {
-            os_id: params.osId,
-            action: isUpdate ? 'update' : 'create'
-          }
-        });
-
-        if (inviteError) throw inviteError;
-        
-        toast({
-          title: isUpdate ? 'Reagendamento realizado' : 'Agendamento realizado',
-          description: `OS ${isUpdate ? 'reagendada' : 'agendada'} para ${format(params.data, 'dd/MM/yyyy')} às ${params.horaInicio}. Convites enviados!`
-        });
-      } catch (emailError: any) {
-        console.error('Erro ao enviar convite:', emailError);
-        
-        // Registrar erro no log da OS
+      // ===== ENVIAR CONVITE (SE TÉCNICO TEM EMAIL) =====
+      if (hasEmail) {
         try {
-          const { data: currentOS } = await supabase
-            .from('ordens_servico')
-            .select('email_error_log')
-            .eq('id', params.osId)
-            .single();
-
-          const errorLog: any[] = Array.isArray(currentOS?.email_error_log) 
-            ? currentOS.email_error_log 
-            : [];
-          
-          errorLog.push({
-            timestamp: new Date().toISOString(),
-            type: 'calendar_invite',
-            action: isUpdate ? 'update' : 'create',
-            error: emailError.message || 'Falha ao enviar convite de calendário',
-            details: emailError.toString()
+          const { error: inviteError } = await supabase.functions.invoke('send-calendar-invite', {
+            body: {
+              os_id: params.osId,
+              action: isUpdate ? 'update' : 'create'
+            }
           });
 
-          await supabase
-            .from('ordens_servico')
-            .update({ email_error_log: errorLog })
-            .eq('id', params.osId);
-        } catch (logError) {
-          console.error('Erro ao registrar log:', logError);
-        }
+          if (inviteError) throw inviteError;
+          
+          toast({
+            title: isUpdate ? 'Reagendamento realizado' : 'Agendamento realizado',
+            description: `OS ${isUpdate ? 'reagendada' : 'agendada'} para ${format(params.data, 'dd/MM/yyyy')} às ${params.horaInicio}. Convites enviados!`
+          });
+        } catch (emailError: any) {
+          console.error('Erro ao enviar convite:', emailError);
+          // Registrar erro no log da OS
+          try {
+            const { data: currentOS } = await supabase
+              .from('ordens_servico')
+              .select('email_error_log')
+              .eq('id', params.osId)
+              .single();
 
+            const errorLog: any[] = Array.isArray(currentOS?.email_error_log) 
+              ? currentOS.email_error_log 
+              : [];
+            
+            errorLog.push({
+              timestamp: new Date().toISOString(),
+              type: 'calendar_invite',
+              action: isUpdate ? 'update' : 'create',
+              error: emailError.message || 'Falha ao enviar convite de calendário',
+              details: emailError.toString()
+            });
+
+            await supabase
+              .from('ordens_servico')
+              .update({ email_error_log: errorLog })
+              .eq('id', params.osId);
+          } catch (logError) {
+            console.error('Erro ao registrar log:', logError);
+          }
+
+          toast({
+            title: isUpdate ? 'Reagendamento realizado' : 'Agendamento realizado',
+            description: 'OS atualizada com sucesso. Falha ao enviar email - você pode reenviar depois.',
+            variant: 'default'
+          });
+        }
+      } else {
+        // Técnico sem email - apenas confirmar agendamento
         toast({
           title: isUpdate ? 'Reagendamento realizado' : 'Agendamento realizado',
-          description: 'OS atualizada, mas não foi possível enviar convite por email. Você pode reenviá-lo depois.',
+          description: `OS ${isUpdate ? 'reagendada' : 'agendada'} para ${format(params.data, 'dd/MM/yyyy')} às ${params.horaInicio}. Técnico sem email cadastrado.`,
           variant: 'default'
         });
       }
