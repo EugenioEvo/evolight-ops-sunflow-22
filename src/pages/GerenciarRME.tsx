@@ -1,23 +1,20 @@
-import React, { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CheckCircle, XCircle, Clock, Search, Eye, FileText } from 'lucide-react';
 import { format } from 'date-fns';
 import { RMEDetailDialog } from '@/components/RMEDetailDialog';
 import { ApprovalModal } from '@/components/ApprovalModal';
-import { useRMEApprovals } from '@/hooks/useRMEApprovals';
+import { Pagination } from '@/components/Pagination';
+import { useRMEQuery, useRMEStatsQuery, useApproveRMEMutation, useRejectRMEMutation } from '@/hooks/useRMEQuery';
 import { useTicketsRealtime } from '@/hooks/useTicketsRealtime';
 
 const GerenciarRME = () => {
-  const [rmes, setRmes] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('pendente');
   const [selectedRME, setSelectedRME] = useState<any>(null);
@@ -26,53 +23,15 @@ const GerenciarRME = () => {
   const [approvalType, setApprovalType] = useState<'approve' | 'reject'>('approve');
 
   const { profile } = useAuth();
-  const { toast } = useToast();
-  const { approveRME, rejectRME, loading: approvalLoading } = useRMEApprovals();
 
-  const loadRMEs = async () => {
-    try {
-      setLoading(true);
+  // React Query hooks
+  const { data, isLoading, refetch } = useRMEQuery({ page, searchTerm, status: statusFilter });
+  const { data: stats } = useRMEStatsQuery();
+  const approveMutation = useApproveRMEMutation();
+  const rejectMutation = useRejectRMEMutation();
 
-      let query = supabase
-        .from('rme_relatorios')
-        .select(`
-          *,
-          tickets!inner(
-            titulo,
-            numero_ticket,
-            clientes!inner(empresa)
-          ),
-          tecnicos!inner(
-            profiles!inner(nome)
-          )
-        `)
-        .order('created_at', { ascending: false });
-
-      if (statusFilter !== 'all') {
-        query = query.eq('status_aprovacao', statusFilter);
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-      setRmes(data || []);
-    } catch (error) {
-      console.error('Erro ao carregar RMEs:', error);
-      toast({
-        title: 'Erro',
-        description: 'Erro ao carregar RMEs',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useTicketsRealtime({ onTicketChange: loadRMEs });
-
-  useEffect(() => {
-    loadRMEs();
-  }, [statusFilter]);
+  // Realtime updates
+  useTicketsRealtime({ onTicketChange: () => refetch() });
 
   const handleViewDetails = (rme: any) => {
     setSelectedRME(rme);
@@ -94,16 +53,14 @@ const GerenciarRME = () => {
   const handleApprovalConfirm = async (observacoes?: string) => {
     if (!selectedRME) return;
 
-    const success =
-      approvalType === 'approve'
-        ? await approveRME(selectedRME.id, observacoes)
-        : await rejectRME(selectedRME.id, observacoes || '');
-
-    if (success) {
-      setApprovalModalOpen(false);
-      setSelectedRME(null);
-      loadRMEs();
+    if (approvalType === 'approve') {
+      await approveMutation.mutateAsync({ rmeId: selectedRME.id, observacoes });
+    } else {
+      await rejectMutation.mutateAsync({ rmeId: selectedRME.id, motivo: observacoes || '' });
     }
+
+    setApprovalModalOpen(false);
+    setSelectedRME(null);
   };
 
   const getStatusBadge = (status: string) => {
@@ -120,22 +77,6 @@ const GerenciarRME = () => {
         {config.label}
       </Badge>
     );
-  };
-
-  const filteredRMEs = rmes.filter((rme) => {
-    const searchLower = searchTerm.toLowerCase();
-    return (
-      rme.tickets?.titulo?.toLowerCase().includes(searchLower) ||
-      rme.tickets?.numero_ticket?.toLowerCase().includes(searchLower) ||
-      rme.tickets?.clientes?.empresa?.toLowerCase().includes(searchLower) ||
-      rme.tecnicos?.profiles?.nome?.toLowerCase().includes(searchLower)
-    );
-  });
-
-  const stats = {
-    pendentes: rmes.filter((r) => r.status_aprovacao === 'pendente').length,
-    aprovados: rmes.filter((r) => r.status_aprovacao === 'aprovado').length,
-    rejeitados: rmes.filter((r) => r.status_aprovacao === 'rejeitado').length,
   };
 
   if (profile?.role !== 'admin' && profile?.role !== 'area_tecnica') {
@@ -169,7 +110,7 @@ const GerenciarRME = () => {
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.pendentes}</div>
+            <div className="text-2xl font-bold">{stats?.pendente || 0}</div>
             <p className="text-xs text-muted-foreground">Aguardando aprovação</p>
           </CardContent>
         </Card>
@@ -180,7 +121,7 @@ const GerenciarRME = () => {
             <CheckCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.aprovados}</div>
+            <div className="text-2xl font-bold">{stats?.aprovado || 0}</div>
             <p className="text-xs text-muted-foreground">RMEs aprovados</p>
           </CardContent>
         </Card>
@@ -191,7 +132,7 @@ const GerenciarRME = () => {
             <XCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.rejeitados}</div>
+            <div className="text-2xl font-bold">{stats?.rejeitado || 0}</div>
             <p className="text-xs text-muted-foreground">RMEs rejeitados</p>
           </CardContent>
         </Card>
@@ -206,11 +147,20 @@ const GerenciarRME = () => {
               <Input
                 placeholder="Buscar por ticket, cliente ou técnico..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setPage(1); // Reset para página 1 ao buscar
+                }}
                 className="pl-10"
               />
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <Select
+              value={statusFilter}
+              onValueChange={(value) => {
+                setStatusFilter(value);
+                setPage(1); // Reset para página 1 ao mudar filtro
+              }}
+            >
               <SelectTrigger className="w-48">
                 <SelectValue />
               </SelectTrigger>
@@ -226,13 +176,13 @@ const GerenciarRME = () => {
       </Card>
 
       {/* Lista de RMEs */}
-      {loading ? (
+      {isLoading ? (
         <Card>
           <CardContent className="pt-6">
             <p className="text-center text-muted-foreground">Carregando...</p>
           </CardContent>
         </Card>
-      ) : filteredRMEs.length === 0 ? (
+      ) : !data || data.rmes.length === 0 ? (
         <Card>
           <CardContent className="pt-6">
             <p className="text-center text-muted-foreground">
@@ -241,102 +191,116 @@ const GerenciarRME = () => {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-4">
-          {filteredRMEs.map((rme) => (
-            <Card key={rme.id}>
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <CardTitle className="text-lg">
-                        {rme.tickets?.numero_ticket} - {rme.tickets?.titulo}
-                      </CardTitle>
-                      {getStatusBadge(rme.status_aprovacao)}
-                    </div>
-                    <CardDescription>
-                      <div className="space-y-1">
-                        <div>
-                          <strong>Cliente:</strong> {rme.tickets?.clientes?.empresa}
-                        </div>
-                        <div>
-                          <strong>Técnico:</strong> {rme.tecnicos?.profiles?.nome}
-                        </div>
-                        <div>
-                          <strong>Data de Execução:</strong>{' '}
-                          {format(new Date(rme.data_execucao), 'dd/MM/yyyy')}
-                        </div>
-                        <div>
-                          <strong>Preenchido em:</strong>{' '}
-                          {format(new Date(rme.created_at), 'dd/MM/yyyy HH:mm')}
-                        </div>
-                        {rme.data_aprovacao && (
-                          <div>
-                            <strong>
-                              {rme.status_aprovacao === 'aprovado' ? 'Aprovado' : 'Rejeitado'} em:
-                            </strong>{' '}
-                            {format(new Date(rme.data_aprovacao), 'dd/MM/yyyy HH:mm')}
-                            {rme.aprovador && ` por ${rme.aprovador.nome}`}
-                          </div>
-                        )}
-                        {rme.observacoes_aprovacao && (
-                          <div>
-                            <strong>Observações:</strong> {rme.observacoes_aprovacao}
-                          </div>
-                        )}
+        <>
+          <div className="space-y-4">
+            {data.rmes.map((rme: any) => (
+              <Card key={rme.id}>
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <CardTitle className="text-lg">
+                          {rme.tickets?.numero_ticket} - {rme.tickets?.titulo}
+                        </CardTitle>
+                        {getStatusBadge(rme.status_aprovacao)}
                       </div>
-                    </CardDescription>
+                      <CardDescription>
+                        <div className="space-y-1">
+                          <div>
+                            <strong>Cliente:</strong> {rme.tickets?.clientes?.empresa}
+                          </div>
+                          <div>
+                            <strong>Técnico:</strong> {rme.tecnicos?.profiles?.nome}
+                          </div>
+                          <div>
+                            <strong>Data de Execução:</strong>{' '}
+                            {format(new Date(rme.data_execucao), 'dd/MM/yyyy')}
+                          </div>
+                          <div>
+                            <strong>Preenchido em:</strong>{' '}
+                            {format(new Date(rme.created_at), 'dd/MM/yyyy HH:mm')}
+                          </div>
+                          {rme.data_aprovacao && (
+                            <div>
+                              <strong>
+                                {rme.status_aprovacao === 'aprovado' ? 'Aprovado' : 'Rejeitado'} em:
+                              </strong>{' '}
+                              {format(new Date(rme.data_aprovacao), 'dd/MM/yyyy HH:mm')}
+                            </div>
+                          )}
+                          {rme.observacoes_aprovacao && (
+                            <div>
+                              <strong>Observações:</strong> {rme.observacoes_aprovacao}
+                            </div>
+                          )}
+                        </div>
+                      </CardDescription>
+                    </div>
                   </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleViewDetails(rme)}
-                    className="gap-2"
-                  >
-                    <Eye className="h-4 w-4" />
-                    Ver Detalhes
-                  </Button>
-                  {rme.pdf_url && (
+                </CardHeader>
+                <CardContent>
+                  <div className="flex gap-2">
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => window.open(rme.pdf_url, '_blank')}
+                      onClick={() => handleViewDetails(rme)}
                       className="gap-2"
                     >
-                      <FileText className="h-4 w-4" />
-                      PDF
+                      <Eye className="h-4 w-4" />
+                      Ver Detalhes
                     </Button>
-                  )}
-                  {rme.status_aprovacao === 'pendente' && (
-                    <>
+                    {rme.pdf_url && (
                       <Button
-                        variant="default"
+                        variant="outline"
                         size="sm"
-                        onClick={() => handleApproveClick(rme)}
+                        onClick={() => window.open(rme.pdf_url, '_blank')}
                         className="gap-2"
                       >
-                        <CheckCircle className="h-4 w-4" />
-                        Aprovar
+                        <FileText className="h-4 w-4" />
+                        PDF
                       </Button>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => handleRejectClick(rme)}
-                        className="gap-2"
-                      >
-                        <XCircle className="h-4 w-4" />
-                        Rejeitar
-                      </Button>
-                    </>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                    )}
+                    {rme.status_aprovacao === 'pendente' && (
+                      <>
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => handleApproveClick(rme)}
+                          className="gap-2"
+                        >
+                          <CheckCircle className="h-4 w-4" />
+                          Aprovar
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleRejectClick(rme)}
+                          className="gap-2"
+                        >
+                          <XCircle className="h-4 w-4" />
+                          Rejeitar
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {/* Paginação */}
+          <Card>
+            <CardContent className="pt-6">
+              <Pagination
+                currentPage={data.currentPage}
+                totalPages={data.totalPages}
+                totalItems={data.totalCount}
+                itemsPerPage={15}
+                onPageChange={setPage}
+              />
+            </CardContent>
+          </Card>
+        </>
       )}
 
       {/* Dialogs */}
@@ -357,7 +321,7 @@ const GerenciarRME = () => {
         }}
         onConfirm={handleApprovalConfirm}
         type={approvalType}
-        loading={approvalLoading}
+        loading={approveMutation.isPending || rejectMutation.isPending}
       />
     </div>
   );
