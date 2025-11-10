@@ -7,11 +7,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { format, startOfMonth, endOfMonth, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CalendarIcon, Clock, User, MapPin, X, Mail, CheckCircle } from 'lucide-react';
+import { CalendarIcon, Clock, User, MapPin, X, Mail, CheckCircle, Send } from 'lucide-react';
 import { ScheduleModal } from '@/components/ScheduleModal';
 import { useTicketsRealtime } from '@/hooks/useTicketsRealtime';
 import { useCancelOS } from '@/hooks/useCancelOS';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useToast } from '@/hooks/use-toast';
 
 interface OrdemServico {
   id: string;
@@ -57,6 +58,8 @@ const Agenda = () => {
   
   useTicketsRealtime();
   const { cancelOS, loading: cancelLoading } = useCancelOS();
+  const { toast } = useToast();
+  const [resendingInvite, setResendingInvite] = useState<string | null>(null);
 
   useEffect(() => {
     loadTecnicos();
@@ -147,6 +150,37 @@ const Agenda = () => {
       urgente: 'bg-red-100 text-red-800',
     };
     return colors[prioridade] || 'bg-gray-100 text-gray-800';
+  };
+
+  const resendCalendarInvite = async (osId: string, numeroOS: string) => {
+    setResendingInvite(osId);
+    try {
+      const { error } = await supabase.functions.invoke('send-calendar-invite', {
+        body: {
+          os_id: osId,
+          action: 'create'
+        }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: 'Convite reenviado',
+        description: `Convite de calendário reenviado para OS ${numeroOS}`
+      });
+
+      // Recarregar dados para atualizar timestamp
+      loadOrdensServico();
+    } catch (error: any) {
+      console.error('Erro ao reenviar convite:', error);
+      toast({
+        title: 'Erro ao reenviar',
+        description: error.message || 'Não foi possível reenviar o convite',
+        variant: 'destructive'
+      });
+    } finally {
+      setResendingInvite(null);
+    }
   };
 
   return (
@@ -294,6 +328,26 @@ const Agenda = () => {
                         <div className="mt-3 pt-3 border-t flex justify-between items-center">
                           <span className="text-sm font-medium">{os.tickets.clientes?.empresa || 'Cliente não definido'}</span>
                           <div className="flex gap-2">
+                            {os.calendar_invite_sent_at && (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button 
+                                      size="sm" 
+                                      variant="secondary"
+                                      disabled={resendingInvite === os.id}
+                                      onClick={() => resendCalendarInvite(os.id, os.numero_os)}
+                                    >
+                                      <Send className="h-4 w-4 mr-1" />
+                                      {resendingInvite === os.id ? 'Enviando...' : 'Reenviar'}
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    Reenviar convite de calendário
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )}
                             <Button 
                               size="sm" 
                               variant="outline"
