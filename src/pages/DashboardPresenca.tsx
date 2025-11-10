@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -54,6 +54,44 @@ export default function DashboardPresenca() {
     confirmadas: 0,
     pendentes: 0,
   });
+  const previousOSRef = useRef<Map<string, boolean>>(new Map());
+
+  // Função para tocar som de notificação
+  const playNotificationSound = () => {
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+
+    oscillator.frequency.value = 800;
+    oscillator.type = 'sine';
+
+    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 0.3);
+
+    // Segunda nota
+    setTimeout(() => {
+      const osc2 = audioContext.createOscillator();
+      const gain2 = audioContext.createGain();
+
+      osc2.connect(gain2);
+      gain2.connect(audioContext.destination);
+
+      osc2.frequency.value = 1000;
+      osc2.type = 'sine';
+
+      gain2.gain.setValueAtTime(0.3, audioContext.currentTime);
+      gain2.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+
+      osc2.start(audioContext.currentTime);
+      osc2.stop(audioContext.currentTime + 0.3);
+    }, 150);
+  };
 
   const loadTecnicos = async () => {
     try {
@@ -115,6 +153,29 @@ export default function DashboardPresenca() {
       if (error) throw error;
 
       const ordensServicoData = (data || []) as OrdemServicoPresenca[];
+      
+      // Detectar novas confirmações
+      const currentOSMap = new Map(
+        ordensServicoData.map(os => [os.id, !!os.presence_confirmed_at])
+      );
+
+      ordensServicoData.forEach(os => {
+        const wasConfirmed = previousOSRef.current.get(os.id);
+        const isConfirmed = !!os.presence_confirmed_at;
+
+        // Nova confirmação detectada
+        if (wasConfirmed === false && isConfirmed) {
+          playNotificationSound();
+          toast.success(
+            `Presença confirmada: ${os.tecnicos?.profiles?.nome || 'Técnico'} - ${os.numero_os}`,
+            {
+              description: `Confirmado às ${format(new Date(os.presence_confirmed_at!), 'HH:mm', { locale: ptBR })}`
+            }
+          );
+        }
+      });
+
+      previousOSRef.current = currentOSMap;
       setOrdensServico(ordensServicoData);
     } catch (error) {
       console.error("Erro ao carregar ordens de serviço:", error);
