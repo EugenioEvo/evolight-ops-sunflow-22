@@ -25,6 +25,7 @@ import RME from "./pages/RME";
 import Relatorios from "./pages/Relatorios";
 import GerenciarRME from "./pages/GerenciarRME";
 import DashboardPresenca from "./pages/DashboardPresenca";
+import AuditLogs from "./pages/AuditLogs";
 
 const queryClient = new QueryClient();
 
@@ -99,6 +100,11 @@ const App = () => (
                           <Route path="/relatorios" element={
                             <ProtectedRoute roles={['admin', 'area_tecnica']}>
                               <Relatorios />
+                            </ProtectedRoute>
+                          } />
+                          <Route path="/audit-logs" element={
+                            <ProtectedRoute roles={['admin']}>
+                              <AuditLogs />
                             </ProtectedRoute>
                           } />
                           <Route path="*" element={<NotFound />} />

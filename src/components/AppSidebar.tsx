@@ -15,7 +15,8 @@ import {
   Calendar,
   CheckSquare,
   TrendingUp,
-  Monitor
+  Monitor,
+  ShieldAlert
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
@@ -55,6 +56,7 @@ const cadastroItems = [
 
 const systemItems = [
   { title: "Relatórios", url: "/relatorios", icon: BarChart3 },
+  { title: "Auditoria", url: "/audit-logs", icon: ShieldAlert, adminOnly: true },
   { title: "Configurações", url: "/configuracoes", icon: Settings },
 ];
 

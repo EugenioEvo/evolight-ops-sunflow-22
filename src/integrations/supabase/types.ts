@@ -59,6 +59,45 @@ export type Database = {
           },
         ]
       }
+      audit_logs: {
+        Row: {
+          action: string
+          id: string
+          ip_address: string | null
+          new_data: Json | null
+          old_data: Json | null
+          performed_at: string
+          record_id: string
+          table_name: string
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          id?: string
+          ip_address?: string | null
+          new_data?: Json | null
+          old_data?: Json | null
+          performed_at?: string
+          record_id: string
+          table_name: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          id?: string
+          ip_address?: string | null
+          new_data?: Json | null
+          old_data?: Json | null
+          performed_at?: string
+          record_id?: string
+          table_name?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       clientes: {
         Row: {
           cep: string | null
@@ -911,6 +950,7 @@ export type Database = {
         Returns: boolean
       }
       cleanup_expired_tokens: { Args: never; Returns: undefined }
+      cleanup_old_audit_logs: { Args: never; Returns: undefined }
       generate_presence_token: { Args: { p_os_id: string }; Returns: string }
       gerar_numero_os: { Args: never; Returns: string }
       gerar_numero_ticket: { Args: never; Returns: string }
