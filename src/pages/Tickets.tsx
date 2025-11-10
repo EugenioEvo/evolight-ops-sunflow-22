@@ -21,6 +21,7 @@ import { Calendar, Clock, MapPin, Plus, Search, Settings, FileText, CheckCircle,
 import TicketFilters from '@/components/TicketFilters';
 import { LoadingState } from '@/components/LoadingState';
 import { EmptyState } from '@/components/EmptyState';
+import { FileUpload } from '@/components/FileUpload';
 
 const ticketSchema = z.object({
   titulo: z.string().min(1, 'Título é obrigatório'),
@@ -32,6 +33,7 @@ const ticketSchema = z.object({
   data_vencimento: z.string().optional(),
   tempo_estimado: z.number().min(1, 'Tempo estimado deve ser maior que 0').optional(),
   observacoes: z.string().optional(),
+  anexos: z.array(z.string()).optional(),
 });
 
 type TicketForm = z.infer<typeof ticketSchema>;
@@ -77,6 +79,7 @@ const Tickets = () => {
   });
 
   const [selectedTechnicianForTicket, setSelectedTechnicianForTicket] = useState<string>('');
+  const [attachments, setAttachments] = useState<string[]>([]);
 
   const loadData = async () => {
     try {
@@ -168,6 +171,7 @@ const Tickets = () => {
         data_vencimento: data.data_vencimento ? new Date(data.data_vencimento).toISOString() : null,
         created_by: user?.id,
         tecnico_responsavel_id: tecnico_id,
+        anexos: attachments,
         // Status: sempre inicia como aberto
         status: 'aberto',
       };
@@ -200,6 +204,7 @@ const Tickets = () => {
       setIsDialogOpen(false);
       setEditingTicket(null);
       setSelectedTechnicianForTicket('');
+      setAttachments([]);
       form.reset();
       loadData();
     } catch (error: any) {
@@ -217,6 +222,7 @@ const Tickets = () => {
   const handleEdit = (ticket: any) => {
     setEditingTicket(ticket);
     setSelectedTechnicianForTicket(ticket.tecnico_responsavel_id || '');
+    setAttachments(ticket.anexos || []);
     form.reset({
       titulo: ticket.titulo,
       descricao: ticket.descricao,
@@ -227,6 +233,7 @@ const Tickets = () => {
       data_vencimento: ticket.data_vencimento ? new Date(ticket.data_vencimento).toISOString().split('T')[0] : '',
       tempo_estimado: ticket.tempo_estimado || undefined,
       observacoes: ticket.observacoes || '',
+      anexos: ticket.anexos || [],
     });
     setIsDialogOpen(true);
   };
@@ -700,6 +707,25 @@ const Tickets = () => {
                   )}
                 />
 
+                <FormField
+                  control={form.control}
+                  name="anexos"
+                  render={() => (
+                    <FormItem>
+                      <FormLabel>Anexos</FormLabel>
+                      <FormControl>
+                        <FileUpload
+                          ticketId={editingTicket?.id || 'temp-' + Date.now()}
+                          existingFiles={attachments}
+                          onFilesChange={setAttachments}
+                          maxFiles={5}
+                          maxSizeMB={10}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
                 <div className="flex justify-end space-x-2">
                   <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
