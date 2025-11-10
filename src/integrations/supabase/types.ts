@@ -365,6 +365,7 @@ export type Database = {
           data_emissao: string
           data_programada: string | null
           duracao_estimada_min: number | null
+          email_error_log: Json | null
           hora_fim: string | null
           hora_inicio: string | null
           id: string
@@ -385,6 +386,7 @@ export type Database = {
           data_emissao?: string
           data_programada?: string | null
           duracao_estimada_min?: number | null
+          email_error_log?: Json | null
           hora_fim?: string | null
           hora_inicio?: string | null
           id?: string
@@ -405,6 +407,7 @@ export type Database = {
           data_emissao?: string
           data_programada?: string | null
           duracao_estimada_min?: number | null
+          email_error_log?: Json | null
           hora_fim?: string | null
           hora_inicio?: string | null
           id?: string

@@ -112,15 +112,36 @@ const handler = async (req: Request): Promise<Response> => {
 
         const recipients = [tecnicoEmail, CONFIG.teamEmail];
 
-        // Gerar token de confirmação
-        const confirmToken = await crypto.subtle
-          .digest("MD5", new TextEncoder().encode(os.id + "sunflow-secret"))
-          .then((hash) =>
-            Array.from(new Uint8Array(hash))
-              .map((b) => b.toString(16).padStart(2, "0"))
-              .join("")
-          );
+        // Gerar token de confirmação seguro usando UUID
+        const { data: tokenData, error: tokenError } = await supabase.rpc(
+          'generate_presence_token',
+          { p_os_id: os.id }
+        );
 
+        if (tokenError) {
+          console.error(`[send-os-reminders] Erro ao gerar token para OS ${os.numero_os}:`, tokenError);
+          
+          // Registrar erro no log da OS
+          await supabase
+            .from("ordens_servico")
+            .update({
+              email_error_log: supabase.rpc('jsonb_array_append', {
+                array: os.email_error_log || [],
+                element: {
+                  timestamp: new Date().toISOString(),
+                  type: 'reminder',
+                  error: 'Falha ao gerar token de confirmação',
+                  details: tokenError.message
+                }
+              })
+            })
+            .eq("id", os.id);
+          
+          errorCount++;
+          continue;
+        }
+
+        const confirmToken = tokenData;
         const confirmUrl = `${supabaseUrl}/functions/v1/confirm-presence?os_id=${os.id}&token=${confirmToken}`;
 
         const emailSubject = `Lembrete: OS ${os.numero_os} agendada para amanhã`;
@@ -214,6 +235,25 @@ const handler = async (req: Request): Promise<Response> => {
         successCount++;
       } catch (error: any) {
         console.error(`[send-os-reminders] Erro ao processar OS ${os.numero_os}:`, error);
+        
+        // Registrar erro no log da OS
+        try {
+          const errorLog = os.email_error_log || [];
+          errorLog.push({
+            timestamp: new Date().toISOString(),
+            type: 'reminder',
+            error: error.message || 'Erro desconhecido ao enviar lembrete',
+            details: error.toString()
+          });
+
+          await supabase
+            .from("ordens_servico")
+            .update({ email_error_log: errorLog })
+            .eq("id", os.id);
+        } catch (logError) {
+          console.error(`[send-os-reminders] Erro ao registrar log de erro:`, logError);
+        }
+        
         errorCount++;
       }
     }

@@ -10,7 +10,7 @@ import { ConflictWarning } from '@/components/ConflictWarning';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CalendarIcon, Clock, AlertCircle } from 'lucide-react';
+import { CalendarIcon, Clock, AlertCircle, Mail } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 interface ScheduleModalProps {
@@ -28,6 +28,7 @@ interface Tecnico {
   id: string;
   profiles: {
     nome: string;
+    email: string;
   };
 }
 
@@ -63,10 +64,14 @@ export const ScheduleModal = ({
     loadTecnicos();
   }, []);
 
+  // Verificar se técnico selecionado tem email
+  const tecnicoSelecionado = tecnicos.find(t => t.id === selectedTecnico);
+  const tecnicoSemEmail = tecnicoSelecionado && !tecnicoSelecionado.profiles?.email;
+
   const loadTecnicos = async () => {
     const { data } = await supabase
       .from('tecnicos')
-      .select('id, profiles!inner(nome)')
+      .select('id, profiles!inner(nome, email)')
       .order('profiles(nome)');
     
     if (data) setTecnicos(data as any);
@@ -176,6 +181,17 @@ export const ScheduleModal = ({
                 ))}
               </SelectContent>
             </Select>
+            {tecnicoSemEmail && (
+              <div className="bg-destructive/10 border border-destructive/30 rounded-md p-3 flex items-start gap-2">
+                <Mail className="h-4 w-4 text-destructive mt-0.5 flex-shrink-0" />
+                <div className="text-sm text-destructive">
+                  <p className="font-medium">Email não cadastrado</p>
+                  <p className="text-xs mt-1">
+                    Este técnico não possui email cadastrado. O agendamento será salvo, mas não será possível enviar convites de calendário nem lembretes.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="grid gap-2">

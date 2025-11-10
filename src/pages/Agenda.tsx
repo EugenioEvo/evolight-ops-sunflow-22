@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { format, startOfMonth, endOfMonth, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CalendarIcon, Clock, User, MapPin, X, Mail, CheckCircle, Send } from 'lucide-react';
+import { CalendarIcon, Clock, User, MapPin, X, Mail, CheckCircle, Send, AlertCircle, AlertTriangle } from 'lucide-react';
 import { ScheduleModal } from '@/components/ScheduleModal';
 import { useTicketsRealtime } from '@/hooks/useTicketsRealtime';
 import { useCancelOS } from '@/hooks/useCancelOS';
@@ -25,10 +25,12 @@ interface OrdemServico {
   calendar_invite_sent_at: string | null;
   calendar_invite_recipients: string[] | null;
   presence_confirmed_at: string | null;
+  email_error_log: any[] | null;
   tecnicos: {
     id: string;
     profiles: {
       nome: string;
+      email: string | null;
     };
   } | null;
   tickets: {
@@ -92,7 +94,7 @@ const Agenda = () => {
           *,
           tecnicos!tecnico_id(
             id,
-            profiles!inner(nome)
+            profiles!inner(nome, email)
           ),
           tickets!inner(
             numero_ticket,
@@ -114,7 +116,7 @@ const Agenda = () => {
 
       const { data, error } = await query;
       if (error) throw error;
-      setOrdensServico(data || []);
+      setOrdensServico((data as any) || []);
     } catch (error) {
       console.error('Erro ao carregar agenda:', error);
     } finally {
@@ -141,6 +143,46 @@ const Agenda = () => {
       concluido: 'bg-gray-100 text-gray-800',
     };
     return colors[status] || 'bg-gray-100 text-gray-800';
+  };
+
+  const getEmailStatus = (os: OrdemServico) => {
+    const hasErrors = os.email_error_log && os.email_error_log.length > 0;
+    const hasSentInvite = os.calendar_invite_sent_at;
+    const hasEmailConfigured = os.tecnicos?.profiles?.email;
+
+    if (!hasEmailConfigured) {
+      return {
+        variant: 'secondary' as const,
+        icon: AlertCircle,
+        text: 'Sem email',
+        color: 'text-muted-foreground border-muted-foreground'
+      };
+    }
+
+    if (hasErrors) {
+      return {
+        variant: 'outline' as const,
+        icon: AlertTriangle,
+        text: 'Erro ao enviar',
+        color: 'text-destructive border-destructive'
+      };
+    }
+
+    if (hasSentInvite) {
+      return {
+        variant: 'outline' as const,
+        icon: CheckCircle,
+        text: 'Email enviado',
+        color: 'text-green-600 border-green-600'
+      };
+    }
+
+    return {
+      variant: 'outline' as const,
+      icon: Mail,
+      text: 'Pendente',
+      color: 'text-yellow-600 border-yellow-600'
+    };
   };
 
   const getPrioridadeColor = (prioridade: string) => {
@@ -264,38 +306,55 @@ const Agenda = () => {
                       <CardContent className="p-4">
                         <div className="flex justify-between items-start mb-3">
                           <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
                               <h3 className="font-semibold">{os.numero_os}</h3>
-                              {os.calendar_invite_sent_at && (
-                                <TooltipProvider>
-                                  <Tooltip>
-                                    <TooltipTrigger>
-                                      <Badge variant="outline" className="flex items-center gap-1 text-green-600 border-green-600">
-                                        <CheckCircle className="h-3 w-3" />
-                                        Convite Enviado
-                                      </Badge>
-                                    </TooltipTrigger>
-                                    <TooltipContent className="max-w-xs">
-                                      <div className="space-y-1">
-                                        <p className="font-semibold">Convite de Calendário</p>
-                                        <p className="text-xs">
-                                          Enviado em: {format(new Date(os.calendar_invite_sent_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                                        </p>
-                                        {os.calendar_invite_recipients && os.calendar_invite_recipients.length > 0 && (
-                                          <div className="text-xs">
-                                            <p className="font-medium mt-1">Destinatários:</p>
-                                            <ul className="list-disc list-inside">
-                                              {os.calendar_invite_recipients.map((email, idx) => (
-                                                <li key={idx}>{email}</li>
-                                              ))}
-                                            </ul>
-                                          </div>
-                                        )}
-                                      </div>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
-                              )}
+                              {(() => {
+                                const emailStatus = getEmailStatus(os);
+                                const StatusIcon = emailStatus.icon;
+                                return (
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger>
+                                        <Badge variant={emailStatus.variant} className={`flex items-center gap-1 ${emailStatus.color}`}>
+                                          <StatusIcon className="h-3 w-3" />
+                                          {emailStatus.text}
+                                        </Badge>
+                                      </TooltipTrigger>
+                                      <TooltipContent className="max-w-xs">
+                                        <div className="space-y-1">
+                                          <p className="font-semibold">Status do Email</p>
+                                          {!os.tecnicos?.profiles?.email && (
+                                            <p className="text-xs">Este técnico não possui email cadastrado.</p>
+                                          )}
+                                          {os.calendar_invite_sent_at && (
+                                            <>
+                                              <p className="text-xs">
+                                                Enviado em: {format(new Date(os.calendar_invite_sent_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                                              </p>
+                                              {os.calendar_invite_recipients && os.calendar_invite_recipients.length > 0 && (
+                                                <div className="text-xs">
+                                                  <p className="font-medium mt-1">Destinatários:</p>
+                                                  <ul className="list-disc list-inside">
+                                                    {os.calendar_invite_recipients.map((email, idx) => (
+                                                      <li key={idx}>{email}</li>
+                                                    ))}
+                                                  </ul>
+                                                </div>
+                                              )}
+                                            </>
+                                          )}
+                                          {os.email_error_log && os.email_error_log.length > 0 && (
+                                            <div className="text-xs text-destructive mt-2">
+                                              <p className="font-medium">Última tentativa falhou:</p>
+                                              <p>{os.email_error_log[os.email_error_log.length - 1]?.error || 'Erro desconhecido'}</p>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                );
+                              })()}
                               {os.presence_confirmed_at && (
                                 <Badge variant="default" className="flex items-center gap-1">
                                   <CheckCircle className="h-3 w-3" />
@@ -335,7 +394,7 @@ const Agenda = () => {
                         <div className="mt-3 pt-3 border-t flex justify-between items-center">
                           <span className="text-sm font-medium">{os.tickets.clientes?.empresa || 'Cliente não definido'}</span>
                           <div className="flex gap-2">
-                            {os.calendar_invite_sent_at && (
+                            {os.tecnicos?.profiles?.email && (
                               <TooltipProvider>
                                 <Tooltip>
                                   <TooltipTrigger asChild>
