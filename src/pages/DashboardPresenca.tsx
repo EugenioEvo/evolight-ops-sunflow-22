@@ -1,11 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, Clock, Users, MapPin } from "lucide-react";
+import { CheckCircle2, Clock, Users, MapPin, Filter } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 
 interface OrdemServicoPresenca {
   id: string;
@@ -33,14 +35,44 @@ interface OrdemServicoPresenca {
   } | null;
 }
 
+interface Tecnico {
+  id: string;
+  profiles: {
+    nome: string;
+  };
+}
+
 export default function DashboardPresenca() {
   const [ordensServico, setOrdensServico] = useState<OrdemServicoPresenca[]>([]);
+  const [tecnicos, setTecnicos] = useState<Tecnico[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filtroTecnico, setFiltroTecnico] = useState<string>("todos");
+  const [filtroStatus, setFiltroStatus] = useState<string>("todos");
+  const [filtroHorario, setFiltroHorario] = useState<string>("todos");
   const [stats, setStats] = useState({
     total: 0,
     confirmadas: 0,
     pendentes: 0,
   });
+
+  const loadTecnicos = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("tecnicos")
+        .select(`
+          id,
+          profiles (
+            nome
+          )
+        `)
+        .order("profiles(nome)", { ascending: true });
+
+      if (error) throw error;
+      setTecnicos((data || []) as Tecnico[]);
+    } catch (error) {
+      console.error("Erro ao carregar técnicos:", error);
+    }
+  };
 
   const loadOrdensServico = async () => {
     try {
@@ -84,13 +116,6 @@ export default function DashboardPresenca() {
 
       const ordensServicoData = (data || []) as OrdemServicoPresenca[];
       setOrdensServico(ordensServicoData);
-
-      // Calcular estatísticas
-      const total = ordensServicoData.length;
-      const confirmadas = ordensServicoData.filter(os => os.presence_confirmed_at).length;
-      const pendentes = total - confirmadas;
-
-      setStats({ total, confirmadas, pendentes });
     } catch (error) {
       console.error("Erro ao carregar ordens de serviço:", error);
       toast.error("Erro ao carregar ordens de serviço");
@@ -99,7 +124,57 @@ export default function DashboardPresenca() {
     }
   };
 
+  // Filtrar ordens de serviço baseado nos filtros
+  const ordensServicoFiltradas = useMemo(() => {
+    let filtradas = [...ordensServico];
+
+    // Filtro por técnico
+    if (filtroTecnico !== "todos") {
+      filtradas = filtradas.filter(os => os.tecnico_id === filtroTecnico);
+    }
+
+    // Filtro por status
+    if (filtroStatus !== "todos") {
+      if (filtroStatus === "confirmada") {
+        filtradas = filtradas.filter(os => os.presence_confirmed_at !== null);
+      } else if (filtroStatus === "pendente") {
+        filtradas = filtradas.filter(os => os.presence_confirmed_at === null);
+      }
+    }
+
+    // Filtro por horário
+    if (filtroHorario !== "todos") {
+      filtradas = filtradas.filter(os => {
+        if (!os.hora_inicio) return false;
+        
+        const hora = parseInt(os.hora_inicio.split(":")[0]);
+        
+        if (filtroHorario === "manha") {
+          return hora >= 6 && hora < 12;
+        } else if (filtroHorario === "tarde") {
+          return hora >= 12 && hora < 18;
+        } else if (filtroHorario === "noite") {
+          return hora >= 18 || hora < 6;
+        }
+        
+        return true;
+      });
+    }
+
+    return filtradas;
+  }, [ordensServico, filtroTecnico, filtroStatus, filtroHorario]);
+
+  // Calcular estatísticas baseadas nas OS filtradas
+  const statsFiltradas = useMemo(() => {
+    const total = ordensServicoFiltradas.length;
+    const confirmadas = ordensServicoFiltradas.filter(os => os.presence_confirmed_at).length;
+    const pendentes = total - confirmadas;
+
+    return { total, confirmadas, pendentes };
+  }, [ordensServicoFiltradas]);
+
   useEffect(() => {
+    loadTecnicos();
     loadOrdensServico();
 
     // Realtime subscription
@@ -124,6 +199,12 @@ export default function DashboardPresenca() {
     };
   }, []);
 
+  const limparFiltros = () => {
+    setFiltroTecnico("todos");
+    setFiltroStatus("todos");
+    setFiltroHorario("todos");
+  };
+
   if (loading) {
     return (
       <div className="p-6">
@@ -134,6 +215,8 @@ export default function DashboardPresenca() {
     );
   }
 
+  const temFiltrosAtivos = filtroTecnico !== "todos" || filtroStatus !== "todos" || filtroHorario !== "todos";
+
   return (
     <div className="p-6 space-y-6">
       <div>
@@ -143,6 +226,76 @@ export default function DashboardPresenca() {
         </p>
       </div>
 
+      {/* Filtros */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Filter className="h-5 w-5" />
+            Filtros
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Técnico</label>
+              <Select value={filtroTecnico} onValueChange={setFiltroTecnico}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o técnico" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos os técnicos</SelectItem>
+                  {tecnicos.map((tecnico) => (
+                    <SelectItem key={tecnico.id} value={tecnico.id}>
+                      {tecnico.profiles?.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Status</label>
+              <Select value={filtroStatus} onValueChange={setFiltroStatus}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos os status</SelectItem>
+                  <SelectItem value="confirmada">Confirmada</SelectItem>
+                  <SelectItem value="pendente">Pendente</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Horário</label>
+              <Select value={filtroHorario} onValueChange={setFiltroHorario}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o horário" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos os horários</SelectItem>
+                  <SelectItem value="manha">Manhã (6h - 12h)</SelectItem>
+                  <SelectItem value="tarde">Tarde (12h - 18h)</SelectItem>
+                  <SelectItem value="noite">Noite (18h - 6h)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-end">
+              <Button
+                variant="outline"
+                onClick={limparFiltros}
+                disabled={!temFiltrosAtivos}
+                className="w-full"
+              >
+                Limpar Filtros
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Estatísticas */}
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
@@ -151,7 +304,7 @@ export default function DashboardPresenca() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.total}</div>
+            <div className="text-2xl font-bold">{statsFiltradas.total}</div>
             <p className="text-xs text-muted-foreground">Agendadas para hoje</p>
           </CardContent>
         </Card>
@@ -162,9 +315,9 @@ export default function DashboardPresenca() {
             <CheckCircle2 className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats.confirmadas}</div>
+            <div className="text-2xl font-bold text-green-600">{statsFiltradas.confirmadas}</div>
             <p className="text-xs text-muted-foreground">
-              {stats.total > 0 ? Math.round((stats.confirmadas / stats.total) * 100) : 0}% do total
+              {statsFiltradas.total > 0 ? Math.round((statsFiltradas.confirmadas / statsFiltradas.total) * 100) : 0}% do total
             </p>
           </CardContent>
         </Card>
@@ -175,7 +328,7 @@ export default function DashboardPresenca() {
             <Clock className="h-4 w-4 text-orange-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-600">{stats.pendentes}</div>
+            <div className="text-2xl font-bold text-orange-600">{statsFiltradas.pendentes}</div>
             <p className="text-xs text-muted-foreground">
               Aguardando confirmação
             </p>
@@ -186,17 +339,24 @@ export default function DashboardPresenca() {
       {/* Lista de Ordens de Serviço */}
       <Card>
         <CardHeader>
-          <CardTitle>Ordens de Serviço - {format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}</CardTitle>
+          <CardTitle className="flex items-center justify-between">
+            <span>Ordens de Serviço - {format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}</span>
+            {temFiltrosAtivos && (
+              <Badge variant="secondary">
+                {ordensServicoFiltradas.length} de {ordensServico.length} resultados
+              </Badge>
+            )}
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          {ordensServico.length === 0 ? (
+          {ordensServicoFiltradas.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>Nenhuma ordem de serviço agendada para hoje</p>
+              <p>{temFiltrosAtivos ? "Nenhuma ordem de serviço encontrada com os filtros aplicados" : "Nenhuma ordem de serviço agendada para hoje"}</p>
             </div>
           ) : (
             <div className="space-y-4">
-              {ordensServico.map((os) => (
+              {ordensServicoFiltradas.map((os) => (
                 <div
                   key={os.id}
                   className="flex flex-col md:flex-row md:items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
