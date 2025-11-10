@@ -7,10 +7,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { format, startOfMonth, endOfMonth, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CalendarIcon, Clock, User, MapPin, X } from 'lucide-react';
+import { CalendarIcon, Clock, User, MapPin, X, Mail, CheckCircle } from 'lucide-react';
 import { ScheduleModal } from '@/components/ScheduleModal';
 import { useTicketsRealtime } from '@/hooks/useTicketsRealtime';
 import { useCancelOS } from '@/hooks/useCancelOS';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface OrdemServico {
   id: string;
@@ -20,6 +21,8 @@ interface OrdemServico {
   hora_fim: string | null;
   duracao_estimada_min: number | null;
   tecnico_id: string;
+  calendar_invite_sent_at: string | null;
+  calendar_invite_recipients: string[] | null;
   tecnicos: {
     id: string;
     profiles: {
@@ -225,8 +228,40 @@ const Agenda = () => {
                     <Card key={os.id} className="hover:shadow-md transition-shadow">
                       <CardContent className="p-4">
                         <div className="flex justify-between items-start mb-3">
-                          <div>
-                            <h3 className="font-semibold">{os.numero_os}</h3>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h3 className="font-semibold">{os.numero_os}</h3>
+                              {os.calendar_invite_sent_at && (
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger>
+                                      <Badge variant="outline" className="flex items-center gap-1 text-green-600 border-green-600">
+                                        <CheckCircle className="h-3 w-3" />
+                                        Convite Enviado
+                                      </Badge>
+                                    </TooltipTrigger>
+                                    <TooltipContent className="max-w-xs">
+                                      <div className="space-y-1">
+                                        <p className="font-semibold">Convite de Calendário</p>
+                                        <p className="text-xs">
+                                          Enviado em: {format(new Date(os.calendar_invite_sent_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                                        </p>
+                                        {os.calendar_invite_recipients && os.calendar_invite_recipients.length > 0 && (
+                                          <div className="text-xs">
+                                            <p className="font-medium mt-1">Destinatários:</p>
+                                            <ul className="list-disc list-inside">
+                                              {os.calendar_invite_recipients.map((email, idx) => (
+                                                <li key={idx}>{email}</li>
+                                              ))}
+                                            </ul>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              )}
+                            </div>
                             <p className="text-sm text-muted-foreground">{os.tickets.titulo}</p>
                           </div>
                           <div className="flex gap-2">
