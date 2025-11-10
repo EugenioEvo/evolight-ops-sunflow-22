@@ -2,12 +2,15 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, Clock, Users, MapPin, Filter } from "lucide-react";
+import { CheckCircle2, Clock, Users, MapPin, Filter, FileDown, FileSpreadsheet } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+import * as XLSX from "xlsx";
 
 interface OrdemServicoPresenca {
   id: string;
@@ -46,6 +49,7 @@ export default function DashboardPresenca() {
   const [ordensServico, setOrdensServico] = useState<OrdemServicoPresenca[]>([]);
   const [tecnicos, setTecnicos] = useState<Tecnico[]>([]);
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
   const [filtroTecnico, setFiltroTecnico] = useState<string>("todos");
   const [filtroStatus, setFiltroStatus] = useState<string>("todos");
   const [filtroHorario, setFiltroHorario] = useState<string>("todos");
@@ -266,6 +270,184 @@ export default function DashboardPresenca() {
     setFiltroHorario("todos");
   };
 
+  const exportarPDF = () => {
+    setExporting(true);
+    try {
+      const doc = new jsPDF();
+      const dataAtual = format(new Date(), "dd/MM/yyyy", { locale: ptBR });
+      
+      // Cabeçalho
+      doc.setFontSize(18);
+      doc.text("Relatório de Confirmações de Presença", 14, 20);
+      doc.setFontSize(12);
+      doc.text(`Data: ${dataAtual}`, 14, 30);
+      
+      // Estatísticas gerais
+      doc.setFontSize(10);
+      doc.text(`Total de OS: ${statsFiltradas.total}`, 14, 40);
+      doc.text(`Confirmadas: ${statsFiltradas.confirmadas}`, 14, 46);
+      doc.text(`Pendentes: ${statsFiltradas.pendentes}`, 14, 52);
+      
+      // Agrupar por técnico
+      const osPorTecnico = ordensServicoFiltradas.reduce((acc, os) => {
+        const tecnicoNome = os.tecnicos?.profiles?.nome || "Não atribuído";
+        if (!acc[tecnicoNome]) {
+          acc[tecnicoNome] = [];
+        }
+        acc[tecnicoNome].push(os);
+        return acc;
+      }, {} as Record<string, OrdemServicoPresenca[]>);
+
+      let yPosition = 60;
+
+      Object.entries(osPorTecnico).forEach(([tecnico, osArray]) => {
+        // Verificar se precisa de nova página
+        if (yPosition > 250) {
+          doc.addPage();
+          yPosition = 20;
+        }
+
+        // Nome do técnico
+        doc.setFontSize(12);
+        doc.setFont("helvetica", "bold");
+        doc.text(tecnico, 14, yPosition);
+        yPosition += 6;
+
+        // Estatísticas do técnico
+        const confirmadas = osArray.filter(os => os.presence_confirmed_at).length;
+        const pendentes = osArray.length - confirmadas;
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "normal");
+        doc.text(`Total: ${osArray.length} | Confirmadas: ${confirmadas} | Pendentes: ${pendentes}`, 14, yPosition);
+        yPosition += 8;
+
+        // Tabela de OS do técnico
+        const tableData = osArray.map(os => [
+          os.numero_os,
+          os.hora_inicio ? `${os.hora_inicio.slice(0, 5)} - ${os.hora_fim?.slice(0, 5) || ''}` : '-',
+          os.tickets?.titulo || '-',
+          os.presence_confirmed_at 
+            ? `✓ ${format(new Date(os.presence_confirmed_at), 'HH:mm', { locale: ptBR })}`
+            : 'Pendente'
+        ]);
+
+        autoTable(doc, {
+          startY: yPosition,
+          head: [['OS', 'Horário', 'Descrição', 'Confirmação']],
+          body: tableData,
+          theme: 'striped',
+          headStyles: { fillColor: [66, 66, 66], fontSize: 8 },
+          bodyStyles: { fontSize: 8 },
+          columnStyles: {
+            0: { cellWidth: 25 },
+            1: { cellWidth: 35 },
+            2: { cellWidth: 80 },
+            3: { cellWidth: 40 }
+          },
+          margin: { left: 14 },
+        });
+
+        yPosition = (doc as any).lastAutoTable.finalY + 10;
+      });
+
+      // Rodapé com data/hora de geração
+      const totalPages = (doc as any).internal.getNumberOfPages();
+      for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.text(
+          `Gerado em ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })} - Página ${i} de ${totalPages}`,
+          14,
+          doc.internal.pageSize.height - 10
+        );
+      }
+
+      doc.save(`confirmacoes_presenca_${format(new Date(), "yyyy-MM-dd")}.pdf`);
+      toast.success("PDF exportado com sucesso!");
+    } catch (error) {
+      console.error("Erro ao exportar PDF:", error);
+      toast.error("Erro ao exportar PDF");
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const exportarExcel = () => {
+    setExporting(true);
+    try {
+      // Agrupar por técnico
+      const osPorTecnico = ordensServicoFiltradas.reduce((acc, os) => {
+        const tecnicoNome = os.tecnicos?.profiles?.nome || "Não atribuído";
+        if (!acc[tecnicoNome]) {
+          acc[tecnicoNome] = [];
+        }
+        acc[tecnicoNome].push(os);
+        return acc;
+      }, {} as Record<string, OrdemServicoPresenca[]>);
+
+      const workbook = XLSX.utils.book_new();
+
+      // Planilha de resumo
+      const resumoData = [
+        ["RELATÓRIO DE CONFIRMAÇÕES DE PRESENÇA"],
+        [`Data: ${format(new Date(), "dd/MM/yyyy", { locale: ptBR })}`],
+        [],
+        ["ESTATÍSTICAS GERAIS"],
+        ["Total de OS", statsFiltradas.total],
+        ["Confirmadas", statsFiltradas.confirmadas],
+        ["Pendentes", statsFiltradas.pendentes],
+        [`Percentual de Confirmação`, `${statsFiltradas.total > 0 ? Math.round((statsFiltradas.confirmadas / statsFiltradas.total) * 100) : 0}%`],
+        [],
+        ["RESUMO POR TÉCNICO"],
+        ["Técnico", "Total OS", "Confirmadas", "Pendentes", "% Confirmação"]
+      ];
+
+      Object.entries(osPorTecnico).forEach(([tecnico, osArray]) => {
+        const confirmadas = osArray.filter(os => os.presence_confirmed_at).length;
+        const pendentes = osArray.length - confirmadas;
+        const percentual = Math.round((confirmadas / osArray.length) * 100);
+        resumoData.push([tecnico, osArray.length, confirmadas, pendentes, `${percentual}%`]);
+      });
+
+      const wsResumo = XLSX.utils.aoa_to_sheet(resumoData);
+      XLSX.utils.book_append_sheet(workbook, wsResumo, "Resumo");
+
+      // Planilha detalhada
+      const detalhesData = [
+        ["Técnico", "OS", "Horário", "Cliente", "Descrição", "Endereço", "Status", "Hora Confirmação"]
+      ];
+
+      Object.entries(osPorTecnico).forEach(([tecnico, osArray]) => {
+        osArray.forEach(os => {
+          detalhesData.push([
+            tecnico,
+            os.numero_os,
+            os.hora_inicio ? `${os.hora_inicio.slice(0, 5)} - ${os.hora_fim?.slice(0, 5) || ''}` : '-',
+            os.tickets?.clientes?.empresa || '-',
+            os.tickets?.titulo || '-',
+            os.tickets?.endereco_servico || '-',
+            os.presence_confirmed_at ? 'Confirmada' : 'Pendente',
+            os.presence_confirmed_at 
+              ? format(new Date(os.presence_confirmed_at), 'HH:mm', { locale: ptBR })
+              : '-'
+          ]);
+        });
+      });
+
+      const wsDetalhes = XLSX.utils.aoa_to_sheet(detalhesData);
+      XLSX.utils.book_append_sheet(workbook, wsDetalhes, "Detalhes");
+
+      XLSX.writeFile(workbook, `confirmacoes_presenca_${format(new Date(), "yyyy-MM-dd")}.xlsx`);
+      toast.success("Excel exportado com sucesso!");
+    } catch (error) {
+      console.error("Erro ao exportar Excel:", error);
+      toast.error("Erro ao exportar Excel");
+    } finally {
+      setExporting(false);
+    }
+  };
+
+
   if (loading) {
     return (
       <div className="p-6">
@@ -280,11 +462,31 @@ export default function DashboardPresenca() {
 
   return (
     <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Dashboard de Confirmações</h1>
-        <p className="text-muted-foreground">
-          Acompanhamento em tempo real das confirmações de presença do dia
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Dashboard de Confirmações</h1>
+          <p className="text-muted-foreground">
+            Acompanhamento em tempo real das confirmações de presença do dia
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            onClick={exportarPDF}
+            disabled={exporting || ordensServicoFiltradas.length === 0}
+            variant="outline"
+          >
+            <FileDown className="h-4 w-4 mr-2" />
+            Exportar PDF
+          </Button>
+          <Button
+            onClick={exportarExcel}
+            disabled={exporting || ordensServicoFiltradas.length === 0}
+            variant="outline"
+          >
+            <FileSpreadsheet className="h-4 w-4 mr-2" />
+            Exportar Excel
+          </Button>
+        </div>
       </div>
 
       {/* Filtros */}
