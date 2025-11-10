@@ -9,9 +9,74 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-interface ConfirmPresenceRequest {
-  os_id: string;
-  token: string;
+// Função auxiliar para obter IP do cliente
+function getClientIP(req: Request): string {
+  const xff = req.headers.get('x-forwarded-for');
+  if (xff) {
+    return xff.split(',')[0].trim();
+  }
+  const xri = req.headers.get('x-real-ip');
+  if (xri) {
+    return xri;
+  }
+  return 'unknown';
+}
+
+function renderHTML(title: string, message: string, type: 'success' | 'error'): string {
+  const icon = type === 'success' ? '✅' : '❌';
+  const color = type === 'success' ? '#16a34a' : '#dc2626';
+  const bgGradient = type === 'success' 
+    ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+    : '#f3f4f6';
+
+  return `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>${title} - SunFlow</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+          body { 
+            font-family: Arial, sans-serif; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            min-height: 100vh; 
+            margin: 0; 
+            background: ${bgGradient};
+          }
+          .container { 
+            background: white; 
+            padding: 3rem; 
+            border-radius: 12px; 
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2); 
+            text-align: center; 
+            max-width: 500px; 
+          }
+          .icon { 
+            color: ${color}; 
+            font-size: 4rem; 
+            margin: 0; 
+            animation: scaleIn 0.5s ease-out; 
+          }
+          @keyframes scaleIn { 
+            from { transform: scale(0); } 
+            to { transform: scale(1); } 
+          }
+          h1 { color: ${color}; margin: 1rem 0; }
+          .message { color: #6b7280; margin-top: 1rem; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="icon">${icon}</div>
+          <h1>${title}</h1>
+          <p class="message">${message}</p>
+        </div>
+      </body>
+    </html>
+  `;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -23,43 +88,40 @@ const handler = async (req: Request): Promise<Response> => {
     const url = new URL(req.url);
     const osId = url.searchParams.get("os_id");
     const token = url.searchParams.get("token");
+    const clientIP = getClientIP(req);
 
     if (!osId || !token) {
       return new Response(
-        `
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <title>Erro - Confirmação de Presença</title>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <style>
-              body { font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background: #f3f4f6; }
-              .container { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); text-align: center; max-width: 500px; }
-              .error { color: #dc2626; }
-              h1 { margin-top: 0; }
-            </style>
-          </head>
-          <body>
-            <div class="container">
-              <h1 class="error">❌ Link inválido</h1>
-              <p>Este link de confirmação é inválido ou expirou.</p>
-            </div>
-          </body>
-        </html>
-        `,
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "text/html; charset=UTF-8" },
-        }
+        renderHTML('Erro', 'Parâmetros inválidos. Link de confirmação está incompleto.', 'error'),
+        { headers: { ...corsHeaders, "Content-Type": "text/html; charset=UTF-8" } }
       );
     }
 
-    console.log(`[confirm-presence] Confirmando presença para OS: ${osId}`);
+    console.log(`[confirm-presence] Tentativa de confirmação para OS: ${osId} do IP: ${clientIP}`);
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Buscar OS e validar token
+    // Verificar rate limiting
+    const { data: rateLimitOk } = await supabase.rpc('check_presence_rate_limit', {
+      p_ip: clientIP,
+      p_os_id: osId
+    });
+
+    if (!rateLimitOk) {
+      console.log(`[confirm-presence] Rate limit excedido para IP ${clientIP}`);
+      return new Response(
+        renderHTML('Erro', 'Muitas tentativas. Por favor, aguarde 15 minutos antes de tentar novamente.', 'error'),
+        { headers: { ...corsHeaders, "Content-Type": "text/html; charset=UTF-8" } }
+      );
+    }
+
+    // Registrar tentativa
+    await supabase.rpc('log_presence_attempt', {
+      p_ip: clientIP,
+      p_os_id: osId
+    });
+
+    // Buscar OS
     const { data: os, error: fetchError } = await supabase
       .from("ordens_servico")
       .select(`
@@ -79,73 +141,22 @@ const handler = async (req: Request): Promise<Response> => {
     if (fetchError || !os) {
       console.error("[confirm-presence] OS não encontrada:", fetchError);
       return new Response(
-        `
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <title>Erro - Confirmação de Presença</title>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <style>
-              body { font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background: #f3f4f6; }
-              .container { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); text-align: center; max-width: 500px; }
-              .error { color: #dc2626; }
-              h1 { margin-top: 0; }
-            </style>
-          </head>
-          <body>
-            <div class="container">
-              <h1 class="error">❌ Ordem de Serviço não encontrada</h1>
-              <p>A ordem de serviço não foi encontrada ou já foi cancelada.</p>
-            </div>
-          </body>
-        </html>
-        `,
-        {
-          status: 404,
-          headers: { ...corsHeaders, "Content-Type": "text/html; charset=UTF-8" },
-        }
+        renderHTML('Erro', 'Ordem de serviço não encontrada ou já foi cancelada.', 'error'),
+        { headers: { ...corsHeaders, "Content-Type": "text/html; charset=UTF-8" } }
       );
     }
 
-    // Validar token simples (MD5 do ID da OS)
-    const expectedToken = await crypto.subtle
-      .digest("MD5", new TextEncoder().encode(osId + "sunflow-secret"))
-      .then((hash) =>
-        Array.from(new Uint8Array(hash))
-          .map((b) => b.toString(16).padStart(2, "0"))
-          .join("")
-      );
+    // Validar token usando função do banco
+    const { data: tokenValid } = await supabase.rpc('validate_presence_token', {
+      p_token: token,
+      p_os_id: osId
+    });
 
-    if (token !== expectedToken) {
-      console.error("[confirm-presence] Token inválido");
+    if (!tokenValid) {
+      console.error("[confirm-presence] Token inválido ou expirado");
       return new Response(
-        `
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <title>Erro - Confirmação de Presença</title>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <style>
-              body { font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background: #f3f4f6; }
-              .container { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); text-align: center; max-width: 500px; }
-              .error { color: #dc2626; }
-              h1 { margin-top: 0; }
-            </style>
-          </head>
-          <body>
-            <div class="container">
-              <h1 class="error">❌ Link inválido</h1>
-              <p>Este link de confirmação não é válido.</p>
-            </div>
-          </body>
-        </html>
-        `,
-        {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "text/html; charset=UTF-8" },
-        }
+        renderHTML('Erro', 'Token inválido ou expirado. Este link pode ter expirado (válido por 24 horas).', 'error'),
+        { headers: { ...corsHeaders, "Content-Type": "text/html; charset=UTF-8" } }
       );
     }
 
@@ -184,10 +195,7 @@ const handler = async (req: Request): Promise<Response> => {
           </body>
         </html>
         `,
-        {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "text/html; charset=UTF-8" },
-        }
+        { headers: { ...corsHeaders, "Content-Type": "text/html; charset=UTF-8" } }
       );
     }
 
@@ -205,7 +213,10 @@ const handler = async (req: Request): Promise<Response> => {
       throw updateError;
     }
 
-    console.log(`[confirm-presence] Presença confirmada para OS ${os.numero_os}`);
+    // Marcar token como usado
+    await supabase.rpc('mark_token_used', { p_token: token });
+
+    console.log(`[confirm-presence] Presença confirmada com sucesso para OS ${os.numero_os}`);
 
     const tecnicoNome = os.tecnico?.profile?.nome || "Técnico";
     const dataOS = new Date(os.data_programada).toLocaleDateString("pt-BR");
@@ -244,40 +255,13 @@ const handler = async (req: Request): Promise<Response> => {
         </body>
       </html>
       `,
-      {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "text/html; charset=UTF-8" },
-      }
+      { headers: { ...corsHeaders, "Content-Type": "text/html; charset=UTF-8" } }
     );
   } catch (error: any) {
     console.error("[confirm-presence] Erro:", error);
     return new Response(
-      `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Erro - Confirmação de Presença</title>
-          <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <style>
-            body { font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background: #f3f4f6; }
-            .container { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); text-align: center; max-width: 500px; }
-            .error { color: #dc2626; }
-            h1 { margin-top: 0; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <h1 class="error">❌ Erro ao confirmar presença</h1>
-            <p>Ocorreu um erro ao processar sua confirmação. Por favor, tente novamente ou entre em contato com o suporte.</p>
-          </div>
-        </body>
-      </html>
-      `,
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "text/html; charset=UTF-8" },
-      }
+      renderHTML('Erro', 'Ocorreu um erro ao processar sua confirmação. Por favor, tente novamente ou entre em contato com o suporte.', 'error'),
+      { headers: { ...corsHeaders, "Content-Type": "text/html; charset=UTF-8" } }
     );
   }
 };

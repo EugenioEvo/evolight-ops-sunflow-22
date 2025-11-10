@@ -396,6 +396,62 @@ export type Database = {
           },
         ]
       }
+      presence_confirmation_attempts: {
+        Row: {
+          attempted_at: string
+          id: string
+          ip_address: string
+          ordem_servico_id: string
+        }
+        Insert: {
+          attempted_at?: string
+          id?: string
+          ip_address: string
+          ordem_servico_id: string
+        }
+        Update: {
+          attempted_at?: string
+          id?: string
+          ip_address?: string
+          ordem_servico_id?: string
+        }
+        Relationships: []
+      }
+      presence_confirmation_tokens: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          ordem_servico_id: string
+          token: string
+          used_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          ordem_servico_id: string
+          token?: string
+          used_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          ordem_servico_id?: string
+          token?: string
+          used_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "presence_confirmation_tokens_ordem_servico_id_fkey"
+            columns: ["ordem_servico_id"]
+            isOneToOne: false
+            referencedRelation: "ordens_servico"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       prestadores: {
         Row: {
           ativo: boolean
@@ -717,6 +773,7 @@ export type Database = {
       tickets: {
         Row: {
           anexos: string[] | null
+          can_create_rme: boolean | null
           cliente_id: string
           created_at: string
           created_by: string
@@ -742,6 +799,7 @@ export type Database = {
         }
         Insert: {
           anexos?: string[] | null
+          can_create_rme?: boolean | null
           cliente_id: string
           created_at?: string
           created_by: string
@@ -767,6 +825,7 @@ export type Database = {
         }
         Update: {
           anexos?: string[] | null
+          can_create_rme?: boolean | null
           cliente_id?: string
           created_at?: string
           created_by?: string
@@ -837,6 +896,10 @@ export type Database = {
         Args: { p_cliente_id: string; p_user_id: string }
         Returns: boolean
       }
+      check_presence_rate_limit: {
+        Args: { p_ip: string; p_os_id: string }
+        Returns: boolean
+      }
       check_schedule_conflict: {
         Args: {
           p_data: string
@@ -847,6 +910,8 @@ export type Database = {
         }
         Returns: boolean
       }
+      cleanup_expired_tokens: { Args: never; Returns: undefined }
+      generate_presence_token: { Args: { p_os_id: string }; Returns: string }
       gerar_numero_os: { Args: never; Returns: string }
       gerar_numero_ticket: { Args: never; Returns: string }
       get_technician_workload: {
@@ -872,6 +937,15 @@ export type Database = {
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_admin_safe: { Args: never; Returns: boolean }
+      log_presence_attempt: {
+        Args: { p_ip: string; p_os_id: string }
+        Returns: undefined
+      }
+      mark_token_used: { Args: { p_token: string }; Returns: undefined }
+      validate_presence_token: {
+        Args: { p_os_id: string; p_token: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "admin" | "area_tecnica" | "tecnico_campo" | "cliente"

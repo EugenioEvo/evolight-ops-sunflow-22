@@ -135,15 +135,6 @@ const RME = () => {
         return;
       }
 
-      // Verificar status da OS. Se ainda não estiver em execução, manter na página e informar o usuário
-      if (osData.tickets.status !== 'em_execucao') {
-        toast({
-          title: 'Aguardando status',
-          description: 'Estamos aguardando a atualização para "Em Execução". Isso pode levar alguns segundos.',
-        });
-        // Não navegar. Vamos exibir um aviso na UI e permitir atualizar o status
-      }
-
       setSelectedOS(osData);
     } catch (error: any) {
       console.error('Erro inesperado ao carregar OS:', error);
@@ -219,6 +210,16 @@ const RME = () => {
 
       if (!selectedOS) {
         throw new Error('Selecione uma ordem de serviço');
+      }
+
+      // Validar status antes de permitir envio
+      if (selectedOS.tickets?.status !== 'em_execucao') {
+        toast({
+          title: 'Status inválido',
+          description: 'O ticket precisa estar com status "Em Execução" para criar o RME.',
+          variant: 'destructive',
+        });
+        return;
       }
 
       if (!tecnicoSignature || !clienteSignature) {
@@ -621,17 +622,19 @@ const RME = () => {
         </div>
 
         {selectedOS?.tickets?.status !== 'em_execucao' && (
-          <Alert>
+          <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              Aguardando atualização para status "Em Execução". Isso pode levar alguns segundos.
+            <AlertDescription className="flex items-center justify-between gap-4">
+              <div>
+                <strong>Atenção:</strong> O status do ticket não está como "Em Execução". 
+                O RME só pode ser preenchido após iniciar a execução do serviço.
+              </div>
               <Button
                 variant="outline"
                 size="sm"
-                className="mt-2"
                 onClick={() => loadOSFromUrl(selectedOS.id)}
               >
-                Atualizar status
+                Atualizar
               </Button>
             </AlertDescription>
           </Alert>
@@ -1080,11 +1083,20 @@ const RME = () => {
               </CardContent>
             </Card>
 
-            <div className="flex justify-end">
-              <Button type="submit" disabled={loading || !canSubmit()} className="w-full sm:w-auto">
+            <div className="flex flex-col gap-2">
+              <Button 
+                type="submit" 
+                disabled={loading || !canSubmit() || selectedOS?.tickets?.status !== 'em_execucao'} 
+                className="w-full sm:w-auto"
+              >
                 {loading ? 'Salvando...' : 'Concluir e Enviar RME'}
               </Button>
-              {canSubmit() && progress < 100 && (
+              {selectedOS?.tickets?.status !== 'em_execucao' && (
+                <p className="text-xs text-destructive">
+                  ⚠️ O ticket precisa estar "Em Execução" para enviar o RME
+                </p>
+              )}
+              {canSubmit() && progress < 100 && selectedOS?.tickets?.status === 'em_execucao' && (
                 <p className="text-xs text-muted-foreground">
                   Campos obrigatórios preenchidos. Preencha os opcionais para melhorar a documentação.
                 </p>
