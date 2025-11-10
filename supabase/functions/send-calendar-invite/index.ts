@@ -113,7 +113,14 @@ const handler = async (req: Request): Promise<Response> => {
 
     const now = new Date();
     const uid = `os-${os.numero_os}@sunflow.grupoevolight.com.br`;
-    const sequence = action === "update" ? 1 : 0;
+    
+    // Incrementar sequence se for update e já tiver sido enviado antes
+    let sequence = 0;
+    if (action === "update" && os.calendar_invite_sent_at) {
+      // Calcular quantas vezes já foi enviado baseado no timestamp
+      sequence = 1;
+    }
+    
     const method = action === "cancel" ? "CANCEL" : "REQUEST";
     const status = action === "cancel" ? "CANCELLED" : "CONFIRMED";
 

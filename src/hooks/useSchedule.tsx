@@ -43,6 +43,15 @@ export const useSchedule = () => {
   const scheduleOS = async (params: ScheduleParams): Promise<boolean> => {
     setLoading(true);
     try {
+      // Buscar dados atuais da OS para saber se é update ou create
+      const { data: currentOS } = await supabase
+        .from('ordens_servico')
+        .select('data_programada, hora_inicio, hora_fim')
+        .eq('id', params.osId)
+        .single();
+
+      const isUpdate = currentOS?.data_programada && currentOS?.hora_inicio && currentOS?.hora_fim;
+
       // Verificar conflito
       const hasConflict = await checkConflict(
         params.tecnicoId,
@@ -61,7 +70,7 @@ export const useSchedule = () => {
         return false;
       }
 
-      // Agendar OS
+      // Agendar/Reagendar OS
       const { error } = await supabase
         .from('ordens_servico')
         .update({
@@ -74,24 +83,24 @@ export const useSchedule = () => {
 
       if (error) throw error;
 
-      // Enviar convite de calendário
+      // Enviar convite de calendário (create ou update)
       try {
         await supabase.functions.invoke('send-calendar-invite', {
           body: {
             os_id: params.osId,
-            action: 'create'
+            action: isUpdate ? 'update' : 'create'
           }
         });
         
         toast({
-          title: 'Agendamento realizado',
-          description: `OS agendada para ${format(params.data, 'dd/MM/yyyy')} às ${params.horaInicio}. Convites enviados!`
+          title: isUpdate ? 'Reagendamento realizado' : 'Agendamento realizado',
+          description: `OS ${isUpdate ? 'reagendada' : 'agendada'} para ${format(params.data, 'dd/MM/yyyy')} às ${params.horaInicio}. Convites enviados!`
         });
       } catch (emailError) {
         console.error('Erro ao enviar convite:', emailError);
         toast({
-          title: 'Agendamento realizado',
-          description: 'OS agendada, mas não foi possível enviar convite por email',
+          title: isUpdate ? 'Reagendamento realizado' : 'Agendamento realizado',
+          description: 'OS atualizada, mas não foi possível enviar convite por email',
           variant: 'default'
         });
       }
