@@ -10,6 +10,8 @@ import { MapPin, Clock, Users, Route as RouteIcon, RefreshCw, CheckCircle, Alert
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useGeocoding } from '@/hooks/useGeocoding';
+import { optimizeRouteAdvanced, PrioridadeBadge } from '@/components/RouteOptimization';
+import { RouteExportButtons } from '@/components/RouteExportButtons';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -66,9 +68,10 @@ L.Marker.prototype.options.icon = defaultIcon;
 // Create numbered marker icon
 const createNumberedIcon = (number: number, prioridade: string) => {
   const colorMap: Record<string, string> = {
-    alta: '#ef4444',
-    media: '#eab308',
-    baixa: '#22c55e'
+    critica: '#dc2626', // red-600
+    alta: '#f97316',    // orange-500
+    media: '#eab308',   // yellow-500
+    baixa: '#22c55e'    // green-500
   };
   
   const color = colorMap[prioridade] || '#3b82f6';
@@ -112,50 +115,7 @@ const haversineDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
   return R * c;
 };
 
-// Optimize route using Nearest Neighbor algorithm
-const optimizeRoute = (tickets: any[]): any[] => {
-  if (tickets.length <= 1) return tickets.map((t, i) => ({ ...t, ordem: i + 1 }));
-  
-  const optimized: any[] = [];
-  const remaining = [...tickets];
-  
-  // Start with highest priority ticket
-  const prioMap: Record<string, number> = { alta: 3, media: 2, baixa: 1 };
-  remaining.sort((a, b) => prioMap[b.prioridade] - prioMap[a.prioridade]);
-  
-  let current = remaining[0];
-  optimized.push({ ...current, ordem: 1 });
-  remaining.splice(0, 1);
-  
-  // Find nearest neighbor
-  while (remaining.length > 0) {
-    let nearest = remaining[0];
-    let minDist = Infinity;
-    
-    for (const ticket of remaining) {
-      if (!ticket.hasRealCoords || !current.hasRealCoords) {
-        nearest = ticket;
-        break;
-      }
-      
-      const dist = haversineDistance(
-        current.coordenadas[0], current.coordenadas[1],
-        ticket.coordenadas[0], ticket.coordenadas[1]
-      );
-      
-      if (dist < minDist) {
-        minDist = dist;
-        nearest = ticket;
-      }
-    }
-    
-    optimized.push({ ...nearest, ordem: optimized.length + 1 });
-    remaining.splice(remaining.indexOf(nearest), 1);
-    current = nearest;
-  }
-  
-  return optimized;
-};
+// Removido - agora está em RouteOptimization.tsx
 
 // Calculate route totals (distance and time)
 const calculateRouteTotals = (tickets: any[]) => {
@@ -207,7 +167,7 @@ const RouteMap: React.FC = () => {
   const [geocodedCount, setGeocodedCount] = useState(0);
   const [totalToGeocode, setTotalToGeocode] = useState(0);
   const { profile } = useAuth();
-  const { geocodeAddress, loading: geocoding } = useGeocoding();
+  const { geocodeAddress, geocodeBatch, loading: geocoding, progress, completed, total } = useGeocoding();
 
   useEffect(() => {
     setMounted(true);
@@ -340,7 +300,7 @@ const RouteMap: React.FC = () => {
 
     // Optimize each route and calculate totals
     const optimizedRoutes = rotasPorTecnico.map(rota => {
-      const optimizedTickets = optimizeRoute(rota.ticketsData);
+      const optimizedTickets = optimizeRouteAdvanced(rota.ticketsData);
       const totals = calculateRouteTotals(optimizedTickets);
       const allGeocoded = optimizedTickets.every(t => t.hasRealCoords);
       
@@ -357,7 +317,7 @@ const RouteMap: React.FC = () => {
       {
         id: 1,
         nome: 'Ordens Pendentes',
-        ticketsData: optimizeRoute(tickets),
+        ticketsData: optimizeRouteAdvanced(tickets),
         distanciaTotal: calculateRouteTotals(tickets).distance,
         tempoEstimado: calculateRouteTotals(tickets).time,
         tecnico: 'Diversos',
@@ -448,9 +408,9 @@ const RouteMap: React.FC = () => {
             <RefreshCw className="h-5 w-5 animate-spin text-primary" />
             <div className="flex-1">
               <p className="text-sm font-medium">Geocodificando endereços</p>
-              <Progress value={geocodingProgress} className="mt-2" />
+              <Progress value={progress} className="mt-2" />
               <p className="text-xs text-muted-foreground mt-1">
-                {geocodedCount}/{totalToGeocode} concluídos
+                {completed}/{total} concluídos
               </p>
             </div>
           </div>
@@ -552,26 +512,23 @@ const RouteMap: React.FC = () => {
                     disabled={geocoding}
                     onClick={async (e) => {
                       e.stopPropagation();
-                      const ticketsToGeocode = rota.ticketsData.filter(t => !t.hasRealCoords);
-                      setTotalToGeocode(ticketsToGeocode.length);
-                      setGeocodedCount(0);
-                      setGeocodingProgress(0);
+                      const ticketsToGeocode = rota.ticketsData
+                        .filter(t => !t.hasRealCoords)
+                        .map(t => ({ id: t.ticketId, address: t.endereco }));
                       
-                      for (let i = 0; i < ticketsToGeocode.length; i++) {
-                        const ticket = ticketsToGeocode[i];
-                        await geocodeAddress(ticket.endereco, ticket.ticketId);
-                        setGeocodedCount(i + 1);
-                        setGeocodingProgress(((i + 1) / ticketsToGeocode.length) * 100);
-                        // Delay de 1s para respeitar rate limit do Nominatim
-                        await new Promise(resolve => setTimeout(resolve, 1000));
-                      }
-                      
+                      await geocodeBatch(ticketsToGeocode);
                       loadOrdensServico();
                     }}
                   >
                     <RefreshCw className={`h-4 w-4 mr-2 ${geocoding ? 'animate-spin' : ''}`} />
                     {geocoding ? 'Geocodificando...' : 'Geocodificar Endereços'}
                   </Button>
+                )}
+                
+                {rota.allGeocoded && (
+                  <div className="mt-3">
+                    <RouteExportButtons tickets={rota.ticketsData} />
+                  </div>
                 )}
               </div>
             ))}
@@ -595,9 +552,7 @@ const RouteMap: React.FC = () => {
                         <h5 className="font-medium text-sm">{ticket.cliente}</h5>
                       </div>
                       <div className="flex space-x-1">
-                        <Badge className={getPrioridadeColor(ticket.prioridade)}>
-                          {ticket.prioridade}
-                        </Badge>
+                        <PrioridadeBadge prioridade={ticket.prioridade} />
                       </div>
                     </div>
                     
@@ -754,7 +709,11 @@ const RouteMap: React.FC = () => {
                     <p className="text-xs font-semibold mb-2">Prioridade</p>
                     <div className="space-y-1">
                       <div className="flex items-center space-x-2">
-                        <div className="w-4 h-4 rounded-full bg-red-500"></div>
+                        <div className="w-4 h-4 rounded-full bg-red-600"></div>
+                        <span className="text-xs">Crítica</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <div className="w-4 h-4 rounded-full bg-orange-500"></div>
                         <span className="text-xs">Alta</span>
                       </div>
                       <div className="flex items-center space-x-2">

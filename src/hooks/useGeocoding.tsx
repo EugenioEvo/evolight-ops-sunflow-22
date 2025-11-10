@@ -10,6 +10,9 @@ interface GeocodeResult {
 
 export const useGeocoding = () => {
   const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [total, setTotal] = useState(0);
+  const [completed, setCompleted] = useState(0);
   const { toast } = useToast();
 
   const geocodeAddress = async (
@@ -55,5 +58,55 @@ export const useGeocoding = () => {
     }
   };
 
-  return { geocodeAddress, loading };
+  // Geocodificar múltiplos endereços em lote
+  const geocodeBatch = async (tickets: Array<{ id: string; address: string }>) => {
+    setLoading(true);
+    setTotal(tickets.length);
+    setCompleted(0);
+    setProgress(0);
+
+    const results: Array<{ id: string; success: boolean; error?: string }> = [];
+
+    for (let i = 0; i < tickets.length; i++) {
+      const ticket = tickets[i];
+      
+      try {
+        await geocodeAddress(ticket.address, ticket.id);
+        results.push({ id: ticket.id, success: true });
+      } catch (error: any) {
+        results.push({ 
+          id: ticket.id, 
+          success: false, 
+          error: error.message 
+        });
+      }
+
+      setCompleted(i + 1);
+      setProgress(Math.round(((i + 1) / tickets.length) * 100));
+
+      // Aguardar 1s entre requisições para respeitar rate limit
+      if (i < tickets.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+
+    setLoading(false);
+
+    const successCount = results.filter(r => r.success).length;
+    toast({
+      title: 'Geocodificação concluída',
+      description: `${successCount}/${tickets.length} endereços geocodificados com sucesso`
+    });
+
+    return results;
+  };
+
+  return { 
+    geocodeAddress, 
+    geocodeBatch,
+    loading,
+    progress,
+    total,
+    completed
+  };
 };

@@ -7,6 +7,46 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Função de retry com backoff exponencial
+async function fetchWithRetry(
+  url: string,
+  options: RequestInit,
+  maxRetries = 3,
+  initialDelay = 1000
+): Promise<Response> {
+  let lastError: Error | null = null;
+  
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const response = await fetch(url, options);
+      
+      // Se 429 (rate limit), esperar e tentar novamente
+      if (response.status === 429) {
+        const delay = initialDelay * Math.pow(2, attempt);
+        console.log(`Rate limit atingido. Aguardando ${delay}ms antes de tentar novamente...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
+      
+      // Se sucesso ou erro não recuperável, retornar
+      if (response.ok || response.status === 404) {
+        return response;
+      }
+      
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    } catch (error) {
+      lastError = error as Error;
+      if (attempt < maxRetries - 1) {
+        const delay = initialDelay * Math.pow(2, attempt);
+        console.log(`Tentativa ${attempt + 1} falhou. Aguardando ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  }
+  
+  throw lastError || new Error('Todas as tentativas falharam');
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -48,7 +88,8 @@ serve(async (req) => {
       }
     }
 
-    // Geocodificar via Nominatim
+    // Geocodificar via Nominatim com retry automático
+    console.log(`Geocodificando endereço: ${address}`);
     const nominatimUrl = new URL('https://nominatim.openstreetmap.org/search');
     nominatimUrl.searchParams.append('q', address);
     nominatimUrl.searchParams.append('format', 'json');
@@ -56,11 +97,16 @@ serve(async (req) => {
     nominatimUrl.searchParams.append('countrycodes', 'br');
     nominatimUrl.searchParams.append('addressdetails', '1');
 
-    const response = await fetch(nominatimUrl.toString(), {
-      headers: {
-        'User-Agent': 'LovableRME/1.0'
-      }
-    });
+    const response = await fetchWithRetry(
+      nominatimUrl.toString(),
+      {
+        headers: {
+          'User-Agent': 'SunFlow-Geocoding/1.0'
+        }
+      },
+      3,  // 3 tentativas
+      1000 // 1s delay inicial
+    );
 
     if (!response.ok) {
       throw new Error(`Nominatim retornou erro: ${response.status}`);
