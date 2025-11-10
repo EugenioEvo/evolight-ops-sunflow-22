@@ -13,6 +13,7 @@ import { useTicketsRealtime } from '@/hooks/useTicketsRealtime';
 import { useCancelOS } from '@/hooks/useCancelOS';
 import { useAgendaRealtime } from '@/hooks/useAgendaRealtime';
 import { EditTechnicianEmailDialog } from '@/components/EditTechnicianEmailDialog';
+import { PresenceConfirmationStatus } from '@/components/PresenceConfirmationStatus';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
 
@@ -27,7 +28,9 @@ interface OrdemServico {
   calendar_invite_sent_at: string | null;
   calendar_invite_recipients: string[] | null;
   presence_confirmed_at: string | null;
+  presence_confirmed_by: string | null;
   email_error_log: any[] | null;
+  qr_code: string | null;
   tecnicos: {
     id: string;
     profile_id: string;
@@ -241,6 +244,30 @@ const Agenda = () => {
     }
   };
 
+  const generatePresenceQR = async (osId: string) => {
+    try {
+      const { data, error } = await supabase.rpc('generate_presence_token', {
+        p_os_id: osId
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: 'QR Code gerado',
+        description: 'Token de confirmação de presença criado com sucesso'
+      });
+
+      loadOrdensServico();
+    } catch (error: any) {
+      console.error('Erro ao gerar token:', error);
+      toast({
+        title: 'Erro ao gerar QR Code',
+        description: error.message,
+        variant: 'destructive'
+      });
+    }
+  };
+
   return (
     <div className="p-6 space-y-6">
       <div>
@@ -376,6 +403,11 @@ const Agenda = () => {
                                   Presença Confirmada
                                 </Badge>
                               )}
+                              
+                              <PresenceConfirmationStatus 
+                                ordemServico={os}
+                                onGenerateQR={() => generatePresenceQR(os.id)}
+                              />
                             </div>
                             <p className="text-sm text-muted-foreground">{os.tickets.titulo}</p>
                           </div>

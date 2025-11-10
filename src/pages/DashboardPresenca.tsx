@@ -8,6 +8,7 @@ import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { PresenceDashboard } from "@/components/PresenceDashboard";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
@@ -488,6 +489,9 @@ export default function DashboardPresenca() {
           </Button>
         </div>
       </div>
+
+      {/* Dashboard de Estatísticas */}
+      <PresenceDashboard />
 
       {/* Filtros */}
       <Card>

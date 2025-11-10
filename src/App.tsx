@@ -27,6 +27,7 @@ import GerenciarRME from "./pages/GerenciarRME";
 import DashboardPresenca from "./pages/DashboardPresenca";
 import AuditLogs from "./pages/AuditLogs";
 import ClientDashboard from "./pages/ClientDashboard";
+import PresenceConfirmation from "./pages/PresenceConfirmation";
 
 const queryClient = new QueryClient();
 
@@ -39,6 +40,7 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/auth" element={<Auth />} />
+            <Route path="/confirmar-presenca" element={<PresenceConfirmation />} />
             <Route path="/*" element={
               <ProtectedRoute>
                 <SidebarProvider>
