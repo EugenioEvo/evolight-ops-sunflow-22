@@ -4,9 +4,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { startOfMonth, endOfMonth, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Calendar, Clock, CheckCircle, AlertCircle, User } from 'lucide-react';
+import { Calendar, Clock, CheckCircle, AlertCircle, User, Download } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
 interface Tecnico {
   id: string;
@@ -36,6 +40,8 @@ const CargaTrabalho = () => {
   const [selectedTecnico, setSelectedTecnico] = useState<string>('');
   const [stats, setStats] = useState<TecnicoStats | null>(null);
   const [loading, setLoading] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     loadTecnicos();
@@ -128,11 +134,169 @@ const CargaTrabalho = () => {
     return 'Sobrecarregado';
   };
 
+  const exportToPDF = async () => {
+    if (!stats || !selectedTecnico) return;
+
+    setExporting(true);
+    try {
+      const tecnico = tecnicos.find(t => t.id === selectedTecnico);
+      const mesNome = format(selectedMonth, "MMMM 'de' yyyy", { locale: ptBR });
+
+      const doc = new jsPDF();
+      
+      // Header
+      doc.setFillColor(245, 158, 11); // amber-500
+      doc.rect(0, 0, 210, 40, 'F');
+      
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(24);
+      doc.text('SunFlow', 15, 20);
+      doc.setFontSize(12);
+      doc.text('Relatório de Carga de Trabalho', 15, 30);
+      
+      // Informações do relatório
+      doc.setTextColor(0, 0, 0);
+      doc.setFontSize(16);
+      doc.text(`Técnico: ${tecnico?.nome || 'N/A'}`, 15, 55);
+      doc.setFontSize(12);
+      doc.text(`Período: ${mesNome}`, 15, 63);
+      doc.text(`Gerado em: ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`, 15, 70);
+
+      // Métricas principais
+      let yPos = 85;
+      
+      doc.setFillColor(249, 250, 251);
+      doc.rect(15, yPos, 180, 50, 'F');
+      
+      doc.setFontSize(14);
+      doc.setFont(undefined, 'bold');
+      doc.text('Resumo do Mês', 20, yPos + 10);
+      
+      doc.setFont(undefined, 'normal');
+      doc.setFontSize(11);
+      
+      const metricas = [
+        `Total de OS: ${stats.totalOS}`,
+        `Total de Horas: ${stats.totalHoras}h`,
+        `OS Pendentes: ${stats.osPendentes}`,
+        `OS Concluídas: ${stats.osConcluidas}`,
+      ];
+      
+      metricas.forEach((metrica, idx) => {
+        doc.text(metrica, 25, yPos + 22 + (idx * 7));
+      });
+
+      yPos += 55;
+
+      // Disponibilidade
+      doc.setFillColor(239, 246, 255);
+      doc.rect(15, yPos, 180, 30, 'F');
+      
+      doc.setFontSize(14);
+      doc.setFont(undefined, 'bold');
+      doc.text('Disponibilidade', 20, yPos + 10);
+      
+      doc.setFont(undefined, 'normal');
+      doc.setFontSize(11);
+      
+      const statusCor = stats.disponibilidade < 50 ? [34, 197, 94] : 
+                        stats.disponibilidade < 80 ? [234, 179, 8] : [239, 68, 68];
+      
+      doc.setTextColor(statusCor[0], statusCor[1], statusCor[2]);
+      doc.text(`${stats.disponibilidade}% - ${getDisponibilidadeStatus(stats.disponibilidade)}`, 25, yPos + 20);
+      doc.setTextColor(0, 0, 0);
+      doc.text(`Ocupado: ${stats.totalHoras}h | Disponível: ${Math.max(0, 176 - stats.totalHoras)}h`, 25, yPos + 27);
+
+      yPos += 40;
+
+      // Gráfico de barra simplificado (distribuição diária)
+      if (stats.workloadByDay.length > 0) {
+        doc.setFontSize(14);
+        doc.setFont(undefined, 'bold');
+        doc.text('Distribuição Diária', 15, yPos);
+        
+        yPos += 10;
+
+        // Tabela de distribuição
+        const tableData = stats.workloadByDay.map(day => {
+          const horas = Math.round(day.total_minutos / 60 * 10) / 10;
+          return [
+            format(new Date(day.data), "dd/MM (EEE)", { locale: ptBR }),
+            day.total_os.toString(),
+            `${horas}h`,
+            day.os_pendentes.toString(),
+            day.os_concluidas.toString()
+          ];
+        });
+
+        (doc as any).autoTable({
+          startY: yPos,
+          head: [['Data', 'OS', 'Horas', 'Pendentes', 'Concluídas']],
+          body: tableData,
+          theme: 'grid',
+          headStyles: { fillColor: [245, 158, 11], textColor: 255 },
+          styles: { fontSize: 9, cellPadding: 3 },
+          columnStyles: {
+            0: { cellWidth: 40 },
+            1: { cellWidth: 20, halign: 'center' },
+            2: { cellWidth: 30, halign: 'center' },
+            3: { cellWidth: 30, halign: 'center' },
+            4: { cellWidth: 30, halign: 'center' },
+          }
+        });
+      }
+
+      // Footer
+      const pageCount = (doc as any).internal.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(9);
+        doc.setTextColor(128, 128, 128);
+        doc.text(
+          `Página ${i} de ${pageCount}`,
+          doc.internal.pageSize.width / 2,
+          doc.internal.pageSize.height - 10,
+          { align: 'center' }
+        );
+      }
+
+      // Salvar PDF
+      const fileName = `carga_trabalho_${tecnico?.nome.replace(/\s+/g, '_')}_${format(selectedMonth, 'yyyy_MM')}.pdf`;
+      doc.save(fileName);
+
+      toast({
+        title: 'PDF exportado',
+        description: `Relatório salvo como ${fileName}`
+      });
+    } catch (error: any) {
+      console.error('Erro ao exportar PDF:', error);
+      toast({
+        title: 'Erro ao exportar',
+        description: 'Não foi possível gerar o PDF',
+        variant: 'destructive'
+      });
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Carga de Trabalho</h1>
-        <p className="text-muted-foreground">Visualize a distribuição de trabalho dos técnicos</p>
+      <div className="flex justify-between items-start">
+        <div>
+          <h1 className="text-3xl font-bold">Carga de Trabalho</h1>
+          <p className="text-muted-foreground">Visualize a distribuição de trabalho dos técnicos</p>
+        </div>
+        {stats && (
+          <Button 
+            onClick={exportToPDF} 
+            disabled={exporting}
+            className="flex items-center gap-2"
+          >
+            <Download className="h-4 w-4" />
+            {exporting ? 'Gerando PDF...' : 'Exportar PDF'}
+          </Button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
