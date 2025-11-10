@@ -74,10 +74,27 @@ export const useSchedule = () => {
 
       if (error) throw error;
 
-      toast({
-        title: 'Agendamento realizado',
-        description: `OS agendada para ${format(params.data, 'dd/MM/yyyy')} às ${params.horaInicio}`
-      });
+      // Enviar convite de calendário
+      try {
+        await supabase.functions.invoke('send-calendar-invite', {
+          body: {
+            os_id: params.osId,
+            action: 'create'
+          }
+        });
+        
+        toast({
+          title: 'Agendamento realizado',
+          description: `OS agendada para ${format(params.data, 'dd/MM/yyyy')} às ${params.horaInicio}. Convites enviados!`
+        });
+      } catch (emailError) {
+        console.error('Erro ao enviar convite:', emailError);
+        toast({
+          title: 'Agendamento realizado',
+          description: 'OS agendada, mas não foi possível enviar convite por email',
+          variant: 'default'
+        });
+      }
 
       return true;
     } catch (error: any) {

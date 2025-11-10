@@ -320,6 +320,8 @@ export type Database = {
       }
       ordens_servico: {
         Row: {
+          calendar_invite_recipients: string[] | null
+          calendar_invite_sent_at: string | null
           created_at: string
           data_emissao: string
           data_programada: string | null
@@ -335,6 +337,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          calendar_invite_recipients?: string[] | null
+          calendar_invite_sent_at?: string | null
           created_at?: string
           data_emissao?: string
           data_programada?: string | null
@@ -350,6 +354,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          calendar_invite_recipients?: string[] | null
+          calendar_invite_sent_at?: string | null
           created_at?: string
           data_emissao?: string
           data_programada?: string | null
