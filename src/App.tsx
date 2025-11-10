@@ -26,6 +26,7 @@ import Relatorios from "./pages/Relatorios";
 import GerenciarRME from "./pages/GerenciarRME";
 import DashboardPresenca from "./pages/DashboardPresenca";
 import AuditLogs from "./pages/AuditLogs";
+import ClientDashboard from "./pages/ClientDashboard";
 
 const queryClient = new QueryClient();
 
@@ -48,6 +49,11 @@ const App = () => (
                       <main className="flex-1 overflow-auto bg-muted/30">
                         <Routes>
                           <Route path="/" element={<Index />} />
+                          <Route path="/meu-painel" element={
+                            <ProtectedRoute roles={['cliente']}>
+                              <ClientDashboard />
+                            </ProtectedRoute>
+                          } />
                           <Route path="/tickets" element={<Tickets />} />
                           <Route path="/routes" element={<RoutesPage />} />
                           <Route path="/agenda" element={

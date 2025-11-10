@@ -38,6 +38,7 @@ import {
 
 const mainItems = [
   { title: "Dashboard", url: "/", icon: Home },
+  { title: "Meu Painel", url: "/meu-painel", icon: User, clientOnly: true },
   { title: "Tickets", url: "/tickets", icon: Package },
   { title: "RME", url: "/rme", icon: BarChart3 },
   { title: "Rotas", url: "/routes", icon: Route },
@@ -69,6 +70,7 @@ export function AppSidebar() {
   const [pendingRMEsCount, setPendingRMEsCount] = useState(0);
 
   const isTecnico = profile?.role === "tecnico_campo";
+  const isCliente = profile?.role === "cliente";
   const isAdminOrAreaTecnica = profile?.role === "admin" || profile?.role === "area_tecnica";
 
   useEffect(() => {
@@ -129,7 +131,11 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {mainItems
-                .filter(item => !item.adminOnly || isAdminOrAreaTecnica)
+                .filter(item => {
+                  if (item.adminOnly && !isAdminOrAreaTecnica) return false;
+                  if (item.clientOnly && !isCliente) return false;
+                  return true;
+                })
                 .map((item) => (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild>

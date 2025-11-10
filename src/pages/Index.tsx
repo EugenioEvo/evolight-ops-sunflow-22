@@ -7,6 +7,7 @@ import { useTicketsRealtime } from "@/hooks/useTicketsRealtime";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
 import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { startOfMonth, endOfMonth, eachDayOfInterval, format as formatDate } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -121,6 +122,7 @@ const PerformanceMetrics = () => {
 const Index = () => {
   const [recentActivity, setRecentActivity] = useState<any[]>([]);
   const { profile } = useAuth();
+  const navigate = useNavigate();
   
   const loadRecentActivity = async () => {
     const { data } = await supabase
@@ -157,6 +159,13 @@ const Index = () => {
     };
     return labels[status] || status;
   };
+
+  // Redirecionar clientes para seu dashboard
+  useEffect(() => {
+    if (profile?.role === 'cliente') {
+      navigate('/meu-painel');
+    }
+  }, [profile, navigate]);
 
   // Se for técnico, mostrar dashboard específico
   if (profile?.role === 'tecnico_campo') {
