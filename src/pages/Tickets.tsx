@@ -249,6 +249,7 @@ const Tickets = () => {
         return;
       }
 
+      // Atribuir técnico ao ticket
       const { error } = await supabase
         .from('tickets')
         .update({ 

@@ -5,10 +5,13 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { useSchedule } from '@/hooks/useSchedule';
+import { useConflictCheck } from '@/hooks/useConflictCheck';
+import { ConflictWarning } from '@/components/ConflictWarning';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CalendarIcon, Clock } from 'lucide-react';
+import { CalendarIcon, Clock, AlertCircle } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
 interface ScheduleModalProps {
   open: boolean;
@@ -43,7 +46,10 @@ export const ScheduleModal = ({
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(currentData);
   const [horaInicio, setHoraInicio] = useState(currentHoraInicio || '08:00');
   const [duracaoHoras, setDuracaoHoras] = useState(currentDuracao ? String(currentDuracao / 60) : '2');
+  const [conflicts, setConflicts] = useState<any[]>([]);
+  const [existingSchedules, setExistingSchedules] = useState<any[]>([]);
   const { scheduleOS, loading } = useSchedule();
+  const { checkTechnicianConflict, getTechnicianSchedule } = useConflictCheck();
 
   // Atualizar estados quando props mudarem
   useEffect(() => {
@@ -75,8 +81,50 @@ export const ScheduleModal = ({
     return `${String(novaHora).padStart(2, '0')}:${String(novoMinuto).padStart(2, '0')}`;
   };
 
+  // Verificar conflitos quando mudar técnico, data ou horário
+  useEffect(() => {
+    const checkConflicts = async () => {
+      if (!selectedTecnico || !selectedDate) {
+        setConflicts([]);
+        return;
+      }
+
+      const horaFim = calcularHoraFim(horaInicio, duracaoHoras);
+      const result = await checkTechnicianConflict(
+        selectedTecnico,
+        selectedDate,
+        horaInicio,
+        horaFim,
+        osId
+      );
+
+      setConflicts(result.conflicts);
+    };
+
+    checkConflicts();
+  }, [selectedTecnico, selectedDate, horaInicio, duracaoHoras]);
+
+  // Carregar agenda existente do técnico
+  useEffect(() => {
+    const loadSchedule = async () => {
+      if (!selectedTecnico || !selectedDate) {
+        setExistingSchedules([]);
+        return;
+      }
+
+      const schedules = await getTechnicianSchedule(selectedTecnico, selectedDate);
+      setExistingSchedules(schedules);
+    };
+
+    loadSchedule();
+  }, [selectedTecnico, selectedDate]);
+
   const handleSchedule = async () => {
     if (!selectedTecnico || !selectedDate) return;
+
+    if (conflicts.length > 0) {
+      return; // Não permite agendar se houver conflitos
+    }
 
     const horaFim = calcularHoraFim(horaInicio, duracaoHoras);
     const duracaoMin = parseFloat(duracaoHoras) * 60;
@@ -180,6 +228,37 @@ export const ScheduleModal = ({
             </div>
           </div>
 
+          {/* Avisos de conflito */}
+          <ConflictWarning 
+            conflicts={conflicts}
+            technicianName={tecnicos.find(t => t.id === selectedTecnico)?.profiles.nome}
+          />
+
+          {/* Agenda existente */}
+          {existingSchedules.length > 0 && conflicts.length === 0 && (
+            <div className="rounded-lg bg-muted/50 p-4 space-y-2">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <AlertCircle className="h-4 w-4" />
+                Outros agendamentos neste dia:
+              </div>
+              <div className="space-y-1">
+                {existingSchedules.map((schedule, index) => (
+                  <div key={index} className="flex items-center gap-2 text-sm">
+                    <Badge variant="outline" className="text-xs">
+                      {schedule.osNumber}
+                    </Badge>
+                    <span>{schedule.startTime} - {schedule.endTime}</span>
+                    {schedule.ticketTitle && (
+                      <span className="text-muted-foreground truncate">
+                        {schedule.ticketTitle}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {selectedDate && (
             <div className="rounded-lg bg-muted p-4">
               <p className="text-sm font-medium">Resumo do Agendamento</p>
@@ -199,7 +278,7 @@ export const ScheduleModal = ({
           </Button>
           <Button 
             onClick={handleSchedule} 
-            disabled={!selectedTecnico || !selectedDate || loading}
+            disabled={!selectedTecnico || !selectedDate || loading || conflicts.length > 0}
           >
             {loading ? 'Agendando...' : 'Agendar'}
           </Button>
