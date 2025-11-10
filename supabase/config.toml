@@ -11,3 +11,6 @@ verify_jwt = true
 
 [functions.send-calendar-invite]
 verify_jwt = true
+
+[functions.send-os-reminders]
+verify_jwt = false

@@ -332,6 +332,7 @@ export type Database = {
           numero_os: string
           pdf_url: string | null
           qr_code: string | null
+          reminder_sent_at: string | null
           tecnico_id: string | null
           ticket_id: string
           updated_at: string
@@ -349,6 +350,7 @@ export type Database = {
           numero_os: string
           pdf_url?: string | null
           qr_code?: string | null
+          reminder_sent_at?: string | null
           tecnico_id?: string | null
           ticket_id: string
           updated_at?: string
@@ -366,6 +368,7 @@ export type Database = {
           numero_os?: string
           pdf_url?: string | null
           qr_code?: string | null
+          reminder_sent_at?: string | null
           tecnico_id?: string | null
           ticket_id?: string
           updated_at?: string
