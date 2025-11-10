@@ -24,6 +24,7 @@ import Auth from "./pages/Auth";
 import RME from "./pages/RME";
 import Relatorios from "./pages/Relatorios";
 import GerenciarRME from "./pages/GerenciarRME";
+import DashboardPresenca from "./pages/DashboardPresenca";
 
 const queryClient = new QueryClient();
 
@@ -56,6 +57,11 @@ const App = () => (
                           <Route path="/carga-trabalho" element={
                             <ProtectedRoute roles={['admin', 'area_tecnica']}>
                               <CargaTrabalho />
+                            </ProtectedRoute>
+                          } />
+                          <Route path="/dashboard-presenca" element={
+                            <ProtectedRoute roles={['admin', 'area_tecnica']}>
+                              <DashboardPresenca />
                             </ProtectedRoute>
                           } />
                           <Route path="/clientes" element={
