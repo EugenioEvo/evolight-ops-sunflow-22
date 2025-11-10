@@ -331,6 +331,8 @@ export type Database = {
           id: string
           numero_os: string
           pdf_url: string | null
+          presence_confirmed_at: string | null
+          presence_confirmed_by: string | null
           qr_code: string | null
           reminder_sent_at: string | null
           tecnico_id: string | null
@@ -349,6 +351,8 @@ export type Database = {
           id?: string
           numero_os: string
           pdf_url?: string | null
+          presence_confirmed_at?: string | null
+          presence_confirmed_by?: string | null
           qr_code?: string | null
           reminder_sent_at?: string | null
           tecnico_id?: string | null
@@ -367,6 +371,8 @@ export type Database = {
           id?: string
           numero_os?: string
           pdf_url?: string | null
+          presence_confirmed_at?: string | null
+          presence_confirmed_by?: string | null
           qr_code?: string | null
           reminder_sent_at?: string | null
           tecnico_id?: string | null

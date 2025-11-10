@@ -112,6 +112,17 @@ const handler = async (req: Request): Promise<Response> => {
 
         const recipients = [tecnicoEmail, CONFIG.teamEmail];
 
+        // Gerar token de confirmação
+        const confirmToken = await crypto.subtle
+          .digest("MD5", new TextEncoder().encode(os.id + "sunflow-secret"))
+          .then((hash) =>
+            Array.from(new Uint8Array(hash))
+              .map((b) => b.toString(16).padStart(2, "0"))
+              .join("")
+          );
+
+        const confirmUrl = `${supabaseUrl}/functions/v1/confirm-presence?os_id=${os.id}&token=${confirmToken}`;
+
         const emailSubject = `Lembrete: OS ${os.numero_os} agendada para amanhã`;
 
         const emailBody = `
@@ -156,6 +167,16 @@ const handler = async (req: Request): Promise<Response> => {
   <div style="background: #dbeafe; padding: 15px; border-left: 4px solid #2563eb; margin: 20px 0;">
     <p style="margin: 0; color: #1e40af;">
       <strong>⏰ Lembrete:</strong> Esta OS está agendada para amanhã. Certifique-se de verificar todos os materiais e equipamentos necessários.
+    </p>
+  </div>
+
+  <div style="text-align: center; margin: 30px 0;">
+    <a href="${confirmUrl}" 
+       style="display: inline-block; background: #16a34a; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px;">
+      ✅ Confirmar Presença
+    </a>
+    <p style="color: #6b7280; font-size: 12px; margin-top: 10px;">
+      Clique no botão acima para confirmar que você estará presente nesta OS
     </p>
   </div>
 

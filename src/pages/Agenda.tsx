@@ -24,6 +24,7 @@ interface OrdemServico {
   tecnico_id: string;
   calendar_invite_sent_at: string | null;
   calendar_invite_recipients: string[] | null;
+  presence_confirmed_at: string | null;
   tecnicos: {
     id: string;
     profiles: {
@@ -294,6 +295,12 @@ const Agenda = () => {
                                     </TooltipContent>
                                   </Tooltip>
                                 </TooltipProvider>
+                              )}
+                              {os.presence_confirmed_at && (
+                                <Badge variant="default" className="flex items-center gap-1">
+                                  <CheckCircle className="h-3 w-3" />
+                                  Presença Confirmada
+                                </Badge>
                               )}
                             </div>
                             <p className="text-sm text-muted-foreground">{os.tickets.titulo}</p>
