@@ -129,16 +129,32 @@ serve(async (req) => {
     // Gerar número da OS
     const { data: numeroOS } = await supabaseClient.rpc('gerar_numero_os')
 
+    // Preparar dados da OS com horário previsto se disponível
+    const osData: any = {
+      ticket_id: ticketId,
+      numero_os: numeroOS,
+      tecnico_id: tecnico.id,
+      data_programada: ticket.data_vencimento,
+      qr_code: `OS-${numeroOS}-${ticketId}`
+    }
+
+    // Se o ticket tem horário previsto, definir hora_inicio e calcular hora_fim (estimativa de 1h)
+    if (ticket.horario_previsto_inicio) {
+      osData.hora_inicio = ticket.horario_previsto_inicio
+      
+      // Calcular hora_fim somando tempo estimado (ou 1h por padrão)
+      const tempoEstimadoHoras = ticket.tempo_estimado || 1
+      const [horas, minutos] = ticket.horario_previsto_inicio.split(':').map(Number)
+      const horaFimDate = new Date()
+      horaFimDate.setHours(horas + tempoEstimadoHoras, minutos, 0, 0)
+      osData.hora_fim = horaFimDate.toTimeString().slice(0, 5)
+      osData.duracao_estimada_min = tempoEstimadoHoras * 60
+    }
+
     // Criar ordem de serviço
     const { data: ordemServico, error: osError } = await supabaseClient
       .from('ordens_servico')
-      .insert({
-        ticket_id: ticketId,
-        numero_os: numeroOS,
-        tecnico_id: tecnico.id,
-        data_programada: ticket.data_vencimento,
-        qr_code: `OS-${numeroOS}-${ticketId}`
-      })
+      .insert(osData)
       .select()
       .single()
 
