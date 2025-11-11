@@ -18,6 +18,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
 import { useTechnicianStore } from "@/hooks/useTechnicianStore";
+import { generateOSPDF } from "@/utils/generateOSPDF";
 
 interface OrdemServico {
   id: string;
@@ -26,16 +27,26 @@ interface OrdemServico {
   data_programada: string | null;
   pdf_url: string | null;
   ticket_id: string;
+  hora_inicio?: string;
+  hora_fim?: string;
+  equipe?: string[];
+  servico_solicitado?: string;
+  inspetor_responsavel?: string;
+  tipo_trabalho?: string[];
   tickets: {
     id: string;
     numero_ticket: string;
     titulo: string;
+    descricao?: string;
     endereco_servico: string;
     prioridade: string;
     status: string;
     data_inicio_execucao: string | null;
     clientes: {
       empresa: string;
+      endereco?: string;
+      cidade?: string;
+      estado?: string;
       profiles?: {
         telefone?: string;
       };
@@ -86,16 +97,24 @@ const MinhasOS = () => {
           data_programada,
           hora_inicio,
           hora_fim,
+          equipe,
+          servico_solicitado,
+          inspetor_responsavel,
+          tipo_trabalho,
           tickets!inner (
             id,
             numero_ticket,
             titulo,
+            descricao,
             endereco_servico,
             prioridade,
             status,
             data_inicio_execucao,
             clientes (
               empresa,
+              endereco,
+              cidade,
+              estado,
               profiles!clientes_profile_id_fkey(telefone)
             )
           )
@@ -194,28 +213,35 @@ const MinhasOS = () => {
 
   const handleVerOS = async (os: OrdemServico) => {
     try {
-      if (!os.pdf_url) {
-        toast({
-          title: "PDF não disponível",
-          description: "A ordem de serviço ainda não tem PDF gerado.",
-          variant: "destructive",
-        });
-        return;
-      }
+      // Gerar PDF formatado usando a função de geração
+      const pdfData = {
+        numero_os: os.numero_os,
+        data_programada: os.data_programada || new Date().toISOString(),
+        equipe: os.equipe || ['Não informado'],
+        cliente: os.tickets.clientes?.empresa || 'Não informado',
+        endereco: `${os.tickets.clientes?.endereco || os.tickets.endereco_servico}, ${os.tickets.clientes?.cidade || ''} - ${os.tickets.clientes?.estado || ''}`,
+        servico_solicitado: os.servico_solicitado || 'MANUTENÇÃO',
+        hora_marcada: os.hora_inicio || '00:00',
+        descricao: os.tickets.descricao || os.tickets.titulo || '',
+        inspetor_responsavel: os.inspetor_responsavel || 'TODOS',
+        tipo_trabalho: os.tipo_trabalho || []
+      };
 
-      // O pdf_url já é o nome do arquivo, não precisa fazer split
-      const filePath = os.pdf_url;
+      const pdfBlob = await generateOSPDF(pdfData);
 
-      const { data, error } = await supabase.storage
-        .from("ordens-servico")
-        .createSignedUrl(filePath, 3600);
+      // Abrir PDF em nova aba
+      const url = URL.createObjectURL(pdfBlob);
+      window.open(url, '_blank');
+      
+      // Limpar URL após um tempo
+      setTimeout(() => URL.revokeObjectURL(url), 100);
 
-      if (error) throw error;
-
-      if (data?.signedUrl) {
-        window.open(data.signedUrl, "_blank");
-      }
+      toast({
+        title: "PDF gerado",
+        description: "A ordem de serviço foi aberta em uma nova aba.",
+      });
     } catch (error: any) {
+      console.error('Erro ao gerar PDF:', error);
       toast({
         title: "Erro ao abrir PDF",
         description: error.message,
@@ -440,7 +466,6 @@ const MinhasOS = () => {
               onClick={() => handleVerOS(os)}
               variant="outline"
               className="w-full"
-              disabled={!os.pdf_url}
             >
               <Eye className="h-4 w-4 mr-2" />
               Ver OS em PDF
