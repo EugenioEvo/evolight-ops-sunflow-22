@@ -847,6 +847,56 @@ export type Database = {
           },
         ]
       }
+      route_optimizations: {
+        Row: {
+          created_at: string
+          data_rota: string
+          distance_km: number
+          duration_minutes: number
+          geometry: Json
+          id: string
+          optimization_method: string
+          tecnico_id: string
+          ticket_ids: string[]
+          updated_at: string
+          waypoints_order: Json
+        }
+        Insert: {
+          created_at?: string
+          data_rota: string
+          distance_km: number
+          duration_minutes: number
+          geometry: Json
+          id?: string
+          optimization_method: string
+          tecnico_id: string
+          ticket_ids: string[]
+          updated_at?: string
+          waypoints_order: Json
+        }
+        Update: {
+          created_at?: string
+          data_rota?: string
+          distance_km?: number
+          duration_minutes?: number
+          geometry?: Json
+          id?: string
+          optimization_method?: string
+          tecnico_id?: string
+          ticket_ids?: string[]
+          updated_at?: string
+          waypoints_order?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "route_optimizations_tecnico_id_fkey"
+            columns: ["tecnico_id"]
+            isOneToOne: false
+            referencedRelation: "tecnicos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       status_historico: {
         Row: {
           alterado_por: string | null
