@@ -7,10 +7,11 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { MapPin, Clock, Users, Route as RouteIcon, RefreshCw, CheckCircle, AlertCircle, Navigation2, TrendingUp } from "lucide-react";
+import { MapPin, Clock, Users, Route as RouteIcon, RefreshCw, CheckCircle, AlertCircle, Navigation2, TrendingUp, TestTube } from "lucide-react";
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useGeocoding } from '@/hooks/useGeocoding';
+import { toast } from "sonner";
 import { optimizeRouteAdvanced, PrioridadeBadge } from '@/components/RouteOptimization';
 import { RouteExportButtons } from '@/components/RouteExportButtons';
 import { RouteStatsCards } from '@/components/RouteStatsCards';
@@ -680,6 +681,57 @@ const RouteMap: React.FC = () => {
         setSearchQuery={setSearchQuery}
         tecnicos={tecnicos}
       />
+
+      {/* Botão de teste de geocodificação */}
+      <Card className="p-4 bg-muted/30 border-dashed">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <TestTube className="h-4 w-4 text-muted-foreground" />
+            <div>
+              <p className="text-sm font-medium">Testar Geocodificação Mapbox</p>
+              <p className="text-xs text-muted-foreground">Verifica se o token está funcionando</p>
+            </div>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              const enderecoTeste = "Avenida Paulista, 1578, São Paulo, SP";
+              
+              toast.info('🔍 Testando geocodificação...', {
+                description: `Endereço: ${enderecoTeste}`
+              });
+
+              try {
+                const { data, error } = await supabase.functions.invoke('mapbox-geocode', {
+                  body: { address: enderecoTeste }
+                });
+
+                if (error) throw error;
+
+                if (data?.success) {
+                  toast.success('✅ Token Mapbox funcionando!', {
+                    description: `Lat: ${data.data.latitude.toFixed(6)}, Lng: ${data.data.longitude.toFixed(6)}`
+                  });
+                  console.log('📍 Resultado:', data.data);
+                } else {
+                  toast.error('❌ Erro na geocodificação', {
+                    description: data?.error || 'Erro desconhecido'
+                  });
+                }
+              } catch (err: any) {
+                console.error('Erro:', err);
+                toast.error('❌ Falha no teste', {
+                  description: err.message || 'Verifique os logs'
+                });
+              }
+            }}
+          >
+            <TestTube className="h-4 w-4 mr-2" />
+            Testar Agora
+          </Button>
+        </div>
+      </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[600px]">
         {/* Lista de Rotas e Tickets - 1/3 */}
