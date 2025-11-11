@@ -1003,6 +1003,7 @@ export type Database = {
       generate_presence_token: { Args: { p_os_id: string }; Returns: string }
       gerar_numero_os: { Args: never; Returns: string }
       gerar_numero_ticket: { Args: never; Returns: string }
+      get_dashboard_stats: { Args: never; Returns: Json }
       get_technician_workload: {
         Args: { p_end_date: string; p_start_date: string; p_tecnico_id: string }
         Returns: {

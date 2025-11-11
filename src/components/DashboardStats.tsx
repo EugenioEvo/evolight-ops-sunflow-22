@@ -20,54 +20,33 @@ const DashboardStats = () => {
     try {
       setLoading(true);
       
-      // Total de tickets abertos (não concluídos/cancelados)
-      const { count: ticketsAbertos } = await supabase
-        .from('tickets')
-        .select('*', { count: 'exact', head: true })
-        .not('status', 'in', '(concluido,cancelado)');
+      // Chamar RPC que retorna todas as estatísticas de uma vez
+      const { data, error } = await supabase.rpc('get_dashboard_stats');
 
-      // Tickets críticos (alta prioridade + crítica)
-      const { count: ticketsCriticos } = await supabase
-        .from('tickets')
-        .select('*', { count: 'exact', head: true })
-        .in('prioridade', ['alta', 'critica'])
-        .not('status', 'in', '(concluido,cancelado)');
+      if (error) {
+        console.error('Erro ao carregar estatísticas:', error);
+        return;
+      }
 
-      // Tickets finalizados hoje
-      const hoje = new Date();
-      hoje.setHours(0, 0, 0, 0);
-      const { count: ticketsHoje } = await supabase
-        .from('tickets')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'concluido')
-        .gte('data_conclusao', hoje.toISOString());
+      if (data && typeof data === 'object' && !Array.isArray(data)) {
+        const statsData = data as {
+          tickets_abertos: number;
+          tickets_criticos: number;
+          tickets_hoje: number;
+          os_geradas: number;
+          em_execucao: number;
+          concluidos: number;
+        };
 
-      // OS geradas hoje
-      const { count: osGeradas } = await supabase
-        .from('ordens_servico')
-        .select('*', { count: 'exact', head: true })
-        .gte('created_at', hoje.toISOString());
-
-      // Em execução
-      const { count: emExecucao } = await supabase
-        .from('tickets')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'em_execucao');
-
-      // Total concluídos
-      const { count: concluidos } = await supabase
-        .from('tickets')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'concluido');
-
-      setStats({
-        ticketsAbertos: ticketsAbertos || 0,
-        ticketsCriticos: ticketsCriticos || 0,
-        ticketsHoje: ticketsHoje || 0,
-        osGeradas: osGeradas || 0,
-        emExecucao: emExecucao || 0,
-        concluidos: concluidos || 0,
-      });
+        setStats({
+          ticketsAbertos: statsData.tickets_abertos || 0,
+          ticketsCriticos: statsData.tickets_criticos || 0,
+          ticketsHoje: statsData.tickets_hoje || 0,
+          osGeradas: statsData.os_geradas || 0,
+          emExecucao: statsData.em_execucao || 0,
+          concluidos: statsData.concluidos || 0,
+        });
+      }
     } catch (error) {
       console.error('Erro ao carregar estatísticas:', error);
     } finally {
