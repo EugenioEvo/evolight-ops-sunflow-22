@@ -57,35 +57,29 @@ const MinhasOS = () => {
   const { tecnicoId, setTecnicoId, shouldRefetch, setOrdensServico: setCachedOS } = useTechnicianStore();
 
   const isTecnico = profile?.role === "tecnico_campo";
+  const isAreaTecnica = profile?.role === "area_tecnica" || profile?.role === "admin";
+  const canViewOS = isTecnico || isAreaTecnica;
 
   // Auto-reload quando houver mudanças em tickets/OS
   useTicketsRealtime({
     onTicketChange: () => {
-      if (isTecnico) {
+      if (canViewOS) {
         loadOrdensServico();
       }
     }
   });
 
   useEffect(() => {
-    if (isTecnico) {
+    if (canViewOS) {
       loadOrdensServico();
     }
-  }, [isTecnico]);
+  }, [canViewOS]);
 
   const loadOrdensServico = async () => {
     try {
       setLoading(true);
 
-      const { data: tecnicoData, error: tecnicoError } = await supabase
-        .from("tecnicos")
-        .select("id")
-        .eq("profile_id", profile?.id)
-        .single();
-
-      if (tecnicoError) throw tecnicoError;
-
-      const { data: osData, error: osError } = await supabase
+      let query = supabase
         .from("ordens_servico")
         .select(`
           *,
@@ -106,8 +100,23 @@ const MinhasOS = () => {
             )
           )
         `)
-        .eq("tecnico_id", tecnicoData.id)
         .order("data_emissao", { ascending: false });
+
+      // Se for técnico de campo, filtrar apenas suas OSs
+      if (isTecnico) {
+        const { data: tecnicoData, error: tecnicoError } = await supabase
+          .from("tecnicos")
+          .select("id")
+          .eq("profile_id", profile?.id)
+          .single();
+
+        if (tecnicoError) throw tecnicoError;
+        
+        query = query.eq("tecnico_id", tecnicoData.id);
+      }
+      // Área técnica e admin veem todas as OSs
+
+      const { data: osData, error: osError } = await query;
 
       if (osError) throw osError;
 
@@ -438,13 +447,13 @@ const MinhasOS = () => {
     );
   };
 
-  if (!isTecnico) {
+  if (!canViewOS) {
     return (
       <div className="p-6">
         <Card>
           <CardContent className="pt-6">
             <p className="text-muted-foreground">
-              Esta página é exclusiva para técnicos de campo.
+              Esta página é exclusiva para técnicos de campo e área técnica.
             </p>
           </CardContent>
         </Card>
