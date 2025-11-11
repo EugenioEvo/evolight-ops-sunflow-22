@@ -32,6 +32,7 @@ const ticketSchema = z.object({
   prioridade: z.enum(['baixa', 'media', 'alta', 'critica']),
   endereco_servico: z.string().min(1, 'Endereço do serviço é obrigatório'),
   data_vencimento: z.string().optional(),
+  horario_previsto_inicio: z.string().optional(),
   tempo_estimado: z.number().min(1, 'Tempo estimado deve ser maior que 0').optional(),
   observacoes: z.string().optional(),
   anexos: z.array(z.string()).optional(),
@@ -77,6 +78,7 @@ const Tickets = () => {
       prioridade: 'media',
       endereco_servico: '',
       data_vencimento: '',
+      horario_previsto_inicio: '',
       tempo_estimado: undefined,
       observacoes: '',
     },
@@ -235,6 +237,7 @@ const Tickets = () => {
       prioridade: ticket.prioridade,
       endereco_servico: ticket.endereco_servico,
       data_vencimento: ticket.data_vencimento ? new Date(ticket.data_vencimento).toISOString().split('T')[0] : '',
+      horario_previsto_inicio: ticket.horario_previsto_inicio || '',
       tempo_estimado: ticket.tempo_estimado || undefined,
       observacoes: ticket.observacoes || '',
       anexos: ticket.anexos || [],
@@ -760,6 +763,22 @@ const Tickets = () => {
                       </FormItem>
                     )}
                   />
+                  <FormField
+                    control={form.control}
+                    name="horario_previsto_inicio"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Horário Previsto de Início</FormLabel>
+                        <FormControl>
+                          <Input type="time" {...field} placeholder="08:00" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
                     name="tempo_estimado"

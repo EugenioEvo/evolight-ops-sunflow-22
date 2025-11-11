@@ -912,6 +912,7 @@ export type Database = {
           equipamento_tipo: Database["public"]["Enums"]["equipamento_tipo"]
           geocoded_at: string | null
           geocoding_status: string | null
+          horario_previsto_inicio: string | null
           id: string
           latitude: number | null
           longitude: number | null
@@ -939,6 +940,7 @@ export type Database = {
           equipamento_tipo: Database["public"]["Enums"]["equipamento_tipo"]
           geocoded_at?: string | null
           geocoding_status?: string | null
+          horario_previsto_inicio?: string | null
           id?: string
           latitude?: number | null
           longitude?: number | null
@@ -966,6 +968,7 @@ export type Database = {
           equipamento_tipo?: Database["public"]["Enums"]["equipamento_tipo"]
           geocoded_at?: string | null
           geocoding_status?: string | null
+          horario_previsto_inicio?: string | null
           id?: string
           latitude?: number | null
           longitude?: number | null
