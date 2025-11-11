@@ -443,9 +443,13 @@ export type Database = {
       }
       ordens_servico: {
         Row: {
+          assinatura_cliente: string | null
+          assinatura_tecnico: string | null
           calendar_invite_recipients: string[] | null
           calendar_invite_sent_at: string | null
           created_at: string
+          data_assinatura_cliente: string | null
+          data_assinatura_tecnico: string | null
           data_emissao: string
           data_programada: string | null
           duracao_estimada_min: number | null
@@ -455,6 +459,7 @@ export type Database = {
           hora_inicio: string | null
           id: string
           inspetor_responsavel: string | null
+          nome_cliente_assinatura: string | null
           numero_os: string
           pdf_url: string | null
           presence_confirmed_at: string | null
@@ -468,9 +473,13 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          assinatura_cliente?: string | null
+          assinatura_tecnico?: string | null
           calendar_invite_recipients?: string[] | null
           calendar_invite_sent_at?: string | null
           created_at?: string
+          data_assinatura_cliente?: string | null
+          data_assinatura_tecnico?: string | null
           data_emissao?: string
           data_programada?: string | null
           duracao_estimada_min?: number | null
@@ -480,6 +489,7 @@ export type Database = {
           hora_inicio?: string | null
           id?: string
           inspetor_responsavel?: string | null
+          nome_cliente_assinatura?: string | null
           numero_os: string
           pdf_url?: string | null
           presence_confirmed_at?: string | null
@@ -493,9 +503,13 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          assinatura_cliente?: string | null
+          assinatura_tecnico?: string | null
           calendar_invite_recipients?: string[] | null
           calendar_invite_sent_at?: string | null
           created_at?: string
+          data_assinatura_cliente?: string | null
+          data_assinatura_tecnico?: string | null
           data_emissao?: string
           data_programada?: string | null
           duracao_estimada_min?: number | null
@@ -505,6 +519,7 @@ export type Database = {
           hora_inicio?: string | null
           id?: string
           inspetor_responsavel?: string | null
+          nome_cliente_assinatura?: string | null
           numero_os?: string
           pdf_url?: string | null
           presence_confirmed_at?: string | null
