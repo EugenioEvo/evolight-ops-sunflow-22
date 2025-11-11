@@ -12,6 +12,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useGeocoding } from '@/hooks/useGeocoding';
 import { optimizeRouteAdvanced, PrioridadeBadge } from '@/components/RouteOptimization';
 import { RouteExportButtons } from '@/components/RouteExportButtons';
+import { useRouteOptimization } from '@/hooks/useRouteOptimization';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -166,8 +167,10 @@ const RouteMap: React.FC = () => {
   const [geocodingProgress, setGeocodingProgress] = useState(0);
   const [geocodedCount, setGeocodedCount] = useState(0);
   const [totalToGeocode, setTotalToGeocode] = useState(0);
+  const [optimizingRoute, setOptimizingRoute] = useState<number | null>(null);
   const { profile } = useAuth();
   const { geocodeAddress, geocodeBatch, loading: geocoding, progress, completed, total } = useGeocoding();
+  const { optimizeRoute, loading: optimizing, optimizedRoute } = useRouteOptimization();
 
   useEffect(() => {
     setMounted(true);
@@ -298,18 +301,20 @@ const RouteMap: React.FC = () => {
       return acc;
     }, []);
 
-    // Optimize each route and calculate totals
+    // Optimize each route and calculate totals (usando algoritmo local por padrão)
     const optimizedRoutes = rotasPorTecnico.map(rota => {
       const optimizedTickets = optimizeRouteAdvanced(rota.ticketsData);
       const totals = calculateRouteTotals(optimizedTickets);
       const allGeocoded = optimizedTickets.every(t => t.hasRealCoords);
+      const canOptimize = allGeocoded && optimizedTickets.length >= 2;
       
       return {
         ...rota,
         ticketsData: optimizedTickets,
         distanciaTotal: totals.distance,
         tempoEstimado: totals.time,
-        allGeocoded
+        allGeocoded,
+        canOptimize
       };
     });
 
@@ -522,6 +527,30 @@ const RouteMap: React.FC = () => {
                   >
                     <RefreshCw className={`h-4 w-4 mr-2 ${geocoding ? 'animate-spin' : ''}`} />
                     {geocoding ? 'Geocodificando...' : 'Geocodificar Endereços'}
+                  </Button>
+                )}
+                
+                {rota.canOptimize && (
+                  <Button 
+                    variant="default" 
+                    size="sm" 
+                    className="w-full mt-3"
+                    disabled={optimizing || optimizingRoute === rota.id}
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      setOptimizingRoute(rota.id);
+                      
+                      const optimized = await optimizeRoute(rota.ticketsData);
+                      if (optimized) {
+                        // Recarregar OS para atualizar a UI com rota otimizada
+                        loadOrdensServico();
+                      }
+                      
+                      setOptimizingRoute(null);
+                    }}
+                  >
+                    <RouteIcon className={`h-4 w-4 mr-2 ${optimizingRoute === rota.id ? 'animate-spin' : ''}`} />
+                    {optimizingRoute === rota.id ? 'Otimizando...' : 'Otimizar com OSRM'}
                   </Button>
                 )}
                 
