@@ -235,7 +235,7 @@ const RouteMap: React.FC = () => {
   const [mounted, setMounted] = useState(false);
   const [ordensServico, setOrdensServico] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [dateFilter, setDateFilter] = useState('hoje');
+  const [dateFilter, setDateFilter] = useState('todos');
   const [statusFilter, setStatusFilter] = useState('todos');
   const [tecnicoFilter, setTecnicoFilter] = useState('todos');
   const [prioridadeFilter, setPrioridadeFilter] = useState('todas');
@@ -565,19 +565,60 @@ const RouteMap: React.FC = () => {
 
   if (tickets.length === 0) {
     return (
-      <Card>
-        <CardContent className="p-6">
+      <div className="space-y-6">
+        <RouteStatsCards 
+          totalOS={0}
+          totalDistance={0}
+          activeTechnicians={0}
+          avgDuration={0}
+        />
+        
+        <RouteFilters
+          periodo={dateFilter}
+          setPeriodo={setDateFilter}
+          statusFilter={statusFilter}
+          setStatusFilter={setStatusFilter}
+          tecnicoFilter={tecnicoFilter}
+          setTecnicoFilter={setTecnicoFilter}
+          prioridadeFilter={prioridadeFilter}
+          setPrioridadeFilter={setPrioridadeFilter}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          tecnicos={tecnicos}
+        />
+
+        <Card className="p-12">
           <div className="text-center space-y-4">
-            <MapPin className="h-12 w-12 mx-auto text-muted-foreground" />
+            <div className="mx-auto w-24 h-24 rounded-full bg-muted flex items-center justify-center">
+              <MapPin className="h-12 w-12 text-muted-foreground" />
+            </div>
             <div>
-              <h3 className="font-semibold mb-2">Nenhuma ordem de serviço encontrada</h3>
-              <p className="text-sm text-muted-foreground">
-                Altere os filtros ou aguarde novas atribuições
+              <h3 className="text-lg font-semibold mb-2">Nenhuma ordem de serviço encontrada</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                {dateFilter !== 'todos' 
+                  ? 'Não há OSs para o período selecionado. Tente ajustar os filtros acima.'
+                  : 'Não há ordens de serviço cadastradas no sistema.'}
               </p>
             </div>
+            {dateFilter !== 'todos' && (
+              <div className="flex gap-2 justify-center">
+                <Button 
+                  variant="outline"
+                  onClick={() => {
+                    setDateFilter('todos');
+                    setStatusFilter('todos');
+                    setTecnicoFilter('todos');
+                    setPrioridadeFilter('todas');
+                    setSearchQuery('');
+                  }}
+                >
+                  Limpar Filtros
+                </Button>
+              </div>
+            )}
           </div>
-        </CardContent>
-      </Card>
+        </Card>
+      </div>
     );
   }
 
@@ -819,10 +860,15 @@ const RouteMap: React.FC = () => {
 
           {/* Legenda */}
           <RouteLegend
-            criticalCount={priorityCounts['critica'] || 0}
-            highCount={priorityCounts['alta'] || 0}
-            mediumCount={priorityCounts['media'] || 0}
-            lowCount={priorityCounts['baixa'] || 0}
+            criticalCount={rotasOtimizadas.reduce((sum, r) => 
+              sum + r.ticketsData.filter((t: any) => t.prioridade === 'critica').length, 0)}
+            highCount={rotasOtimizadas.reduce((sum, r) => 
+              sum + r.ticketsData.filter((t: any) => t.prioridade === 'alta').length, 0)}
+            mediumCount={rotasOtimizadas.reduce((sum, r) => 
+              sum + r.ticketsData.filter((t: any) => t.prioridade === 'media').length, 0)}
+            lowCount={rotasOtimizadas.reduce((sum, r) => 
+              sum + r.ticketsData.filter((t: any) => t.prioridade === 'baixa').length, 0)}
+            routeProvider={routeProvider}
           />
         </div>
 
