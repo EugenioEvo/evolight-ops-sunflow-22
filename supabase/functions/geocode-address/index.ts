@@ -63,24 +63,39 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Verificar cache se não forçar refresh
-    if (!force_refresh && ticket_id) {
-      const { data: cachedTicket } = await supabase
-        .from('tickets')
-        .select('latitude, longitude, geocoded_at')
-        .eq('id', ticket_id)
-        .single();
+    // 1. Verificar cache global de endereços primeiro
+    if (!force_refresh) {
+      const { data: cachedAddress } = await supabase
+        .from('geocoding_cache')
+        .select('latitude, longitude, formatted_address, cached_at')
+        .eq('address_normalized', address.toLowerCase().trim())
+        .maybeSingle();
 
-      if (cachedTicket?.latitude && cachedTicket?.longitude) {
-        // Cache válido por 30 dias
-        const cacheAge = Date.now() - new Date(cachedTicket.geocoded_at).getTime();
-        if (cacheAge < 30 * 24 * 60 * 60 * 1000) {
-          console.log(`Cache hit para ticket ${ticket_id}`);
+      if (cachedAddress) {
+        // Cache válido por 90 dias
+        const cacheAge = Date.now() - new Date(cachedAddress.cached_at).getTime();
+        if (cacheAge < 90 * 24 * 60 * 60 * 1000) {
+          console.log(`Cache global hit para endereço: ${address}`);
+          
+          // Atualizar ticket se fornecido
+          if (ticket_id) {
+            await supabase
+              .from('tickets')
+              .update({
+                latitude: cachedAddress.latitude,
+                longitude: cachedAddress.longitude,
+                geocoded_at: new Date().toISOString(),
+                geocoding_status: 'geocoded'
+              })
+              .eq('id', ticket_id);
+          }
+          
           return new Response(JSON.stringify({
             success: true,
             data: {
-              latitude: cachedTicket.latitude,
-              longitude: cachedTicket.longitude,
+              latitude: cachedAddress.latitude,
+              longitude: cachedAddress.longitude,
+              formatted_address: cachedAddress.formatted_address,
               cached: true
             }
           }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -88,8 +103,17 @@ serve(async (req) => {
       }
     }
 
-    // Geocodificar via Nominatim com retry automático
+    // 2. Geocodificar via Nominatim com retry automático
     console.log(`Geocodificando endereço: ${address}`);
+    
+    // Marcar ticket como em processamento
+    if (ticket_id) {
+      await supabase
+        .from('tickets')
+        .update({ geocoding_status: 'processing' })
+        .eq('id', ticket_id);
+    }
+    
     const nominatimUrl = new URL('https://nominatim.openstreetmap.org/search');
     nominatimUrl.searchParams.append('q', address);
     nominatimUrl.searchParams.append('format', 'json');
@@ -109,12 +133,26 @@ serve(async (req) => {
     );
 
     if (!response.ok) {
+      // Marcar como falha
+      if (ticket_id) {
+        await supabase
+          .from('tickets')
+          .update({ geocoding_status: 'failed' })
+          .eq('id', ticket_id);
+      }
       throw new Error(`Nominatim retornou erro: ${response.status}`);
     }
 
     const data = await response.json();
 
     if (!data || data.length === 0) {
+      // Marcar como falha
+      if (ticket_id) {
+        await supabase
+          .from('tickets')
+          .update({ geocoding_status: 'failed' })
+          .eq('id', ticket_id);
+      }
       throw new Error('Endereço não encontrado');
     }
 
@@ -125,14 +163,29 @@ serve(async (req) => {
       cached: false
     };
 
-    // Salvar no banco se ticket_id fornecido
+    // 3. Salvar no cache global
+    await supabase
+      .from('geocoding_cache')
+      .upsert({
+        address_normalized: address.toLowerCase().trim(),
+        original_address: address,
+        latitude: result.latitude,
+        longitude: result.longitude,
+        formatted_address: result.formatted_address,
+        cached_at: new Date().toISOString()
+      }, {
+        onConflict: 'address_normalized'
+      });
+
+    // 4. Atualizar ticket se fornecido
     if (ticket_id) {
       await supabase
         .from('tickets')
         .update({
           latitude: result.latitude,
           longitude: result.longitude,
-          geocoded_at: new Date().toISOString()
+          geocoded_at: new Date().toISOString(),
+          geocoding_status: 'geocoded'
         })
         .eq('id', ticket_id);
       

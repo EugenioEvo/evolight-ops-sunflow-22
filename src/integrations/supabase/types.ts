@@ -270,6 +270,45 @@ export type Database = {
           },
         ]
       }
+      geocoding_cache: {
+        Row: {
+          address_normalized: string
+          cached_at: string
+          created_at: string
+          formatted_address: string | null
+          hit_count: number | null
+          id: string
+          latitude: number
+          longitude: number
+          original_address: string
+          updated_at: string
+        }
+        Insert: {
+          address_normalized: string
+          cached_at?: string
+          created_at?: string
+          formatted_address?: string | null
+          hit_count?: number | null
+          id?: string
+          latitude: number
+          longitude: number
+          original_address: string
+          updated_at?: string
+        }
+        Update: {
+          address_normalized?: string
+          cached_at?: string
+          created_at?: string
+          formatted_address?: string | null
+          hit_count?: number | null
+          id?: string
+          latitude?: number
+          longitude?: number
+          original_address?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       insumos: {
         Row: {
           categoria: string
@@ -872,6 +911,7 @@ export type Database = {
           endereco_servico: string
           equipamento_tipo: Database["public"]["Enums"]["equipamento_tipo"]
           geocoded_at: string | null
+          geocoding_status: string | null
           id: string
           latitude: number | null
           longitude: number | null
@@ -898,6 +938,7 @@ export type Database = {
           endereco_servico: string
           equipamento_tipo: Database["public"]["Enums"]["equipamento_tipo"]
           geocoded_at?: string | null
+          geocoding_status?: string | null
           id?: string
           latitude?: number | null
           longitude?: number | null
@@ -924,6 +965,7 @@ export type Database = {
           endereco_servico?: string
           equipamento_tipo?: Database["public"]["Enums"]["equipamento_tipo"]
           geocoded_at?: string | null
+          geocoding_status?: string | null
           id?: string
           latitude?: number | null
           longitude?: number | null
@@ -1000,6 +1042,7 @@ export type Database = {
       }
       cleanup_expired_tokens: { Args: never; Returns: undefined }
       cleanup_old_audit_logs: { Args: never; Returns: undefined }
+      cleanup_old_geocoding_cache: { Args: never; Returns: undefined }
       generate_presence_token: { Args: { p_os_id: string }; Returns: string }
       gerar_numero_os: { Args: never; Returns: string }
       gerar_numero_ticket: { Args: never; Returns: string }
