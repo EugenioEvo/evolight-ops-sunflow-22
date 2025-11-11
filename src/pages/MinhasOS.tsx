@@ -203,11 +203,8 @@ const MinhasOS = () => {
         return;
       }
 
-      const filePath = os.pdf_url.split('/ordens-servico/')[1];
-      
-      if (!filePath) {
-        throw new Error("Caminho do arquivo não encontrado");
-      }
+      // O pdf_url já é o nome do arquivo, não precisa fazer split
+      const filePath = os.pdf_url;
 
       const { data, error } = await supabase.storage
         .from("ordens-servico")
