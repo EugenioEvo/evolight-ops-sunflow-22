@@ -50,22 +50,35 @@ export const useRouteOptimization = () => {
         dataProgramada: t.dataProgramada
       }));
 
-      console.log('Otimizando rota com OSRM para', coordinates.length, 'pontos');
+      console.log('Otimizando rota com Mapbox/OSRM para', coordinates.length, 'pontos');
 
-      // Chamar edge function OSRM
-      const { data, error } = await supabase.functions.invoke('optimize-route-osrm', {
-        body: { coordinates }
-      });
+      // Tentar Mapbox primeiro (mais preciso), fallback para OSRM
+      let data, error;
+      
+      try {
+        const mapboxResult = await supabase.functions.invoke('mapbox-directions', {
+          body: { coordinates }
+        });
+        data = mapboxResult.data;
+        error = mapboxResult.error;
+      } catch (mapboxError) {
+        console.warn('Mapbox falhou, usando OSRM:', mapboxError);
+        const osrmResult = await supabase.functions.invoke('optimize-route-osrm', {
+          body: { coordinates }
+        });
+        data = osrmResult.data;
+        error = osrmResult.error;
+      }
 
       if (error) {
-        console.error('Erro ao chamar OSRM:', error);
+        console.error('Erro ao chamar API de rotas:', error);
         throw error;
       }
 
       // Se API falhou, usar algoritmo local (fallback)
       if (!data.success || data.fallback) {
-        console.warn('OSRM falhou, usando algoritmo local');
-        toast.warning('Usando otimização local (OSRM indisponível)');
+        console.warn('APIs externas falharam, usando algoritmo local');
+        toast.warning('Usando otimização local (APIs indisponíveis)');
         
         // Usar algoritmo existente
         const localOptimized = optimizeRouteAdvanced(tickets);
@@ -82,15 +95,17 @@ export const useRouteOptimization = () => {
         return localOptimized;
       }
 
-      // Sucesso com OSRM
+      // Sucesso com API externa
       console.log('Rota otimizada com sucesso:', data.route);
       
       setOptimizedRoute(data);
 
+      const provider = data.optimizationUsed ? 'Mapbox' : (data.route.geometry ? 'OSRM' : 'Local');
+      
       toast.success(
         `Rota otimizada: ${data.route.distanceKm} km, ${data.route.durationFormatted}`,
         {
-          description: 'Usando dados reais de tráfego'
+          description: `Usando ${provider} com dados reais de tráfego`
         }
       );
 

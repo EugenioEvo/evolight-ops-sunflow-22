@@ -30,13 +30,25 @@ export const useGeocoding = () => {
 
     setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('geocode-address', {
-        body: { 
-          address, 
-          ticket_id: ticketId,
-          force_refresh: false 
-        }
-      });
+      console.log(`Geocodificando: ${address}`);
+
+      // Tentar Mapbox primeiro (mais preciso), fallback para Nominatim
+      let data, error;
+      
+      try {
+        const mapboxResult = await supabase.functions.invoke('mapbox-geocode', {
+          body: { address, ticket_id: ticketId }
+        });
+        data = mapboxResult.data;
+        error = mapboxResult.error;
+      } catch (mapboxError) {
+        console.warn('Mapbox falhou, usando Nominatim:', mapboxError);
+        const nominatimResult = await supabase.functions.invoke('geocode-address', {
+          body: { address, ticket_id: ticketId }
+        });
+        data = nominatimResult.data;
+        error = nominatimResult.error;
+      }
 
       if (error) throw error;
 
