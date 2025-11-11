@@ -11,6 +11,7 @@ interface Coordinate {
   id: string;
   prioridade?: string;
   dataProgramada?: string;
+  isStartPoint?: boolean;
 }
 
 serve(async (req) => {
@@ -25,102 +26,91 @@ serve(async (req) => {
       throw new Error('Pelo menos 2 coordenadas são necessárias');
     }
 
-    const MAPBOX_TOKEN = Deno.env.get('MAPBOX_ACCESS_TOKEN');
-    if (!MAPBOX_TOKEN) {
+    const MAPBOX_ACCESS_TOKEN = Deno.env.get('MAPBOX_ACCESS_TOKEN');
+    if (!MAPBOX_ACCESS_TOKEN) {
       throw new Error('MAPBOX_ACCESS_TOKEN não configurado');
     }
 
     console.log(`🗺️  Otimizando rota Mapbox com ${coordinates.length} pontos`);
 
-    // Construir string de coordenadas: lon,lat;lon,lat;...
-    const coordsString = coordinates
+    // Identificar ponto inicial
+    const startPoint = coordinates.find((c: Coordinate) => c.isStartPoint);
+    const otherPoints = coordinates.filter((c: Coordinate) => !c.isStartPoint);
+    
+    // Build coordinates string (ponto inicial primeiro)
+    const orderedCoords = startPoint ? [startPoint, ...otherPoints] : coordinates;
+    const coordString = orderedCoords
       .map((c: Coordinate) => `${c.longitude},${c.latitude}`)
       .join(';');
 
-    // Usar Mapbox Optimization API (max 12 waypoints no tier gratuito)
-    // Para mais de 12, usar Directions API sem otimização automática
-    const useOptimization = coordinates.length <= 12;
-    
+    // Decide which API to use based on number of waypoints
     let mapboxUrl: string;
     
-    if (useOptimization) {
-      // Optimization API - reordena os waypoints para rota mais eficiente
-      mapboxUrl = `https://api.mapbox.com/optimized-trips/v1/mapbox/driving/${coordsString}?access_token=${MAPBOX_TOKEN}&geometries=geojson&overview=full&language=pt-BR`;
+    if (coordinates.length <= 12) {
+      // Use Optimization API for up to 12 waypoints
+      // Fixar o primeiro ponto (source=first) para garantir que a rota comece na Evolight
+      mapboxUrl = `https://api.mapbox.com/optimized-trips/v1/mapbox/driving/${coordString}?source=first&access_token=${MAPBOX_ACCESS_TOKEN}&steps=true&geometries=geojson&overview=full`;
     } else {
-      // Directions API - ordem fixa dos waypoints
-      mapboxUrl = `https://api.mapbox.com/directions/v5/mapbox/driving/${coordsString}?access_token=${MAPBOX_TOKEN}&geometries=geojson&overview=full&language=pt-BR`;
+      // Use Directions API for more waypoints
+      mapboxUrl = `https://api.mapbox.com/directions/v5/mapbox/driving/${coordString}?access_token=${MAPBOX_ACCESS_TOKEN}&steps=true&geometries=geojson&overview=full`;
     }
 
-    const mapboxResponse = await fetch(mapboxUrl);
+    const response = await fetch(mapboxUrl);
+    const mapboxData = await response.json();
 
-    if (!mapboxResponse.ok) {
-      const errorText = await mapboxResponse.text();
-      console.error('Mapbox error:', mapboxResponse.status, errorText);
-      throw new Error(`Mapbox API error: ${mapboxResponse.status}`);
+    if (mapboxData.code !== 'Ok') {
+      throw new Error(`Mapbox API error: ${mapboxData.message || 'Unknown error'}`);
     }
 
-    const data = await mapboxResponse.json();
+    // Mapbox Optimization API returns 'trips', Directions returns 'routes'
+    const route = mapboxData.trips?.[0] || mapboxData.routes?.[0];
 
-    if (data.code !== 'Ok' || !data.trips?.[0] && !data.routes?.[0]) {
-      throw new Error('Mapbox não encontrou rota válida');
+    if (!route) {
+      throw new Error('No route found');
     }
 
-    // Optimization retorna 'trips', Directions retorna 'routes'
-    const route = data.trips?.[0] || data.routes?.[0];
-
-    // Se usou optimization, pegar a ordem otimizada dos waypoints
-    let optimizedOrder = coordinates.map((c: Coordinate, i: number) => ({
-      id: c.id,
-      order: i + 1
-    }));
-
-    if (useOptimization && data.waypoints) {
-      // Mapbox retorna waypoints_index indicando a ordem otimizada
-      optimizedOrder = data.waypoints
-        .filter((wp: any) => wp.waypoint_index !== undefined)
-        .sort((a: any, b: any) => a.waypoint_index - b.waypoint_index)
-        .map((wp: any, i: number) => ({
-          id: coordinates[wp.waypoint_index].id,
-          order: i + 1
-        }));
-    }
-
+    // Format result
     const result = {
       success: true,
       route: {
-        distance: route.distance, // metros
-        duration: route.duration, // segundos
+        distance: route.distance,
+        duration: route.duration,
         distanceKm: (route.distance / 1000).toFixed(1),
         durationMinutes: Math.round(route.duration / 60),
         durationFormatted: formatDuration(route.duration),
-        geometry: route.geometry?.coordinates || [] // [lon, lat] pairs
+        geometry: route.geometry?.coordinates || []
       },
-      waypoints: data.waypoints || [],
-      optimizedOrder,
-      optimizationUsed: useOptimization
+      // Extract optimized waypoint order if using Optimization API
+      optimizedOrder: orderedCoords.map((c: Coordinate, i: number) => ({ id: c.id, order: i + 1 })),
+      optimizationUsed: coordinates.length <= 12
     };
+
+    // Extract optimized waypoint order if using Optimization API
+    if (coordinates.length <= 12 && mapboxData.waypoints) {
+      result.optimizedOrder = mapboxData.waypoints.map((wp: any, idx: number) => ({
+        id: orderedCoords[wp.waypoint_index].id,
+        order: idx + 1
+      }));
+    }
 
     console.log(`✅ Rota otimizada: ${result.route.distanceKm} km, ${result.route.durationFormatted}`);
 
     return new Response(JSON.stringify(result), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
 
   } catch (error) {
-    console.error('❌ Erro ao otimizar rota:', error);
-    
-    const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+    console.error('Mapbox error:', error);
     
     return new Response(
       JSON.stringify({
         success: false,
-        error: errorMessage,
-        fallback: true
+        fallback: true,
+        error: error instanceof Error ? error.message : 'Unknown error'
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200, // Retorna 200 para permitir fallback no client
+        status: 200 // Return 200 to allow client-side fallback
       }
     );
   }

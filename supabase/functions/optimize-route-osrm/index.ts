@@ -11,6 +11,7 @@ interface Coordinate {
   id: string;
   prioridade?: string;
   dataProgramada?: string;
+  isStartPoint?: boolean;
 }
 
 interface OSRMRoute {
@@ -41,8 +42,13 @@ serve(async (req) => {
 
     console.log(`Otimizando rota com ${coordinates.length} pontos`);
 
+    // Identificar ponto inicial e ordenar (ponto inicial primeiro)
+    const startPoint = coordinates.find((c: Coordinate) => c.isStartPoint);
+    const otherPoints = coordinates.filter((c: Coordinate) => !c.isStartPoint);
+    const orderedCoords = startPoint ? [startPoint, ...otherPoints] : coordinates;
+
     // Construir string de coordenadas para OSRM (lon,lat format)
-    const coordsString = coordinates
+    const coordsString = orderedCoords
       .map((coord: Coordinate) => `${coord.longitude},${coord.latitude}`)
       .join(';');
 
@@ -82,7 +88,7 @@ serve(async (req) => {
         geometry: route.geometry?.coordinates || []
       },
       waypoints: data.waypoints || [],
-      optimizedOrder: coordinates.map((c: Coordinate, i: number) => ({
+      optimizedOrder: orderedCoords.map((c: Coordinate, i: number) => ({
         id: c.id,
         order: i + 1
       }))

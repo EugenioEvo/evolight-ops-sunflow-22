@@ -25,6 +25,13 @@ interface OptimizedRoute {
   fallback?: boolean;
 }
 
+// Endereço fixo da Evolight como ponto inicial
+const EVOLIGHT_START = {
+  latitude: -16.6869,
+  longitude: -49.2648,
+  address: 'Avenida T9 1001, Setor Bueno, Goiânia-GO, CEP 74215-025'
+};
+
 export const useRouteOptimization = () => {
   const [loading, setLoading] = useState(false);
   const [optimizedRoute, setOptimizedRoute] = useState<OptimizedRoute | null>(null);
@@ -33,24 +40,33 @@ export const useRouteOptimization = () => {
     // Validar tickets com coordenadas
     const validTickets = tickets.filter(t => t.hasRealCoords);
     
-    if (validTickets.length < 2) {
-      toast.error('Necessário pelo menos 2 endereços geocodificados');
+    if (validTickets.length < 1) {
+      toast.error('Necessário pelo menos 1 endereço geocodificado');
       return null;
     }
 
     setLoading(true);
     
     try {
-      // Preparar coordenadas para OSRM
-      const coordinates = validTickets.map(t => ({
-        id: t.id,
-        latitude: t.coordenadas[0],
-        longitude: t.coordenadas[1],
-        prioridade: t.prioridade,
-        dataProgramada: t.dataProgramada
-      }));
+      // Preparar coordenadas para otimização, incluindo ponto inicial da Evolight
+      const coordinates = [
+        {
+          id: 'evolight-start',
+          latitude: EVOLIGHT_START.latitude,
+          longitude: EVOLIGHT_START.longitude,
+          prioridade: 'start',
+          isStartPoint: true
+        },
+        ...validTickets.map(t => ({
+          id: t.id,
+          latitude: t.coordenadas[0],
+          longitude: t.coordenadas[1],
+          prioridade: t.prioridade,
+          dataProgramada: t.dataProgramada
+        }))
+      ];
 
-      console.log('Otimizando rota com Mapbox/OSRM para', coordinates.length, 'pontos');
+      console.log('Otimizando rota com Mapbox/OSRM para', coordinates.length, 'pontos (incluindo ponto inicial Evolight)');
 
       // Tentar Mapbox primeiro (mais preciso), fallback para OSRM
       let data, error;
@@ -109,8 +125,12 @@ export const useRouteOptimization = () => {
         }
       );
 
-      // Reordenar tickets baseado na ordem otimizada
-      const orderMap = new Map(data.optimizedOrder.map((o: any) => [o.id, o.order]));
+      // Reordenar tickets baseado na ordem otimizada (removendo o ponto inicial)
+      const orderMap = new Map(
+        data.optimizedOrder
+          .filter((o: any) => o.id !== 'evolight-start')
+          .map((o: any) => [o.id, o.order])
+      );
       const reorderedTickets = [...tickets].sort((a, b) => {
         const orderA = orderMap.get(a.id) ?? 999;
         const orderB = orderMap.get(b.id) ?? 999;
