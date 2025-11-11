@@ -75,20 +75,43 @@ serve(async (req) => {
 
     console.log(`🗺️  Geocodificando via Mapbox: ${address}`);
 
-    // 3. Chamar Mapbox Geocoding API
-    const mapboxUrl = new URL('https://api.mapbox.com/geocoding/v5/mapbox.places/' + encodeURIComponent(address) + '.json');
+    // 3. Limpar e simplificar o endereço para melhorar a taxa de sucesso
+    let cleanAddress = address
+      // Remover detalhes muito específicos que o Mapbox não usa bem
+      .replace(/Q\.\s*\d+/gi, '') // Remove "Q. 02"
+      .replace(/L\.\s*[\d-]+/gi, '') // Remove "L. 08-11"
+      .replace(/S\/N/gi, '') // Remove "S/N"
+      .replace(/ETAPA\s+(I|II|III|IV|V)+/gi, '') // Remove "ETAPA II"
+      .replace(/\s*-\s*/g, ' ') // Remove traços extras
+      .replace(/,\s*,/g, ',') // Remove vírgulas duplicadas
+      .replace(/\s+/g, ' ') // Normaliza espaços
+      .trim();
+
+    // Se ficar muito curto após limpeza, usar endereço original
+    if (cleanAddress.length < 10) {
+      cleanAddress = address;
+    }
+
+    console.log(`📍 Endereço limpo: ${cleanAddress}`);
+
+    // 4. Chamar Mapbox Geocoding API
+    const mapboxUrl = new URL('https://api.mapbox.com/geocoding/v5/mapbox.places/' + encodeURIComponent(cleanAddress) + '.json');
     mapboxUrl.searchParams.append('access_token', MAPBOX_TOKEN);
     mapboxUrl.searchParams.append('country', 'BR'); // Restringir ao Brasil
     mapboxUrl.searchParams.append('limit', '1');
     mapboxUrl.searchParams.append('language', 'pt-BR');
+    mapboxUrl.searchParams.append('types', 'address,place,locality'); // Tipos de resultados aceitos
 
     const mapboxResponse = await fetch(mapboxUrl.toString());
 
     if (!mapboxResponse.ok) {
+      const errorBody = await mapboxResponse.text();
+      console.error(`❌ Erro Mapbox (${mapboxResponse.status}): ${errorBody}`);
+      
       if (ticket_id) {
         await supabase.from('tickets').update({ geocoding_status: 'failed' }).eq('id', ticket_id);
       }
-      throw new Error(`Mapbox API error: ${mapboxResponse.status}`);
+      throw new Error(`Mapbox API error: ${mapboxResponse.status} - ${errorBody}`);
     }
 
     const data = await mapboxResponse.json();
