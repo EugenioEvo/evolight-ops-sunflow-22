@@ -190,6 +190,7 @@ const RouteMap: React.FC = () => {
   const [geocodedCount, setGeocodedCount] = useState(0);
   const [totalToGeocode, setTotalToGeocode] = useState(0);
   const [optimizingRoute, setOptimizingRoute] = useState<number | null>(null);
+  const [routeGeometry, setRouteGeometry] = useState<[number, number][] | null>(null); // Geometria da rota Mapbox
   const { profile } = useAuth();
   const { geocodeAddress, geocodeBatch, loading: geocoding, progress, completed, total } = useGeocoding();
   const { optimizeRoute, loading: optimizing, optimizedRoute } = useRouteOptimization();
@@ -564,6 +565,14 @@ const RouteMap: React.FC = () => {
                       
                       const optimized = await optimizeRoute(rota.ticketsData);
                       if (optimized) {
+                        // Se retornou geometria da rota, armazenar para desenhar
+                        if (optimizedRoute?.route?.geometry) {
+                          // Converter Mapbox [lon, lat] para Leaflet [lat, lon]
+                          const leafletGeometry = optimizedRoute.route.geometry.map(
+                            (coord: [number, number]) => [coord[1], coord[0]] as [number, number]
+                          );
+                          setRouteGeometry(leafletGeometry);
+                        }
                         // Recarregar OS para atualizar a UI com rota otimizada
                         loadOrdensServico();
                       }
@@ -572,7 +581,7 @@ const RouteMap: React.FC = () => {
                     }}
                   >
                     <RouteIcon className={`h-4 w-4 mr-2 ${optimizingRoute === rota.id ? 'animate-spin' : ''}`} />
-                    {optimizingRoute === rota.id ? 'Otimizando...' : 'Otimizar com OSRM'}
+                    {optimizingRoute === rota.id ? 'Otimizando...' : 'Otimizar Rota'}
                   </Button>
                 )}
                 
@@ -741,6 +750,21 @@ const RouteMap: React.FC = () => {
                     {/* Linha da rota selecionada */}
                     {selectedRoute && (() => {
                       const rota = rotasOtimizadas.find(r => r.id === selectedRoute);
+                      
+                      // Se temos geometria do Mapbox, usar ela (rota real nas vias)
+                      if (routeGeometry && routeGeometry.length > 1) {
+                        return (
+                          <Polyline
+                            positions={routeGeometry}
+                            color="#3b82f6"
+                            weight={4}
+                            opacity={0.8}
+                            dashArray="10, 5"
+                          />
+                        );
+                      }
+                      
+                      // Fallback: linha direta entre pontos
                       const coordinates = rota?.ticketsData
                         .filter((t: any) => t.hasRealCoords)
                         .map((t: any) => t.coordenadas) || [];
@@ -749,7 +773,7 @@ const RouteMap: React.FC = () => {
                           positions={coordinates}
                           color="#3b82f6"
                           weight={3}
-                          opacity={0.7}
+                          opacity={0.6}
                         />
                       );
                     })()}
@@ -757,24 +781,48 @@ const RouteMap: React.FC = () => {
                   
                   {/* Legenda do mapa */}
                   <div className="absolute bottom-4 left-4 bg-card p-3 rounded-lg shadow-lg z-[1000] border">
-                    <p className="text-xs font-semibold mb-2">Prioridade</p>
-                    <div className="space-y-1">
-                      <div className="flex items-center space-x-2">
-                        <div className="w-4 h-4 rounded-full bg-red-600"></div>
-                        <span className="text-xs">Crítica</span>
+                    <p className="text-xs font-semibold mb-2">Legenda</p>
+                    <div className="space-y-2">
+                      {/* Prioridades */}
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Prioridade</p>
+                        <div className="space-y-1">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-4 h-4 rounded-full bg-red-600"></div>
+                            <span className="text-xs">Crítica</span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <div className="w-4 h-4 rounded-full bg-orange-500"></div>
+                            <span className="text-xs">Alta</span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <div className="w-4 h-4 rounded-full bg-yellow-500"></div>
+                            <span className="text-xs">Média</span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <div className="w-4 h-4 rounded-full bg-green-500"></div>
+                            <span className="text-xs">Baixa</span>
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <div className="w-4 h-4 rounded-full bg-orange-500"></div>
-                        <span className="text-xs">Alta</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <div className="w-4 h-4 rounded-full bg-yellow-500"></div>
-                        <span className="text-xs">Média</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <div className="w-4 h-4 rounded-full bg-green-500"></div>
-                        <span className="text-xs">Baixa</span>
-                      </div>
+                      
+                      {/* Tipos de rota */}
+                      {selectedRoute && (
+                        <div className="pt-2 border-t">
+                          <p className="text-xs text-muted-foreground mb-1">Rota</p>
+                          {routeGeometry ? (
+                            <div className="flex items-center space-x-2">
+                              <div className="w-6 h-0.5 bg-blue-600 border-dashed border-t-2"></div>
+                              <span className="text-xs">Mapbox (vias reais)</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center space-x-2">
+                              <div className="w-6 h-0.5 bg-blue-600"></div>
+                              <span className="text-xs">Linha direta</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </MapErrorBoundary>
