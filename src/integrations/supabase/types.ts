@@ -450,17 +450,21 @@ export type Database = {
           data_programada: string | null
           duracao_estimada_min: number | null
           email_error_log: Json | null
+          equipe: string[] | null
           hora_fim: string | null
           hora_inicio: string | null
           id: string
+          inspetor_responsavel: string | null
           numero_os: string
           pdf_url: string | null
           presence_confirmed_at: string | null
           presence_confirmed_by: string | null
           qr_code: string | null
           reminder_sent_at: string | null
+          servico_solicitado: string | null
           tecnico_id: string | null
           ticket_id: string
+          tipo_trabalho: string[] | null
           updated_at: string
         }
         Insert: {
@@ -471,17 +475,21 @@ export type Database = {
           data_programada?: string | null
           duracao_estimada_min?: number | null
           email_error_log?: Json | null
+          equipe?: string[] | null
           hora_fim?: string | null
           hora_inicio?: string | null
           id?: string
+          inspetor_responsavel?: string | null
           numero_os: string
           pdf_url?: string | null
           presence_confirmed_at?: string | null
           presence_confirmed_by?: string | null
           qr_code?: string | null
           reminder_sent_at?: string | null
+          servico_solicitado?: string | null
           tecnico_id?: string | null
           ticket_id: string
+          tipo_trabalho?: string[] | null
           updated_at?: string
         }
         Update: {
@@ -492,17 +500,21 @@ export type Database = {
           data_programada?: string | null
           duracao_estimada_min?: number | null
           email_error_log?: Json | null
+          equipe?: string[] | null
           hora_fim?: string | null
           hora_inicio?: string | null
           id?: string
+          inspetor_responsavel?: string | null
           numero_os?: string
           pdf_url?: string | null
           presence_confirmed_at?: string | null
           presence_confirmed_by?: string | null
           qr_code?: string | null
           reminder_sent_at?: string | null
+          servico_solicitado?: string | null
           tecnico_id?: string | null
           ticket_id?: string
+          tipo_trabalho?: string[] | null
           updated_at?: string
         }
         Relationships: [

@@ -29,6 +29,7 @@ import DashboardPresenca from "./pages/DashboardPresenca";
 import AuditLogs from "./pages/AuditLogs";
 import ClientDashboard from "./pages/ClientDashboard";
 import PresenceConfirmation from "./pages/PresenceConfirmation";
+import VisualizarOS from "./pages/VisualizarOS";
 
 const queryClient = new QueryClient();
 
@@ -117,6 +118,7 @@ const App = () => (
                                 <AuditLogs />
                               </ProtectedRoute>
                             } />
+                            <Route path="/visualizar-os/:id" element={<VisualizarOS />} />
                             <Route path="*" element={<NotFound />} />
                           </Routes>
                         </main>

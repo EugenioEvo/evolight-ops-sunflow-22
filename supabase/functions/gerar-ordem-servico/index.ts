@@ -26,7 +26,13 @@ serve(async (req) => {
       throw new Error('Usuário não encontrado')
     }
 
-    const { ticketId } = await req.json()
+    const { 
+      ticketId, 
+      equipe = [], 
+      servico_solicitado = 'MANUTENÇÃO',
+      inspetor_responsavel = 'TODOS',
+      tipo_trabalho = []
+    } = await req.json()
 
     // Verificar se já existe OS
     const { data: existingOS, error: osCheckError } = await supabaseClient
@@ -135,7 +141,11 @@ serve(async (req) => {
       numero_os: numeroOS,
       tecnico_id: tecnico.id,
       data_programada: ticket.data_vencimento,
-      qr_code: `OS-${numeroOS}-${ticketId}`
+      qr_code: `OS-${numeroOS}-${ticketId}`,
+      equipe: equipe,
+      servico_solicitado: servico_solicitado,
+      inspetor_responsavel: inspetor_responsavel,
+      tipo_trabalho: tipo_trabalho
     }
 
     // Se o ticket tem horário previsto, definir hora_inicio e calcular hora_fim (estimativa de 1h)
