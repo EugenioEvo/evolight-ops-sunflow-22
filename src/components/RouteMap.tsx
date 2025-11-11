@@ -17,30 +17,50 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
 // Guard against runtime errors in map libs to avoid full app crash
-class MapErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
+class MapErrorBoundary extends React.Component<
+  { children: React.ReactNode }, 
+  { hasError: boolean; errorMessage?: string }
+> {
   constructor(props: { children: React.ReactNode }) {
     super(props);
-    this.state = { hasError: false };
+    this.state = { hasError: false, errorMessage: undefined };
   }
-  static getDerivedStateFromError() {
-    return { hasError: true };
+  
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, errorMessage: error.message };
   }
+  
   componentDidCatch(error: any, info: any) {
-    console.error('MapErrorBoundary caught:', error, info);
+    console.error('MapErrorBoundary caught error:', error);
+    console.error('Error info:', info);
+    console.error('Component stack:', info?.componentStack);
   }
+  
+  handleReset = () => {
+    this.setState({ hasError: false, errorMessage: undefined });
+    window.location.reload();
+  };
+  
   render() {
     if (this.state.hasError) {
       return (
         <Card className="h-full">
           <CardContent className="p-6 flex items-center justify-center">
-            <div className="text-center">
-              <p className="text-sm text-muted-foreground mb-4">Falha ao carregar o mapa.</p>
+            <div className="text-center space-y-4">
+              <AlertCircle className="h-12 w-12 mx-auto text-destructive" />
+              <div>
+                <p className="text-sm font-medium mb-2">Erro ao carregar o mapa</p>
+                <p className="text-xs text-muted-foreground mb-4">
+                  {this.state.errorMessage || 'Ocorreu um erro inesperado'}
+                </p>
+              </div>
               <Button 
                 variant="outline" 
                 size="sm"
-                onClick={() => window.location.reload()}
+                onClick={this.handleReset}
               >
-                Recarregar página
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Recarregar mapa
               </Button>
             </div>
           </CardContent>
@@ -100,6 +120,32 @@ const createNumberedIcon = (number: number, prioridade: string) => {
     iconSize: [36, 36],
     iconAnchor: [18, 18],
     popupAnchor: [0, -18]
+  });
+};
+
+// Create Evolight start point marker (special icon)
+const createEvolightIcon = () => {
+  return L.divIcon({
+    className: 'custom-evolight-icon',
+    html: `
+      <div style="
+        background-color: #8B5CF6;
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        border: 4px solid white;
+        box-shadow: 0 4px 12px rgba(139, 92, 246, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+      ">
+        🏢
+      </div>
+    `,
+    iconSize: [44, 44],
+    iconAnchor: [22, 22],
+    popupAnchor: [0, -22]
   });
 };
 
@@ -291,10 +337,10 @@ const RouteMap: React.FC = () => {
         tecnico: os.tecnicos?.profiles?.nome || 'Não atribuído',
         estimativa: os.tickets.tempo_estimado ? `${os.tickets.tempo_estimado}h` : 'N/A',
         dataProgramada: os.data_programada,
-        // Usar coordenadas reais (normalizadas) ou fallback para São Paulo
+        // Usar coordenadas reais (normalizadas) ou fallback para Goiânia (Evolight)
         coordenadas: hasCoords 
           ? normalizeCoordinates(os.tickets.latitude, os.tickets.longitude)
-          : [-23.5505, -46.6333] as [number, number], // Fallback: Centro de SP
+          : [-16.6869, -49.2648] as [number, number], // Fallback: Evolight em Goiânia
         hasRealCoords: hasCoords
       };
     });
@@ -660,7 +706,8 @@ const RouteMap: React.FC = () => {
               <div className="w-full h-[600px] rounded-lg overflow-hidden relative">
                 <MapErrorBoundary>
                   <MapContainer
-                    center={[-23.5505, -46.6333]}
+                    key="route-map"
+                    center={[-16.6869, -49.2648]}
                     zoom={12}
                     className="w-full h-full"
                     scrollWheelZoom={true}
@@ -669,6 +716,25 @@ const RouteMap: React.FC = () => {
                       attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                       url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                     />
+                    
+                    {/* Marcador fixo da Evolight (ponto inicial) */}
+                    <Marker 
+                      position={[-16.6869, -49.2648]}
+                      icon={createEvolightIcon()}
+                    >
+                      <Popup>
+                        <div className="p-2 min-w-[200px]">
+                          <div className="flex items-center space-x-2 mb-2">
+                            <span className="text-lg">🏢</span>
+                            <h6 className="font-semibold text-purple-600">Evolight</h6>
+                          </div>
+                          <p className="text-sm font-medium mb-1">Ponto de Partida</p>
+                          <p className="text-xs text-gray-600">Avenida T9, 1001</p>
+                          <p className="text-xs text-gray-600">Setor Bueno, Goiânia-GO</p>
+                          <p className="text-xs text-gray-500 mt-2">CEP 74215-025</p>
+                        </div>
+                      </Popup>
+                    </Marker>
                     
                     {/* Marcadores dos tickets com numeração quando rota selecionada */}
                     {selectedRoute ? (
