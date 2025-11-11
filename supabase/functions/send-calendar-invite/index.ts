@@ -11,12 +11,11 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Configurações (ajustar conforme necessário)
 const CONFIG = {
   teamEmail: "oem@grupoevolight.onmicrosoft.com",
-  senderEmail: "onboarding@resend.dev", // Email de teste do Resend (trocar após verificar domínio)
+  senderEmail: "agendamento@grupoevolight.com.br",
   companyName: "SunFlow",
-  organizerEmail: "onboarding@resend.dev", // Email de teste do Resend (trocar após verificar domínio)
+  organizerEmail: "agendamento@grupoevolight.com.br",
 };
 
 interface CalendarInviteRequest {

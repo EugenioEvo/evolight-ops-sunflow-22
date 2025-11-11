@@ -54,8 +54,8 @@ export const PresenceConfirmationStatus = ({
     if (!ordemServico.qr_code) return;
 
     try {
-      const baseUrl = window.location.origin;
-      const confirmUrl = `${baseUrl.replace(/:\d+/, '')}/supabase/functions/v1/confirm-presence?os_id=${ordemServico.id}&token=${ordemServico.qr_code}`;
+      const baseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const confirmUrl = `${baseUrl}/functions/v1/confirm-presence?os_id=${ordemServico.id}&token=${ordemServico.qr_code}`;
       
       const qrDataURL = await QRCode.toDataURL(confirmUrl, {
         width: 300,

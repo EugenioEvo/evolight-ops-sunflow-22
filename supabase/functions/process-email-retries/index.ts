@@ -32,7 +32,6 @@ const handler = async (req: Request): Promise<Response> => {
       .select("*")
       .eq("status", "pending")
       .lte("next_retry_at", new Date().toISOString())
-      .lt("attempt_count", supabase.rpc("max_attempts"))
       .order("next_retry_at", { ascending: true })
       .limit(10); // Processar até 10 emails por execução
 
