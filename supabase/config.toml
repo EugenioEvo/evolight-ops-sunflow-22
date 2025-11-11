@@ -6,6 +6,9 @@ verify_jwt = false
 [functions.geocode-address]
 verify_jwt = true
 
+[functions.process-pending-geocoding]
+verify_jwt = false
+
 [functions.gerar-ordem-servico]
 verify_jwt = true
 
