@@ -72,8 +72,38 @@ export const RouteExportButtons = ({ tickets }: RouteExportButtonsProps) => {
     });
   };
 
+  const exportToOpenStreetMap = () => {
+    const ticketsWithCoords = tickets.filter(t => t.hasRealCoords);
+    if (ticketsWithCoords.length < 2) {
+      toast({
+        title: 'Selecione ao menos 2 pontos',
+        description: 'A rota do OpenStreetMap precisa de origem e destino',
+      });
+      return;
+    }
+
+    // OSM directions com OSRM (carro)
+    const routeParam = ticketsWithCoords
+      .map(t => `${t.coordenadas[0]},${t.coordenadas[1]}`)
+      .join(';');
+
+    const url = `https://www.openstreetmap.org/directions?engine=fossgis_osrm_car&route=${encodeURIComponent(routeParam)}`;
+    window.open(url, '_blank');
+
+    toast({ title: 'Rota exportada', description: 'Abrindo no OpenStreetMap...' });
+  };
+
   return (
     <div className="flex gap-2">
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={exportToOpenStreetMap}
+        className="flex-1"
+      >
+        <ExternalLink className="h-4 w-4 mr-2" />
+        OpenStreetMap
+      </Button>
       <Button
         variant="outline"
         size="sm"

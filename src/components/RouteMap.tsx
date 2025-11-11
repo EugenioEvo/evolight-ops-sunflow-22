@@ -118,6 +118,28 @@ const haversineDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
 
 // Removido - agora está em RouteOptimization.tsx
 
+// Normaliza e corrige coordenadas (lat, lon) para o Brasil
+const normalizeCoordinates = (lat: any, lon: any): [number, number] => {
+  let latitude = typeof lat === 'string' ? parseFloat(lat) : lat;
+  let longitude = typeof lon === 'string' ? parseFloat(lon) : lon;
+
+  const isLatInBR = latitude >= -34 && latitude <= 6;
+  const isLonInBR = longitude >= -74 && longitude <= -34;
+
+  // Se estiverem fora do range do Brasil, tentar inverter
+  const swappedLat = typeof lon === 'string' ? parseFloat(lon) : lon;
+  const swappedLon = typeof lat === 'string' ? parseFloat(lat) : lat;
+  const swapIsBetter = !isLatInBR || !isLonInBR
+    ? (swappedLat >= -34 && swappedLat <= 6) && (swappedLon >= -74 && swappedLon <= -34)
+    : false;
+
+  if (swapIsBetter) {
+    return [swappedLat, swappedLon];
+  }
+
+  return [latitude, longitude];
+};
+
 // Calculate route totals (distance and time)
 const calculateRouteTotals = (tickets: any[]) => {
   let totalDistance = 0;
@@ -268,9 +290,9 @@ const RouteMap: React.FC = () => {
         tecnico: os.tecnicos?.profiles?.nome || 'Não atribuído',
         estimativa: os.tickets.tempo_estimado ? `${os.tickets.tempo_estimado}h` : 'N/A',
         dataProgramada: os.data_programada,
-        // Usar coordenadas reais ou fallback para São Paulo
+        // Usar coordenadas reais (normalizadas) ou fallback para São Paulo
         coordenadas: hasCoords 
-          ? [os.tickets.latitude, os.tickets.longitude] as [number, number]
+          ? normalizeCoordinates(os.tickets.latitude, os.tickets.longitude)
           : [-23.5505, -46.6333] as [number, number], // Fallback: Centro de SP
         hasRealCoords: hasCoords
       };
