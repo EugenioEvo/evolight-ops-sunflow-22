@@ -591,144 +591,167 @@ const RouteMap: React.FC = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-            {rotasOtimizadas.map((rota) => (
-              <div 
-                key={rota.id}
-                className={`p-3 rounded-lg border cursor-pointer transition-colors ${
-                  selectedRoute === rota.id ? 'bg-primary/5 border-primary' : 'hover:bg-muted/50'
-                }`}
-                onClick={() => setSelectedRoute(selectedRoute === rota.id ? null : rota.id)}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="font-medium">{rota.nome}</h4>
-                  <div className="flex items-center space-x-2">
-                    <Badge variant="outline">{rota.ticketsData.length} OS</Badge>
-                    {rota.allGeocoded ? (
-                      <Badge variant="default" className="bg-green-500">
-                        <CheckCircle className="h-3 w-3 mr-1" />
-                        Pronto
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="text-yellow-600 border-yellow-600">
-                        <AlertCircle className="h-3 w-3 mr-1" />
-                        Pendente
-                      </Badge>
-                    )}
+              {rotasOtimizadas.map((rota) => (
+                <div 
+                  key={rota.id}
+                  className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                    selectedRoute === rota.id ? 'bg-primary/5 border-primary' : 'hover:bg-muted/50'
+                  }`}
+                  onClick={() => setSelectedRoute(selectedRoute === rota.id ? null : rota.id)}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-medium">{rota.nome}</h4>
+                    <div className="flex items-center space-x-2">
+                      <Badge variant="outline">{rota.ticketsData.length} OS</Badge>
+                      {rota.allGeocoded ? (
+                        <Badge variant="default" className="bg-green-500">
+                          <CheckCircle className="h-3 w-3 mr-1" />
+                          Pronto
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-yellow-600 border-yellow-600">
+                          <AlertCircle className="h-3 w-3 mr-1" />
+                          Pendente
+                        </Badge>
+                      )}
+                    </div>
                   </div>
+                  
+                  <div className="text-sm text-muted-foreground space-y-1">
+                    <div className="flex items-center space-x-2">
+                      <Users className="h-4 w-4" />
+                      <span>{rota.tecnico}</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <MapPin className="h-4 w-4" />
+                      <span>{rota.distanciaTotal}</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Clock className="h-4 w-4" />
+                      <span>{rota.tempoEstimado}</span>
+                    </div>
+                  </div>
+                  
+                  {!rota.allGeocoded && (
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full mt-3"
+                      disabled={geocoding}
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        const ticketsToGeocode = rota.ticketsData
+                          .filter(t => !t.hasRealCoords)
+                          .map(t => ({ id: t.ticketId, address: t.endereco }));
+                        
+                        await geocodeBatch(ticketsToGeocode);
+                        loadOrdensServico();
+                      }}
+                    >
+                      <RefreshCw className={`h-4 w-4 mr-2 ${geocoding ? 'animate-spin' : ''}`} />
+                      {geocoding ? 'Geocodificando...' : 'Geocodificar Endereços'}
+                    </Button>
+                  )}
+                  
+                  {rota.canOptimize && (
+                    <Button 
+                      variant="default" 
+                      size="sm" 
+                      className="w-full mt-3"
+                      disabled={optimizing || optimizingRoute === rota.id}
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        setOptimizingRoute(rota.id);
+                        
+                        // Determinar contexto para persistência
+                        const firstTicket = rota.ticketsData[0];
+                        const dates = rota.ticketsData
+                          .map((t: any) => t.dataProgramada)
+                          .filter(Boolean)
+                          .map((d: string) => new Date(d));
+                        const dataRota = (dates.length 
+                          ? new Date(Math.min(...dates.map(d => d.getTime()))) 
+                          : new Date()
+                        ).toISOString().slice(0, 10);
+
+                        const result = await optimizeRoute(rota.ticketsData, {
+                          tecnicoId: firstTicket?.tecnicoId,
+                          dataRota
+                        });
+
+                        if (result?.data?.route?.geometry) {
+                          // Converter GeoJSON [lon, lat] para Leaflet [lat, lon]
+                          const toLeaflet = (coords: [number, number][]) => 
+                            coords.map(c => [c[1], c[0]] as [number, number]);
+                          setRouteGeometry(toLeaflet(result.data.route.geometry));
+                        } else {
+                          // Fallback: linha direta
+                          const coords = rota.ticketsData
+                            .filter((t: any) => t.hasRealCoords)
+                            .map((t: any) => t.coordenadas);
+                          setRouteGeometry(coords.length > 1 ? coords : null);
+                        }
+                        setRouteProvider(result?.provider || null);
+                        
+                        setOptimizingRoute(null);
+                      }}
+                    >
+                      <RouteIcon className={`h-4 w-4 mr-2 ${optimizingRoute === rota.id ? 'animate-spin' : ''}`} />
+                      {optimizingRoute === rota.id ? 'Otimizando...' : 'Otimizar Rota'}
+                    </Button>
+                  )}
+                  
+                  {rota.allGeocoded && (
+                    <div className="mt-3">
+                      <RouteExportButtons tickets={rota.ticketsData} />
+                    </div>
+                  )}
                 </div>
-                
-                <div className="text-sm text-muted-foreground space-y-1">
-                  <div className="flex items-center space-x-2">
-                    <Users className="h-4 w-4" />
-                    <span>{rota.tecnico}</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <MapPin className="h-4 w-4" />
-                    <span>{rota.distanciaTotal}</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Clock className="h-4 w-4" />
-                    <span>{rota.tempoEstimado}</span>
-                  </div>
-                </div>
-                
-                {!rota.allGeocoded && (
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="w-full mt-3"
-                    disabled={geocoding}
-                    onClick={async (e) => {
-                      e.stopPropagation();
-                      const ticketsToGeocode = rota.ticketsData
-                        .filter(t => !t.hasRealCoords)
-                        .map(t => ({ id: t.ticketId, address: t.endereco }));
-                      
-                      await geocodeBatch(ticketsToGeocode);
-                      loadOrdensServico();
-                    }}
-                  >
-                    <RefreshCw className={`h-4 w-4 mr-2 ${geocoding ? 'animate-spin' : ''}`} />
-                    {geocoding ? 'Geocodificando...' : 'Geocodificar Endereços'}
-                  </Button>
-                )}
-                
-                {rota.canOptimize && (
-                  <Button 
-                    variant="default" 
-                    size="sm" 
-                    className="w-full mt-3"
-                    disabled={optimizing || optimizingRoute === rota.id}
-                    onClick={async (e) => {
-                      e.stopPropagation();
-                      setOptimizingRoute(rota.id);
-                      
-                      // Determinar contexto para persistência
-                      const firstTicket = rota.ticketsData[0];
-                      const dates = rota.ticketsData
-                        .map((t: any) => t.dataProgramada)
-                        .filter(Boolean)
-                        .map((d: string) => new Date(d));
-                      const dataRota = (dates.length 
-                        ? new Date(Math.min(...dates.map(d => d.getTime()))) 
-                        : new Date()
-                      ).toISOString().slice(0, 10);
+              ))}
+            </CardContent>
+          </Card>
 
-                      const result = await optimizeRoute(rota.ticketsData, {
-                        tecnicoId: firstTicket?.tecnicoId,
-                        dataRota
-                      });
-
-                      if (result?.data?.route?.geometry) {
-                        // Converter GeoJSON [lon, lat] para Leaflet [lat, lon]
-                        const toLeaflet = (coords: [number, number][]) => 
-                          coords.map(c => [c[1], c[0]] as [number, number]);
-                        setRouteGeometry(toLeaflet(result.data.route.geometry));
-                      } else {
-                        // Fallback: linha direta
-                        const coords = rota.ticketsData
-                          .filter((t: any) => t.hasRealCoords)
-                          .map((t: any) => t.coordenadas);
-                        setRouteGeometry(coords.length > 1 ? coords : null);
-                      }
-                      setRouteProvider(result?.provider || null);
+          {/* Lista de Tickets com ordem otimizada */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Ordens do Dia (Otimizadas)</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {selectedRoute ? (
+                rotasOtimizadas
+                  .find(r => r.id === selectedRoute)
+                  ?.ticketsData.map((ticket: any) => (
+                    <div key={ticket.id} className="p-3 rounded-lg border">
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex items-center space-x-2">
+                          <Badge variant="outline" className="font-bold">#{ticket.ordem}</Badge>
+                          <h5 className="font-medium text-sm">{ticket.cliente}</h5>
+                        </div>
+                        <div className="flex space-x-1">
+                          <PrioridadeBadge prioridade={ticket.prioridade} />
+                        </div>
+                      </div>
                       
-                      setOptimizingRoute(null);
-                    }}
-                  >
-                    <RouteIcon className={`h-4 w-4 mr-2 ${optimizingRoute === rota.id ? 'animate-spin' : ''}`} />
-                    {optimizingRoute === rota.id ? 'Otimizando...' : 'Otimizar Rota'}
-                  </Button>
-                )}
-                
-                {rota.allGeocoded && (
-                  <div className="mt-3">
-                    <RouteExportButtons tickets={rota.ticketsData} />
-                  </div>
-                )}
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-
-        {/* Lista de Tickets com ordem otimizada */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Ordens do Dia (Otimizadas)</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {selectedRoute ? (
-              rotasOtimizadas
-                .find(r => r.id === selectedRoute)
-                ?.ticketsData.map((ticket: any) => (
+                      <div className="text-xs text-muted-foreground space-y-1">
+                        <p className="font-medium">OS: {ticket.numeroOS}</p>
+                        <p>{ticket.tipo}</p>
+                        <p>{ticket.endereco}</p>
+                        <p>Estimativa: {ticket.estimativa}</p>
+                      </div>
+                    </div>
+                  ))
+              ) : (
+                tickets.map((ticket) => (
                   <div key={ticket.id} className="p-3 rounded-lg border">
                     <div className="flex items-start justify-between mb-2">
-                      <div className="flex items-center space-x-2">
-                        <Badge variant="outline" className="font-bold">#{ticket.ordem}</Badge>
-                        <h5 className="font-medium text-sm">{ticket.cliente}</h5>
-                      </div>
+                      <h5 className="font-medium text-sm">{ticket.cliente}</h5>
                       <div className="flex space-x-1">
-                        <PrioridadeBadge prioridade={ticket.prioridade} />
+                        <Badge className={getPrioridadeColor(ticket.prioridade)}>
+                          {ticket.prioridade}
+                        </Badge>
+                        <Badge className={getStatusColor(ticket.status)}>
+                          {ticket.status.replace('_', ' ')}
+                        </Badge>
                       </div>
                     </div>
                     
@@ -736,37 +759,14 @@ const RouteMap: React.FC = () => {
                       <p className="font-medium">OS: {ticket.numeroOS}</p>
                       <p>{ticket.tipo}</p>
                       <p>{ticket.endereco}</p>
+                      <p>Técnico: {ticket.tecnico}</p>
                       <p>Estimativa: {ticket.estimativa}</p>
                     </div>
                   </div>
                 ))
-            ) : (
-              tickets.map((ticket) => (
-                <div key={ticket.id} className="p-3 rounded-lg border">
-                  <div className="flex items-start justify-between mb-2">
-                    <h5 className="font-medium text-sm">{ticket.cliente}</h5>
-                    <div className="flex space-x-1">
-                      <Badge className={getPrioridadeColor(ticket.prioridade)}>
-                        {ticket.prioridade}
-                      </Badge>
-                      <Badge className={getStatusColor(ticket.status)}>
-                        {ticket.status.replace('_', ' ')}
-                      </Badge>
-                    </div>
-                  </div>
-                  
-                  <div className="text-xs text-muted-foreground space-y-1">
-                    <p className="font-medium">OS: {ticket.numeroOS}</p>
-                    <p>{ticket.tipo}</p>
-                    <p>{ticket.endereco}</p>
-                    <p>Técnico: {ticket.tecnico}</p>
-                    <p>Estimativa: {ticket.estimativa}</p>
-                  </div>
-                </div>
-              ))
-            )}
-          </CardContent>
-        </Card>
+              )}
+            </CardContent>
+          </Card>
         </div>
 
         {/* Mapa - 2/3 */}
