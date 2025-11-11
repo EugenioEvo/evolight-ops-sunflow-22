@@ -229,16 +229,21 @@ const MinhasOS = () => {
 
       const pdfBlob = await generateOSPDF(pdfData);
 
-      // Abrir PDF em nova aba
+      // Criar link de download direto
       const url = URL.createObjectURL(pdfBlob);
-      window.open(url, '_blank');
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `OS_${os.numero_os}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
       
-      // Limpar URL após um tempo
+      // Limpar URL após download
       setTimeout(() => URL.revokeObjectURL(url), 100);
 
       toast({
-        title: "PDF gerado",
-        description: "A ordem de serviço foi aberta em uma nova aba.",
+        title: "PDF baixado",
+        description: `Ordem de serviço ${os.numero_os} baixada com sucesso.`,
       });
     } catch (error: any) {
       console.error('Erro ao gerar PDF:', error);
