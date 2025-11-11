@@ -8,6 +8,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Index from "./pages/Index";
 import RoutesPage from "./pages/Routes";
 import Agenda from "./pages/Agenda";
@@ -32,102 +33,104 @@ import PresenceConfirmation from "./pages/PresenceConfirmation";
 const queryClient = new QueryClient();
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/confirmar-presenca" element={<PresenceConfirmation />} />
-            <Route path="/*" element={
-              <ProtectedRoute>
-                <SidebarProvider>
-                  <div className="min-h-screen flex w-full bg-background">
-                    <AppSidebar />
-                    <div className="flex-1 flex flex-col">
-                      <TopHeader />
-                      <main className="flex-1 overflow-auto bg-muted/30">
-                        <Routes>
-                          <Route path="/" element={<Index />} />
-                          <Route path="/meu-painel" element={
-                            <ProtectedRoute roles={['cliente']}>
-                              <ClientDashboard />
-                            </ProtectedRoute>
-                          } />
-                          <Route path="/tickets" element={<Tickets />} />
-                          <Route path="/routes" element={<RoutesPage />} />
-                          <Route path="/agenda" element={
-                            <ProtectedRoute roles={['admin', 'area_tecnica']}>
-                              <Agenda />
-                            </ProtectedRoute>
-                          } />
-                          <Route path="/carga-trabalho" element={
-                            <ProtectedRoute roles={['admin', 'area_tecnica']}>
-                              <CargaTrabalho />
-                            </ProtectedRoute>
-                          } />
-                          <Route path="/dashboard-presenca" element={
-                            <ProtectedRoute roles={['admin', 'area_tecnica']}>
-                              <DashboardPresenca />
-                            </ProtectedRoute>
-                          } />
-                          <Route path="/clientes" element={
-                            <ProtectedRoute roles={['admin', 'area_tecnica']}>
-                              <Clientes />
-                            </ProtectedRoute>
-                          } />
-                          <Route path="/prestadores" element={
-                            <ProtectedRoute roles={['admin', 'area_tecnica']}>
-                              <Prestadores />
-                            </ProtectedRoute>
-                          } />
-                          <Route path="/tecnicos" element={
-                            <ProtectedRoute roles={['admin', 'area_tecnica']}>
-                              <Tecnicos />
-                            </ProtectedRoute>
-                          } />
-                          <Route path="/minhas-os" element={<MinhasOS />} />
-                          <Route path="/equipamentos" element={
-                            <ProtectedRoute roles={['admin', 'area_tecnica']}>
-                              <Equipamentos />
-                            </ProtectedRoute>
-                          } />
-                          <Route path="/insumos" element={
-                            <ProtectedRoute roles={['admin', 'area_tecnica']}>
-                              <Insumos />
-                            </ProtectedRoute>
-                          } />
-                          <Route path="/rme" element={<RME />} />
-                          <Route path="/gerenciar-rme" element={
-                            <ProtectedRoute roles={['admin', 'area_tecnica']}>
-                              <GerenciarRME />
-                            </ProtectedRoute>
-                          } />
-                          <Route path="/relatorios" element={
-                            <ProtectedRoute roles={['admin', 'area_tecnica']}>
-                              <Relatorios />
-                            </ProtectedRoute>
-                          } />
-                          <Route path="/audit-logs" element={
-                            <ProtectedRoute roles={['admin']}>
-                              <AuditLogs />
-                            </ProtectedRoute>
-                          } />
-                          <Route path="*" element={<NotFound />} />
-                        </Routes>
-                      </main>
+  <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/confirmar-presenca" element={<PresenceConfirmation />} />
+              <Route path="/*" element={
+                <ProtectedRoute>
+                  <SidebarProvider>
+                    <div className="min-h-screen flex w-full bg-background">
+                      <AppSidebar />
+                      <div className="flex-1 flex flex-col">
+                        <TopHeader />
+                        <main className="flex-1 overflow-auto bg-muted/30">
+                          <Routes>
+                            <Route path="/" element={<Index />} />
+                            <Route path="/meu-painel" element={
+                              <ProtectedRoute roles={['cliente']}>
+                                <ClientDashboard />
+                              </ProtectedRoute>
+                            } />
+                            <Route path="/tickets" element={<Tickets />} />
+                            <Route path="/routes" element={<RoutesPage />} />
+                            <Route path="/agenda" element={
+                              <ProtectedRoute roles={['admin', 'area_tecnica']}>
+                                <Agenda />
+                              </ProtectedRoute>
+                            } />
+                            <Route path="/carga-trabalho" element={
+                              <ProtectedRoute roles={['admin', 'area_tecnica']}>
+                                <CargaTrabalho />
+                              </ProtectedRoute>
+                            } />
+                            <Route path="/dashboard-presenca" element={
+                              <ProtectedRoute roles={['admin', 'area_tecnica']}>
+                                <DashboardPresenca />
+                              </ProtectedRoute>
+                            } />
+                            <Route path="/clientes" element={
+                              <ProtectedRoute roles={['admin', 'area_tecnica']}>
+                                <Clientes />
+                              </ProtectedRoute>
+                            } />
+                            <Route path="/prestadores" element={
+                              <ProtectedRoute roles={['admin', 'area_tecnica']}>
+                                <Prestadores />
+                              </ProtectedRoute>
+                            } />
+                            <Route path="/tecnicos" element={
+                              <ProtectedRoute roles={['admin', 'area_tecnica']}>
+                                <Tecnicos />
+                              </ProtectedRoute>
+                            } />
+                            <Route path="/minhas-os" element={<MinhasOS />} />
+                            <Route path="/equipamentos" element={
+                              <ProtectedRoute roles={['admin', 'area_tecnica']}>
+                                <Equipamentos />
+                              </ProtectedRoute>
+                            } />
+                            <Route path="/insumos" element={
+                              <ProtectedRoute roles={['admin', 'area_tecnica']}>
+                                <Insumos />
+                              </ProtectedRoute>
+                            } />
+                            <Route path="/rme" element={<RME />} />
+                            <Route path="/gerenciar-rme" element={
+                              <ProtectedRoute roles={['admin', 'area_tecnica']}>
+                                <GerenciarRME />
+                              </ProtectedRoute>
+                            } />
+                            <Route path="/relatorios" element={
+                              <ProtectedRoute roles={['admin', 'area_tecnica']}>
+                                <Relatorios />
+                              </ProtectedRoute>
+                            } />
+                            <Route path="/audit-logs" element={
+                              <ProtectedRoute roles={['admin']}>
+                                <AuditLogs />
+                              </ProtectedRoute>
+                            } />
+                            <Route path="*" element={<NotFound />} />
+                          </Routes>
+                        </main>
+                      </div>
                     </div>
-                  </div>
-                </SidebarProvider>
-              </ProtectedRoute>
-            } />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </AuthProvider>
-  </QueryClientProvider>
+                  </SidebarProvider>
+                </ProtectedRoute>
+              } />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </AuthProvider>
+    </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 export default App;
