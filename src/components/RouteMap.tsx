@@ -236,7 +236,8 @@ const RouteMap: React.FC = () => {
   const [geocodedCount, setGeocodedCount] = useState(0);
   const [totalToGeocode, setTotalToGeocode] = useState(0);
   const [optimizingRoute, setOptimizingRoute] = useState<number | null>(null);
-  const [routeGeometry, setRouteGeometry] = useState<[number, number][] | null>(null); // Geometria da rota Mapbox
+  const [routeGeometry, setRouteGeometry] = useState<[number, number][] | null>(null);
+  const [routeProvider, setRouteProvider] = useState<'mapbox' | 'osrm' | 'local' | null>(null);
   const { profile } = useAuth();
   const { geocodeAddress, geocodeBatch, loading: geocoding, progress, completed, total } = useGeocoding();
   const { optimizeRoute, loading: optimizing, optimizedRoute } = useRouteOptimization();
@@ -337,11 +338,11 @@ const RouteMap: React.FC = () => {
         tecnico: os.tecnicos?.profiles?.nome || 'Não atribuído',
         estimativa: os.tickets.tempo_estimado ? `${os.tickets.tempo_estimado}h` : 'N/A',
         dataProgramada: os.data_programada,
-        // Usar coordenadas reais (normalizadas) ou fallback para Goiânia (Evolight)
         coordenadas: hasCoords 
           ? normalizeCoordinates(os.tickets.latitude, os.tickets.longitude)
-          : [-16.6869, -49.2648] as [number, number], // Fallback: Evolight em Goiânia
-        hasRealCoords: hasCoords
+          : [-16.6869, -49.2648] as [number, number],
+        hasRealCoords: hasCoords,
+        tecnicoId: os.tecnicos?.id || null
       };
     });
   }, [ordensServico]);
@@ -399,6 +400,59 @@ const RouteMap: React.FC = () => {
       }
     ];
   }, [ordensServico, tickets]);
+
+  // Limpar geometria ao trocar de rota
+  useEffect(() => {
+    setRouteGeometry(null);
+    setRouteProvider(null);
+  }, [selectedRoute]);
+
+  // Carregar rota persistida ao selecionar uma rota
+  useEffect(() => {
+    const loadPersistedRoute = async () => {
+      if (!selectedRoute) return;
+      
+      const rota = rotasOtimizadas.find(r => r.id === selectedRoute);
+      const firstTicket = rota?.ticketsData?.[0];
+      if (!firstTicket?.tecnicoId) return;
+
+      // Determinar data da rota (menor dataProgramada)
+      const dates = (rota!.ticketsData as any[])
+        .map(t => t.dataProgramada)
+        .filter(Boolean)
+        .map((d: string) => new Date(d));
+      const dataRota = (dates.length 
+        ? new Date(Math.min(...dates.map(d => d.getTime()))) 
+        : new Date()
+      ).toISOString().slice(0, 10);
+
+      const { data, error } = await supabase
+        .from('route_optimizations')
+        .select('*')
+        .eq('tecnico_id', firstTicket.tecnicoId)
+        .eq('data_rota', dataRota)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (error) {
+        console.warn('⚠️ Erro ao carregar rota persistida:', error);
+        return;
+      }
+
+      const record = data?.[0];
+      if (record?.geometry && Array.isArray(record.geometry) && record.geometry.length > 0) {
+        // Converter GeoJSON [lon, lat] para Leaflet [lat, lon]
+        const toLeaflet = (coords: [number, number][]) => 
+          coords.map(c => [c[1], c[0]] as [number, number]);
+        
+        setRouteGeometry(toLeaflet(record.geometry as [number, number][]));
+        setRouteProvider(record.optimization_method as any);
+        console.info(`📍 Rota carregada do banco: ${record.optimization_method}`);
+      }
+    };
+
+    loadPersistedRoute();
+  }, [selectedRoute, rotasOtimizadas]);
 
   const getPrioridadeColor = (prioridade: string) => {
     switch (prioridade) {
@@ -609,19 +663,35 @@ const RouteMap: React.FC = () => {
                       e.stopPropagation();
                       setOptimizingRoute(rota.id);
                       
-                      const optimized = await optimizeRoute(rota.ticketsData);
-                      if (optimized) {
-                        // Se retornou geometria da rota, armazenar para desenhar
-                        if (optimizedRoute?.route?.geometry) {
-                          // Converter Mapbox [lon, lat] para Leaflet [lat, lon]
-                          const leafletGeometry = optimizedRoute.route.geometry.map(
-                            (coord: [number, number]) => [coord[1], coord[0]] as [number, number]
-                          );
-                          setRouteGeometry(leafletGeometry);
-                        }
-                        // Recarregar OS para atualizar a UI com rota otimizada
-                        loadOrdensServico();
+                      // Determinar contexto para persistência
+                      const firstTicket = rota.ticketsData[0];
+                      const dates = rota.ticketsData
+                        .map((t: any) => t.dataProgramada)
+                        .filter(Boolean)
+                        .map((d: string) => new Date(d));
+                      const dataRota = (dates.length 
+                        ? new Date(Math.min(...dates.map(d => d.getTime()))) 
+                        : new Date()
+                      ).toISOString().slice(0, 10);
+
+                      const result = await optimizeRoute(rota.ticketsData, {
+                        tecnicoId: firstTicket?.tecnicoId,
+                        dataRota
+                      });
+
+                      if (result?.data?.route?.geometry) {
+                        // Converter GeoJSON [lon, lat] para Leaflet [lat, lon]
+                        const toLeaflet = (coords: [number, number][]) => 
+                          coords.map(c => [c[1], c[0]] as [number, number]);
+                        setRouteGeometry(toLeaflet(result.data.route.geometry));
+                      } else {
+                        // Fallback: linha direta
+                        const coords = rota.ticketsData
+                          .filter((t: any) => t.hasRealCoords)
+                          .map((t: any) => t.coordenadas);
+                        setRouteGeometry(coords.length > 1 ? coords : null);
                       }
+                      setRouteProvider(result?.provider || null);
                       
                       setOptimizingRoute(null);
                     }}
@@ -813,35 +883,30 @@ const RouteMap: React.FC = () => {
                       ))
                     )}
                     
-                    {/* Linha da rota selecionada */}
+                    {/* Linha da rota selecionada com cores por provedor */}
                     {selectedRoute && (() => {
-                      const rota = rotasOtimizadas.find(r => r.id === selectedRoute);
-                      
-                      // Se temos geometria do Mapbox, usar ela (rota real nas vias)
+                      const getPolylineProps = (provider: typeof routeProvider) => {
+                        if (provider === 'mapbox') return { 
+                          color: '#3b82f6', weight: 4, opacity: 0.85, dashArray: '10, 5' 
+                        };
+                        if (provider === 'osrm') return { 
+                          color: '#8b5cf6', weight: 4, opacity: 0.85 
+                        };
+                        return { 
+                          color: '#6b7280', weight: 3, opacity: 0.6, dashArray: '3, 8' 
+                        };
+                      };
+
                       if (routeGeometry && routeGeometry.length > 1) {
                         return (
                           <Polyline
                             positions={routeGeometry}
-                            color="#3b82f6"
-                            weight={4}
-                            opacity={0.8}
-                            dashArray="10, 5"
+                            {...getPolylineProps(routeProvider)}
                           />
                         );
                       }
                       
-                      // Fallback: linha direta entre pontos
-                      const coordinates = rota?.ticketsData
-                        .filter((t: any) => t.hasRealCoords)
-                        .map((t: any) => t.coordenadas) || [];
-                      return coordinates.length > 1 && (
-                        <Polyline
-                          positions={coordinates}
-                          color="#3b82f6"
-                          weight={3}
-                          opacity={0.6}
-                        />
-                      );
+                      return null;
                     })()}
                   </MapContainer>
                   
@@ -873,18 +938,25 @@ const RouteMap: React.FC = () => {
                       </div>
                       
                       {/* Tipos de rota */}
-                      {selectedRoute && (
+                      {selectedRoute && routeGeometry && (
                         <div className="pt-2 border-t">
                           <p className="text-xs text-muted-foreground mb-1">Rota</p>
-                          {routeGeometry ? (
+                          {routeProvider === 'mapbox' && (
                             <div className="flex items-center space-x-2">
-                              <div className="w-6 h-0.5 bg-blue-600 border-dashed border-t-2"></div>
+                              <div className="w-6 h-0.5 border-t-2 border-dashed border-blue-600"></div>
                               <span className="text-xs">Mapbox (vias reais)</span>
                             </div>
-                          ) : (
+                          )}
+                          {routeProvider === 'osrm' && (
                             <div className="flex items-center space-x-2">
-                              <div className="w-6 h-0.5 bg-blue-600"></div>
-                              <span className="text-xs">Linha direta</span>
+                              <div className="w-6 h-0.5 bg-purple-600"></div>
+                              <span className="text-xs">OSRM (vias reais)</span>
+                            </div>
+                          )}
+                          {routeProvider === 'local' && (
+                            <div className="flex items-center space-x-2">
+                              <div className="w-6 h-0.5 border-t-2 border-dotted border-gray-600"></div>
+                              <span className="text-xs">Linha direta (local)</span>
                             </div>
                           )}
                         </div>

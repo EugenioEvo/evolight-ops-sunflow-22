@@ -9,6 +9,7 @@ interface Ticket {
   hasRealCoords: boolean;
   prioridade: string;
   dataProgramada?: string;
+  tecnicoId?: string;
 }
 
 interface OptimizedRoute {
@@ -25,6 +26,13 @@ interface OptimizedRoute {
   fallback?: boolean;
 }
 
+interface OptimizeContext {
+  tecnicoId?: string;
+  dataRota?: string;
+}
+
+type Provider = 'mapbox' | 'osrm' | 'local';
+
 // Endereço fixo da Evolight como ponto inicial
 const EVOLIGHT_START = {
   latitude: -16.6869,
@@ -36,8 +44,7 @@ export const useRouteOptimization = () => {
   const [loading, setLoading] = useState(false);
   const [optimizedRoute, setOptimizedRoute] = useState<OptimizedRoute | null>(null);
 
-  const optimizeRoute = async (tickets: Ticket[]) => {
-    // Validar tickets com coordenadas
+  const optimizeRoute = async (tickets: Ticket[], ctx: OptimizeContext = {}) => {
     const validTickets = tickets.filter(t => t.hasRealCoords);
     
     if (validTickets.length < 1) {
@@ -48,7 +55,6 @@ export const useRouteOptimization = () => {
     setLoading(true);
     
     try {
-      // Preparar coordenadas para otimização, incluindo ponto inicial da Evolight
       const coordinates = [
         {
           id: 'evolight-start',
@@ -66,68 +72,78 @@ export const useRouteOptimization = () => {
         }))
       ];
 
-      console.log('Otimizando rota com Mapbox/OSRM para', coordinates.length, 'pontos (incluindo ponto inicial Evolight)');
+      console.log('🗺️ Otimizando rota com', coordinates.length, 'pontos');
 
-      // Tentar Mapbox primeiro (mais preciso), fallback para OSRM
-      let data, error;
+      let data: any, error: any, provider: Provider = 'local';
       
+      // Tentar Mapbox primeiro
       try {
         const mapboxResult = await supabase.functions.invoke('mapbox-directions', {
           body: { coordinates }
         });
         data = mapboxResult.data;
         error = mapboxResult.error;
-      } catch (mapboxError) {
-        console.warn('Mapbox falhou, usando OSRM:', mapboxError);
-        const osrmResult = await supabase.functions.invoke('optimize-route-osrm', {
-          body: { coordinates }
-        });
-        data = osrmResult.data;
-        error = osrmResult.error;
+
+        // Validação de token Mapbox
+        if (data && data.success === false && String(data.error || '').includes('MAPBOX_ACCESS_TOKEN')) {
+          console.warn('⚠️ Token Mapbox ausente ou inválido');
+          toast.warning('Token Mapbox não configurado. Usando OSRM/Local.');
+        }
+      } catch (e) {
+        console.warn('⚠️ Mapbox falhou, tentando OSRM...', e);
+      }
+
+      // Se Mapbox não funcionou, tentar OSRM
+      if (!data || !data.success || data.fallback) {
+        try {
+          const osrmResult = await supabase.functions.invoke('optimize-route-osrm', {
+            body: { coordinates }
+          });
+          data = osrmResult.data;
+          error = osrmResult.error;
+        } catch (e) {
+          console.warn('⚠️ OSRM também falhou', e);
+        }
       }
 
       if (error) {
-        console.error('Erro ao chamar API de rotas:', error);
+        console.error('Erro ao chamar APIs de otimização:', error);
         throw error;
       }
 
-      // Se API falhou, usar algoritmo local (fallback)
-      if (!data.success || data.fallback) {
-        console.warn('APIs externas falharam, usando algoritmo local');
+      // Se APIs falharam, usar algoritmo local
+      if (!data || !data.success || data.fallback) {
+        console.warn('📍 Usando otimização local (APIs indisponíveis)');
         toast.warning('Usando otimização local (APIs indisponíveis)');
         
-        // Usar algoritmo existente
         const localOptimized = optimizeRouteAdvanced(tickets);
-        
-        setOptimizedRoute({
-          success: true,
-          fallback: true,
-          optimizedOrder: localOptimized.map((t, i) => ({
-            id: t.id,
-            order: i + 1
-          }))
-        });
+        setOptimizedRoute({ success: true, fallback: true });
+        provider = 'local';
 
-        return localOptimized;
+        return {
+          tickets: localOptimized,
+          provider,
+          data: null
+        };
       }
 
-      // Sucesso com API externa
-      console.log('Rota otimizada com sucesso:', data.route);
+      // Determinar provedor usado
+      provider = data.optimizationUsed ? 'mapbox' : (data.route?.geometry ? 'osrm' : 'local');
       
       setOptimizedRoute(data);
 
-      const provider = data.optimizationUsed ? 'Mapbox' : (data.route.geometry ? 'OSRM' : 'Local');
+      console.info(`✅ Rota otimizada via ${provider.toUpperCase()}: ${data.route.distanceKm} km, ${data.route.durationFormatted}`);
       
       toast.success(
         `Rota otimizada: ${data.route.distanceKm} km, ${data.route.durationFormatted}`,
         {
-          description: `Usando ${provider} com dados reais de tráfego`
+          description: `Usando ${provider === 'mapbox' ? 'Mapbox' : provider === 'osrm' ? 'OSRM' : 'método local'}`
         }
       );
 
-      // Reordenar tickets baseado na ordem otimizada (removendo o ponto inicial)
+      // Reordenar tickets
       const orderMap = new Map(
-        data.optimizedOrder
+        (data.optimizedOrder || [])
           .filter((o: any) => o.id !== 'evolight-start')
           .map((o: any) => [o.id, o.order])
       );
@@ -137,21 +153,43 @@ export const useRouteOptimization = () => {
         return (orderA as number) - (orderB as number);
       });
 
-      return reorderedTickets;
+      // Persistir rota no banco se tivermos contexto
+      try {
+        if (ctx.tecnicoId && ctx.dataRota && data.route?.geometry) {
+          await supabase.from('route_optimizations').insert({
+            tecnico_id: ctx.tecnicoId,
+            data_rota: ctx.dataRota,
+            geometry: data.route.geometry,
+            optimization_method: provider,
+            distance_km: Number(data.route.distanceKm),
+            duration_minutes: Number(data.route.durationMinutes),
+            waypoints_order: data.optimizedOrder || [],
+            ticket_ids: reorderedTickets.map(t => (t as any).ticketId || t.id)
+          });
+          console.info('💾 Rota persistida no banco de dados');
+        }
+      } catch (persistErr) {
+        console.warn('⚠️ Não foi possível salvar a rota:', persistErr);
+      }
+
+      return {
+        tickets: reorderedTickets,
+        provider,
+        data
+      };
 
     } catch (error) {
-      console.error('Erro na otimização:', error);
+      console.error('❌ Erro na otimização:', error);
       toast.error('Erro ao otimizar rota, usando método local');
       
-      // Fallback para algoritmo local
       const localOptimized = optimizeRouteAdvanced(tickets);
+      setOptimizedRoute({ success: true, fallback: true });
       
-      setOptimizedRoute({
-        success: true,
-        fallback: true
-      });
-
-      return localOptimized;
+      return {
+        tickets: localOptimized,
+        provider: 'local' as const,
+        data: null
+      };
     } finally {
       setLoading(false);
     }
