@@ -1,17 +1,22 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
+import MarkerClusterGroup from 'react-leaflet-cluster';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { MapPin, Clock, Users, Route as RouteIcon, RefreshCw, CheckCircle, AlertCircle } from "lucide-react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { MapPin, Clock, Users, Route as RouteIcon, RefreshCw, CheckCircle, AlertCircle, Navigation2, TrendingUp } from "lucide-react";
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useGeocoding } from '@/hooks/useGeocoding';
 import { optimizeRouteAdvanced, PrioridadeBadge } from '@/components/RouteOptimization';
 import { RouteExportButtons } from '@/components/RouteExportButtons';
+import { RouteStatsCards } from '@/components/RouteStatsCards';
+import { RouteTimeline } from '@/components/RouteTimeline';
+import { RouteFilters } from '@/components/RouteFilters';
+import { RouteLegend } from '@/components/RouteLegend';
 import { useRouteOptimization } from '@/hooks/useRouteOptimization';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -230,14 +235,18 @@ const RouteMap: React.FC = () => {
   const [mounted, setMounted] = useState(false);
   const [ordensServico, setOrdensServico] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [dateFilter, setDateFilter] = useState('today');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [dateFilter, setDateFilter] = useState('hoje');
+  const [statusFilter, setStatusFilter] = useState('todos');
+  const [tecnicoFilter, setTecnicoFilter] = useState('todos');
+  const [prioridadeFilter, setPrioridadeFilter] = useState('todas');
+  const [searchQuery, setSearchQuery] = useState('');
   const [geocodingProgress, setGeocodingProgress] = useState(0);
   const [geocodedCount, setGeocodedCount] = useState(0);
   const [totalToGeocode, setTotalToGeocode] = useState(0);
   const [optimizingRoute, setOptimizingRoute] = useState<number | null>(null);
   const [routeGeometry, setRouteGeometry] = useState<[number, number][] | null>(null);
   const [routeProvider, setRouteProvider] = useState<'mapbox' | 'osrm' | 'local' | null>(null);
+  const [tecnicos, setTecnicos] = useState<Array<{ id: string; nome: string }>>([]);
   const { profile } = useAuth();
   const { geocodeAddress, geocodeBatch, loading: geocoding, progress, completed, total } = useGeocoding();
   const { optimizeRoute, loading: optimizing, optimizedRoute } = useRouteOptimization();
@@ -245,7 +254,19 @@ const RouteMap: React.FC = () => {
   useEffect(() => {
     setMounted(true);
     loadOrdensServico();
-  }, [dateFilter, statusFilter, profile]);
+    loadTecnicos();
+  }, [dateFilter, statusFilter, tecnicoFilter, prioridadeFilter, searchQuery, profile]);
+
+  const loadTecnicos = async () => {
+    const { data } = await supabase
+      .from('tecnicos')
+      .select('id, profiles!inner(nome)')
+      .order('profiles(nome)');
+    
+    if (data) {
+      setTecnicos(data.map(t => ({ id: t.id, nome: (t.profiles as any).nome })));
+    }
+  };
 
   const loadOrdensServico = async () => {
     try {
@@ -288,31 +309,64 @@ const RouteMap: React.FC = () => {
         }
       }
 
+      // Filtro de técnico
+      if (tecnicoFilter !== 'todos') {
+        query = query.eq('tecnico_id', tecnicoFilter);
+      }
+
       // Filtro de status
-      if (statusFilter === 'pendente') {
-        query = query.eq('tickets.status', 'ordem_servico_gerada');
-      } else if (statusFilter === 'execucao') {
-        query = query.eq('tickets.status', 'em_execucao');
+      if (statusFilter !== 'todos') {
+        type TicketStatus = 'aberto' | 'aguardando_aprovacao' | 'aguardando_rme' | 'aprovado' | 'cancelado' | 'concluido' | 'em_execucao' | 'ordem_servico_gerada' | 'rejeitado';
+        query = query.eq('tickets.status', statusFilter as TicketStatus);
       } else {
-        query = query.in('tickets.status', ['ordem_servico_gerada', 'em_execucao']);
+        query = query.in('tickets.status', ['ordem_servico_gerada', 'em_execucao', 'concluido']);
       }
 
       // Filtro de data
-      if (dateFilter === 'today') {
-        const today = new Date().toISOString().split('T')[0];
-        query = query.gte('data_programada', today);
-      } else if (dateFilter === 'week') {
-        const today = new Date();
+      const today = new Date();
+      if (dateFilter === 'hoje') {
+        const todayStr = today.toISOString().split('T')[0];
+        query = query.eq('data_programada', todayStr);
+      } else if (dateFilter === 'amanha') {
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        query = query.eq('data_programada', tomorrow.toISOString().split('T')[0]);
+      } else if (dateFilter === 'semana') {
         const weekEnd = new Date(today);
         weekEnd.setDate(weekEnd.getDate() + 7);
-        query = query.lte('data_programada', weekEnd.toISOString());
+        query = query.gte('data_programada', today.toISOString().split('T')[0])
+          .lte('data_programada', weekEnd.toISOString().split('T')[0]);
+      } else if (dateFilter === 'mes') {
+        const monthEnd = new Date(today);
+        monthEnd.setMonth(monthEnd.getMonth() + 1);
+        query = query.gte('data_programada', today.toISOString().split('T')[0])
+          .lte('data_programada', monthEnd.toISOString().split('T')[0]);
       }
 
       const { data, error } = await query.order('created_at', { ascending: false });
 
       if (error) throw error;
 
-      setOrdensServico(data || []);
+      let filteredData = data || [];
+
+      // Filtro de prioridade
+      if (prioridadeFilter !== 'todas') {
+        filteredData = filteredData.filter(os => 
+          os.tickets.prioridade === prioridadeFilter
+        );
+      }
+
+      // Filtro de busca por texto
+      if (searchQuery.trim()) {
+        const search = searchQuery.toLowerCase();
+        filteredData = filteredData.filter(os => 
+          os.tickets.endereco_servico?.toLowerCase().includes(search) ||
+          os.tickets.clientes?.empresa?.toLowerCase().includes(search) ||
+          os.tickets.numero_ticket?.toLowerCase().includes(search)
+        );
+      }
+
+      setOrdensServico(filteredData);
     } catch (error) {
       console.error('Erro ao carregar ordens de serviço:', error);
     } finally {
@@ -527,6 +581,24 @@ const RouteMap: React.FC = () => {
     );
   }
 
+  // Calcular estatísticas gerais
+  const totalOS = tickets.length;
+  const totalDistance = rotasOtimizadas.reduce((sum, r) => {
+    const km = parseFloat(r.distanciaTotal?.replace(' km', '') || '0');
+    return sum + km;
+  }, 0);
+  const activeTechnicians = new Set(ordensServico.map(os => os.tecnico_id).filter(Boolean)).size;
+  const avgDuration = ordensServico.reduce((sum, os) => {
+    return sum + (os.tickets?.tempo_estimado || 0);
+  }, 0) / (ordensServico.length || 1) * 60;
+
+  // Contar por prioridade
+  const priorityCounts = tickets.reduce((acc, t) => {
+    const p = t.prioridade?.toLowerCase() || 'baixa';
+    acc[p] = (acc[p] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
   return (
     <div className="space-y-4">
       {/* Progress bar de geocodificação */}
@@ -544,41 +616,29 @@ const RouteMap: React.FC = () => {
           </div>
         </div>
       )}
-      
-      {/* Filtros */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Período</label>
-              <Select value={dateFilter} onValueChange={setDateFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o período" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="today">Hoje</SelectItem>
-                  <SelectItem value="week">Esta Semana</SelectItem>
-                  <SelectItem value="month">Este Mês</SelectItem>
-                  <SelectItem value="all">Todas</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Status</label>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
-                  <SelectItem value="pendente">Pendente</SelectItem>
-                  <SelectItem value="execucao">Em Execução</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+
+      {/* Stats Cards */}
+      <RouteStatsCards 
+        totalOS={totalOS}
+        totalDistance={totalDistance}
+        activeTechnicians={activeTechnicians}
+        avgDuration={avgDuration}
+      />
+
+      {/* Filtros Avançados */}
+      <RouteFilters
+        periodo={dateFilter}
+        setPeriodo={setDateFilter}
+        statusFilter={statusFilter}
+        setStatusFilter={setStatusFilter}
+        tecnicoFilter={tecnicoFilter}
+        setTecnicoFilter={setTecnicoFilter}
+        prioridadeFilter={prioridadeFilter}
+        setPrioridadeFilter={setPrioridadeFilter}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        tecnicos={tecnicos}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[600px]">
         {/* Lista de Rotas e Tickets - 1/3 */}
@@ -599,36 +659,57 @@ const RouteMap: React.FC = () => {
                   }`}
                   onClick={() => setSelectedRoute(selectedRoute === rota.id ? null : rota.id)}
                 >
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="font-medium">{rota.nome}</h4>
-                    <div className="flex items-center space-x-2">
-                      <Badge variant="outline">{rota.ticketsData.length} OS</Badge>
-                      {rota.allGeocoded ? (
-                        <Badge variant="default" className="bg-green-500">
-                          <CheckCircle className="h-3 w-3 mr-1" />
-                          Pronto
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-yellow-600 border-yellow-600">
-                          <AlertCircle className="h-3 w-3 mr-1" />
-                          Pendente
-                        </Badge>
-                      )}
+                  <div className="flex items-start gap-3 mb-2">
+                    <Avatar className="h-10 w-10">
+                      <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                        {rota.tecnico.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-semibold text-sm truncate">{rota.nome}</h4>
+                        <Badge variant="outline" className="ml-2">{rota.ticketsData.length} OS</Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground truncate">{rota.tecnico}</p>
                     </div>
                   </div>
+
+                  <div className="space-y-2 mb-3">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">Progresso</span>
+                      <span className="font-medium">
+                        {rota.ticketsData.filter((t: any) => t.status === 'concluido').length}/{rota.ticketsData.length}
+                      </span>
+                    </div>
+                    <Progress 
+                      value={(rota.ticketsData.filter((t: any) => t.status === 'concluido').length / rota.ticketsData.length) * 100} 
+                      className="h-2"
+                    />
+                  </div>
                   
-                  <div className="text-sm text-muted-foreground space-y-1">
-                    <div className="flex items-center space-x-2">
-                      <Users className="h-4 w-4" />
-                      <span>{rota.tecnico}</span>
+                  <div className="grid grid-cols-2 gap-2 text-xs mb-3">
+                    <div className="flex items-center gap-1.5">
+                      <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="font-medium">{rota.distanciaTotal}</span>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <MapPin className="h-4 w-4" />
-                      <span>{rota.distanciaTotal}</span>
+                    <div className="flex items-center gap-1.5">
+                      <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="font-medium">{rota.tempoEstimado}</span>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <Clock className="h-4 w-4" />
-                      <span>{rota.tempoEstimado}</span>
+                    <div className="flex items-center gap-1.5 col-span-2">
+                      {rota.allGeocoded ? (
+                        <>
+                          <CheckCircle className="h-3.5 w-3.5 text-green-600" />
+                          <span className="text-green-600 font-medium">Rota Pronta</span>
+                        </>
+                      ) : (
+                        <>
+                          <AlertCircle className="h-3.5 w-3.5 text-yellow-600" />
+                          <span className="text-yellow-600 font-medium">
+                            {rota.ticketsData.filter((t: any) => !t.hasRealCoords).length} endereços pendentes
+                          </span>
+                        </>
+                      )}
                     </div>
                   </div>
                   
@@ -711,62 +792,38 @@ const RouteMap: React.FC = () => {
             </CardContent>
           </Card>
 
-          {/* Lista de Tickets com ordem otimizada */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Ordens do Dia (Otimizadas)</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {selectedRoute ? (
-                rotasOtimizadas
-                  .find(r => r.id === selectedRoute)
-                  ?.ticketsData.map((ticket: any) => (
-                    <div key={ticket.id} className="p-3 rounded-lg border">
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex items-center space-x-2">
-                          <Badge variant="outline" className="font-bold">#{ticket.ordem}</Badge>
-                          <h5 className="font-medium text-sm">{ticket.cliente}</h5>
-                        </div>
-                        <div className="flex space-x-1">
-                          <PrioridadeBadge prioridade={ticket.prioridade} />
-                        </div>
-                      </div>
-                      
-                      <div className="text-xs text-muted-foreground space-y-1">
-                        <p className="font-medium">OS: {ticket.numeroOS}</p>
-                        <p>{ticket.tipo}</p>
-                        <p>{ticket.endereco}</p>
-                        <p>Estimativa: {ticket.estimativa}</p>
-                      </div>
-                    </div>
-                  ))
-              ) : (
-                tickets.map((ticket) => (
-                  <div key={ticket.id} className="p-3 rounded-lg border">
-                    <div className="flex items-start justify-between mb-2">
-                      <h5 className="font-medium text-sm">{ticket.cliente}</h5>
-                      <div className="flex space-x-1">
-                        <Badge className={getPrioridadeColor(ticket.prioridade)}>
-                          {ticket.prioridade}
-                        </Badge>
-                        <Badge className={getStatusColor(ticket.status)}>
-                          {ticket.status.replace('_', ' ')}
-                        </Badge>
-                      </div>
-                    </div>
-                    
-                    <div className="text-xs text-muted-foreground space-y-1">
-                      <p className="font-medium">OS: {ticket.numeroOS}</p>
-                      <p>{ticket.tipo}</p>
-                      <p>{ticket.endereco}</p>
-                      <p>Técnico: {ticket.tecnico}</p>
-                      <p>Estimativa: {ticket.estimativa}</p>
-                    </div>
-                  </div>
-                ))
-              )}
-            </CardContent>
-          </Card>
+          {/* Timeline da Rota Selecionada */}
+          {selectedRoute && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Navigation2 className="h-5 w-5" />
+                  Timeline da Rota
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <RouteTimeline 
+                  items={rotasOtimizadas
+                    .find(r => r.id === selectedRoute)
+                    ?.ticketsData.map((t: any) => ({
+                      id: t.id,
+                      address: t.endereco,
+                      priority: t.prioridade,
+                      status: t.status
+                    })) || []
+                  }
+                />
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Legenda */}
+          <RouteLegend
+            criticalCount={priorityCounts['critica'] || 0}
+            highCount={priorityCounts['alta'] || 0}
+            mediumCount={priorityCounts['media'] || 0}
+            lowCount={priorityCounts['baixa'] || 0}
+          />
         </div>
 
         {/* Mapa - 2/3 */}
@@ -806,7 +863,12 @@ const RouteMap: React.FC = () => {
                       </Popup>
                     </Marker>
                     
-                    {/* Marcadores dos tickets com numeração quando rota selecionada */}
+                    {/* Marcadores dos tickets com clustering e numeração quando rota selecionada */}
+                    <MarkerClusterGroup
+                      chunkedLoading
+                      showCoverageOnHover={false}
+                      maxClusterRadius={60}
+                    >
                     {selectedRoute ? (
                       rotasOtimizadas
                         .find(r => r.id === selectedRoute)
@@ -882,6 +944,7 @@ const RouteMap: React.FC = () => {
                         </Marker>
                       ))
                     )}
+                    </MarkerClusterGroup>
                     
                     {/* Linha da rota selecionada com cores por provedor */}
                     {selectedRoute && (() => {
@@ -909,60 +972,6 @@ const RouteMap: React.FC = () => {
                       return null;
                     })()}
                   </MapContainer>
-                  
-                  {/* Legenda do mapa */}
-                  <div className="absolute bottom-4 left-4 bg-card p-3 rounded-lg shadow-lg z-[1000] border">
-                    <p className="text-xs font-semibold mb-2">Legenda</p>
-                    <div className="space-y-2">
-                      {/* Prioridades */}
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-1">Prioridade</p>
-                        <div className="space-y-1">
-                          <div className="flex items-center space-x-2">
-                            <div className="w-4 h-4 rounded-full bg-red-600"></div>
-                            <span className="text-xs">Crítica</span>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <div className="w-4 h-4 rounded-full bg-orange-500"></div>
-                            <span className="text-xs">Alta</span>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <div className="w-4 h-4 rounded-full bg-yellow-500"></div>
-                            <span className="text-xs">Média</span>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <div className="w-4 h-4 rounded-full bg-green-500"></div>
-                            <span className="text-xs">Baixa</span>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      {/* Tipos de rota */}
-                      {selectedRoute && routeGeometry && (
-                        <div className="pt-2 border-t">
-                          <p className="text-xs text-muted-foreground mb-1">Rota</p>
-                          {routeProvider === 'mapbox' && (
-                            <div className="flex items-center space-x-2">
-                              <div className="w-6 h-0.5 border-t-2 border-dashed border-blue-600"></div>
-                              <span className="text-xs">Mapbox (vias reais)</span>
-                            </div>
-                          )}
-                          {routeProvider === 'osrm' && (
-                            <div className="flex items-center space-x-2">
-                              <div className="w-6 h-0.5 bg-purple-600"></div>
-                              <span className="text-xs">OSRM (vias reais)</span>
-                            </div>
-                          )}
-                          {routeProvider === 'local' && (
-                            <div className="flex items-center space-x-2">
-                              <div className="w-6 h-0.5 border-t-2 border-dotted border-gray-600"></div>
-                              <span className="text-xs">Linha direta (local)</span>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
                 </MapErrorBoundary>
               </div>
             </CardContent>
