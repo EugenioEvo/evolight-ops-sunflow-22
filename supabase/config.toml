@@ -1,7 +1,7 @@
 project_id = "xwbyyzvtwcsehmprsbvg"
 
 [functions.create-user-profile]
-verify_jwt = false
+verify_jwt = true
 
 [functions.geocode-address]
 verify_jwt = true

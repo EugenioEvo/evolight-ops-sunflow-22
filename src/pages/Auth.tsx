@@ -10,6 +10,40 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Eye, EyeOff, Zap } from 'lucide-react';
+import { z } from 'zod';
+
+const signupSchema = z.object({
+  nome: z.string()
+    .min(2, 'Nome deve ter no mínimo 2 caracteres')
+    .max(100, 'Nome deve ter no máximo 100 caracteres')
+    .regex(/^[a-zA-ZÀ-ÿ\s]+$/, 'Nome deve conter apenas letras'),
+  email: z.string()
+    .email('Email inválido')
+    .max(255, 'Email deve ter no máximo 255 caracteres'),
+  password: z.string()
+    .min(8, 'Senha deve ter no mínimo 8 caracteres')
+    .max(72, 'Senha deve ter no máximo 72 caracteres'),
+  telefone: z.string()
+    .regex(/^\d{10,11}$/, 'Telefone deve ter 10 ou 11 dígitos')
+    .optional()
+    .or(z.literal('')),
+  role: z.enum(['cliente', 'tecnico_campo', 'area_tecnica']),
+  empresa: z.string().max(200, 'Empresa deve ter no máximo 200 caracteres').optional(),
+  cnpjCpf: z.string()
+    .regex(/^\d{11}$|^\d{14}$/, 'CPF deve ter 11 dígitos ou CNPJ 14 dígitos')
+    .optional()
+    .or(z.literal('')),
+  endereco: z.string().max(500, 'Endereço deve ter no máximo 500 caracteres').optional(),
+  cidade: z.string().max(100, 'Cidade deve ter no máximo 100 caracteres').optional(),
+  estado: z.string().max(2, 'Estado deve ter 2 caracteres').optional(),
+  cep: z.string()
+    .regex(/^\d{8}$/, 'CEP deve ter 8 dígitos')
+    .optional()
+    .or(z.literal('')),
+  registroProfissional: z.string().max(50, 'Registro deve ter no máximo 50 caracteres').optional(),
+  especialidades: z.string().max(500, 'Especialidades devem ter no máximo 500 caracteres').optional(),
+  regiaoAtuacao: z.string().max(200, 'Região deve ter no máximo 200 caracteres').optional(),
+});
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -77,24 +111,49 @@ const Auth = () => {
     setLoading(true);
 
     try {
-      const { data, error } = await supabase.auth.signUp({
+      // Validate inputs
+      const formData = {
+        nome,
         email,
         password,
+        telefone: telefone || '',
+        role,
+        empresa: role === 'cliente' ? empresa : undefined,
+        cnpjCpf: role === 'cliente' ? cnpjCpf : '',
+        endereco: role === 'cliente' ? endereco : undefined,
+        cidade: role === 'cliente' ? cidade : undefined,
+        estado: role === 'cliente' ? estado : undefined,
+        cep: role === 'cliente' ? cep : '',
+        registroProfissional: role === 'tecnico_campo' ? registroProfissional : undefined,
+        especialidades: role === 'tecnico_campo' ? especialidades : undefined,
+        regiaoAtuacao: role === 'tecnico_campo' ? regiaoAtuacao : undefined,
+      };
+
+      const validationResult = signupSchema.safeParse(formData);
+      
+      if (!validationResult.success) {
+        const firstError = validationResult.error.errors[0];
+        throw new Error(firstError.message);
+      }
+
+      const { data, error } = await supabase.auth.signUp({
+        email: validationResult.data.email,
+        password: validationResult.data.password,
         options: {
           emailRedirectTo: `${window.location.origin}/`,
           data: {
-            nome,
-            telefone,
-            role,
-            empresa: role === 'cliente' ? empresa : undefined,
-            cnpj_cpf: role === 'cliente' ? cnpjCpf : undefined,
-            endereco: role === 'cliente' ? endereco : undefined,
-            cidade: role === 'cliente' ? cidade : undefined,
-            estado: role === 'cliente' ? estado : undefined,
-            cep: role === 'cliente' ? cep : undefined,
-            registro_profissional: role === 'tecnico_campo' ? registroProfissional : undefined,
-            especialidades: role === 'tecnico_campo' ? especialidades.split(',').map(s => s.trim()) : undefined,
-            regiao_atuacao: role === 'tecnico_campo' ? regiaoAtuacao : undefined,
+            nome: validationResult.data.nome,
+            telefone: validationResult.data.telefone || undefined,
+            role: validationResult.data.role,
+            empresa: validationResult.data.empresa,
+            cnpj_cpf: validationResult.data.cnpjCpf || undefined,
+            endereco: validationResult.data.endereco,
+            cidade: validationResult.data.cidade,
+            estado: validationResult.data.estado,
+            cep: validationResult.data.cep || undefined,
+            registro_profissional: validationResult.data.registroProfissional,
+            especialidades: validationResult.data.especialidades?.split(',').map(s => s.trim()),
+            regiao_atuacao: validationResult.data.regiaoAtuacao,
           }
         }
       });
