@@ -110,16 +110,18 @@ serve(async (req) => {
       )
     }
 
-    // Buscar técnico
-    const { data: tecnico } = await supabaseClient
+    // Buscar técnico correto pelo email do prestador
+    const { data: tecnico, error: tecnicoError } = await supabaseClient
       .from('tecnicos')
-      .select('id')
-      .limit(1)
+      .select('id, profiles!inner(email)')
+      .eq('profiles.email', prestador.email)
       .maybeSingle()
 
-    if (!tecnico) {
+    if (tecnicoError || !tecnico) {
       return new Response(
-        JSON.stringify({ error: 'Nenhum técnico cadastrado. Por favor, cadastre um técnico primeiro.' }),
+        JSON.stringify({ 
+          error: `Não foi possível relacionar o prestador ao técnico. Cadastre o técnico com o mesmo e-mail do prestador (${prestador.email}) ou ajuste o e-mail.` 
+        }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }

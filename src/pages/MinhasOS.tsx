@@ -110,7 +110,14 @@ const MinhasOS = () => {
           .eq("profile_id", profile?.id)
           .single();
 
-        if (tecnicoError) throw tecnicoError;
+        if (tecnicoError) {
+          toast({
+            title: "Erro ao carregar perfil",
+            description: "Seu usuário não está vinculado a um perfil de técnico. Solicite à área técnica o cadastro do seu usuário como técnico ou ajuste o e-mail.",
+            variant: "destructive",
+          });
+          throw tecnicoError;
+        }
         
         query = query.eq("tecnico_id", tecnicoData.id);
       }
