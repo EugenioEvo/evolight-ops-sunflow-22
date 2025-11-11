@@ -17,11 +17,12 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Clock, MapPin, Plus, Search, Settings, FileText, CheckCircle, XCircle, Download, Eye, ExternalLink, Ticket as TicketIcon } from 'lucide-react';
+import { Calendar, Clock, MapPin, Plus, Search, Settings, FileText, CheckCircle, XCircle, Download, Eye, ExternalLink, Ticket as TicketIcon, MapPinOff, Loader2, RefreshCw } from 'lucide-react';
 import TicketFilters from '@/components/TicketFilters';
 import { LoadingState } from '@/components/LoadingState';
 import { EmptyState } from '@/components/EmptyState';
 import { FileUpload } from '@/components/FileUpload';
+import { useGeocoding } from '@/hooks/useGeocoding';
 
 const ticketSchema = z.object({
   titulo: z.string().min(1, 'Título é obrigatório'),
@@ -51,6 +52,9 @@ const Tickets = () => {
   const [generatingOsId, setGeneratingOsId] = useState<string | null>(null);
   const [selectedCliente, setSelectedCliente] = useState(localStorage.getItem('tickets_cliente') || 'todos');
   const [selectedPrioridade, setSelectedPrioridade] = useState(localStorage.getItem('tickets_prioridade') || 'todas');
+  const [reprocessingTicketId, setReprocessingTicketId] = useState<string | null>(null);
+
+  const { geocodeAddress, loading: geocoding } = useGeocoding();
 
   // Persistir filtros
   useEffect(() => {
@@ -492,6 +496,88 @@ const Tickets = () => {
     return colors[prioridade as keyof typeof colors] || 'bg-gray-100 text-gray-800';
   };
 
+  const getGeocodingStatusBadge = (status: string | null | undefined) => {
+    if (!status) return null;
+    
+    const config: Record<string, {
+      variant: 'secondary' | 'destructive';
+      className: string;
+      icon: typeof Clock;
+      label: string;
+      iconClass?: string;
+    }> = {
+      'pending': {
+        variant: 'secondary',
+        className: 'bg-yellow-100 text-yellow-800 border-yellow-300',
+        icon: Clock,
+        label: 'Pendente'
+      },
+      'processing': {
+        variant: 'secondary',
+        className: 'bg-blue-100 text-blue-800 border-blue-300',
+        icon: Loader2,
+        label: 'Processando',
+        iconClass: 'animate-spin'
+      },
+      'geocoded': {
+        variant: 'secondary',
+        className: 'bg-green-100 text-green-800 border-green-300',
+        icon: MapPin,
+        label: 'Geocodificado'
+      },
+      'failed': {
+        variant: 'destructive',
+        className: 'bg-red-100 text-red-800 border-red-300',
+        icon: MapPinOff,
+        label: 'Falhou'
+      }
+    };
+    
+    const statusConfig = config[status];
+    if (!statusConfig) return null;
+    
+    const Icon = statusConfig.icon;
+    
+    return (
+      <Badge variant={statusConfig.variant} className={statusConfig.className}>
+        <Icon className={`h-3 w-3 mr-1 ${statusConfig.iconClass || ''}`} />
+        {statusConfig.label}
+      </Badge>
+    );
+  };
+
+  const handleReprocessGeocode = async (ticketId: string, address: string) => {
+    try {
+      setReprocessingTicketId(ticketId);
+      
+      // Marcar como processing
+      await supabase
+        .from('tickets')
+        .update({ geocoding_status: 'processing' })
+        .eq('id', ticketId);
+      
+      // Forçar geocodificação
+      const result = await geocodeAddress(address, ticketId);
+      
+      if (result) {
+        toast({
+          title: 'Sucesso',
+          description: 'Endereço geocodificado com sucesso!',
+        });
+        loadData();
+      }
+    } catch (error: any) {
+      console.error('Erro ao reprocessar geocodificação:', error);
+      toast({
+        title: 'Erro',
+        description: error.message || 'Erro ao geocodificar endereço',
+        variant: 'destructive'
+      });
+    } finally {
+      setReprocessingTicketId(null);
+    }
+  };
+
   const getEquipamentoIcon = (tipo: string) => {
     return <Settings className="h-4 w-4" />;
   };
@@ -797,6 +883,7 @@ const Tickets = () => {
                         <Badge className={getPrioridadeColor(ticket.prioridade)}>
                           {ticket.prioridade.toUpperCase()}
                         </Badge>
+                        {getGeocodingStatusBadge(ticket.geocoding_status)}
                         {(ticket.status === 'ordem_servico_gerada' || ticket.status === 'em_execucao' || ticket.status === 'concluido') && ticket.ordens_servico?.[0] && (
                           <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
                             <FileText className="h-3 w-3 mr-1" />
@@ -836,6 +923,41 @@ const Tickets = () => {
                         <p className="text-sm text-muted-foreground">
                           <strong>Técnico:</strong> {ticket.prestadores.nome}
                         </p>
+                      )}
+
+                      {/* Status de coordenadas */}
+                      {ticket.latitude && ticket.longitude && (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <MapPin className="h-4 w-4 text-green-600" />
+                          <span>
+                            Coordenadas: {Number(ticket.latitude).toFixed(6)}, {Number(ticket.longitude).toFixed(6)}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Botão reprocessar geocodificação */}
+                      {ticket.geocoding_status === 'failed' && (profile?.role === 'admin' || profile?.role === 'area_tecnica') && (
+                        <div className="flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleReprocessGeocode(ticket.id, ticket.endereco_servico)}
+                            disabled={reprocessingTicketId === ticket.id || geocoding}
+                            className="border-orange-300 text-orange-700 hover:bg-orange-50"
+                          >
+                            {reprocessingTicketId === ticket.id ? (
+                              <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Reprocessando...
+                              </>
+                            ) : (
+                              <>
+                                <RefreshCw className="h-4 w-4 mr-2" />
+                                Reprocessar Geocodificação
+                              </>
+                            )}
+                          </Button>
+                        </div>
                       )}
 
                       {/* Botões de ação conforme status e role */}
