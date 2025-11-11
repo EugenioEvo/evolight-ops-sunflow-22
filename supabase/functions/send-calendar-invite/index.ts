@@ -212,6 +212,33 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log("[send-calendar-invite] Email enviado:", emailResponse);
 
+    // Se o email falhou, adicionar à fila de retry
+    if (emailResponse.error) {
+      console.log("[send-calendar-invite] Email falhou, adicionando à fila de retry");
+      
+      const { error: queueError } = await supabase
+        .from("email_retry_queue")
+        .insert({
+          email_type: "calendar_invite",
+          recipients,
+          payload: {
+            subject: emailSubject,
+            html: emailBody,
+            attachments: [
+              {
+                filename: "convite.ics",
+                content: icsContent,
+              },
+            ],
+          },
+          next_retry_at: new Date(Date.now() + 60000).toISOString(), // Retry em 1 minuto
+        });
+
+      if (queueError) {
+        console.error("[send-calendar-invite] Erro ao adicionar à fila:", queueError);
+      }
+    }
+
     // Atualizar registro da OS
     const { error: updateError } = await supabase
       .from("ordens_servico")

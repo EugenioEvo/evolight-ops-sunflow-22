@@ -154,6 +154,51 @@ export type Database = {
           },
         ]
       }
+      email_retry_queue: {
+        Row: {
+          attempt_count: number
+          created_at: string
+          email_type: string
+          id: string
+          last_attempt_at: string | null
+          last_error: string | null
+          max_attempts: number
+          next_retry_at: string
+          payload: Json
+          recipients: string[]
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          attempt_count?: number
+          created_at?: string
+          email_type: string
+          id?: string
+          last_attempt_at?: string | null
+          last_error?: string | null
+          max_attempts?: number
+          next_retry_at: string
+          payload: Json
+          recipients: string[]
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          attempt_count?: number
+          created_at?: string
+          email_type?: string
+          id?: string
+          last_attempt_at?: string | null
+          last_error?: string | null
+          max_attempts?: number
+          next_retry_at?: string
+          payload?: Json
+          recipients?: string[]
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       equipamentos: {
         Row: {
           capacidade: string | null
@@ -934,6 +979,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calculate_next_retry: { Args: { attempt: number }; Returns: string }
       can_tech_view_cliente: {
         Args: { p_cliente_id: string; p_user_id: string }
         Returns: boolean

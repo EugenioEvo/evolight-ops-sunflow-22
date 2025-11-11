@@ -220,6 +220,25 @@ const handler = async (req: Request): Promise<Response> => {
 
         console.log(`[send-os-reminders] Lembrete enviado para OS ${os.numero_os}:`, emailResponse);
 
+        // Se o email falhou, adicionar à fila de retry
+        if (emailResponse.error) {
+          console.log(`[send-os-reminders] Email falhou para OS ${os.numero_os}, adicionando à fila de retry`);
+          
+          await supabase
+            .from("email_retry_queue")
+            .insert({
+              email_type: "reminder",
+              recipients,
+              payload: {
+                subject: emailSubject,
+                html: emailBody,
+                os_id: os.id,
+                os_numero: os.numero_os,
+              },
+              next_retry_at: new Date(Date.now() + 60000).toISOString(), // Retry em 1 minuto
+            });
+        }
+
         // Atualizar registro da OS
         const { error: updateError } = await supabase
           .from("ordens_servico")
