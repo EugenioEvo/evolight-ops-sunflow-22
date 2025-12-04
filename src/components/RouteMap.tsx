@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
+import MarkerCluster from '@/components/MarkerCluster';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -1006,33 +1007,24 @@ const RouteMap: React.FC = () => {
                           </Marker>
                         ))
                     ) : (
-                      tickets.map((ticket) => (
-                        <Marker key={`marker-${ticket.id}`} position={ticket.coordenadas}>
-                          <Popup>
-                            <div className="p-2">
-                              <h6 className="font-semibold mb-1">{ticket.cliente}</h6>
-                              <p className="text-sm text-gray-600 mb-1">OS: {ticket.numeroOS}</p>
-                              <p className="text-sm text-gray-600 mb-1">{ticket.tipo}</p>
-                              <p className="text-xs text-gray-500 mb-2">{ticket.endereco}</p>
-                              
-                              {!ticket.hasRealCoords && (
-                                <Badge variant="outline" className="text-xs mb-2">
-                                  📍 Localização aproximada
-                                </Badge>
-                              )}
-                              
-                              <div className="flex space-x-1">
-                                <Badge className={getPrioridadeColor(ticket.prioridade)}>
-                                  {ticket.prioridade}
-                                </Badge>
-                                <Badge className={getStatusColor(ticket.status)}>
-                                  {ticket.status.replace('_', ' ')}
-                                </Badge>
+                      <MarkerCluster
+                        markers={tickets.map((ticket) => ({
+                          id: ticket.id,
+                          position: ticket.coordenadas,
+                          popupContent: `
+                            <div class="p-2">
+                              <h6 class="font-semibold mb-1">${ticket.cliente}</h6>
+                              <p class="text-sm text-gray-600 mb-1">OS: ${ticket.numeroOS}</p>
+                              <p class="text-sm text-gray-600 mb-1">${ticket.tipo}</p>
+                              <p class="text-xs text-gray-500 mb-2">${ticket.endereco}</p>
+                              <div class="flex space-x-1">
+                                <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ${getPrioridadeColor(ticket.prioridade)}">${ticket.prioridade}</span>
+                                <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ${getStatusColor(ticket.status)}">${ticket.status.replace('_', ' ')}</span>
                               </div>
                             </div>
-                          </Popup>
-                        </Marker>
-                      ))
+                          `
+                        }))}
+                      />
                     )}
                     
                     {/* Linha da rota selecionada com cores por provedor */}
