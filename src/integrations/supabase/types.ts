@@ -309,6 +309,30 @@ export type Database = {
         }
         Relationships: []
       }
+      geocoding_rate_limits: {
+        Row: {
+          created_at: string
+          id: string
+          ip_address: string
+          request_count: number
+          window_start: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          ip_address: string
+          request_count?: number
+          window_start?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          ip_address?: string
+          request_count?: number
+          window_start?: string
+        }
+        Relationships: []
+      }
       insumos: {
         Row: {
           categoria: string
@@ -1104,6 +1128,14 @@ export type Database = {
       calculate_next_retry: { Args: { attempt: number }; Returns: string }
       can_tech_view_cliente: {
         Args: { p_cliente_id: string; p_user_id: string }
+        Returns: boolean
+      }
+      check_geocoding_rate_limit: {
+        Args: {
+          p_ip: string
+          p_max_requests?: number
+          p_window_minutes?: number
+        }
         Returns: boolean
       }
       check_presence_rate_limit: {
