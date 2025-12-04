@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { LoadingState } from '@/components/LoadingState';
+import { VirtualizedList } from '@/components/VirtualizedList';
 import { Search, ShieldAlert, Calendar, User, Database } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -225,7 +226,7 @@ const AuditLogs = () => {
         </Card>
       </div>
 
-      {/* Lista de Logs */}
+      {/* Lista de Logs - Virtualizada para performance */}
       <div className="space-y-3">
         {filteredLogs.length === 0 ? (
           <Card>
@@ -238,75 +239,81 @@ const AuditLogs = () => {
             </CardContent>
           </Card>
         ) : (
-          filteredLogs.map((log) => (
-            <Card key={log.id} className="hover:shadow-md transition-shadow">
-              <CardContent className="pt-6">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 space-y-2">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {getActionBadge(log.action)}
-                      <Badge variant="outline">
-                        <Database className="h-3 w-3 mr-1" />
-                        {getTableDisplayName(log.table_name)}
-                      </Badge>
-                      <Badge variant="outline" className="font-mono text-xs">
-                        ID: {log.record_id.slice(0, 8)}...
-                      </Badge>
-                    </div>
-
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
-                      <div className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        <span>
-                          {format(new Date(log.performed_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                        </span>
+          <VirtualizedList
+            data={filteredLogs}
+            itemHeight={160}
+            maxHeight={600}
+            gap={12}
+            renderItem={(log) => (
+              <Card key={log.id} className="hover:shadow-md transition-shadow h-full">
+                <CardContent className="pt-6">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 space-y-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {getActionBadge(log.action)}
+                        <Badge variant="outline">
+                          <Database className="h-3 w-3 mr-1" />
+                          {getTableDisplayName(log.table_name)}
+                        </Badge>
+                        <Badge variant="outline" className="font-mono text-xs">
+                          ID: {log.record_id.slice(0, 8)}...
+                        </Badge>
                       </div>
-                      {log.user_id && (
+
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
                         <div className="flex items-center gap-1">
-                          <User className="h-3 w-3" />
-                          <span className="font-mono text-xs">
-                            User: {log.user_id.slice(0, 8)}...
+                          <Calendar className="h-3 w-3" />
+                          <span>
+                            {format(new Date(log.performed_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                           </span>
                         </div>
+                        {log.user_id && (
+                          <div className="flex items-center gap-1">
+                            <User className="h-3 w-3" />
+                            <span className="font-mono text-xs">
+                              User: {log.user_id.slice(0, 8)}...
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Dados alterados (apenas para UPDATE) */}
+                      {log.action === 'UPDATE' && log.old_data && log.new_data && (
+                        <details className="mt-2">
+                          <summary className="text-sm font-medium cursor-pointer hover:text-primary">
+                            Ver alterações
+                          </summary>
+                          <div className="mt-2 p-3 bg-muted rounded-md space-y-2">
+                            {Object.keys(log.new_data).map((key) => {
+                              const oldValue = log.old_data?.[key];
+                              const newValue = log.new_data?.[key];
+                              
+                              if (oldValue === newValue) return null;
+                              
+                              return (
+                                <div key={key} className="text-xs">
+                                  <span className="font-medium">{key}:</span>
+                                  <div className="flex gap-2 items-center">
+                                    <span className="text-red-600 line-through">
+                                      {JSON.stringify(oldValue)}
+                                    </span>
+                                    <span>→</span>
+                                    <span className="text-green-600">
+                                      {JSON.stringify(newValue)}
+                                    </span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </details>
                       )}
                     </div>
-
-                    {/* Dados alterados (apenas para UPDATE) */}
-                    {log.action === 'UPDATE' && log.old_data && log.new_data && (
-                      <details className="mt-2">
-                        <summary className="text-sm font-medium cursor-pointer hover:text-primary">
-                          Ver alterações
-                        </summary>
-                        <div className="mt-2 p-3 bg-muted rounded-md space-y-2">
-                          {Object.keys(log.new_data).map((key) => {
-                            const oldValue = log.old_data?.[key];
-                            const newValue = log.new_data?.[key];
-                            
-                            if (oldValue === newValue) return null;
-                            
-                            return (
-                              <div key={key} className="text-xs">
-                                <span className="font-medium">{key}:</span>
-                                <div className="flex gap-2 items-center">
-                                  <span className="text-red-600 line-through">
-                                    {JSON.stringify(oldValue)}
-                                  </span>
-                                  <span>→</span>
-                                  <span className="text-green-600">
-                                    {JSON.stringify(newValue)}
-                                  </span>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </details>
-                    )}
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))
+                </CardContent>
+              </Card>
+            )}
+          />
         )}
       </div>
     </div>
