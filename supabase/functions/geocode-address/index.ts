@@ -7,6 +7,10 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Configurações de rate limit
+const RATE_LIMIT_MAX_REQUESTS = 30; // 30 requisições
+const RATE_LIMIT_WINDOW_MINUTES = 1; // por minuto
+
 // Função de retry com backoff exponencial
 async function fetchWithRetry(
   url: string,
@@ -47,21 +51,65 @@ async function fetchWithRetry(
   throw lastError || new Error('Todas as tentativas falharam');
 }
 
+// Extrair IP do request
+function getClientIP(req: Request): string {
+  const forwarded = req.headers.get('x-forwarded-for');
+  if (forwarded) {
+    return forwarded.split(',')[0].trim();
+  }
+  const realIP = req.headers.get('x-real-ip');
+  if (realIP) {
+    return realIP;
+  }
+  return 'unknown';
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const supabase = createClient(supabaseUrl, supabaseKey);
+
   try {
+    // Rate limiting
+    const clientIP = getClientIP(req);
+    console.log(`[geocode-address] Request de IP: ${clientIP}`);
+
+    const { data: rateLimitOk, error: rateLimitError } = await supabase
+      .rpc('check_geocoding_rate_limit', {
+        p_ip: clientIP,
+        p_max_requests: RATE_LIMIT_MAX_REQUESTS,
+        p_window_minutes: RATE_LIMIT_WINDOW_MINUTES
+      });
+
+    if (rateLimitError) {
+      console.error('[geocode-address] Erro ao verificar rate limit:', rateLimitError);
+    }
+
+    if (rateLimitOk === false) {
+      console.warn(`[geocode-address] Rate limit excedido para IP: ${clientIP}`);
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Rate limit excedido. Aguarde um momento antes de tentar novamente.',
+        retry_after: 60
+      }), {
+        status: 429,
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json',
+          'Retry-After': '60'
+        }
+      });
+    }
+
     const { address, ticket_id, force_refresh = false } = await req.json();
 
     if (!address) {
       throw new Error('Endereço é obrigatório');
     }
-
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
 
     // 1. Verificar cache global de endereços primeiro
     if (!force_refresh) {
@@ -75,7 +123,7 @@ serve(async (req) => {
         // Cache válido por 90 dias
         const cacheAge = Date.now() - new Date(cachedAddress.cached_at).getTime();
         if (cacheAge < 90 * 24 * 60 * 60 * 1000) {
-          console.log(`Cache global hit para endereço: ${address}`);
+          console.log(`[geocode-address] Cache global hit para endereço: ${address}`);
           
           // Atualizar ticket se fornecido
           if (ticket_id) {
@@ -104,7 +152,7 @@ serve(async (req) => {
     }
 
     // 2. Geocodificar via Nominatim com retry automático
-    console.log(`Geocodificando endereço: ${address}`);
+    console.log(`[geocode-address] Geocodificando endereço: ${address}`);
     
     // Marcar ticket como em processamento
     if (ticket_id) {
@@ -189,7 +237,7 @@ serve(async (req) => {
         })
         .eq('id', ticket_id);
       
-      console.log(`Geocodificado ticket ${ticket_id}: ${address} -> [${result.latitude}, ${result.longitude}]`);
+      console.log(`[geocode-address] Geocodificado ticket ${ticket_id}: ${address} -> [${result.latitude}, ${result.longitude}]`);
     }
 
     return new Response(JSON.stringify({ success: true, data: result }), {
@@ -197,7 +245,7 @@ serve(async (req) => {
     });
 
   } catch (error: any) {
-    console.error('Erro na geocodificação:', error);
+    console.error('[geocode-address] Erro na geocodificação:', error);
     return new Response(JSON.stringify({ 
       success: false, 
       error: error?.message || 'Erro desconhecido'

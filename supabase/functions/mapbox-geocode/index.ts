@@ -6,12 +6,64 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Configurações de rate limit
+const RATE_LIMIT_MAX_REQUESTS = 30; // 30 requisições
+const RATE_LIMIT_WINDOW_MINUTES = 1; // por minuto
+
+// Extrair IP do request
+function getClientIP(req: Request): string {
+  const forwarded = req.headers.get('x-forwarded-for');
+  if (forwarded) {
+    return forwarded.split(',')[0].trim();
+  }
+  const realIP = req.headers.get('x-real-ip');
+  if (realIP) {
+    return realIP;
+  }
+  return 'unknown';
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const supabase = createClient(supabaseUrl, supabaseKey);
+
   try {
+    // Rate limiting
+    const clientIP = getClientIP(req);
+    console.log(`[mapbox-geocode] Request de IP: ${clientIP}`);
+
+    const { data: rateLimitOk, error: rateLimitError } = await supabase
+      .rpc('check_geocoding_rate_limit', {
+        p_ip: clientIP,
+        p_max_requests: RATE_LIMIT_MAX_REQUESTS,
+        p_window_minutes: RATE_LIMIT_WINDOW_MINUTES
+      });
+
+    if (rateLimitError) {
+      console.error('[mapbox-geocode] Erro ao verificar rate limit:', rateLimitError);
+    }
+
+    if (rateLimitOk === false) {
+      console.warn(`[mapbox-geocode] Rate limit excedido para IP: ${clientIP}`);
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Rate limit excedido. Aguarde um momento antes de tentar novamente.',
+        retry_after: 60
+      }), {
+        status: 429,
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json',
+          'Retry-After': '60'
+        }
+      });
+    }
+
     const { address, ticket_id, force_refresh = false } = await req.json();
 
     if (!address) {
@@ -22,10 +74,6 @@ serve(async (req) => {
     if (!MAPBOX_TOKEN) {
       throw new Error('MAPBOX_ACCESS_TOKEN não configurado');
     }
-
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
 
     // 1. Verificar cache global primeiro
     if (!force_refresh) {
@@ -38,7 +86,7 @@ serve(async (req) => {
       if (cachedAddress) {
         const cacheAge = Date.now() - new Date(cachedAddress.cached_at).getTime();
         if (cacheAge < 90 * 24 * 60 * 60 * 1000) { // 90 dias
-          console.log(`✅ Cache hit: ${address}`);
+          console.log(`[mapbox-geocode] ✅ Cache hit: ${address}`);
           
           if (ticket_id) {
             await supabase
@@ -73,7 +121,7 @@ serve(async (req) => {
         .eq('id', ticket_id);
     }
 
-    console.log(`🗺️  Geocodificando via Mapbox: ${address}`);
+    console.log(`[mapbox-geocode] 🗺️  Geocodificando via Mapbox: ${address}`);
 
     // 3. Limpar e simplificar o endereço para melhorar a taxa de sucesso
     let cleanAddress = address
@@ -92,7 +140,7 @@ serve(async (req) => {
       cleanAddress = address;
     }
 
-    console.log(`📍 Endereço limpo: ${cleanAddress}`);
+    console.log(`[mapbox-geocode] 📍 Endereço limpo: ${cleanAddress}`);
 
     // 4. Chamar Mapbox Geocoding API
     const mapboxUrl = new URL('https://api.mapbox.com/geocoding/v5/mapbox.places/' + encodeURIComponent(cleanAddress) + '.json');
@@ -106,7 +154,7 @@ serve(async (req) => {
 
     if (!mapboxResponse.ok) {
       const errorBody = await mapboxResponse.text();
-      console.error(`❌ Erro Mapbox (${mapboxResponse.status}): ${errorBody}`);
+      console.error(`[mapbox-geocode] ❌ Erro Mapbox (${mapboxResponse.status}): ${errorBody}`);
       
       if (ticket_id) {
         await supabase.from('tickets').update({ geocoding_status: 'failed' }).eq('id', ticket_id);
@@ -133,7 +181,7 @@ serve(async (req) => {
       cached: false
     };
 
-    console.log(`✅ Geocodificado: ${address} -> [${result.latitude}, ${result.longitude}]`);
+    console.log(`[mapbox-geocode] ✅ Geocodificado: ${address} -> [${result.latitude}, ${result.longitude}]`);
 
     // 4. Salvar no cache
     await supabase
@@ -167,7 +215,7 @@ serve(async (req) => {
     });
 
   } catch (error: any) {
-    console.error('❌ Erro na geocodificação:', error);
+    console.error('[mapbox-geocode] ❌ Erro na geocodificação:', error);
     return new Response(JSON.stringify({ 
       success: false, 
       error: error?.message || 'Erro desconhecido'
