@@ -1,3 +1,4 @@
+import React from 'react';
 import { Clock, MapPin, Navigation } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -16,7 +17,7 @@ interface RouteTimelineProps {
   startTime?: string;
 }
 
-export const RouteTimeline = ({ items, startTime = "08:00" }: RouteTimelineProps) => {
+const RouteTimelineComponent = ({ items, startTime = "08:00" }: RouteTimelineProps) => {
   const calculateEstimatedTime = (index: number, baseTime: string) => {
     const [hours, minutes] = baseTime.split(':').map(Number);
     const totalMinutes = hours * 60 + minutes + (index * 30); // Estimativa de 30min por OS
@@ -92,3 +93,5 @@ export const RouteTimeline = ({ items, startTime = "08:00" }: RouteTimelineProps
     </div>
   );
 };
+
+export const RouteTimeline = React.memo(RouteTimelineComponent);

@@ -1,3 +1,4 @@
+import React from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,7 +19,7 @@ interface RouteFiltersProps {
   tecnicos?: Array<{ id: string; nome: string }>;
 }
 
-export const RouteFilters = ({
+const RouteFiltersComponent = ({
   periodo,
   setPeriodo,
   statusFilter,
@@ -126,3 +127,5 @@ export const RouteFilters = ({
     </Card>
   );
 };
+
+export const RouteFilters = React.memo(RouteFiltersComponent);
