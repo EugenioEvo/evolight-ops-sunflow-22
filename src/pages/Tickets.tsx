@@ -371,28 +371,13 @@ const Tickets = () => {
 
   const handleGenerateOS = async (ticketId: string) => {
     try {
-      console.log('[Tickets] ===== INICIANDO GERAÇÃO DE OS =====');
-      console.log('[Tickets] Ticket ID:', ticketId);
       setGeneratingOsId(ticketId);
       
-      const { data: { session } } = await supabase.auth.getSession();
-      console.log('[Tickets] Sessão presente:', !!session);
-      console.log('[Tickets] Token presente:', !!session?.access_token);
-      
-      console.log('[Tickets] Invocando função gerar-ordem-servico...');
       const { data, error } = await supabase.functions.invoke('gerar-ordem-servico', {
         body: { ticketId }
       });
 
-      console.log('[Tickets] Resposta recebida:', { 
-        success: !!data, 
-        hasError: !!error,
-        data: data,
-        errorDetails: error 
-      });
-
       if (error) {
-        console.error('[Tickets] Erro da função:', error);
         throw error;
       }
 
@@ -407,10 +392,8 @@ const Tickets = () => {
 
       // Abrir PDF em nova aba se disponível
       if (data?.pdfUrl) {
-        console.log('[handleGenerateOS] Abrindo PDF em nova aba');
         window.open(data.pdfUrl, '_blank');
       } else {
-        console.log('[handleGenerateOS] PDF não disponível no momento');
         toast({
           title: 'Informação',
           description: 'A OS foi gerada. O PDF estará disponível em breve na aba "OS Gerada".',
@@ -421,7 +404,6 @@ const Tickets = () => {
       setActiveTab('ordem_servico_gerada');
       loadData();
     } catch (error: any) {
-      console.error('[handleGenerateOS] Erro:', error);
       toast({
         title: 'Erro',
         description: error.message || 'Erro ao gerar ordem de serviço',

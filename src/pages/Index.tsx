@@ -1,8 +1,7 @@
 import DashboardStats from "@/components/DashboardStats";
 import TechnicianDashboard from "@/components/TechnicianDashboard";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BarChart3, TrendingUp, Activity } from "lucide-react";
+import { TrendingUp, Activity } from "lucide-react";
 import { useTicketsRealtime } from "@/hooks/useTicketsRealtime";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,6 +10,7 @@ import { useNavigate } from "react-router-dom";
 import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { startOfMonth, endOfMonth, eachDayOfInterval, format as formatDate } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { DashboardSkeleton } from "@/components/skeletons";
 
 const PerformanceMetrics = () => {
   const [metricsData, setMetricsData] = useState<any>({

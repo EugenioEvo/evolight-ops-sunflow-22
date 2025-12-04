@@ -16,8 +16,7 @@ export const useTicketsRealtime = ({ onTicketChange }: UseTicketsRealtimeProps =
           schema: 'public',
           table: 'tickets'
         },
-        (payload) => {
-          console.log('Ticket change:', payload);
+        () => {
           onTicketChange?.();
         }
       )
@@ -28,8 +27,7 @@ export const useTicketsRealtime = ({ onTicketChange }: UseTicketsRealtimeProps =
           schema: 'public',
           table: 'ordens_servico'
         },
-        (payload) => {
-          console.log('OS change:', payload);
+        () => {
           onTicketChange?.();
         }
       )
@@ -40,8 +38,7 @@ export const useTicketsRealtime = ({ onTicketChange }: UseTicketsRealtimeProps =
           schema: 'public',
           table: 'rme_relatorios'
         },
-        (payload) => {
-          console.log('RME change:', payload);
+        () => {
           onTicketChange?.();
         }
       )

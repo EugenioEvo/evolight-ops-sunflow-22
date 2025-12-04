@@ -713,14 +713,12 @@ const RouteMap: React.FC = () => {
                   toast.success('✅ Token Mapbox funcionando!', {
                     description: `Lat: ${data.data.latitude.toFixed(6)}, Lng: ${data.data.longitude.toFixed(6)}`
                   });
-                  console.log('📍 Resultado:', data.data);
                 } else {
                   toast.error('❌ Erro na geocodificação', {
                     description: data?.error || 'Erro desconhecido'
                   });
                 }
               } catch (err: any) {
-                console.error('Erro:', err);
                 toast.error('❌ Falha no teste', {
                   description: err.message || 'Verifique os logs'
                 });
