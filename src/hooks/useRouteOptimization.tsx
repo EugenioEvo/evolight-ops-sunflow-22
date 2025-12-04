@@ -72,8 +72,6 @@ export const useRouteOptimization = () => {
         }))
       ];
 
-      console.log('🗺️ Otimizando rota com', coordinates.length, 'pontos');
-
       let data: any, error: any, provider: Provider = 'local';
       
       // Tentar Mapbox primeiro
@@ -86,11 +84,10 @@ export const useRouteOptimization = () => {
 
         // Validação de token Mapbox
         if (data && data.success === false && String(data.error || '').includes('MAPBOX_ACCESS_TOKEN')) {
-          console.warn('⚠️ Token Mapbox ausente ou inválido');
           toast.warning('Token Mapbox não configurado. Usando OSRM/Local.');
         }
-      } catch (e) {
-        console.warn('⚠️ Mapbox falhou, tentando OSRM...', e);
+      } catch {
+        // Mapbox falhou, tentar OSRM
       }
 
       // Se Mapbox não funcionou, tentar OSRM
@@ -101,19 +98,17 @@ export const useRouteOptimization = () => {
           });
           data = osrmResult.data;
           error = osrmResult.error;
-        } catch (e) {
-          console.warn('⚠️ OSRM também falhou', e);
+        } catch {
+          // OSRM também falhou
         }
       }
 
       if (error) {
-        console.error('Erro ao chamar APIs de otimização:', error);
         throw error;
       }
 
       // Se APIs falharam, usar algoritmo local
       if (!data || !data.success || data.fallback) {
-        console.warn('📍 Usando otimização local (APIs indisponíveis)');
         toast.warning('Usando otimização local (APIs indisponíveis)');
         
         const localOptimized = optimizeRouteAdvanced(tickets);
@@ -131,8 +126,6 @@ export const useRouteOptimization = () => {
       provider = data.optimizationUsed ? 'mapbox' : (data.route?.geometry ? 'osrm' : 'local');
       
       setOptimizedRoute(data);
-
-      console.info(`✅ Rota otimizada via ${provider.toUpperCase()}: ${data.route.distanceKm} km, ${data.route.durationFormatted}`);
       
       toast.success(
         `Rota otimizada: ${data.route.distanceKm} km, ${data.route.durationFormatted}`,
@@ -166,10 +159,9 @@ export const useRouteOptimization = () => {
             waypoints_order: data.optimizedOrder || [],
             ticket_ids: reorderedTickets.map(t => (t as any).ticketId || t.id)
           });
-          console.info('💾 Rota persistida no banco de dados');
         }
-      } catch (persistErr) {
-        console.warn('⚠️ Não foi possível salvar a rota:', persistErr);
+      } catch {
+        // Não foi possível salvar a rota
       }
 
       return {
@@ -178,8 +170,7 @@ export const useRouteOptimization = () => {
         data
       };
 
-    } catch (error) {
-      console.error('❌ Erro na otimização:', error);
+    } catch {
       toast.error('Erro ao otimizar rota, usando método local');
       
       const localOptimized = optimizeRouteAdvanced(tickets);

@@ -30,8 +30,6 @@ export const useGeocoding = () => {
 
     setLoading(true);
     try {
-      console.log(`Geocodificando: ${address}`);
-
       // Tentar Mapbox primeiro (mais preciso), fallback para Nominatim
       let data, error;
       
@@ -41,8 +39,7 @@ export const useGeocoding = () => {
         });
         data = mapboxResult.data;
         error = mapboxResult.error;
-      } catch (mapboxError) {
-        console.warn('Mapbox falhou, usando Nominatim:', mapboxError);
+      } catch {
         const nominatimResult = await supabase.functions.invoke('geocode-address', {
           body: { address, ticket_id: ticketId }
         });
@@ -58,7 +55,6 @@ export const useGeocoding = () => {
 
       return data.data;
     } catch (error: any) {
-      console.error('Erro na geocodificação:', error);
       toast({
         title: 'Erro ao localizar endereço',
         description: error.message || 'Não foi possível obter coordenadas',

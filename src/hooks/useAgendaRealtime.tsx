@@ -21,8 +21,6 @@ export const useAgendaRealtime = ({ onUpdate, selectedDate }: UseAgendaRealtimeP
           table: 'ordens_servico'
         },
         (payload) => {
-          console.log('[Realtime] Mudança detectada em ordens_servico:', payload);
-          
           // Notificar usuário sobre mudanças
           if (payload.eventType === 'INSERT') {
             toast({
@@ -57,17 +55,12 @@ export const useAgendaRealtime = ({ onUpdate, selectedDate }: UseAgendaRealtimeP
           }
 
           // Recarregar dados
-          if (onUpdate) {
-            onUpdate();
-          }
+          onUpdate?.();
         }
       )
-      .subscribe((status) => {
-        console.log('[Realtime] Status da conexão:', status);
-      });
+      .subscribe();
 
     return () => {
-      console.log('[Realtime] Desconectando canal');
       supabase.removeChannel(channel);
     };
   }, [onUpdate, selectedDate, toast]);

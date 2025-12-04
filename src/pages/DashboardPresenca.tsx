@@ -254,7 +254,6 @@ export default function DashboardPresenca() {
           table: "ordens_servico",
         },
         (payload) => {
-          console.log("OS change:", payload);
           loadOrdensServico();
         }
       )
