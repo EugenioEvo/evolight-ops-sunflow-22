@@ -165,3 +165,78 @@
     animation: fadeIn 0.3s ease-out;
   }
 }
+
+/* Leaflet Map Container Fixes */
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  background: hsl(var(--muted));
+}
+
+.leaflet-control-container {
+  position: absolute;
+}
+
+.leaflet-pane {
+  z-index: 1;
+}
+
+.leaflet-tile-pane {
+  z-index: 2;
+}
+
+.leaflet-overlay-pane {
+  z-index: 4;
+}
+
+.leaflet-shadow-pane {
+  z-index: 5;
+}
+
+.leaflet-marker-pane {
+  z-index: 6;
+}
+
+.leaflet-tooltip-pane {
+  z-index: 7;
+}
+
+.leaflet-popup-pane {
+  z-index: 8;
+}
+
+.leaflet-control {
+  z-index: 9;
+}
+
+/* Custom marker icons fix */
+.custom-numbered-icon,
+.custom-evolight-icon {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* MarkerCluster Animation Styles */
+.marker-cluster {
+  background-clip: padding-box;
+  border-radius: 50%;
+}
+
+.marker-cluster div {
+  width: 100%;
+  height: 100%;
+  margin-left: 0;
+  margin-top: 0;
+  text-align: center;
+  border-radius: 50%;
+}
+
+.leaflet-cluster-anim .leaflet-marker-icon, 
+.leaflet-cluster-anim .leaflet-marker-shadow {
+  transition: transform 0.3s ease-out, opacity 0.3s ease-in-out;
+}
+
+.leaflet-cluster-spider-leg {
+  transition: stroke-dashoffset 0.3s ease-out, stroke-opacity 0.3s ease-in-out;
+}
