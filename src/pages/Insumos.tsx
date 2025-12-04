@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -12,9 +12,10 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { VirtualizedTable, Column } from "@/components/VirtualizedTable";
+import { useVirtualization } from "@/hooks/useVirtualization";
 
 const insumoSchema = z.object({
   nome: z.string().min(1, "Nome é obrigatório"),
@@ -76,6 +77,96 @@ interface Responsavel extends ResponsavelForm {
   created_at: string;
   updated_at: string;
 }
+
+// Componente de tabela virtualizada para movimentações
+interface MovimentacoesTableProps {
+  movimentacoes: Movimentacao[];
+  insumos: Insumo[];
+}
+
+const MovimentacoesTable = ({ movimentacoes, insumos }: MovimentacoesTableProps) => {
+  const { shouldVirtualize, maxHeight, overscan } = useVirtualization(movimentacoes.length, {
+    threshold: 30,
+  });
+
+  const columns: Column<Movimentacao>[] = useMemo(() => [
+    {
+      key: 'data',
+      header: 'Data',
+      width: '180px',
+      cell: (mov) => new Date(mov.data_movimentacao).toLocaleString('pt-BR'),
+    },
+    {
+      key: 'insumo',
+      header: 'Insumo',
+      width: '200px',
+      cell: (mov) => {
+        const insumo = insumos.find(i => i.id === mov.insumo_id);
+        return insumo?.nome || 'N/A';
+      },
+    },
+    {
+      key: 'tipo',
+      header: 'Tipo',
+      width: '120px',
+      cell: (mov) => (
+        <Badge 
+          variant={mov.tipo === "entrada" ? "default" : "destructive"}
+          className="capitalize"
+        >
+          {mov.tipo === "entrada" ? (
+            <ArrowUpIcon className="h-3 w-3 mr-1" />
+          ) : (
+            <ArrowDownIcon className="h-3 w-3 mr-1" />
+          )}
+          {mov.tipo}
+        </Badge>
+      ),
+    },
+    {
+      key: 'quantidade',
+      header: 'Quantidade',
+      width: '120px',
+      cell: (mov) => {
+        const insumo = insumos.find(i => i.id === mov.insumo_id);
+        return `${mov.quantidade} ${insumo?.unidade || ''}`;
+      },
+    },
+    {
+      key: 'responsavel',
+      header: 'Responsável',
+      width: '150px',
+      cell: (mov) => mov.responsaveis?.nome || 'N/A',
+    },
+    {
+      key: 'motivo',
+      header: 'Motivo',
+      cell: (mov) => mov.motivo || '-',
+    },
+  ], [insumos]);
+
+  if (!shouldVirtualize) {
+    // Renderiza tabela normal para poucos dados
+    return (
+      <VirtualizedTable
+        data={movimentacoes}
+        columns={columns}
+        maxHeight={400}
+        emptyMessage="Nenhuma movimentação registrada"
+      />
+    );
+  }
+
+  return (
+    <VirtualizedTable
+      data={movimentacoes}
+      columns={columns}
+      maxHeight={maxHeight}
+      overscan={overscan}
+      emptyMessage="Nenhuma movimentação registrada"
+    />
+  );
+};
 
 export default function Insumos() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -875,54 +966,10 @@ export default function Insumos() {
         <TabsContent value="movimentacoes" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Histórico de Movimentações</CardTitle>
+              <CardTitle>Histórico de Movimentações ({movimentacoes.length})</CardTitle>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Data</TableHead>
-                    <TableHead>Insumo</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Quantidade</TableHead>
-                    <TableHead>Responsável</TableHead>
-                    <TableHead>Motivo</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {movimentacoes.map((movimentacao) => {
-                    const insumo = insumos.find(i => i.id === movimentacao.insumo_id);
-                    return (
-                      <TableRow key={movimentacao.id}>
-                        <TableCell>
-                          {new Date(movimentacao.data_movimentacao).toLocaleString('pt-BR')}
-                        </TableCell>
-                        <TableCell>{insumo?.nome || 'N/A'}</TableCell>
-                        <TableCell>
-                          <Badge 
-                            variant={movimentacao.tipo === "entrada" ? "default" : "destructive"}
-                            className="capitalize"
-                          >
-                            {movimentacao.tipo === "entrada" ? (
-                              <ArrowUpIcon className="h-3 w-3 mr-1" />
-                            ) : (
-                              <ArrowDownIcon className="h-3 w-3 mr-1" />
-                            )}
-                            {movimentacao.tipo}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {movimentacao.quantidade} {insumo?.unidade || ''}
-                        </TableCell>
-                        <TableCell>
-                          {movimentacao.responsaveis?.nome || 'N/A'}
-                        </TableCell>
-                        <TableCell>{movimentacao.motivo || '-'}</TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+              <MovimentacoesTable movimentacoes={movimentacoes} insumos={insumos} />
             </CardContent>
           </Card>
         </TabsContent>
