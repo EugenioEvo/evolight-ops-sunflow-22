@@ -146,11 +146,13 @@ const Agenda = () => {
     isSameDay(new Date(os.data_programada), selectedDate)
   );
 
+  // Usar chave com ano-mês-dia para evitar conflitos entre meses
   const diasComOS = ordensServico.reduce((acc, os) => {
-    const dia = new Date(os.data_programada).getDate();
-    acc[dia] = (acc[dia] || 0) + 1;
+    const date = new Date(os.data_programada);
+    const key = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+    acc[key] = (acc[key] || 0) + 1;
     return acc;
-  }, {} as Record<number, number>);
+  }, {} as Record<string, number>);
 
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
@@ -293,7 +295,10 @@ const Agenda = () => {
                 locale={ptBR}
                 className="rounded-md border"
                 modifiers={{
-                  hasOS: (date) => diasComOS[date.getDate()] > 0
+                  hasOS: (date) => {
+                    const key = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+                    return diasComOS[key] > 0;
+                  }
                 }}
                 modifiersClassNames={{
                   hasOS: 'bg-primary/10 font-bold'
