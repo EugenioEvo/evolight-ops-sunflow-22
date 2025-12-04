@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
-import MarkerClusterGroup from 'react-leaflet-cluster';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -959,12 +958,7 @@ const RouteMap: React.FC = () => {
                       </Popup>
                     </Marker>
                     
-                    {/* Marcadores dos tickets com clustering e numeração quando rota selecionada */}
-                    <MarkerClusterGroup
-                      chunkedLoading
-                      showCoverageOnHover={false}
-                      maxClusterRadius={60}
-                    >
+                    {/* Marcadores dos tickets com numeração quando rota selecionada */}
                     {selectedRoute ? (
                       rotasOtimizadas
                         .find(r => r.id === selectedRoute)
@@ -1040,7 +1034,6 @@ const RouteMap: React.FC = () => {
                         </Marker>
                       ))
                     )}
-                    </MarkerClusterGroup>
                     
                     {/* Linha da rota selecionada com cores por provedor */}
                     {selectedRoute && (() => {
