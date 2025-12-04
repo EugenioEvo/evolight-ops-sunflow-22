@@ -29,13 +29,22 @@ const MarkerCluster: React.FC<MarkerClusterProps> = ({ markers, disableClusterin
   useEffect(() => {
     if (!map || markers.length === 0) return;
 
-    // Create cluster group with custom options
+    // Create cluster group with custom options and smooth animations
     const clusterGroup = L.markerClusterGroup({
       chunkedLoading: true,
       showCoverageOnHover: false,
       maxClusterRadius: disableClustering ? 0 : 60,
       spiderfyOnMaxZoom: true,
       disableClusteringAtZoom: 16,
+      // Animation options
+      animate: true,
+      animateAddingMarkers: true,
+      spiderfyDistanceMultiplier: 1.5,
+      spiderLegPolylineOptions: { 
+        weight: 2, 
+        color: 'hsl(217, 91%, 60%)', 
+        opacity: 0.6 
+      },
       iconCreateFunction: (cluster) => {
         const count = cluster.getChildCount();
         let size: 'small' | 'medium' | 'large' = 'small';
