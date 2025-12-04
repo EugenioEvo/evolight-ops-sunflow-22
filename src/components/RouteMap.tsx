@@ -1078,4 +1078,4 @@ const RouteMap: React.FC = () => {
   );
 };
 
-export default RouteMap;
+export default React.memo(RouteMap);

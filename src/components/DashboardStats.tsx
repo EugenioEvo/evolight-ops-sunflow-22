@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { AlertTriangle, CheckCircle, Clock, FileText, Wrench, ClipboardCheck } from "lucide-react";
 import { supabase } from '@/integrations/supabase/client';
@@ -146,4 +146,4 @@ const DashboardStats = () => {
   );
 };
 
-export default DashboardStats;
+export default React.memo(DashboardStats);

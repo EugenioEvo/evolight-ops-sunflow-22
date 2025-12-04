@@ -1,3 +1,4 @@
+import React from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { MapPin, Clock, TrendingUp, Users } from "lucide-react";
 
@@ -8,7 +9,7 @@ interface RouteStatsCardsProps {
   avgDuration: number;
 }
 
-export const RouteStatsCards = ({ 
+const RouteStatsCardsComponent = ({ 
   totalOS, 
   totalDistance, 
   activeTechnicians, 
@@ -61,3 +62,5 @@ export const RouteStatsCards = ({
     </div>
   );
 };
+
+export const RouteStatsCards = React.memo(RouteStatsCardsComponent);
