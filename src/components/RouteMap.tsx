@@ -348,7 +348,7 @@ const RouteMap: React.FC = () => {
     setOptimizingRoute(null);
   }, [optimizeRoute]);
 
-  const handleRouteReorder = useCallback((routeId: number, newTicketsOrder: TicketData[]) => {
+  const handleRouteReorder = useCallback(async (routeId: number, newTicketsOrder: TicketData[]) => {
     // Update local state immediately for responsive UI
     setOrdensServico(prev => {
       const updatedOS = [...prev];
@@ -360,8 +360,64 @@ const RouteMap: React.FC = () => {
       });
       return updatedOS;
     });
-    toast.success("Ordem das paradas atualizada");
-  }, []);
+
+    // Persist to database
+    const rota = rotasOtimizadas.find(r => r.id === routeId);
+    if (!rota?.tecnicoId || !rota?.dataRota) {
+      toast.warning("Ordem atualizada localmente (sem técnico/data para persistir)");
+      return;
+    }
+
+    try {
+      const waypointsOrder = newTicketsOrder.map((t, idx) => ({
+        ticketId: t.ticketId,
+        osId: t.id,
+        ordem: idx,
+        endereco: t.endereco
+      }));
+
+      const ticketIds = newTicketsOrder.map(t => t.ticketId);
+      
+      // Calculate simple distance estimate
+      const coords = newTicketsOrder
+        .filter(t => t.hasRealCoords)
+        .map(t => t.coordenadas);
+      
+      let totalDistance = 0;
+      for (let i = 1; i < coords.length; i++) {
+        const [lat1, lon1] = coords[i - 1];
+        const [lat2, lon2] = coords[i];
+        const R = 6371;
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+        totalDistance += R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      }
+
+      // Upsert route optimization record
+      const { error } = await supabase
+        .from('route_optimizations')
+        .upsert({
+          tecnico_id: rota.tecnicoId,
+          data_rota: rota.dataRota,
+          waypoints_order: waypointsOrder,
+          ticket_ids: ticketIds,
+          geometry: coords,
+          distance_km: Math.round(totalDistance * 10) / 10,
+          duration_minutes: newTicketsOrder.length * 30,
+          optimization_method: 'manual',
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'tecnico_id,data_rota'
+        });
+
+      if (error) throw error;
+      toast.success("Ordem das paradas salva!");
+    } catch (err) {
+      console.error('Erro ao persistir ordem:', err);
+      toast.error("Erro ao salvar ordem no banco");
+    }
+  }, [rotasOtimizadas]);
 
   const handleOptimizeAll = useCallback(async () => {
     const today = new Date().toISOString().slice(0, 10);
