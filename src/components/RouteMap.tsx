@@ -348,6 +348,21 @@ const RouteMap: React.FC = () => {
     setOptimizingRoute(null);
   }, [optimizeRoute]);
 
+  const handleRouteReorder = useCallback((routeId: number, newTicketsOrder: TicketData[]) => {
+    // Update local state immediately for responsive UI
+    setOrdensServico(prev => {
+      const updatedOS = [...prev];
+      newTicketsOrder.forEach((ticket, index) => {
+        const osIndex = updatedOS.findIndex(os => os.id === ticket.id);
+        if (osIndex !== -1) {
+          updatedOS[osIndex] = { ...updatedOS[osIndex], _ordem: index };
+        }
+      });
+      return updatedOS;
+    });
+    toast.success("Ordem das paradas atualizada");
+  }, []);
+
   const handleOptimizeAll = useCallback(async () => {
     const today = new Date().toISOString().slice(0, 10);
     const todayRoutes = rotasOtimizadas.filter(
@@ -579,6 +594,7 @@ const RouteMap: React.FC = () => {
           <RouteDetails
             selectedRoute={selectedRoute}
             rotas={rotasOtimizadas}
+            onRouteUpdate={handleRouteReorder}
           />
 
           {/* Legend */}
