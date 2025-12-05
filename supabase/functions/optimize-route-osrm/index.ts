@@ -14,7 +14,7 @@ interface Coordinate {
   isStartPoint?: boolean;
 }
 
-interface OSRMRoute {
+interface OSRMTrip {
   distance: number;
   duration: number;
   geometry?: {
@@ -22,16 +22,22 @@ interface OSRMRoute {
   };
 }
 
-interface OSRMResponse {
+interface OSRMTripResponse {
   code: string;
-  routes?: OSRMRoute[];
-  waypoints?: any[];
+  trips?: OSRMTrip[];
+  waypoints?: Array<{
+    waypoint_index: number;
+    trips_index: number;
+    location: [number, number];
+  }>;
 }
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
+
+  const startTime = Date.now();
 
   try {
     const { coordinates } = await req.json();
@@ -40,9 +46,9 @@ serve(async (req) => {
       throw new Error('Pelo menos 2 coordenadas são necessárias para otimização');
     }
 
-    console.log(`Otimizando rota com ${coordinates.length} pontos`);
+    console.log(`🚀 [OSRM] Otimizando rota com ${coordinates.length} pontos`);
 
-    // Identificar ponto inicial e ordenar (ponto inicial primeiro)
+    // Identificar ponto inicial (Evolight)
     const startPoint = coordinates.find((c: Coordinate) => c.isStartPoint);
     const otherPoints = coordinates.filter((c: Coordinate) => !c.isStartPoint);
     const orderedCoords = startPoint ? [startPoint, ...otherPoints] : coordinates;
@@ -52,49 +58,65 @@ serve(async (req) => {
       .map((coord: Coordinate) => `${coord.longitude},${coord.latitude}`)
       .join(';');
 
-    // Chamar API do OSRM (servidor público)
-    const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${coordsString}?overview=full&geometries=geojson&steps=false`;
+    // Usar OSRM Trip API para reordenação otimizada
+    // source=first: manter primeiro ponto fixo (Evolight)
+    // roundtrip=false: não voltar ao início
+    const osrmUrl = `https://router.project-osrm.org/trip/v1/driving/${coordsString}?source=first&roundtrip=false&overview=full&geometries=geojson&steps=false`;
     
-    console.log('Chamando OSRM:', osrmUrl.substring(0, 100) + '...');
+    console.log(`📍 [OSRM] URL: ${osrmUrl.substring(0, 80)}...`);
 
     const osrmResponse = await fetch(osrmUrl, {
       method: 'GET',
       headers: {
-        'User-Agent': 'Lovable-Route-Optimizer/1.0'
+        'User-Agent': 'Evolight-Route-Optimizer/1.0'
       }
     });
 
     if (!osrmResponse.ok) {
+      console.error(`❌ [OSRM] HTTP error: ${osrmResponse.status}`);
       throw new Error(`OSRM API error: ${osrmResponse.status}`);
     }
 
-    const data: OSRMResponse = await osrmResponse.json();
+    const data: OSRMTripResponse = await osrmResponse.json();
 
-    if (data.code !== 'Ok' || !data.routes || data.routes.length === 0) {
+    if (data.code !== 'Ok' || !data.trips || data.trips.length === 0) {
+      console.error(`❌ [OSRM] Invalid response: ${data.code}`);
       throw new Error('OSRM não encontrou rota válida');
     }
 
-    const route = data.routes[0];
+    const trip = data.trips[0];
 
-    // Retornar rota otimizada
+    // Extrair ordem otimizada dos waypoints
+    const optimizedOrder = data.waypoints 
+      ? data.waypoints.map((wp, idx) => ({
+          id: orderedCoords[wp.waypoint_index]?.id || `unknown-${idx}`,
+          order: idx + 1,
+          originalIndex: wp.waypoint_index
+        }))
+      : orderedCoords.map((c: Coordinate, i: number) => ({
+          id: c.id,
+          order: i + 1,
+          originalIndex: i
+        }));
+
     const result = {
       success: true,
       route: {
-        distance: route.distance, // metros
-        duration: route.duration, // segundos
-        distanceKm: (route.distance / 1000).toFixed(1),
-        durationMinutes: Math.round(route.duration / 60),
-        durationFormatted: formatDuration(route.duration),
-        geometry: route.geometry?.coordinates || []
+        distance: trip.distance,
+        duration: trip.duration,
+        distanceKm: (trip.distance / 1000).toFixed(1),
+        durationMinutes: Math.round(trip.duration / 60),
+        durationFormatted: formatDuration(trip.duration),
+        geometry: trip.geometry?.coordinates || []
       },
       waypoints: data.waypoints || [],
-      optimizedOrder: orderedCoords.map((c: Coordinate, i: number) => ({
-        id: c.id,
-        order: i + 1
-      }))
+      optimizedOrder,
+      provider: 'osrm',
+      reordered: true
     };
 
-    console.log(`Rota otimizada: ${result.route.distanceKm} km, ${result.route.durationFormatted}`);
+    const elapsed = Date.now() - startTime;
+    console.log(`✅ [OSRM] Rota otimizada em ${elapsed}ms: ${result.route.distanceKm} km, ${result.route.durationFormatted}`);
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -102,7 +124,8 @@ serve(async (req) => {
     });
 
   } catch (error) {
-    console.error('Erro ao otimizar rota:', error);
+    const elapsed = Date.now() - startTime;
+    console.error(`❌ [OSRM] Erro após ${elapsed}ms:`, error);
     
     const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
     
@@ -110,11 +133,12 @@ serve(async (req) => {
       JSON.stringify({
         success: false,
         error: errorMessage,
-        fallback: true
+        fallback: true,
+        provider: 'osrm'
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200, // Retorna 200 para indicar fallback
+        status: 200,
       }
     );
   }
