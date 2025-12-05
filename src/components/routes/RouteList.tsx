@@ -4,9 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { MapPin, Clock, Route as RouteIcon, RefreshCw, CheckCircle, AlertCircle } from "lucide-react";
+import { MapPin, Clock, Route as RouteIcon, RefreshCw, CheckCircle, AlertCircle, Calendar, Sparkles } from "lucide-react";
 import { RouteExportButtons } from '@/components/RouteExportButtons';
 import type { RotaOtimizada } from './types';
+import { format, isToday, isTomorrow, parseISO } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 interface RouteListProps {
   rotas: RotaOtimizada[];
@@ -17,6 +19,19 @@ interface RouteListProps {
   isGeocoding: boolean;
   optimizingRouteId: number | null;
 }
+
+// Helper para formatar data da rota
+const formatRouteDate = (dateStr: string | null): string => {
+  if (!dateStr) return 'Sem data';
+  try {
+    const date = parseISO(dateStr);
+    if (isToday(date)) return 'Hoje';
+    if (isTomorrow(date)) return 'Amanhã';
+    return format(date, "dd/MM (EEE)", { locale: ptBR });
+  } catch {
+    return dateStr;
+  }
+};
 
 const RouteListComponent: React.FC<RouteListProps> = ({
   rotas,
@@ -32,14 +47,19 @@ const RouteListComponent: React.FC<RouteListProps> = ({
       <CardHeader>
         <CardTitle className="flex items-center space-x-2">
           <RouteIcon className="h-5 w-5" />
-          <span>Rotas Otimizadas</span>
+          <span>Rotas por Técnico/Dia</span>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
+        {rotas.length === 0 && (
+          <p className="text-sm text-muted-foreground text-center py-4">
+            Nenhuma rota encontrada com os filtros atuais
+          </p>
+        )}
         {rotas.map((rota) => (
           <div 
             key={rota.id}
-            className={`p-3 rounded-lg border cursor-pointer transition-all duration-200 ${
+            className={`p-3 rounded-lg border cursor-pointer transition-all duration-200 animate-fade-in ${
               selectedRoute === rota.id 
                 ? 'bg-primary/5 border-primary shadow-sm' 
                 : 'hover:bg-muted/50 hover:border-muted-foreground/20'
@@ -53,11 +73,22 @@ const RouteListComponent: React.FC<RouteListProps> = ({
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-semibold text-sm truncate">{rota.nome}</h4>
-                  <Badge variant="outline" className="ml-2">{rota.ticketsData.length} OS</Badge>
+                <div className="flex items-center justify-between gap-2">
+                  <h4 className="font-semibold text-sm truncate">{rota.tecnico}</h4>
+                  <div className="flex items-center gap-1.5">
+                    {rota.isOptimized && (
+                      <Badge variant="secondary" className="bg-green-100 text-green-800 text-xs">
+                        <Sparkles className="h-3 w-3 mr-1" />
+                        Otimizada
+                      </Badge>
+                    )}
+                    <Badge variant="outline">{rota.ticketsData.length} OS</Badge>
+                  </div>
                 </div>
-                <p className="text-xs text-muted-foreground truncate">{rota.tecnico}</p>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Calendar className="h-3 w-3" />
+                  <span className="font-medium">{formatRouteDate(rota.dataRota)}</span>
+                </div>
               </div>
             </div>
 
