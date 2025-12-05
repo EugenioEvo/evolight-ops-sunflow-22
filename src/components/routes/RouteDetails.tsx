@@ -22,7 +22,10 @@ const RouteDetailsComponent: React.FC<RouteDetailsProps> = ({
     id: t.id,
     address: t.endereco,
     priority: t.prioridade,
-    status: t.status
+    status: t.status,
+    coordenadas: t.coordenadas,
+    hasRealCoords: t.hasRealCoords,
+    tempoServico: parseInt(t.estimativa) || 30
   }));
 
   return (
