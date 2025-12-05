@@ -23,3 +23,12 @@ verify_jwt = false
 
 [functions.optimize-route-osrm]
 verify_jwt = true
+
+[functions.mapbox-directions]
+verify_jwt = true
+
+[functions.mapbox-geocode]
+verify_jwt = true
+
+[functions.process-email-retries]
+verify_jwt = false
