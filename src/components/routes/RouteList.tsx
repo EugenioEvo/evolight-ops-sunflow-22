@@ -16,8 +16,10 @@ interface RouteListProps {
   onSelectRoute: (id: number | null) => void;
   onGeocode: (rota: RotaOtimizada) => Promise<void>;
   onOptimize: (rota: RotaOtimizada) => Promise<void>;
+  onOptimizeAll: () => Promise<void>;
   isGeocoding: boolean;
   optimizingRouteId: number | null;
+  isOptimizingAll: boolean;
 }
 
 // Helper para formatar data da rota
@@ -39,16 +41,38 @@ const RouteListComponent: React.FC<RouteListProps> = ({
   onSelectRoute,
   onGeocode,
   onOptimize,
+  onOptimizeAll,
   isGeocoding,
-  optimizingRouteId
+  optimizingRouteId,
+  isOptimizingAll
 }) => {
+  // Rotas de hoje que podem ser otimizadas
+  const todayRoutes = rotas.filter(r => r.dataRota && isToday(parseISO(r.dataRota)) && r.canOptimize && !r.isOptimized);
+  const canOptimizeAllToday = todayRoutes.length > 0;
+
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center space-x-2">
-          <RouteIcon className="h-5 w-5" />
-          <span>Rotas por Técnico/Dia</span>
-        </CardTitle>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center space-x-2">
+            <RouteIcon className="h-5 w-5" />
+            <span>Rotas por Técnico/Dia</span>
+          </CardTitle>
+        </div>
+        {canOptimizeAllToday && (
+          <Button
+            variant="default"
+            size="sm"
+            className="mt-3 w-full"
+            disabled={isOptimizingAll || optimizingRouteId !== null}
+            onClick={onOptimizeAll}
+          >
+            <Sparkles className={`h-4 w-4 mr-2 ${isOptimizingAll ? 'animate-pulse' : ''}`} />
+            {isOptimizingAll 
+              ? 'Otimizando todas...' 
+              : `Otimizar Todas do Dia (${todayRoutes.length})`}
+          </Button>
+        )}
       </CardHeader>
       <CardContent className="space-y-3">
         {rotas.length === 0 && (

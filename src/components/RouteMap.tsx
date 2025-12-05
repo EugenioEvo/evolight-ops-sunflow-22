@@ -40,6 +40,7 @@ const RouteMap: React.FC = () => {
   const [routeGeometry, setRouteGeometry] = useState<[number, number][] | null>(null);
   const [routeProvider, setRouteProvider] = useState<RouteProvider>(null);
   const [tecnicos, setTecnicos] = useState<TecnicoOption[]>([]);
+  const [optimizingAll, setOptimizingAll] = useState(false);
   
   // Hooks
   const { profile } = useAuth();
@@ -347,6 +348,40 @@ const RouteMap: React.FC = () => {
     setOptimizingRoute(null);
   }, [optimizeRoute]);
 
+  const handleOptimizeAll = useCallback(async () => {
+    const today = new Date().toISOString().slice(0, 10);
+    const todayRoutes = rotasOtimizadas.filter(
+      r => r.dataRota === today && r.canOptimize && !r.isOptimized
+    );
+
+    if (todayRoutes.length === 0) {
+      toast.info('Nenhuma rota para otimizar hoje');
+      return;
+    }
+
+    setOptimizingAll(true);
+    toast.info(`Otimizando ${todayRoutes.length} rotas...`);
+
+    let successCount = 0;
+    for (const rota of todayRoutes) {
+      setOptimizingRoute(rota.id);
+      try {
+        await optimizeRoute(rota.ticketsData, {
+          tecnicoId: rota.tecnicoId || undefined,
+          dataRota: rota.dataRota || today
+        });
+        successCount++;
+      } catch {
+        toast.error(`Erro ao otimizar rota de ${rota.tecnico}`);
+      }
+    }
+
+    await loadOrdensServico();
+    setOptimizingRoute(null);
+    setOptimizingAll(false);
+    toast.success(`${successCount} de ${todayRoutes.length} rotas otimizadas`);
+  }, [rotasOtimizadas, optimizeRoute]);
+
   const handleTestMapbox = useCallback(async () => {
     const enderecoTeste = "Avenida Paulista, 1578, São Paulo, SP";
     toast.info('🔍 Testando geocodificação...', { description: `Endereço: ${enderecoTeste}` });
@@ -534,8 +569,10 @@ const RouteMap: React.FC = () => {
             onSelectRoute={setSelectedRoute}
             onGeocode={handleGeocode}
             onOptimize={handleOptimize}
+            onOptimizeAll={handleOptimizeAll}
             isGeocoding={geocoding}
             optimizingRouteId={optimizingRoute}
+            isOptimizingAll={optimizingAll}
           />
 
           {/* Route Details/Timeline */}
