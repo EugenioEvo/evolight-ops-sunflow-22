@@ -22,10 +22,13 @@ export interface RotaOtimizada {
   nome: string;
   ticketsData: TicketData[];
   tecnico: string;
+  tecnicoId: string | null;
+  dataRota: string | null; // Data da rota (YYYY-MM-DD)
   distanciaTotal: string;
   tempoEstimado: string;
   allGeocoded: boolean;
   canOptimize?: boolean;
+  isOptimized?: boolean; // Se já foi otimizada via API
 }
 
 export interface TecnicoOption {

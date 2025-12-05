@@ -228,55 +228,85 @@ const RouteMap: React.FC = () => {
     });
   }, [ordensServico]);
 
-  // Group by technician and optimize routes - memoized
+  // Group by technician AND date - memoized
   const rotasOtimizadas: RotaOtimizada[] = useMemo(() => {
-    const rotasPorTecnico = ordensServico.reduce((acc: any[], os) => {
+    interface RotaTemp {
+      tecnico: string;
+      tecnicoId: string | null;
+      dataRota: string | null;
+      ticketsData: TicketData[];
+    }
+    
+    // Create a key combining technician and date
+    const rotasPorTecnicoData = new Map<string, RotaTemp>();
+    
+    ordensServico.forEach(os => {
       const tecnicoNome = os.tecnicos?.profiles?.nome || 'Sem técnico';
-      let rota = acc.find(r => r.tecnico === tecnicoNome);
+      const tecnicoId = os.tecnicos?.id || null;
+      const dataOS = os.data_programada ? os.data_programada.split('T')[0] : 'sem-data';
+      const key = `${tecnicoId || 'sem-tecnico'}_${dataOS}`;
       
-      if (!rota) {
-        rota = {
-          id: acc.length + 1,
-          nome: `Rota - ${tecnicoNome}`,
-          ticketsData: [],
-          tecnico: tecnicoNome
-        };
-        acc.push(rota);
+      if (!rotasPorTecnicoData.has(key)) {
+        rotasPorTecnicoData.set(key, {
+          tecnico: tecnicoNome,
+          tecnicoId,
+          dataRota: dataOS !== 'sem-data' ? dataOS : null,
+          ticketsData: []
+        });
       }
       
       const ticketData = tickets.find(t => t.id === os.id);
       if (ticketData) {
-        rota.ticketsData.push(ticketData);
+        rotasPorTecnicoData.get(key)!.ticketsData.push(ticketData);
       }
-      
-      return acc;
-    }, []);
+    });
 
-    const optimizedRoutes = rotasPorTecnico.map(rota => {
+    // Convert to array and add IDs, optimize, and calculate totals
+    let routeId = 0;
+    const optimizedRoutes: RotaOtimizada[] = [];
+
+    // Sort entries by date (today first, then tomorrow, etc)
+    const sortedEntries = Array.from(rotasPorTecnicoData.entries()).sort((a, b) => {
+      const dateA = a[1].dataRota || '9999-99-99';
+      const dateB = b[1].dataRota || '9999-99-99';
+      return dateA.localeCompare(dateB);
+    });
+
+    for (const [, rota] of sortedEntries) {
+      routeId++;
       const optimizedTickets = optimizeRouteAdvanced(rota.ticketsData);
       const totals = calculateRouteTotals(optimizedTickets);
       const allGeocoded = optimizedTickets.every((t: TicketData) => t.hasRealCoords);
       const canOptimize = allGeocoded && optimizedTickets.length >= 2;
       
-      return {
-        ...rota,
+      optimizedRoutes.push({
+        id: routeId,
+        nome: `${rota.tecnico} - ${rota.dataRota || 'Sem data'}`,
         ticketsData: optimizedTickets,
+        tecnico: rota.tecnico,
+        tecnicoId: rota.tecnicoId,
+        dataRota: rota.dataRota,
         distanciaTotal: totals.distance,
         tempoEstimado: totals.time,
         allGeocoded,
-        canOptimize
-      };
-    });
+        canOptimize,
+        isOptimized: false
+      });
+    }
 
     return optimizedRoutes.length > 0 ? optimizedRoutes : [
       {
         id: 1,
         nome: 'Ordens Pendentes',
         ticketsData: optimizeRouteAdvanced(tickets),
+        tecnico: 'Diversos',
+        tecnicoId: null,
+        dataRota: null,
         distanciaTotal: calculateRouteTotals(tickets).distance,
         tempoEstimado: calculateRouteTotals(tickets).time,
-        tecnico: 'Diversos',
-        allGeocoded: tickets.every(t => t.hasRealCoords)
+        allGeocoded: tickets.every(t => t.hasRealCoords),
+        canOptimize: false,
+        isOptimized: false
       }
     ];
   }, [ordensServico, tickets]);
@@ -294,19 +324,10 @@ const RouteMap: React.FC = () => {
   const handleOptimize = useCallback(async (rota: RotaOtimizada) => {
     setOptimizingRoute(rota.id);
     
-    const firstTicket = rota.ticketsData[0];
-    const dates = rota.ticketsData
-      .map(t => t.dataProgramada)
-      .filter(Boolean)
-      .map((d: string) => new Date(d));
-    const dataRota = (dates.length 
-      ? new Date(Math.min(...dates.map(d => d.getTime()))) 
-      : new Date()
-    ).toISOString().slice(0, 10);
-
+    // Usar dataRota e tecnicoId diretamente da rota
     const result = await optimizeRoute(rota.ticketsData, {
-      tecnicoId: firstTicket?.tecnicoId || undefined,
-      dataRota
+      tecnicoId: rota.tecnicoId || undefined,
+      dataRota: rota.dataRota || new Date().toISOString().slice(0, 10)
     });
 
     if (result?.data?.route?.geometry) {
@@ -320,6 +341,9 @@ const RouteMap: React.FC = () => {
       setRouteGeometry(coords.length > 1 ? coords : null);
     }
     setRouteProvider(result?.provider || null);
+    
+    // Recarregar para mostrar badge de "Otimizada"
+    await loadOrdensServico();
     setOptimizingRoute(null);
   }, [optimizeRoute]);
 
