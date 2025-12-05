@@ -849,6 +849,7 @@ const Tickets = () => {
           <TabsTrigger value="ordem_servico_gerada">OS Gerada</TabsTrigger>
           <TabsTrigger value="em_execucao">Em Execução</TabsTrigger>
           <TabsTrigger value="concluido">Concluídos</TabsTrigger>
+          <TabsTrigger value="cancelado">Cancelados</TabsTrigger>
         </TabsList>
 
         <TabsContent value={activeTab} className="space-y-4">
@@ -1254,14 +1255,28 @@ const Tickets = () => {
                             </>
                           )}
 
-                          {ticket.status === 'rejeitado' && (
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={() => handleDeleteTicket(ticket.id)}
-                            >
-                              Excluir
-                            </Button>
+                          {(ticket.status === 'rejeitado' || ticket.status === 'cancelado') && (
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button size="sm" variant="destructive">
+                                  Excluir
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Tem certeza que deseja excluir este ticket {ticket.status === 'cancelado' ? 'cancelado' : 'rejeitado'}? Esta ação não pode ser desfeita.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => handleDeleteTicket(ticket.id)}>
+                                    Excluir
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
                           )}
                         </div>
                       )}
