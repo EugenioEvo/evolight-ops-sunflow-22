@@ -2,7 +2,7 @@ import React from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import MarkerCluster from '@/components/MarkerCluster';
+import L from 'leaflet';
 import MapErrorBoundary from './MapErrorBoundary';
 import { 
   createNumberedIcon, 
@@ -13,6 +13,14 @@ import {
 } from './utils';
 import type { TicketData, RotaOtimizada, RouteProvider } from './types';
 import 'leaflet/dist/leaflet.css';
+
+// Fix default marker icon
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+});
 
 interface MapViewProps {
   tickets: TicketData[];
@@ -32,6 +40,31 @@ const getPolylineProps = (provider: RouteProvider) => {
   return { 
     color: '#6b7280', weight: 3, opacity: 0.6, dashArray: '3, 8' 
   };
+};
+
+const createDefaultIcon = (prioridade: string) => {
+  const colors: Record<string, string> = {
+    critica: '#dc2626',
+    alta: '#f97316',
+    media: '#eab308',
+    baixa: '#22c55e'
+  };
+  const color = colors[prioridade] || '#3b82f6';
+  
+  return L.divIcon({
+    className: 'custom-marker',
+    html: `<div style="
+      width: 24px;
+      height: 24px;
+      background: ${color};
+      border: 2px solid white;
+      border-radius: 50%;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    "></div>`,
+    iconSize: [24, 24],
+    iconAnchor: [12, 12],
+    popupAnchor: [0, -12],
+  });
 };
 
 const MapViewComponent: React.FC<MapViewProps> = ({
@@ -126,25 +159,31 @@ const MapViewComponent: React.FC<MapViewProps> = ({
                   </Marker>
                 ))
               ) : (
-                // Cluster de marcadores quando nenhuma rota selecionada
-                <MarkerCluster
-                  markers={tickets.map((ticket) => ({
-                    id: ticket.id,
-                    position: ticket.coordenadas,
-                    popupContent: `
-                      <div class="p-2">
-                        <h6 class="font-semibold mb-1">${ticket.cliente}</h6>
-                        <p class="text-sm text-gray-600 mb-1">OS: ${ticket.numeroOS}</p>
-                        <p class="text-sm text-gray-600 mb-1">${ticket.tipo}</p>
-                        <p class="text-xs text-gray-500 mb-2">${ticket.endereco}</p>
-                        <div class="flex space-x-1">
-                          <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ${getPrioridadeColor(ticket.prioridade)}">${ticket.prioridade}</span>
-                          <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ${getStatusColor(ticket.status)}">${ticket.status.replace('_', ' ')}</span>
+                // Marcadores simples quando nenhuma rota selecionada
+                tickets.map((ticket) => (
+                  <Marker
+                    key={`ticket-${ticket.id}`}
+                    position={ticket.coordenadas}
+                    icon={createDefaultIcon(ticket.prioridade)}
+                  >
+                    <Popup>
+                      <div className="p-2 min-w-[200px]">
+                        <h6 className="font-semibold mb-1">{ticket.cliente}</h6>
+                        <p className="text-sm text-gray-600 mb-1">OS: {ticket.numeroOS}</p>
+                        <p className="text-sm text-gray-600 mb-1">{ticket.tipo}</p>
+                        <p className="text-xs text-gray-500 mb-2">{ticket.endereco}</p>
+                        <div className="flex space-x-1">
+                          <Badge className={getPrioridadeColor(ticket.prioridade)}>
+                            {ticket.prioridade}
+                          </Badge>
+                          <Badge className={getStatusColor(ticket.status)}>
+                            {ticket.status.replace('_', ' ')}
+                          </Badge>
                         </div>
                       </div>
-                    `
-                  }))}
-                />
+                    </Popup>
+                  </Marker>
+                ))
               )}
               
               {/* Linha da rota */}
