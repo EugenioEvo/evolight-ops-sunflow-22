@@ -541,13 +541,13 @@ const Tickets = () => {
         .update({ geocoding_status: 'processing' })
         .eq('id', ticketId);
       
-      // Forçar geocodificação
-      const result = await geocodeAddress(address, ticketId);
+      // Forçar geocodificação com force_refresh para ignorar cache
+      const result = await geocodeAddress(address, ticketId, true);
       
       if (result) {
         toast({
           title: 'Sucesso',
-          description: 'Endereço geocodificado com sucesso!',
+          description: `Endereço geocodificado: ${result.latitude?.toFixed(5)}, ${result.longitude?.toFixed(5)}`,
         });
         loadData();
       }
@@ -938,7 +938,7 @@ const Tickets = () => {
                       )}
 
                       {/* Botão reprocessar geocodificação */}
-                      {ticket.geocoding_status === 'failed' && (profile?.role === 'admin' || profile?.role === 'area_tecnica') && (
+                      {(ticket.geocoding_status === 'failed' || ticket.geocoding_status === 'pending' || !ticket.latitude || !ticket.longitude) && (profile?.role === 'admin' || profile?.role === 'area_tecnica') && (
                         <div className="flex items-center gap-2">
                           <Button
                             size="sm"
@@ -950,12 +950,12 @@ const Tickets = () => {
                             {reprocessingTicketId === ticket.id ? (
                               <>
                                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                Reprocessando...
+                                Geocodificando...
                               </>
                             ) : (
                               <>
                                 <RefreshCw className="h-4 w-4 mr-2" />
-                                Reprocessar Geocodificação
+                                {ticket.geocoding_status === 'pending' ? 'Geocodificar' : 'Regeocodificar'}
                               </>
                             )}
                           </Button>

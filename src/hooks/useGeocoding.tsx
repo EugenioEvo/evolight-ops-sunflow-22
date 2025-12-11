@@ -17,7 +17,8 @@ export const useGeocoding = () => {
 
   const geocodeAddress = async (
     address: string, 
-    ticketId?: string
+    ticketId?: string,
+    forceRefresh: boolean = false
   ): Promise<GeocodeResult | null> => {
     if (!address || address.trim() === '') {
       toast({
@@ -35,13 +36,13 @@ export const useGeocoding = () => {
       
       try {
         const mapboxResult = await supabase.functions.invoke('mapbox-geocode', {
-          body: { address, ticket_id: ticketId }
+          body: { address, ticket_id: ticketId, force_refresh: forceRefresh }
         });
         data = mapboxResult.data;
         error = mapboxResult.error;
       } catch {
         const nominatimResult = await supabase.functions.invoke('geocode-address', {
-          body: { address, ticket_id: ticketId }
+          body: { address, ticket_id: ticketId, force_refresh: forceRefresh }
         });
         data = nominatimResult.data;
         error = nominatimResult.error;
