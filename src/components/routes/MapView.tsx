@@ -67,6 +67,16 @@ const createDefaultIcon = (prioridade: string) => {
   });
 };
 
+// Validar coordenadas antes de renderizar
+const isValidCoordinate = (coords: [number, number] | undefined): boolean => {
+  if (!coords || !Array.isArray(coords) || coords.length !== 2) return false;
+  const [lat, lon] = coords;
+  return typeof lat === 'number' && typeof lon === 'number' &&
+         !isNaN(lat) && !isNaN(lon) &&
+         lat >= -90 && lat <= 90 &&
+         lon >= -180 && lon <= 180;
+};
+
 const MapViewComponent: React.FC<MapViewProps> = ({
   tickets,
   selectedRoute,
@@ -76,10 +86,26 @@ const MapViewComponent: React.FC<MapViewProps> = ({
 }) => {
   const selectedRota = selectedRoute ? rotas.find(r => r.id === selectedRoute) : null;
 
+  // Filtrar tickets com coordenadas válidas
+  const validTickets = tickets.filter(t => isValidCoordinate(t.coordenadas));
+  const validSelectedTickets = selectedRota?.ticketsData.filter(t => isValidCoordinate(t.coordenadas)) || [];
+
+  // Filtrar geometria da rota para coordenadas válidas
+  const validGeometry = routeGeometry?.filter(coord => isValidCoordinate(coord)) || [];
+
   return (
     <Card className="h-full">
       <CardContent className="p-0 h-full">
         <div className="w-full h-[600px] rounded-lg overflow-hidden relative">
+          {/* Indicador de provider */}
+          {routeProvider && (
+            <div className="absolute top-2 right-2 z-[1000] bg-background/90 backdrop-blur-sm px-2 py-1 rounded-md text-xs font-medium border">
+              {routeProvider === 'mapbox' && <span className="text-blue-600">🗺️ Mapbox</span>}
+              {routeProvider === 'osrm' && <span className="text-purple-600">🛣️ OSRM</span>}
+              {routeProvider === 'local' && <span className="text-muted-foreground">📍 Local</span>}
+            </div>
+          )}
+          
           <MapErrorBoundary>
             <MapContainer
               key="route-map"
@@ -115,7 +141,7 @@ const MapViewComponent: React.FC<MapViewProps> = ({
               {/* Marcadores dos tickets */}
               {selectedRota ? (
                 // Marcadores numerados quando rota selecionada
-                selectedRota.ticketsData.map((ticket) => (
+                validSelectedTickets.map((ticket) => (
                   <Marker 
                     key={`marker-${ticket.id}`} 
                     position={ticket.coordenadas}
@@ -160,7 +186,7 @@ const MapViewComponent: React.FC<MapViewProps> = ({
                 ))
               ) : (
                 // Marcadores simples quando nenhuma rota selecionada
-                tickets.map((ticket) => (
+                validTickets.map((ticket) => (
                   <Marker
                     key={`ticket-${ticket.id}`}
                     position={ticket.coordenadas}
@@ -187,9 +213,9 @@ const MapViewComponent: React.FC<MapViewProps> = ({
               )}
               
               {/* Linha da rota */}
-              {selectedRoute && routeGeometry && routeGeometry.length > 1 && (
+              {selectedRoute && validGeometry.length > 1 && (
                 <Polyline
-                  positions={routeGeometry}
+                  positions={validGeometry}
                   {...getPolylineProps(routeProvider)}
                 />
               )}

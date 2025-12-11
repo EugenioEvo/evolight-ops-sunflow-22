@@ -32,6 +32,90 @@ interface OSRMTripResponse {
   }>;
 }
 
+// Lista de servidores OSRM com fallback
+const OSRM_SERVERS = [
+  'https://router.project-osrm.org',
+  'https://routing.openstreetmap.de/routed-car',
+];
+
+// Função para fazer requisição com retry e backoff exponencial
+async function fetchWithRetry(
+  url: string, 
+  options: RequestInit, 
+  maxRetries: number = 3,
+  baseDelay: number = 1000
+): Promise<Response> {
+  let lastError: Error | null = null;
+  
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const response = await fetch(url, options);
+      
+      // Se recebeu 429 (rate limit), espera e tenta novamente
+      if (response.status === 429) {
+        const retryAfter = response.headers.get('Retry-After');
+        const delay = retryAfter ? parseInt(retryAfter) * 1000 : baseDelay * Math.pow(2, attempt);
+        console.log(`⏳ [OSRM] Rate limited, aguardando ${delay}ms antes de retry ${attempt + 1}/${maxRetries}`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
+      
+      // Se resposta OK ou erro diferente de rate limit, retorna
+      return response;
+    } catch (err) {
+      lastError = err as Error;
+      const delay = baseDelay * Math.pow(2, attempt);
+      console.warn(`⚠️ [OSRM] Tentativa ${attempt + 1} falhou: ${err}. Retry em ${delay}ms`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+  
+  throw lastError || new Error('Max retries exceeded');
+}
+
+// Função para tentar múltiplos servidores
+async function tryOSRMServers(
+  coordsString: string,
+  startTime: number
+): Promise<{ data: OSRMTripResponse; server: string }> {
+  let lastError: Error | null = null;
+  
+  for (const server of OSRM_SERVERS) {
+    const osrmUrl = `${server}/trip/v1/driving/${coordsString}?source=first&roundtrip=false&overview=full&geometries=geojson&steps=false`;
+    
+    console.log(`📍 [OSRM] Tentando servidor: ${server}`);
+    
+    try {
+      const response = await fetchWithRetry(osrmUrl, {
+        method: 'GET',
+        headers: {
+          'User-Agent': 'Evolight-Route-Optimizer/1.0'
+        }
+      }, 2, 500); // 2 retries, 500ms base delay
+      
+      if (!response.ok) {
+        console.warn(`❌ [OSRM] ${server} retornou HTTP ${response.status}`);
+        continue;
+      }
+      
+      const data: OSRMTripResponse = await response.json();
+      
+      if (data.code === 'Ok' && data.trips && data.trips.length > 0) {
+        console.log(`✅ [OSRM] Sucesso com ${server} em ${Date.now() - startTime}ms`);
+        return { data, server };
+      }
+      
+      console.warn(`⚠️ [OSRM] ${server} retornou código: ${data.code}`);
+      lastError = new Error(`OSRM code: ${data.code}`);
+    } catch (err) {
+      console.warn(`❌ [OSRM] Falha no servidor ${server}:`, err);
+      lastError = err as Error;
+    }
+  }
+  
+  throw lastError || new Error('Todos os servidores OSRM falharam');
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -46,45 +130,45 @@ serve(async (req) => {
       throw new Error('Pelo menos 2 coordenadas são necessárias para otimização');
     }
 
-    console.log(`🚀 [OSRM] Otimizando rota com ${coordinates.length} pontos`);
+    console.log(`🚀 [OSRM] Iniciando otimização com ${coordinates.length} pontos`);
+
+    // Validar coordenadas
+    const validCoords = coordinates.filter((c: Coordinate) => {
+      const isValid = typeof c.latitude === 'number' && 
+                      typeof c.longitude === 'number' &&
+                      !isNaN(c.latitude) && 
+                      !isNaN(c.longitude) &&
+                      c.latitude >= -90 && c.latitude <= 90 &&
+                      c.longitude >= -180 && c.longitude <= 180;
+      
+      if (!isValid) {
+        console.warn(`⚠️ [OSRM] Coordenada inválida ignorada:`, c);
+      }
+      return isValid;
+    });
+
+    if (validCoords.length < 2) {
+      throw new Error(`Apenas ${validCoords.length} coordenadas válidas (mínimo: 2)`);
+    }
+
+    console.log(`📊 [OSRM] ${validCoords.length} coordenadas válidas de ${coordinates.length}`);
 
     // Identificar ponto inicial (Evolight)
-    const startPoint = coordinates.find((c: Coordinate) => c.isStartPoint);
-    const otherPoints = coordinates.filter((c: Coordinate) => !c.isStartPoint);
-    const orderedCoords = startPoint ? [startPoint, ...otherPoints] : coordinates;
+    const startPoint = validCoords.find((c: Coordinate) => c.isStartPoint);
+    const otherPoints = validCoords.filter((c: Coordinate) => !c.isStartPoint);
+    const orderedCoords = startPoint ? [startPoint, ...otherPoints] : validCoords;
 
     // Construir string de coordenadas para OSRM (lon,lat format)
     const coordsString = orderedCoords
       .map((coord: Coordinate) => `${coord.longitude},${coord.latitude}`)
       .join(';');
 
-    // Usar OSRM Trip API para reordenação otimizada
-    // source=first: manter primeiro ponto fixo (Evolight)
-    // roundtrip=false: não voltar ao início
-    const osrmUrl = `https://router.project-osrm.org/trip/v1/driving/${coordsString}?source=first&roundtrip=false&overview=full&geometries=geojson&steps=false`;
+    console.log(`📍 [OSRM] Coordenadas: ${coordsString.substring(0, 100)}...`);
+
+    // Tentar servidores OSRM com fallback
+    const { data, server } = await tryOSRMServers(coordsString, startTime);
     
-    console.log(`📍 [OSRM] URL: ${osrmUrl.substring(0, 80)}...`);
-
-    const osrmResponse = await fetch(osrmUrl, {
-      method: 'GET',
-      headers: {
-        'User-Agent': 'Evolight-Route-Optimizer/1.0'
-      }
-    });
-
-    if (!osrmResponse.ok) {
-      console.error(`❌ [OSRM] HTTP error: ${osrmResponse.status}`);
-      throw new Error(`OSRM API error: ${osrmResponse.status}`);
-    }
-
-    const data: OSRMTripResponse = await osrmResponse.json();
-
-    if (data.code !== 'Ok' || !data.trips || data.trips.length === 0) {
-      console.error(`❌ [OSRM] Invalid response: ${data.code}`);
-      throw new Error('OSRM não encontrou rota válida');
-    }
-
-    const trip = data.trips[0];
+    const trip = data.trips![0];
 
     // Extrair ordem otimizada dos waypoints
     const optimizedOrder = data.waypoints 
@@ -112,11 +196,14 @@ serve(async (req) => {
       waypoints: data.waypoints || [],
       optimizedOrder,
       provider: 'osrm',
-      reordered: true
+      server: server,
+      reordered: true,
+      validCoords: validCoords.length,
+      totalCoords: coordinates.length
     };
 
     const elapsed = Date.now() - startTime;
-    console.log(`✅ [OSRM] Rota otimizada em ${elapsed}ms: ${result.route.distanceKm} km, ${result.route.durationFormatted}`);
+    console.log(`✅ [OSRM] Rota otimizada em ${elapsed}ms: ${result.route.distanceKm} km, ${result.route.durationFormatted} via ${server}`);
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -134,7 +221,8 @@ serve(async (req) => {
         success: false,
         error: errorMessage,
         fallback: true,
-        provider: 'osrm'
+        provider: 'osrm',
+        elapsed
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
