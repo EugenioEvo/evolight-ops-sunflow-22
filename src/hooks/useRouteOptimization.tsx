@@ -35,8 +35,8 @@ interface OptimizeContext {
 type Provider = 'mapbox' | 'osrm' | 'local';
 
 // Constantes de configuração
-const MAX_MAPBOX_WAYPOINTS = 25; // Mapbox Directions suporta até 25
-const MAX_OSRM_WAYPOINTS = 100; // OSRM suporta mais
+const MAX_MAPBOX_WAYPOINTS = 25;
+const MAX_OSRM_WAYPOINTS = 100;
 
 // Endereço fixo da Evolight como ponto inicial
 const EVOLIGHT_START = {
@@ -45,15 +45,33 @@ const EVOLIGHT_START = {
   address: 'Avenida T9 1001, Setor Bueno, Goiânia-GO, CEP 74215-025'
 };
 
+// Validar coordenadas
+const isValidCoordinate = (lat: number, lon: number): boolean => {
+  return typeof lat === 'number' && 
+         typeof lon === 'number' &&
+         !isNaN(lat) && !isNaN(lon) &&
+         lat >= -90 && lat <= 90 &&
+         lon >= -180 && lon <= 180;
+};
+
 export const useRouteOptimization = () => {
   const [loading, setLoading] = useState(false);
   const [optimizedRoute, setOptimizedRoute] = useState<OptimizedRoute | null>(null);
 
   const optimizeRoute = async (tickets: Ticket[], ctx: OptimizeContext = {}) => {
-    const validTickets = tickets.filter(t => t.hasRealCoords);
+    // Filtrar tickets com coordenadas válidas
+    const validTickets = tickets.filter(t => {
+      if (!t.hasRealCoords) return false;
+      const [lat, lon] = t.coordenadas;
+      const isValid = isValidCoordinate(lat, lon);
+      if (!isValid) {
+        console.warn(`[RouteOpt] Coordenada inválida ignorada: ticket ${t.id}`, t.coordenadas);
+      }
+      return isValid;
+    });
     
     if (validTickets.length < 1) {
-      toast.error('Necessário pelo menos 1 endereço geocodificado');
+      toast.error('Necessário pelo menos 1 endereço geocodificado com coordenadas válidas');
       return null;
     }
 
@@ -61,11 +79,8 @@ export const useRouteOptimization = () => {
     const startTime = Date.now();
     
     try {
-      // Verificar se temos muitos waypoints
-      const totalWaypoints = validTickets.length + 1; // +1 para Evolight
-      if (totalWaypoints > MAX_MAPBOX_WAYPOINTS) {
-        console.log(`[RouteOpt] ${totalWaypoints} waypoints - acima do limite Mapbox (${MAX_MAPBOX_WAYPOINTS})`);
-      }
+      const totalWaypoints = validTickets.length + 1;
+      console.log(`[RouteOpt] Iniciando otimização: ${validTickets.length} tickets válidos de ${tickets.length} total`);
 
       const coordinates = [
         {
@@ -88,20 +103,22 @@ export const useRouteOptimization = () => {
       
       // Tentar Mapbox primeiro
       console.log(`[RouteOpt] Tentando Mapbox com ${coordinates.length} coordenadas...`);
+      const mapboxStart = Date.now();
       try {
         const mapboxResult = await supabase.functions.invoke('mapbox-directions', {
           body: { coordinates }
         });
+        
+        console.log(`[RouteOpt] Mapbox respondeu em ${Date.now() - mapboxStart}ms`);
         
         if (mapboxResult.error) {
           console.warn('[RouteOpt] Mapbox invoke error:', mapboxResult.error);
         } else if (mapboxResult.data?.success) {
           data = mapboxResult.data;
           provider = 'mapbox';
-          console.log(`[RouteOpt] Mapbox OK em ${Date.now() - startTime}ms`);
+          console.log(`[RouteOpt] ✅ Mapbox OK: ${data.route?.distanceKm} km`);
         } else if (mapboxResult.data?.error?.includes('MAPBOX_ACCESS_TOKEN')) {
           console.warn('[RouteOpt] Token Mapbox não configurado');
-          toast.warning('Token Mapbox não configurado. Usando OSRM.');
         } else {
           console.warn('[RouteOpt] Mapbox fallback:', mapboxResult.data?.error);
         }
@@ -112,17 +129,20 @@ export const useRouteOptimization = () => {
       // Se Mapbox não funcionou, tentar OSRM
       if (!data?.success) {
         console.log('[RouteOpt] Tentando OSRM...');
+        const osrmStart = Date.now();
         try {
           const osrmResult = await supabase.functions.invoke('optimize-route-osrm', {
             body: { coordinates }
           });
+          
+          console.log(`[RouteOpt] OSRM respondeu em ${Date.now() - osrmStart}ms`);
           
           if (osrmResult.error) {
             console.warn('[RouteOpt] OSRM invoke error:', osrmResult.error);
           } else if (osrmResult.data?.success) {
             data = osrmResult.data;
             provider = 'osrm';
-            console.log(`[RouteOpt] OSRM OK em ${Date.now() - startTime}ms`);
+            console.log(`[RouteOpt] ✅ OSRM OK via ${osrmResult.data.server}: ${data.route?.distanceKm} km`);
           } else {
             console.warn('[RouteOpt] OSRM fallback:', osrmResult.data?.error);
           }
@@ -133,7 +153,7 @@ export const useRouteOptimization = () => {
 
       // Se APIs falharam, usar algoritmo local
       if (!data?.success) {
-        console.log('[RouteOpt] Usando algoritmo local');
+        console.log('[RouteOpt] Usando algoritmo local (APIs indisponíveis)');
         toast.warning('Usando otimização local (APIs indisponíveis)');
         
         const localOptimized = optimizeRouteAdvanced(tickets);
@@ -146,7 +166,6 @@ export const useRouteOptimization = () => {
         };
       }
 
-      // Atualizar provider baseado na resposta
       provider = data.provider || (data.optimizationUsed ? 'mapbox' : 'osrm');
       
       setOptimizedRoute({ ...data, provider });
@@ -154,7 +173,7 @@ export const useRouteOptimization = () => {
       const providerLabel = provider === 'mapbox' ? 'Mapbox' : provider === 'osrm' ? 'OSRM' : 'Local';
       toast.success(
         `Rota otimizada: ${data.route.distanceKm} km, ${data.route.durationFormatted}`,
-        { description: `Via ${providerLabel}${data.preOrdered ? ' (pré-ordenado)' : ''}` }
+        { description: `Via ${providerLabel}${data.server ? ` (${new URL(data.server).hostname})` : ''}` }
       );
 
       // Reordenar tickets baseado na ordem otimizada
@@ -186,12 +205,14 @@ export const useRouteOptimization = () => {
           }, {
             onConflict: 'tecnico_id,data_rota'
           });
+          console.log('[RouteOpt] Rota persistida no banco');
         } catch (err) {
           console.warn('[RouteOpt] Erro ao persistir rota:', err);
         }
       }
 
-      console.log(`[RouteOpt] Completo em ${Date.now() - startTime}ms via ${provider}`);
+      const elapsed = Date.now() - startTime;
+      console.log(`[RouteOpt] ✅ Completo em ${elapsed}ms via ${provider}`);
 
       return {
         tickets: reorderedTickets,
