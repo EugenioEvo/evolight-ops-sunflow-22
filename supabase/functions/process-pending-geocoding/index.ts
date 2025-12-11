@@ -15,11 +15,29 @@ interface PendingTicket {
 
 // Limpar endereço para melhorar taxa de sucesso do Mapbox
 function cleanAddress(address: string): string {
+  // Extrair o nome da rua (primeira parte antes da vírgula ou quadra)
+  const streetMatch = address.match(/^((?:AVENIDA|AV\.?|RUA|R\.?|ALAMEDA|AL\.?|TRAVESSA|TV\.?)\s+[^,Q]+)/i);
+  
+  // Extrair cidade e estado
+  const cityMatch = address.match(/,\s*([^,]+),\s*([A-Z]{2})\s*[-–]\s*\d{5}/i);
+  
+  if (streetMatch && cityMatch) {
+    // Construir endereço simplificado: Rua + Cidade + Estado
+    const street = streetMatch[1].trim();
+    const city = cityMatch[1].trim();
+    const state = cityMatch[2].trim();
+    return `${street}, ${city}, ${state}, Brasil`;
+  }
+  
+  // Fallback: limpar endereço normalmente
   return address
     .replace(/Q\.\s*\d+/gi, '')
+    .replace(/Quadra\s*\d+/gi, '')
     .replace(/L\.\s*[\d-]+/gi, '')
+    .replace(/Lote\s*[\d-]+/gi, '')
     .replace(/S\/N/gi, '')
     .replace(/ETAPA\s+(I|II|III|IV|V)+/gi, '')
+    .replace(/Parque\s+Industrial[^,]*/gi, '')
     .replace(/\s*-\s*/g, ' ')
     .replace(/,\s*,/g, ',')
     .replace(/\s+/g, ' ')
