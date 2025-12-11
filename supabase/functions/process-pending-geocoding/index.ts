@@ -13,6 +13,19 @@ interface PendingTicket {
   numero_ticket: string;
 }
 
+// Limpar endereço para melhorar taxa de sucesso do Mapbox
+function cleanAddress(address: string): string {
+  return address
+    .replace(/Q\.\s*\d+/gi, '')
+    .replace(/L\.\s*[\d-]+/gi, '')
+    .replace(/S\/N/gi, '')
+    .replace(/ETAPA\s+(I|II|III|IV|V)+/gi, '')
+    .replace(/\s*-\s*/g, ' ')
+    .replace(/,\s*,/g, ',')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -21,9 +34,14 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const mapboxToken = Deno.env.get('MAPBOX_ACCESS_TOKEN');
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     console.log('🚀 Iniciando worker de geocodificação automática...');
+
+    if (!mapboxToken) {
+      throw new Error('MAPBOX_ACCESS_TOKEN não configurado');
+    }
 
     // 1. Buscar tickets com status 'pending' (limitado a 10 por vez)
     const { data: pendingTickets, error: fetchError } = await supabase
@@ -53,7 +71,7 @@ serve(async (req) => {
 
     console.log(`📍 ${pendingTickets.length} tickets pendentes encontrados`);
 
-    // 2. Processar cada ticket em sequência (respeitando rate limit de 1 req/seg)
+    // 2. Processar cada ticket
     const results = [];
     
     for (let i = 0; i < pendingTickets.length; i++) {
@@ -62,55 +80,116 @@ serve(async (req) => {
       try {
         console.log(`[${i + 1}/${pendingTickets.length}] Geocodificando ticket ${ticket.numero_ticket}...`);
         
-        // Chamar edge function de geocodificação
-        const { data: geocodeResult, error: geocodeError } = await supabase.functions.invoke(
-          'geocode-address',
-          {
-            body: {
-              address: ticket.endereco_servico,
-              ticket_id: ticket.id,
-              force_refresh: false
-            }
-          }
-        );
+        // Marcar como processing
+        await supabase
+          .from('tickets')
+          .update({ geocoding_status: 'processing' })
+          .eq('id', ticket.id);
 
-        if (geocodeError) {
-          console.error(`❌ Erro ao geocodificar ${ticket.numero_ticket}:`, geocodeError);
+        // Limpar endereço
+        const cleanedAddress = cleanAddress(ticket.endereco_servico);
+        console.log(`📍 Endereço limpo: ${cleanedAddress}`);
+
+        // Chamar Mapbox Geocoding API diretamente
+        const mapboxUrl = new URL('https://api.mapbox.com/geocoding/v5/mapbox.places/' + encodeURIComponent(cleanedAddress) + '.json');
+        mapboxUrl.searchParams.append('access_token', mapboxToken);
+        mapboxUrl.searchParams.append('country', 'BR');
+        mapboxUrl.searchParams.append('limit', '1');
+        mapboxUrl.searchParams.append('language', 'pt-BR');
+        mapboxUrl.searchParams.append('types', 'address,place,locality');
+
+        const mapboxResponse = await fetch(mapboxUrl.toString());
+
+        if (!mapboxResponse.ok) {
+          const errorBody = await mapboxResponse.text();
+          console.error(`❌ Erro Mapbox (${mapboxResponse.status}): ${errorBody}`);
+          
+          await supabase
+            .from('tickets')
+            .update({ geocoding_status: 'failed' })
+            .eq('id', ticket.id);
+            
           results.push({
             ticket_id: ticket.id,
             numero_ticket: ticket.numero_ticket,
             success: false,
-            error: geocodeError.message
+            error: `Mapbox error: ${mapboxResponse.status}`
           });
           continue;
         }
 
-        if (geocodeResult?.success) {
-          console.log(`✅ ${ticket.numero_ticket} geocodificado com sucesso`);
-          results.push({
-            ticket_id: ticket.id,
-            numero_ticket: ticket.numero_ticket,
-            success: true,
-            cached: geocodeResult.data?.cached || false
-          });
-        } else {
-          console.error(`❌ Falha ao geocodificar ${ticket.numero_ticket}:`, geocodeResult?.error);
+        const data = await mapboxResponse.json();
+
+        if (!data.features || data.features.length === 0) {
+          console.error(`❌ Endereço não encontrado: ${ticket.endereco_servico}`);
+          
+          await supabase
+            .from('tickets')
+            .update({ geocoding_status: 'failed' })
+            .eq('id', ticket.id);
+            
           results.push({
             ticket_id: ticket.id,
             numero_ticket: ticket.numero_ticket,
             success: false,
-            error: geocodeResult?.error || 'Erro desconhecido'
+            error: 'Endereço não encontrado'
           });
+          continue;
         }
 
-        // Aguardar 1.5 segundos entre requisições (rate limit Nominatim)
+        const feature = data.features[0];
+        const latitude = feature.center[1];
+        const longitude = feature.center[0];
+        const formattedAddress = feature.place_name;
+
+        console.log(`✅ ${ticket.numero_ticket} geocodificado: [${latitude}, ${longitude}]`);
+
+        // Atualizar ticket
+        await supabase
+          .from('tickets')
+          .update({
+            latitude,
+            longitude,
+            geocoded_at: new Date().toISOString(),
+            geocoding_status: 'geocoded'
+          })
+          .eq('id', ticket.id);
+
+        // Salvar no cache
+        await supabase
+          .from('geocoding_cache')
+          .upsert({
+            address_normalized: ticket.endereco_servico.toLowerCase().trim(),
+            original_address: ticket.endereco_servico,
+            latitude,
+            longitude,
+            formatted_address: formattedAddress,
+            cached_at: new Date().toISOString()
+          }, {
+            onConflict: 'address_normalized'
+          });
+
+        results.push({
+          ticket_id: ticket.id,
+          numero_ticket: ticket.numero_ticket,
+          success: true,
+          latitude,
+          longitude
+        });
+
+        // Aguardar 500ms entre requisições
         if (i < pendingTickets.length - 1) {
-          console.log('⏳ Aguardando 1.5s (rate limit)...');
-          await new Promise(resolve => setTimeout(resolve, 1500));
+          await new Promise(resolve => setTimeout(resolve, 500));
         }
 
       } catch (error: any) {
         console.error(`❌ Exceção ao processar ${ticket.numero_ticket}:`, error);
+        
+        await supabase
+          .from('tickets')
+          .update({ geocoding_status: 'failed' })
+          .eq('id', ticket.id);
+          
         results.push({
           ticket_id: ticket.id,
           numero_ticket: ticket.numero_ticket,
@@ -122,13 +201,11 @@ serve(async (req) => {
 
     // 3. Resumo dos resultados
     const successCount = results.filter(r => r.success).length;
-    const cachedCount = results.filter(r => r.success && r.cached).length;
     const failedCount = results.filter(r => !r.success).length;
 
     console.log(`
 📊 Resumo da geocodificação:
    ✅ Sucesso: ${successCount}
-   💾 Cache: ${cachedCount}
    ❌ Falhas: ${failedCount}
    📝 Total: ${results.length}
     `);
@@ -138,7 +215,6 @@ serve(async (req) => {
       summary: {
         total: results.length,
         successful: successCount,
-        cached: cachedCount,
         failed: failedCount
       },
       results
