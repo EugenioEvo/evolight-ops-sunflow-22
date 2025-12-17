@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Pencil, Trash2, Building2, Phone, Mail, MapPin, FileText, Calendar, Clock, User, Plus, Search, Edit } from 'lucide-react';
+import { Pencil, Trash2, Building2, Phone, Mail, MapPin, FileText, Calendar, Clock, User, Plus, Search, Edit, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
@@ -14,6 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { BulkImportDialog } from '@/components/BulkImportDialog';
 
 // Estados brasileiros
 const ESTADOS_BR = [
@@ -59,6 +60,7 @@ interface Cliente extends ClienteForm {
 export default function Clientes() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isImportOpen, setIsImportOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Cliente | null>(null);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
@@ -232,13 +234,19 @@ export default function Clientes() {
           <p className="text-muted-foreground">Gerencie os clientes da empresa</p>
         </div>
         
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-gradient-solar shadow-solar">
-              <Plus className="h-4 w-4 mr-2" />
-              Novo Cliente
-            </Button>
-          </DialogTrigger>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setIsImportOpen(true)}>
+            <Upload className="h-4 w-4 mr-2" />
+            Importar
+          </Button>
+          
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-gradient-solar shadow-solar">
+                <Plus className="h-4 w-4 mr-2" />
+                Novo Cliente
+              </Button>
+            </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
@@ -454,7 +462,14 @@ export default function Clientes() {
             </Form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
+
+      <BulkImportDialog
+        open={isImportOpen}
+        onOpenChange={setIsImportOpen}
+        onImportComplete={fetchClientes}
+      />
 
       <div className="flex items-center space-x-4">
         <div className="relative flex-1 max-w-md">
