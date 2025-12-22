@@ -110,21 +110,15 @@ serve(async (req) => {
       )
     }
 
-    // Buscar técnico correto pelo email do prestador
-    const { data: tecnico, error: tecnicoError } = await supabaseClient
+    // Buscar técnico pelo email do prestador (opcional - pode não existir)
+    const { data: tecnico } = await supabaseClient
       .from('tecnicos')
       .select('id, profiles!inner(email)')
       .eq('profiles.email', prestador.email)
       .maybeSingle()
 
-    if (tecnicoError || !tecnico) {
-      return new Response(
-        JSON.stringify({ 
-          error: `Não foi possível relacionar o prestador ao técnico. Cadastre o técnico com o mesmo e-mail do prestador (${prestador.email}) ou ajuste o e-mail.` 
-        }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
+    // Log para debug
+    console.log(`Prestador: ${prestador.nome} (${prestador.email}), Técnico encontrado: ${tecnico?.id || 'nenhum'}`)
 
     // Validar status aprovado
     if (ticket.status !== 'aprovado') {
@@ -141,7 +135,7 @@ serve(async (req) => {
     const osData: any = {
       ticket_id: ticketId,
       numero_os: numeroOS,
-      tecnico_id: tecnico.id,
+      tecnico_id: tecnico?.id || null,
       data_programada: ticket.data_vencimento,
       qr_code: `OS-${numeroOS}-${ticketId}`,
       equipe: equipe,
