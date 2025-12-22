@@ -187,7 +187,7 @@ const WorkOrders = () => {
   if (loading) {
     return (
       <div className="p-4 sm:p-6">
-        <LoadingState message="Carregando ordens de serviço..." />
+        <LoadingState variant="card" count={6} />
       </div>
     );
   }
