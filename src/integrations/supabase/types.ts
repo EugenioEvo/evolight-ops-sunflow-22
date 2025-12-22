@@ -484,6 +484,7 @@ export type Database = {
           id: string
           inspetor_responsavel: string | null
           nome_cliente_assinatura: string | null
+          notes: string | null
           numero_os: string
           pdf_url: string | null
           presence_confirmed_at: string | null
@@ -491,10 +492,12 @@ export type Database = {
           qr_code: string | null
           reminder_sent_at: string | null
           servico_solicitado: string | null
+          site_name: string | null
           tecnico_id: string | null
           ticket_id: string
           tipo_trabalho: string[] | null
           updated_at: string
+          work_type: Json | null
         }
         Insert: {
           assinatura_cliente?: string | null
@@ -514,6 +517,7 @@ export type Database = {
           id?: string
           inspetor_responsavel?: string | null
           nome_cliente_assinatura?: string | null
+          notes?: string | null
           numero_os: string
           pdf_url?: string | null
           presence_confirmed_at?: string | null
@@ -521,10 +525,12 @@ export type Database = {
           qr_code?: string | null
           reminder_sent_at?: string | null
           servico_solicitado?: string | null
+          site_name?: string | null
           tecnico_id?: string | null
           ticket_id: string
           tipo_trabalho?: string[] | null
           updated_at?: string
+          work_type?: Json | null
         }
         Update: {
           assinatura_cliente?: string | null
@@ -544,6 +550,7 @@ export type Database = {
           id?: string
           inspetor_responsavel?: string | null
           nome_cliente_assinatura?: string | null
+          notes?: string | null
           numero_os?: string
           pdf_url?: string | null
           presence_confirmed_at?: string | null
@@ -551,10 +558,12 @@ export type Database = {
           qr_code?: string | null
           reminder_sent_at?: string | null
           servico_solicitado?: string | null
+          site_name?: string | null
           tecnico_id?: string | null
           ticket_id?: string
           tipo_trabalho?: string[] | null
           updated_at?: string
+          work_type?: Json | null
         }
         Relationships: [
           {
@@ -755,90 +764,203 @@ export type Database = {
         }
         Relationships: []
       }
+      rme_checklist_catalog: {
+        Row: {
+          category: string
+          created_at: string | null
+          id: string
+          is_default: boolean | null
+          item_key: string
+          label: string
+          sort_order: number | null
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          id?: string
+          is_default?: boolean | null
+          item_key: string
+          label: string
+          sort_order?: number | null
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          id?: string
+          is_default?: boolean | null
+          item_key?: string
+          label?: string
+          sort_order?: number | null
+        }
+        Relationships: []
+      }
+      rme_checklist_items: {
+        Row: {
+          category: string
+          checked: boolean | null
+          created_at: string | null
+          id: string
+          item_key: string
+          label: string
+          rme_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          category: string
+          checked?: boolean | null
+          created_at?: string | null
+          id?: string
+          item_key: string
+          label: string
+          rme_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string
+          checked?: boolean | null
+          created_at?: string | null
+          id?: string
+          item_key?: string
+          label?: string
+          rme_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rme_checklist_items_rme_id_fkey"
+            columns: ["rme_id"]
+            isOneToOne: false
+            referencedRelation: "rme_relatorios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rme_relatorios: {
         Row: {
           anexos_tecnicos: string[] | null
           aprovado_por: string | null
           assinatura_cliente: string | null
           assinatura_tecnico: string | null
+          collaboration: Json | null
           condicoes_encontradas: string
           created_at: string
           data_aprovacao: string | null
           data_execucao: string
           data_preenchimento: string
+          end_time: string | null
           equipamento_id: string | null
           fotos_antes: string[] | null
           fotos_depois: string[] | null
           id: string
+          images_posted: boolean | null
+          inverter_number: string | null
           materiais_utilizados: Json | null
           medicoes_eletricas: Json | null
+          micro_number: string | null
+          modules_cleaned_qty: number | null
           nome_cliente_assinatura: string | null
           observacoes_aprovacao: string | null
           observacoes_tecnicas: string | null
           ordem_servico_id: string
           pdf_url: string | null
+          service_type: Json | null
           servicos_executados: string
+          shift: string | null
+          signatures: Json | null
+          site_name: string | null
+          start_time: string | null
+          status: string | null
           status_aprovacao: string
+          string_box_qty: number | null
           tecnico_id: string
           testes_realizados: string | null
           ticket_id: string
           updated_at: string
+          weekday: string | null
         }
         Insert: {
           anexos_tecnicos?: string[] | null
           aprovado_por?: string | null
           assinatura_cliente?: string | null
           assinatura_tecnico?: string | null
+          collaboration?: Json | null
           condicoes_encontradas: string
           created_at?: string
           data_aprovacao?: string | null
           data_execucao: string
           data_preenchimento?: string
+          end_time?: string | null
           equipamento_id?: string | null
           fotos_antes?: string[] | null
           fotos_depois?: string[] | null
           id?: string
+          images_posted?: boolean | null
+          inverter_number?: string | null
           materiais_utilizados?: Json | null
           medicoes_eletricas?: Json | null
+          micro_number?: string | null
+          modules_cleaned_qty?: number | null
           nome_cliente_assinatura?: string | null
           observacoes_aprovacao?: string | null
           observacoes_tecnicas?: string | null
           ordem_servico_id: string
           pdf_url?: string | null
+          service_type?: Json | null
           servicos_executados: string
+          shift?: string | null
+          signatures?: Json | null
+          site_name?: string | null
+          start_time?: string | null
+          status?: string | null
           status_aprovacao?: string
+          string_box_qty?: number | null
           tecnico_id: string
           testes_realizados?: string | null
           ticket_id: string
           updated_at?: string
+          weekday?: string | null
         }
         Update: {
           anexos_tecnicos?: string[] | null
           aprovado_por?: string | null
           assinatura_cliente?: string | null
           assinatura_tecnico?: string | null
+          collaboration?: Json | null
           condicoes_encontradas?: string
           created_at?: string
           data_aprovacao?: string | null
           data_execucao?: string
           data_preenchimento?: string
+          end_time?: string | null
           equipamento_id?: string | null
           fotos_antes?: string[] | null
           fotos_depois?: string[] | null
           id?: string
+          images_posted?: boolean | null
+          inverter_number?: string | null
           materiais_utilizados?: Json | null
           medicoes_eletricas?: Json | null
+          micro_number?: string | null
+          modules_cleaned_qty?: number | null
           nome_cliente_assinatura?: string | null
           observacoes_aprovacao?: string | null
           observacoes_tecnicas?: string | null
           ordem_servico_id?: string
           pdf_url?: string | null
+          service_type?: Json | null
           servicos_executados?: string
+          shift?: string | null
+          signatures?: Json | null
+          site_name?: string | null
+          start_time?: string | null
+          status?: string | null
           status_aprovacao?: string
+          string_box_qty?: number | null
           tecnico_id?: string
           testes_realizados?: string | null
           ticket_id?: string
           updated_at?: string
+          weekday?: string | null
         }
         Relationships: [
           {
@@ -851,7 +973,7 @@ export type Database = {
           {
             foreignKeyName: "rme_relatorios_ordem_servico_id_fkey"
             columns: ["ordem_servico_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "ordens_servico"
             referencedColumns: ["id"]
           },
@@ -1187,6 +1309,7 @@ export type Database = {
         Returns: undefined
       }
       mark_token_used: { Args: { p_token: string }; Returns: undefined }
+      populate_rme_checklist: { Args: { p_rme_id: string }; Returns: undefined }
       validate_presence_token: {
         Args: { p_os_id: string; p_token: string }
         Returns: boolean
