@@ -33,6 +33,7 @@ import VisualizarOS from "./pages/VisualizarOS";
 import WorkOrders from "./pages/WorkOrders";
 import WorkOrderCreate from "./pages/WorkOrderCreate";
 import WorkOrderDetail from "./pages/WorkOrderDetail";
+import RMEWizard from "./pages/RMEWizard";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -138,6 +139,7 @@ const App = () => (
                               </ProtectedRoute>
                             } />
                             <Route path="/work-orders/:id" element={<WorkOrderDetail />} />
+                            <Route path="/rme-wizard/:id" element={<RMEWizard />} />
                             <Route path="*" element={<NotFound />} />
                           </Routes>
                         </main>
