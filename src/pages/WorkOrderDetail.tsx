@@ -103,9 +103,9 @@ const WorkOrderDetail = () => {
 
       setWorkOrder({
         ...data,
-        work_type: data.work_type || [],
-        rme_relatorios: data.rme_relatorios || [],
-      });
+        work_type: Array.isArray(data.work_type) ? data.work_type as string[] : [],
+        rme_relatorios: Array.isArray(data.rme_relatorios) ? data.rme_relatorios : data.rme_relatorios ? [data.rme_relatorios] : [],
+      } as WorkOrderDetail);
     } catch (error: any) {
       toast({
         title: "Erro ao carregar OS",
@@ -250,7 +250,7 @@ const WorkOrderDetail = () => {
   if (loading) {
     return (
       <div className="p-6">
-        <LoadingState message="Carregando ordem de serviço..." />
+        <LoadingState variant="card" count={2} />
       </div>
     );
   }
