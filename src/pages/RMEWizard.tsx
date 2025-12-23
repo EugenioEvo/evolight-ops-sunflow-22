@@ -3,11 +3,12 @@ import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Save, Check, Loader2 } from "lucide-react";
+import { ArrowLeft, Save, Check, Loader2, FileDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
+import { downloadRMEPDF, type RMEPDFData } from "@/utils/generateRMEPDF";
 
 // Step components
 import { StepIdentification } from "@/components/rme-wizard/StepIdentification";
@@ -86,10 +87,11 @@ const RMEWizard = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [workOrder, setWorkOrder] = useState<WorkOrderInfo | null>(null);
   const [tecnicoId, setTecnicoId] = useState<string | null>(null);
   const [checklistItems, setChecklistItems] = useState<any[]>([]);
-
+  const [tecnicoNome, setTecnicoNome] = useState<string>("");
   const [formData, setFormData] = useState<RMEFormData>({
     ordem_servico_id: "",
     ticket_id: "",
@@ -134,10 +136,13 @@ const RMEWizard = () => {
     if (!profile?.user_id) return;
     const { data } = await supabase
       .from("tecnicos")
-      .select("id")
+      .select("id, profiles(nome)")
       .eq("profile_id", profile.id)
       .maybeSingle();
-    if (data) setTecnicoId(data.id);
+    if (data) {
+      setTecnicoId(data.id);
+      setTecnicoNome((data.profiles as any)?.nome || "");
+    }
   };
 
   const loadWorkOrder = async (workOrderId: string) => {
@@ -178,6 +183,7 @@ const RMEWizard = () => {
         .from("rme_relatorios")
         .select(`
           *,
+          tecnicos(id, profiles(nome)),
           ordens_servico(
             id, numero_os, site_name, ticket_id,
             tickets(id, endereco_servico, clientes(empresa))
@@ -189,7 +195,9 @@ const RMEWizard = () => {
       if (error) throw error;
 
       const os = data.ordens_servico as any;
+      const tecnico = data.tecnicos as any;
       setWorkOrder(os);
+      setTecnicoNome(tecnico?.profiles?.nome || "");
 
       setFormData({
         id: data.id,
@@ -356,6 +364,64 @@ const RMEWizard = () => {
     }
   };
 
+  const handleExportPDF = async () => {
+    if (!formData.id) {
+      toast({ title: "Salve o RME antes de exportar", variant: "destructive" });
+      return;
+    }
+
+    setExporting(true);
+    try {
+      // Group checklist items by category
+      const checklistsByCategory = checklistItems.reduce((acc: any, item: any) => {
+        if (!acc[item.category]) {
+          acc[item.category] = [];
+        }
+        acc[item.category].push({ label: item.label, checked: item.checked });
+        return acc;
+      }, {});
+
+      const checklists = Object.entries(checklistsByCategory).map(([category, items]) => ({
+        category,
+        items: items as { label: string; checked: boolean }[],
+      }));
+
+      // Count evidence files from storage (approximation based on form data)
+      const pdfData: RMEPDFData = {
+        numero_os: workOrder?.numero_os || "",
+        cliente: formData.client_name,
+        endereco: formData.address,
+        site_name: formData.site_name,
+        data_execucao: formData.data_execucao,
+        weekday: formData.weekday,
+        shift: formData.shift,
+        start_time: formData.start_time,
+        end_time: formData.end_time,
+        service_type: formData.service_type,
+        collaboration: formData.collaboration,
+        checklists,
+        images_posted: formData.images_posted,
+        modules_cleaned_qty: formData.modules_cleaned_qty,
+        string_box_qty: formData.string_box_qty,
+        fotos_antes_count: 0, // Would need to count from storage
+        fotos_depois_count: 0, // Would need to count from storage
+        materiais_utilizados: formData.materiais_utilizados,
+        servicos_executados: formData.servicos_executados,
+        condicoes_encontradas: formData.condicoes_encontradas,
+        signatures: formData.signatures,
+        tecnico_nome: tecnicoNome || profile?.nome || "Técnico",
+        status_aprovacao: formData.status,
+      };
+
+      await downloadRMEPDF(pdfData, `RME_${workOrder?.numero_os || "draft"}.pdf`);
+      toast({ title: "PDF exportado com sucesso!" });
+    } catch (error: any) {
+      toast({ title: "Erro ao exportar PDF", description: error.message, variant: "destructive" });
+    } finally {
+      setExporting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -383,10 +449,24 @@ const RMEWizard = () => {
               <h1 className="text-xl font-bold">RME - {workOrder?.numero_os}</h1>
               <p className="text-sm text-muted-foreground">{formData.client_name}</p>
             </div>
-            <Button variant="outline" size="sm" onClick={() => saveRME(false)} disabled={saving}>
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              <span className="ml-2 hidden sm:inline">Salvar</span>
-            </Button>
+            <div className="flex items-center gap-2">
+              {formData.id && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleExportPDF} 
+                  disabled={exporting}
+                  title="Exportar PDF"
+                >
+                  {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
+                  <span className="ml-2 hidden sm:inline">PDF</span>
+                </Button>
+              )}
+              <Button variant="outline" size="sm" onClick={() => saveRME(false)} disabled={saving}>
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                <span className="ml-2 hidden sm:inline">Salvar</span>
+              </Button>
+            </div>
           </div>
 
           {/* Progress */}
