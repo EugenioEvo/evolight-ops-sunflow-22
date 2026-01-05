@@ -32,3 +32,6 @@ verify_jwt = true
 
 [functions.process-email-retries]
 verify_jwt = false
+
+[functions.api-export]
+verify_jwt = false
