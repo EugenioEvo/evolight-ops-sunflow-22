@@ -530,10 +530,17 @@ export default function Clientes() {
               <Card key={cliente.id} className="hover:shadow-md transition-shadow">
                 <CardContent className="p-6">
                   <div className="flex items-start justify-between">
-                    <div className="flex-1 space-y-3">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Building2 className="h-4 w-4" />
-                        <span>{cliente.empresa}</span>
+                      <div className="flex-1 space-y-3">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Building2 className="h-4 w-4" />
+                          <span className="font-medium text-foreground">{cliente.empresa}</span>
+                        </div>
+                        {cliente.ufv_solarz && (
+                          <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-xs">
+                            UFV/SolarZ: {cliente.ufv_solarz}
+                          </Badge>
+                        )}
                       </div>
                       
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
@@ -571,12 +578,6 @@ export default function Clientes() {
                         </div>
 
                         <div className="space-y-2">
-                          {cliente.ufv_solarz && (
-                            <div className="flex items-center gap-2 text-sm">
-                              <span className="text-muted-foreground">⚡</span>
-                              <span>UFV/SolarZ: {cliente.ufv_solarz}</span>
-                            </div>
-                          )}
                           <Badge 
                             variant={cliente.status === 'ativo' ? 'default' : 'secondary'}
                             className="text-xs"
