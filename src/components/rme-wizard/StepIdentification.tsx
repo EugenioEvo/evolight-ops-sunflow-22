@@ -46,9 +46,17 @@ export const StepIdentification = ({ formData, updateFormData }: Props) => {
         </div>
       </div>
 
-      <div className="space-y-2">
-        <Label className="text-muted-foreground">Endereço</Label>
-        <Input value={formData.address} disabled className="bg-muted" />
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-2">
+          <Label className="text-muted-foreground">Endereço</Label>
+          <Input value={formData.address} disabled className="bg-muted" />
+        </div>
+        {formData.ufv_solarz && (
+          <div className="space-y-2">
+            <Label className="text-muted-foreground">UFV/SolarZ</Label>
+            <Input value={formData.ufv_solarz} disabled className="bg-amber-50 border-amber-200 text-amber-800" />
+          </div>
+        )}
       </div>
 
       {/* Editable fields */}
