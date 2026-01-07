@@ -41,6 +41,7 @@ const clienteSchema = z.object({
     .optional()
     .refine(val => !val || /^\(?\d{2}\)?\s?\d{4,5}-?\d{4}$/.test(val), "Telefone inválido (formato: (00) 00000-0000)"),
   email: z.string().email("Email inválido").optional().or(z.literal("")),
+  ufv_solarz: z.string().optional(),
   observacoes: z.string().optional(),
 });
 
@@ -49,6 +50,7 @@ type ClienteForm = z.infer<typeof clienteSchema>;
 interface Cliente extends ClienteForm {
   id: string;
   status: 'ativo' | 'inativo';
+  ufv_solarz?: string;
   profile?: {
     id: string;
     nome: string;
@@ -94,6 +96,7 @@ export default function Clientes() {
         cep: cliente.cep || '',
         telefone: cliente.profiles?.telefone || '',
         email: cliente.profiles?.email || '',
+        ufv_solarz: cliente.ufv_solarz || '',
         observacoes: '',
         status: 'ativo' as const,
         profile: cliente.profiles
@@ -119,6 +122,7 @@ export default function Clientes() {
       cep: '',
       telefone: '',
       email: '',
+      ufv_solarz: '',
       observacoes: ''
     }
   });
@@ -148,7 +152,8 @@ export default function Clientes() {
             endereco: data.endereco,
             cidade: data.cidade,
             estado: data.estado,
-            cep: data.cep
+            cep: data.cep,
+            ufv_solarz: data.ufv_solarz || null
           })
           .eq('id', editingClient.id);
 
@@ -167,7 +172,8 @@ export default function Clientes() {
             endereco: data.endereco,
             cidade: data.cidade,
             estado: data.estado,
-            cep: data.cep
+            cep: data.cep,
+            ufv_solarz: data.ufv_solarz || null
           });
 
         if (clienteError) throw clienteError;
@@ -198,6 +204,7 @@ export default function Clientes() {
       cep: cliente.cep,
       telefone: cliente.telefone,
       email: cliente.email,
+      ufv_solarz: cliente.ufv_solarz || '',
       observacoes: cliente.observacoes
     });
     setIsDialogOpen(true);
@@ -223,7 +230,8 @@ export default function Clientes() {
   const filteredClientes = clientes.filter(cliente =>
     cliente.empresa.toLowerCase().includes(searchTerm.toLowerCase()) ||
     cliente.cnpj_cpf.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    cliente.cidade.toLowerCase().includes(searchTerm.toLowerCase())
+    cliente.cidade.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (cliente.ufv_solarz && cliente.ufv_solarz.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   return (
@@ -430,6 +438,20 @@ export default function Clientes() {
 
                 <FormField
                   control={form.control}
+                  name="ufv_solarz"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>UFV/SolarZ (Opcional)</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="Identificador da usina ou projeto" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
                   name="observacoes"
                   render={({ field }) => (
                     <FormItem>
@@ -549,6 +571,12 @@ export default function Clientes() {
                         </div>
 
                         <div className="space-y-2">
+                          {cliente.ufv_solarz && (
+                            <div className="flex items-center gap-2 text-sm">
+                              <span className="text-muted-foreground">⚡</span>
+                              <span>UFV/SolarZ: {cliente.ufv_solarz}</span>
+                            </div>
+                          )}
                           <Badge 
                             variant={cliente.status === 'ativo' ? 'default' : 'secondary'}
                             className="text-xs"

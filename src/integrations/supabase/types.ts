@@ -112,6 +112,7 @@ export type Database = {
           latitude: number | null
           longitude: number | null
           profile_id: string | null
+          ufv_solarz: string | null
           updated_at: string
         }
         Insert: {
@@ -127,6 +128,7 @@ export type Database = {
           latitude?: number | null
           longitude?: number | null
           profile_id?: string | null
+          ufv_solarz?: string | null
           updated_at?: string
         }
         Update: {
@@ -142,6 +144,7 @@ export type Database = {
           latitude?: number | null
           longitude?: number | null
           profile_id?: string | null
+          ufv_solarz?: string | null
           updated_at?: string
         }
         Relationships: [

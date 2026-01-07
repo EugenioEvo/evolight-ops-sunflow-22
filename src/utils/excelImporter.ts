@@ -33,6 +33,11 @@ const HEADER_MAPPING: Record<string, string> = {
   'cep': 'cep',
   'codigo_postal': 'cep',
   'código postal': 'cep',
+  'ufv_solarz': 'ufv_solarz',
+  'ufv/solarz': 'ufv_solarz',
+  'ufv': 'ufv_solarz',
+  'solarz': 'ufv_solarz',
+  'usina': 'ufv_solarz',
 };
 
 function normalizeHeader(header: string): string {
@@ -99,9 +104,9 @@ export async function parseExcelFile(file: File): Promise<ParseResult> {
 
 export function generateClienteTemplate(): Blob {
   const templateData = [
-    ['Empresa', 'CNPJ/CPF', 'Endereço', 'Cidade', 'Estado', 'CEP'],
-    ['Empresa Exemplo Ltda', '00.000.000/0001-00', 'Av. T9, 1001', 'Goiânia', 'GO', '74215-025'],
-    ['João da Silva', '000.000.000-00', 'Rua das Flores, 123', 'São Paulo', 'SP', '01310-100'],
+    ['Empresa', 'CNPJ/CPF', 'Endereço', 'Cidade', 'Estado', 'CEP', 'UFV/SolarZ'],
+    ['Empresa Exemplo Ltda', '00.000.000/0001-00', 'Av. T9, 1001', 'Goiânia', 'GO', '74215-025', 'UFV-001'],
+    ['João da Silva', '000.000.000-00', 'Rua das Flores, 123', 'São Paulo', 'SP', '01310-100', ''],
   ];
   
   const worksheet = XLSX.utils.aoa_to_sheet(templateData);
@@ -114,6 +119,7 @@ export function generateClienteTemplate(): Blob {
     { wch: 20 }, // Cidade
     { wch: 8 },  // Estado
     { wch: 12 }, // CEP
+    { wch: 15 }, // UFV/SolarZ
   ];
   
   const workbook = XLSX.utils.book_new();
