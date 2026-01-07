@@ -216,6 +216,7 @@ const WorkOrderDetail = () => {
         descricao: workOrder.tickets.descricao || workOrder.tickets.titulo,
         inspetor_responsavel: workOrder.inspetor_responsavel || "TODOS",
         tipo_trabalho: workOrder.work_type || [],
+        ufv_solarz: workOrder.tickets.clientes?.ufv_solarz || undefined,
       };
 
       const pdfBlob = await generateOSPDF(pdfData);

@@ -12,6 +12,7 @@ interface OSData {
   descricao: string;
   inspetor_responsavel: string;
   tipo_trabalho: string[];
+  ufv_solarz?: string;
 }
 
 export const generateOSPDF = async (osData: OSData): Promise<Blob> => {
@@ -85,6 +86,21 @@ export const generateOSPDF = async (osData: OSData): Promise<Blob> => {
   doc.setFont('helvetica', 'bold');
   doc.text(osData.cliente.toUpperCase(), margin + 47, yPos + 5);
   yPos += 8;
+
+  // UFV/SolarZ (se disponível)
+  if (osData.ufv_solarz) {
+    doc.setFillColor(200, 200, 200);
+    doc.rect(margin, yPos, 45, 8, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.text('UFV/SOLARZ', margin + 2, yPos + 5);
+
+    doc.setFillColor(255, 200, 100);
+    doc.rect(margin + 45, yPos, pageWidth - 2 * margin - 45, 8, 'F');
+    doc.setTextColor(0, 0, 0);
+    doc.setFont('helvetica', 'bold');
+    doc.text(osData.ufv_solarz.toUpperCase(), margin + 47, yPos + 5);
+    yPos += 8;
+  }
 
   // ENDEREÇO
   doc.setFillColor(200, 200, 200);
