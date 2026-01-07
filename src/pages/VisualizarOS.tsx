@@ -145,13 +145,18 @@ const VisualizarOS = () => {
             </div>
           </div>
 
-          <div>
-            <p className="text-sm text-muted-foreground">Cliente</p>
-            <p className="font-medium">{ticket.clientes?.empresa || 'Não informado'}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <p className="text-sm text-muted-foreground">Cliente</p>
+              <p className="font-medium">{ticket.clientes?.empresa || 'Não informado'}</p>
+            </div>
             {ticket.clientes?.ufv_solarz && (
-              <span className="inline-block mt-1 px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded text-sm">
-                UFV/SolarZ: {ticket.clientes.ufv_solarz}
-              </span>
+              <div>
+                <p className="text-sm text-muted-foreground">UFV/SolarZ</p>
+                <span className="inline-block px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded text-sm font-medium">
+                  {ticket.clientes.ufv_solarz}
+                </span>
+              </div>
             )}
           </div>
 

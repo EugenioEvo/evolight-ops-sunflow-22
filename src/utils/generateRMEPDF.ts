@@ -116,16 +116,16 @@ export const generateRMEPDF = async (data: RMEPDFData): Promise<Blob> => {
 
   const identificationData: [string, string][] = [
     ['Cliente:', data.cliente],
-    ['Endereço:', data.endereco],
-    ['Site:', data.site_name || '-'],
   ];
 
-  // Add UFV/SolarZ if available
+  // Add UFV/SolarZ right after cliente
   if (data.ufv_solarz) {
     identificationData.push(['UFV/SolarZ:', data.ufv_solarz]);
   }
 
   identificationData.push(
+    ['Endereço:', data.endereco],
+    ['Site:', data.site_name || '-'],
     ['Data de Execução:', data.data_execucao],
     ['Dia da Semana:', data.weekday || '-'],
     ['Técnico Responsável:', data.tecnico_nome],

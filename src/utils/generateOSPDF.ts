@@ -87,7 +87,7 @@ export const generateOSPDF = async (osData: OSData): Promise<Blob> => {
   doc.text(osData.cliente.toUpperCase(), margin + 47, yPos + 5);
   yPos += 8;
 
-  // UFV/SolarZ (se disponível)
+  // UFV/SolarZ (próximo ao cliente)
   if (osData.ufv_solarz) {
     doc.setFillColor(200, 200, 200);
     doc.rect(margin, yPos, 45, 8, 'F');
