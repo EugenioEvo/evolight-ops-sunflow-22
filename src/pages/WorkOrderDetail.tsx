@@ -42,6 +42,7 @@ interface WorkOrderDetail {
       endereco: string;
       cidade: string;
       estado: string;
+      ufv_solarz: string | null;
     };
   };
   rme_relatorios: Array<{
@@ -84,7 +85,7 @@ const WorkOrderDetail = () => {
           *,
           tickets!inner(
             id, titulo, descricao, status, prioridade, endereco_servico,
-            clientes(empresa, endereco, cidade, estado)
+            clientes(empresa, endereco, cidade, estado, ufv_solarz)
           ),
           rme_relatorios(id, status, created_at)
         `)
@@ -389,6 +390,11 @@ const WorkOrderDetail = () => {
             <div>
               <p className="text-sm text-muted-foreground">Cliente</p>
               <p className="font-medium mt-1">{workOrder.tickets.clientes?.empresa}</p>
+              {workOrder.tickets.clientes?.ufv_solarz && (
+                <Badge variant="outline" className="mt-1 bg-amber-50 text-amber-700 border-amber-200">
+                  UFV/SolarZ: {workOrder.tickets.clientes.ufv_solarz}
+                </Badge>
+              )}
             </div>
 
             {workOrder.site_name && (
