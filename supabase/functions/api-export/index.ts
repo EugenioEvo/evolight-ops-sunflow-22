@@ -174,7 +174,7 @@ Deno.serve(async (req) => {
 
     // Return based on format
     if (format === "csv") {
-      const csv = convertToCSV(data || []);
+      const csv = convertToCSV((data || []) as unknown as Record<string, unknown>[]);
       return new Response(csv, {
         headers: {
           ...corsHeaders,
@@ -198,7 +198,7 @@ Deno.serve(async (req) => {
   } catch (error) {
     console.error("Export API error:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
