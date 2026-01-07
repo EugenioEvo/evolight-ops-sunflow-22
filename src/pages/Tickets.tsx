@@ -53,6 +53,7 @@ const Tickets = () => {
   const [generatingOsId, setGeneratingOsId] = useState<string | null>(null);
   const [selectedCliente, setSelectedCliente] = useState(localStorage.getItem('tickets_cliente') || 'todos');
   const [selectedPrioridade, setSelectedPrioridade] = useState(localStorage.getItem('tickets_prioridade') || 'todas');
+  const [selectedUfvSolarz, setSelectedUfvSolarz] = useState(localStorage.getItem('tickets_ufv_solarz') || 'todos');
   const [reprocessingTicketId, setReprocessingTicketId] = useState<string | null>(null);
 
   const { geocodeAddress, loading: geocoding } = useGeocoding();
@@ -63,7 +64,19 @@ const Tickets = () => {
     localStorage.setItem('tickets_tab', activeTab);
     localStorage.setItem('tickets_cliente', selectedCliente);
     localStorage.setItem('tickets_prioridade', selectedPrioridade);
-  }, [searchTerm, activeTab, selectedCliente, selectedPrioridade]);
+    localStorage.setItem('tickets_ufv_solarz', selectedUfvSolarz);
+  }, [searchTerm, activeTab, selectedCliente, selectedPrioridade, selectedUfvSolarz]);
+
+  // Extrair opções únicas de UFV/SolarZ dos tickets
+  const ufvSolarzOptions = React.useMemo(() => {
+    const ufvSet = new Set<string>();
+    tickets.forEach(ticket => {
+      if (ticket.clientes?.ufv_solarz) {
+        ufvSet.add(ticket.clientes.ufv_solarz);
+      }
+    });
+    return Array.from(ufvSet).sort();
+  }, [tickets]);
 
   const { user, profile } = useAuth();
   const { toast } = useToast();
@@ -452,9 +465,10 @@ const Tickets = () => {
     
     const matchesCliente = selectedCliente === 'todos' || ticket.cliente_id === selectedCliente;
     const matchesPrioridade = selectedPrioridade === 'todas' || ticket.prioridade === selectedPrioridade;
+    const matchesUfvSolarz = selectedUfvSolarz === 'todos' || ticket.clientes?.ufv_solarz === selectedUfvSolarz;
     
-    if (activeTab === 'todos') return matchesSearch && matchesCliente && matchesPrioridade;
-    return matchesSearch && matchesCliente && matchesPrioridade && ticket.status === activeTab;
+    if (activeTab === 'todos') return matchesSearch && matchesCliente && matchesPrioridade && matchesUfvSolarz;
+    return matchesSearch && matchesCliente && matchesPrioridade && matchesUfvSolarz && ticket.status === activeTab;
   });
 
   const getStatusColor = (status: string) => {

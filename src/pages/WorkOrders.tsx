@@ -70,6 +70,7 @@ const WorkOrders = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [clienteFilter, setClienteFilter] = useState<string>("all");
+  const [ufvSolarzFilter, setUfvSolarzFilter] = useState<string>("all");
   const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({});
   const [clientes, setClientes] = useState<{ id: string; empresa: string }[]>([]);
 
@@ -127,6 +128,17 @@ const WorkOrders = () => {
     setClientes(data || []);
   };
 
+  // Extrair opções únicas de UFV/SolarZ
+  const ufvSolarzOptions = useMemo(() => {
+    const ufvSet = new Set<string>();
+    workOrders.forEach(os => {
+      if (os.tickets.clientes?.ufv_solarz) {
+        ufvSet.add(os.tickets.clientes.ufv_solarz);
+      }
+    });
+    return Array.from(ufvSet).sort();
+  }, [workOrders]);
+
   const filteredOrders = useMemo(() => {
     return workOrders.filter((os) => {
       const matchesSearch =
@@ -148,13 +160,17 @@ const WorkOrders = () => {
         clienteFilter === "all" ||
         os.tickets.clientes?.empresa === clienteFilter;
 
+      const matchesUfvSolarz =
+        ufvSolarzFilter === "all" ||
+        os.tickets.clientes?.ufv_solarz === ufvSolarzFilter;
+
       const matchesDate =
         (!dateRange.from || new Date(os.data_programada || os.data_emissao) >= dateRange.from) &&
         (!dateRange.to || new Date(os.data_programada || os.data_emissao) <= dateRange.to);
 
-      return matchesSearch && matchesStatus && matchesCliente && matchesDate;
+      return matchesSearch && matchesStatus && matchesCliente && matchesUfvSolarz && matchesDate;
     });
-  }, [workOrders, searchTerm, statusFilter, clienteFilter, dateRange]);
+  }, [workOrders, searchTerm, statusFilter, clienteFilter, ufvSolarzFilter, dateRange]);
 
   // Dashboard stats
   const stats = useMemo(() => {
@@ -322,6 +338,22 @@ const WorkOrders = () => {
                 ))}
               </SelectContent>
             </Select>
+
+            {ufvSolarzOptions.length > 0 && (
+              <Select value={ufvSolarzFilter} onValueChange={setUfvSolarzFilter}>
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectValue placeholder="UFV/SolarZ" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos UFV/SolarZ</SelectItem>
+                  {ufvSolarzOptions.map((ufv) => (
+                    <SelectItem key={ufv} value={ufv}>
+                      {ufv}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
 
             <Popover>
               <PopoverTrigger asChild>

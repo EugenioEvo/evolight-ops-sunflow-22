@@ -10,6 +10,9 @@ interface TicketFiltersProps {
   onClienteChange: (value: string) => void;
   selectedPrioridade: string;
   onPrioridadeChange: (value: string) => void;
+  ufvSolarzOptions?: string[];
+  selectedUfvSolarz?: string;
+  onUfvSolarzChange?: (value: string) => void;
 }
 
 const TicketFilters = ({
@@ -20,6 +23,9 @@ const TicketFilters = ({
   onClienteChange,
   selectedPrioridade,
   onPrioridadeChange,
+  ufvSolarzOptions = [],
+  selectedUfvSolarz = 'todos',
+  onUfvSolarzChange,
 }: TicketFiltersProps) => {
   return (
     <div className="flex flex-wrap gap-4 mb-6">
@@ -48,6 +54,22 @@ const TicketFilters = ({
           ))}
         </SelectContent>
       </Select>
+
+      {ufvSolarzOptions.length > 0 && onUfvSolarzChange && (
+        <Select value={selectedUfvSolarz} onValueChange={onUfvSolarzChange}>
+          <SelectTrigger className="w-[200px]">
+            <SelectValue placeholder="UFV/SolarZ" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todos">Todos UFV/SolarZ</SelectItem>
+            {ufvSolarzOptions.map((ufv) => (
+              <SelectItem key={ufv} value={ufv}>
+                {ufv}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
 
       <Select value={selectedPrioridade} onValueChange={onPrioridadeChange}>
         <SelectTrigger className="w-[200px]">
