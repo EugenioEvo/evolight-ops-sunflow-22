@@ -48,6 +48,7 @@ export interface RMEFormData {
   // Read-only from OS
   client_name: string;
   address: string;
+  ufv_solarz?: string;
 }
 
 interface WorkOrderInfo {
@@ -58,7 +59,7 @@ interface WorkOrderInfo {
   tickets: {
     id: string;
     endereco_servico: string;
-    clientes: { empresa: string };
+    clientes: { empresa: string; ufv_solarz: string | null };
   };
 }
 
@@ -116,6 +117,7 @@ const RMEWizard = () => {
     status: "rascunho",
     client_name: "",
     address: "",
+    ufv_solarz: "",
   });
 
   const isNewRME = id === "new";
@@ -152,7 +154,7 @@ const RMEWizard = () => {
         .from("ordens_servico")
         .select(`
           id, numero_os, site_name, ticket_id,
-          tickets(id, endereco_servico, clientes(empresa))
+          tickets(id, endereco_servico, clientes(empresa, ufv_solarz))
         `)
         .eq("id", workOrderId)
         .single();
@@ -167,6 +169,7 @@ const RMEWizard = () => {
         site_name: data.site_name || "",
         client_name: (data.tickets as any)?.clientes?.empresa || "",
         address: (data.tickets as any)?.endereco_servico || "",
+        ufv_solarz: (data.tickets as any)?.clientes?.ufv_solarz || "",
       }));
     } catch (error: any) {
       toast({ title: "Erro ao carregar OS", description: error.message, variant: "destructive" });
@@ -186,7 +189,7 @@ const RMEWizard = () => {
           tecnicos(id, profiles(nome)),
           ordens_servico(
             id, numero_os, site_name, ticket_id,
-            tickets(id, endereco_servico, clientes(empresa))
+            tickets(id, endereco_servico, clientes(empresa, ufv_solarz))
           )
         `)
         .eq("id", rmeId)
@@ -224,6 +227,7 @@ const RMEWizard = () => {
         status: data.status || "rascunho",
         client_name: os?.tickets?.clientes?.empresa || "",
         address: os?.tickets?.endereco_servico || "",
+        ufv_solarz: os?.tickets?.clientes?.ufv_solarz || "",
       });
 
       // Load checklist items
@@ -411,6 +415,7 @@ const RMEWizard = () => {
         signatures: formData.signatures,
         tecnico_nome: tecnicoNome || profile?.nome || "Técnico",
         status_aprovacao: formData.status,
+        ufv_solarz: formData.ufv_solarz || undefined,
       };
 
       await downloadRMEPDF(pdfData, `RME_${workOrder?.numero_os || "draft"}.pdf`);

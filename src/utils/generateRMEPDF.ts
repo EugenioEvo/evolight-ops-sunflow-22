@@ -36,6 +36,7 @@ export interface RMEPDFData {
   };
   tecnico_nome: string;
   status_aprovacao: string;
+  ufv_solarz?: string;
 }
 
 const categoryLabels: Record<string, string> = {
@@ -113,14 +114,22 @@ export const generateRMEPDF = async (data: RMEPDFData): Promise<Blob> => {
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(0, 0, 0);
 
-  const identificationData = [
+  const identificationData: [string, string][] = [
     ['Cliente:', data.cliente],
     ['Endereço:', data.endereco],
     ['Site:', data.site_name || '-'],
+  ];
+
+  // Add UFV/SolarZ if available
+  if (data.ufv_solarz) {
+    identificationData.push(['UFV/SolarZ:', data.ufv_solarz]);
+  }
+
+  identificationData.push(
     ['Data de Execução:', data.data_execucao],
     ['Dia da Semana:', data.weekday || '-'],
     ['Técnico Responsável:', data.tecnico_nome],
-  ];
+  );
 
   identificationData.forEach(([label, value]) => {
     doc.setFont('helvetica', 'bold');
