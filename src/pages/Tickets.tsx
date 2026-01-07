@@ -875,8 +875,13 @@ const Tickets = () => {
                             {ticket.numero_ticket}
                           </Badge>
                         </div>
-                        <CardDescription>
-                          Cliente: {ticket.clientes?.empresa || ticket.clientes?.profiles?.nome}
+                        <CardDescription className="flex items-center gap-2 flex-wrap">
+                          <span>Cliente: {ticket.clientes?.empresa || ticket.clientes?.profiles?.nome}</span>
+                          {ticket.clientes?.ufv_solarz && (
+                            <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-xs">
+                              UFV/SolarZ: {ticket.clientes.ufv_solarz}
+                            </Badge>
+                          )}
                         </CardDescription>
                       </div>
                       <div className="flex flex-col items-end gap-2">

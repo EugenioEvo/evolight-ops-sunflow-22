@@ -418,13 +418,15 @@ const WorkOrders = () => {
                   <div className="space-y-2 text-sm">
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <Users className="h-4 w-4 flex-shrink-0" />
-                      <span className="truncate">{os.tickets.clientes?.empresa || "Cliente"}</span>
+                      <span className="truncate">
+                        {os.tickets.clientes?.empresa || "Cliente"}
+                        {os.tickets.clientes?.ufv_solarz && (
+                          <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-xs ml-2">
+                            {os.tickets.clientes.ufv_solarz}
+                          </Badge>
+                        )}
+                      </span>
                     </div>
-                    {os.tickets.clientes?.ufv_solarz && (
-                      <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-xs">
-                        UFV/SolarZ: {os.tickets.clientes.ufv_solarz}
-                      </Badge>
-                    )}
                     {os.site_name && (
                       <div className="flex items-center gap-2 text-muted-foreground">
                         <MapPin className="h-4 w-4 flex-shrink-0" />
