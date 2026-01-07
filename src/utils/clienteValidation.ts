@@ -13,6 +13,7 @@ export interface ValidatedCliente {
   cidade: string | null;
   estado: string | null;
   cep: string | null;
+  ufv_solarz: string | null;
   _validation: ValidationResult;
   _rowIndex: number;
 }
@@ -77,6 +78,7 @@ export function validateCliente(row: ParsedRow, rowIndex: number): ValidatedClie
   let cidade = row.cidade ? String(row.cidade).trim() : null;
   let estado = row.estado ? String(row.estado).trim() : null;
   let cep = row.cep ? String(row.cep).trim() : null;
+  let ufv_solarz = row.ufv_solarz ? String(row.ufv_solarz).trim() : null;
   
   // Validar empresa (obrigatório)
   if (!empresa) {
@@ -128,6 +130,7 @@ export function validateCliente(row: ParsedRow, rowIndex: number): ValidatedClie
     cidade,
     estado,
     cep,
+    ufv_solarz,
     _validation: {
       valid: errors.length === 0,
       errors,
@@ -179,5 +182,6 @@ export function prepareClienteForInsert(row: ValidatedCliente): Record<string, u
     cidade: row.cidade || null,
     estado: row.estado || null,
     cep: row.cep || null,
+    ufv_solarz: row.ufv_solarz || null,
   };
 }
