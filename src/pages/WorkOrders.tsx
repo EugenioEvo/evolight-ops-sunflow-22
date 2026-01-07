@@ -41,6 +41,7 @@ interface WorkOrder {
     endereco_servico: string;
     clientes: {
       empresa: string;
+      ufv_solarz: string | null;
     };
   };
   rme_relatorios: Array<{
@@ -92,7 +93,7 @@ const WorkOrders = () => {
           *,
           tickets!inner(
             id, titulo, status, prioridade, endereco_servico,
-            clientes(empresa)
+            clientes(empresa, ufv_solarz)
           ),
           rme_relatorios(id, status)
         `)
@@ -419,6 +420,11 @@ const WorkOrders = () => {
                       <Users className="h-4 w-4 flex-shrink-0" />
                       <span className="truncate">{os.tickets.clientes?.empresa || "Cliente"}</span>
                     </div>
+                    {os.tickets.clientes?.ufv_solarz && (
+                      <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-xs">
+                        UFV/SolarZ: {os.tickets.clientes.ufv_solarz}
+                      </Badge>
+                    )}
                     {os.site_name && (
                       <div className="flex items-center gap-2 text-muted-foreground">
                         <MapPin className="h-4 w-4 flex-shrink-0" />
