@@ -100,6 +100,8 @@ Deno.serve(async (req) => {
     const statusFilter = url.searchParams.get("status");
     const dateFrom = url.searchParams.get("date_from");
     const dateTo = url.searchParams.get("date_to");
+    const updatedFrom = url.searchParams.get("updated_from");
+    const updatedTo = url.searchParams.get("updated_to");
 
     // List available tables if no table specified
     if (!table) {
@@ -117,7 +119,9 @@ Deno.serve(async (req) => {
               order_dir: "Optional. 'asc' or 'desc' (default: desc)",
               status: "Optional. Filter by status column",
               date_from: "Optional. Filter created_at >= date (YYYY-MM-DD)",
-              date_to: "Optional. Filter created_at <= date (YYYY-MM-DD)"
+              date_to: "Optional. Filter created_at <= date (YYYY-MM-DD)",
+              updated_from: "Optional. Filter updated_at >= date (YYYY-MM-DD or ISO datetime)",
+              updated_to: "Optional. Filter updated_at <= date (YYYY-MM-DD or ISO datetime)"
             },
             headers: {
               "x-api-key": "Required. Your API key"
@@ -160,6 +164,14 @@ Deno.serve(async (req) => {
     }
     if (dateTo) {
       query = query.lte("created_at", `${dateTo}T23:59:59`);
+    }
+    if (updatedFrom) {
+      const updatedFromValue = updatedFrom.includes("T") ? updatedFrom : `${updatedFrom}T00:00:00`;
+      query = query.gte("updated_at", updatedFromValue);
+    }
+    if (updatedTo) {
+      const updatedToValue = updatedTo.includes("T") ? updatedTo : `${updatedTo}T23:59:59`;
+      query = query.lte("updated_at", updatedToValue);
     }
 
     const { data, error, count } = await query;
