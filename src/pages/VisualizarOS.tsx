@@ -67,7 +67,8 @@ const VisualizarOS = () => {
         hora_marcada: os.hora_inicio || '00:00',
         descricao: ticket.descricao || ticket.titulo || '',
         inspetor_responsavel: os.inspetor_responsavel || 'TODOS',
-        tipo_trabalho: os.tipo_trabalho || []
+        tipo_trabalho: os.tipo_trabalho || [],
+        ufv_solarz: ticket.clientes?.ufv_solarz || undefined,
       };
 
       const pdfBlob = await generateOSPDF(pdfData);
