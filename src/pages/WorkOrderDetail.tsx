@@ -388,13 +388,18 @@ const WorkOrderDetail = () => {
 
             <Separator />
 
-            <div>
-              <p className="text-sm text-muted-foreground">Cliente</p>
-              <p className="font-medium mt-1">{workOrder.tickets.clientes?.empresa}</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm text-muted-foreground">Cliente</p>
+                <p className="font-medium mt-1">{workOrder.tickets.clientes?.empresa}</p>
+              </div>
               {workOrder.tickets.clientes?.ufv_solarz && (
-                <Badge variant="outline" className="mt-1 bg-amber-50 text-amber-700 border-amber-200">
-                  UFV/SolarZ: {workOrder.tickets.clientes.ufv_solarz}
-                </Badge>
+                <div>
+                  <p className="text-sm text-muted-foreground">UFV/SolarZ</p>
+                  <Badge variant="outline" className="mt-1 bg-amber-50 text-amber-700 border-amber-200">
+                    {workOrder.tickets.clientes.ufv_solarz}
+                  </Badge>
+                </div>
               )}
             </div>
 
