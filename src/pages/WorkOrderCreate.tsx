@@ -53,11 +53,12 @@ const workTypes = [
 
 const WorkOrderCreate = () => {
   const [loading, setLoading] = useState(false);
-  const [clientes, setClientes] = useState<Array<{ id: string; empresa: string }>>([]);
+  const [clientes, setClientes] = useState<Array<{ id: string; empresa: string; ufv_solarz: string | null }>>([]);
   const [tecnicos, setTecnicos] = useState<Array<{ id: string; nome: string }>>([]);
   const [selectedWorkTypes, setSelectedWorkTypes] = useState<string[]>([]);
   const [teamMembers, setTeamMembers] = useState<string[]>([]);
   const [newMember, setNewMember] = useState("");
+  const [ufvSolarzList, setUfvSolarzList] = useState<string[]>([]);
 
   const { profile } = useAuth();
   const { toast } = useToast();
@@ -86,9 +87,28 @@ const WorkOrderCreate = () => {
   const loadClientes = async () => {
     const { data } = await supabase
       .from("clientes")
-      .select("id, empresa")
+      .select("id, empresa, ufv_solarz")
       .order("empresa");
     setClientes(data || []);
+    
+    // Extrai lista única de UFV/SolarZ
+    const ufvList = (data || [])
+      .map((c) => c.ufv_solarz)
+      .filter((ufv): ufv is string => ufv !== null && ufv.trim() !== "")
+      .filter((ufv, index, arr) => arr.indexOf(ufv) === index)
+      .sort((a, b) => a.localeCompare(b));
+    setUfvSolarzList(ufvList);
+  };
+  
+  // Quando seleciona UFV/SolarZ, preenche cliente automaticamente
+  const handleUfvSolarzChange = (ufvSolarz: string) => {
+    form.setValue("site_name", ufvSolarz);
+    
+    // Busca o primeiro cliente com esse UFV/SolarZ
+    const cliente = clientes.find((c) => c.ufv_solarz === ufvSolarz);
+    if (cliente) {
+      form.setValue("cliente_id", cliente.id);
+    }
   };
 
   const loadTecnicos = async () => {
@@ -293,7 +313,39 @@ const WorkOrderCreate = () => {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Cliente */}
+                {/* UFV/SolarZ */}
+                <FormField
+                  control={form.control}
+                  name="site_name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>UFV/SolarZ *</FormLabel>
+                      <Select 
+                        onValueChange={(value) => {
+                          field.onChange(value);
+                          handleUfvSolarzChange(value);
+                        }} 
+                        value={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="h-12">
+                            <SelectValue placeholder="Selecione a UFV/SolarZ" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {ufvSolarzList.map((ufv) => (
+                            <SelectItem key={ufv} value={ufv}>
+                              {ufv}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Cliente (auto-preenchido) */}
                 <FormField
                   control={form.control}
                   name="cliente_id"
@@ -314,21 +366,6 @@ const WorkOrderCreate = () => {
                           ))}
                         </SelectContent>
                       </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* Usina */}
-                <FormField
-                  control={form.control}
-                  name="site_name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Nome da Usina *</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="Ex: Usina Solar Norte" className="h-12" />
-                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}

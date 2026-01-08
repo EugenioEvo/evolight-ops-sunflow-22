@@ -100,11 +100,14 @@ const Tickets = () => {
   const [selectedTechnicianForTicket, setSelectedTechnicianForTicket] = useState<string>('');
   const [attachments, setAttachments] = useState<string[]>([]);
 
+  const [ufvSolarzListForForm, setUfvSolarzListForForm] = useState<string[]>([]);
+  const [selectedUfvSolarzForm, setSelectedUfvSolarzForm] = useState<string>('');
+  
   const loadData = async () => {
     try {
       setLoading(true);
       
-      // Carregar clientes com endereço completo
+      // Carregar clientes com endereço completo e UFV/SolarZ
       const { data: clientesData } = await supabase
         .from('clientes')
         .select(`
@@ -115,9 +118,18 @@ const Tickets = () => {
           estado,
           cep,
           cnpj_cpf,
+          ufv_solarz,
           profiles(nome, email, telefone)
         `);
       setClientes(clientesData || []);
+      
+      // Extrair lista única de UFV/SolarZ para o formulário
+      const ufvList = (clientesData || [])
+        .map((c: any) => c.ufv_solarz)
+        .filter((ufv: string | null): ufv is string => ufv !== null && ufv.trim() !== '')
+        .filter((ufv: string, index: number, arr: string[]) => arr.indexOf(ufv) === index)
+        .sort((a: string, b: string) => a.localeCompare(b));
+      setUfvSolarzListForForm(ufvList);
 
       // Carregar prestadores ativos com categoria técnico
       const { data: prestadoresData } = await supabase
@@ -243,6 +255,8 @@ const Tickets = () => {
     setEditingTicket(ticket);
     setSelectedTechnicianForTicket(ticket.tecnico_responsavel_id || '');
     setAttachments(ticket.anexos || []);
+    // Preencher UFV/SolarZ do cliente associado
+    setSelectedUfvSolarzForm(ticket.clientes?.ufv_solarz || '');
     form.reset({
       titulo: ticket.titulo,
       descricao: ticket.descricao,
@@ -603,7 +617,7 @@ const Tickets = () => {
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={() => { setEditingTicket(null); form.reset(); }}>
+            <Button onClick={() => { setEditingTicket(null); setSelectedUfvSolarzForm(''); form.reset(); }}>
               <Plus className="h-4 w-4 mr-2" />
               Novo Ticket
             </Button>
@@ -631,6 +645,38 @@ const Tickets = () => {
                       </FormItem>
                     )}
                   />
+                  
+                  {/* UFV/SolarZ - com auto-preenchimento */}
+                  <FormItem>
+                    <FormLabel>UFV/SolarZ</FormLabel>
+                    <Select 
+                      value={selectedUfvSolarzForm}
+                      onValueChange={(value) => {
+                        setSelectedUfvSolarzForm(value);
+                        // Buscar cliente associado e preencher automaticamente
+                        const clienteAssociado = clientes.find((c: any) => c.ufv_solarz === value);
+                        if (clienteAssociado) {
+                          form.setValue('cliente_id', clienteAssociado.id);
+                          const endereco = `${clienteAssociado.endereco || ''}, ${clienteAssociado.cidade || ''}, ${clienteAssociado.estado || ''} - ${clienteAssociado.cep || ''}`.trim().replace(/^,\s*|,\s*$/, '');
+                          form.setValue('endereco_servico', endereco);
+                        }
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione a UFV/SolarZ" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ufvSolarzListForForm.map((ufv) => (
+                          <SelectItem key={ufv} value={ufv}>
+                            {ufv}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </FormItem>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
                     name="cliente_id"
@@ -640,10 +686,14 @@ const Tickets = () => {
                         <Select onValueChange={(value) => {
                           field.onChange(value);
                           // Auto-preencher endereço baseado no cliente selecionado
-                          const clienteSelecionado = clientes.find(c => c.id === value);
+                          const clienteSelecionado = clientes.find((c: any) => c.id === value);
                           if (clienteSelecionado) {
                             const endereco = `${clienteSelecionado.endereco || ''}, ${clienteSelecionado.cidade || ''}, ${clienteSelecionado.estado || ''} - ${clienteSelecionado.cep || ''}`.trim().replace(/^,\s*|,\s*$/, '');
                             form.setValue('endereco_servico', endereco);
+                            // Atualizar o UFV/SolarZ selecionado
+                            if (clienteSelecionado.ufv_solarz) {
+                              setSelectedUfvSolarzForm(clienteSelecionado.ufv_solarz);
+                            }
                           }
                         }} value={field.value}>
                           <FormControl>
@@ -652,7 +702,7 @@ const Tickets = () => {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {clientes.map((cliente) => (
+                            {clientes.map((cliente: any) => (
                               <SelectItem key={cliente.id} value={cliente.id}>
                                 {cliente.empresa || cliente.profiles?.nome}
                               </SelectItem>
@@ -663,16 +713,30 @@ const Tickets = () => {
                       </FormItem>
                     )}
                   />
+                  
+                  <FormField
+                    control={form.control}
+                    name="descricao"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Descrição</FormLabel>
+                        <FormControl>
+                          <Textarea {...field} placeholder="Descreva o problema..." rows={1} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
 
                 <FormField
                   control={form.control}
-                  name="descricao"
+                  name="endereco_servico"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Descrição</FormLabel>
+                      <FormLabel>Endereço do Serviço</FormLabel>
                       <FormControl>
-                        <Textarea {...field} placeholder="Descreva o problema ou serviço necessário..." rows={3} />
+                        <Textarea {...field} placeholder="Endereço completo onde o serviço será realizado..." rows={2} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
