@@ -52,6 +52,12 @@ serve(async (req) => {
         signedUrl = signedData?.signedUrl
       }
 
+      // Garantir que o status do ticket está atualizado
+      await supabaseClient
+        .from('tickets')
+        .update({ status: 'ordem_servico_gerada' })
+        .eq('id', ticketId)
+
       return new Response(JSON.stringify({ 
         success: true, 
         ordemServico: existingOS,
