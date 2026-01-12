@@ -983,15 +983,6 @@ const Tickets = () => {
                     <div className="space-y-4">
                       <p className="text-sm text-muted-foreground">{ticket.descricao}</p>
                       
-                      {/* UFV/SolarZ do cliente */}
-                      {ticket.clientes?.ufv_solarz && (
-                        <div className="flex items-center gap-2 text-sm">
-                          <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
-                            UFV/SolarZ: {ticket.clientes.ufv_solarz}
-                          </Badge>
-                        </div>
-                      )}
-                      
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                         <div className="flex items-center gap-2">
                           {getEquipamentoIcon(ticket.equipamento_tipo)}
