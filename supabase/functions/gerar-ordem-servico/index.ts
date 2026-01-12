@@ -81,6 +81,7 @@ serve(async (req) => {
           cidade,
           estado,
           cep,
+          ufv_solarz,
           profiles(nome, email, telefone)
         )
       `)
@@ -210,6 +211,7 @@ Data de Emissão: ${new Date().toLocaleDateString('pt-BR')}
 
 DADOS DO CLIENTE
 Cliente: ${ticket.clientes.empresa || ticket.clientes.profiles?.nome || 'N/A'}
+${ticket.clientes.ufv_solarz ? `UFV/SolarZ: ${ticket.clientes.ufv_solarz}` : ''}
 Email: ${ticket.clientes.profiles?.email || 'N/A'}
 Telefone: ${ticket.clientes.profiles?.telefone || 'N/A'}
 CNPJ/CPF: ${ticket.clientes.cnpj_cpf || 'N/A'}
