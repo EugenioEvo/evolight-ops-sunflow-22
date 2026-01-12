@@ -241,7 +241,7 @@ QR Code: ${ordemServico.qr_code}
     const { error: uploadError } = await supabaseClient.storage
       .from('ordens-servico')
       .upload(fileName, pdfBuffer, {
-        contentType: 'text/plain'
+        contentType: 'text/plain; charset=utf-8'
       })
 
     if (uploadError) {
