@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CheckCircle, XCircle, Clock, Search, Eye, FileText } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, Search, Eye, FileText, Star } from 'lucide-react';
 import { format } from 'date-fns';
 import { RMEDetailDialog } from '@/components/RMEDetailDialog';
 import { ApprovalModal } from '@/components/ApprovalModal';
@@ -206,8 +206,12 @@ const GerenciarRME = () => {
                       </div>
                       <CardDescription>
                         <div className="space-y-1">
-                          <div>
+                          <div className="flex items-center gap-2">
                             <strong>Cliente:</strong> {rme.tickets?.clientes?.empresa}
+                            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs flex items-center gap-1">
+                              <Star className="h-3 w-3" />
+                              P{(rme.tickets?.clientes as any)?.prioridade ?? 5}
+                            </Badge>
                           </div>
                           <div>
                             <strong>Técnico:</strong> {rme.tecnicos?.profiles?.nome}

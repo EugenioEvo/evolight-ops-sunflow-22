@@ -668,8 +668,9 @@ export default function DashboardPresenca() {
                       {os.tecnicos?.profiles?.nome || "Técnico não atribuído"}
                     </div>
                     {os.tickets?.clientes?.empresa && (
-                      <div className="text-sm text-muted-foreground">
+                      <div className="text-sm text-muted-foreground flex items-center gap-1">
                         {os.tickets.clientes.empresa}
+                        <span className="text-blue-600">(P{(os.tickets.clientes as any)?.prioridade ?? 5})</span>
                       </div>
                     )}
                     {os.presence_confirmed_at && (

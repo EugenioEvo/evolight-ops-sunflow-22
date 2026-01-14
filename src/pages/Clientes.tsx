@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Pencil, Trash2, Building2, Phone, Mail, MapPin, FileText, Calendar, Clock, User, Plus, Search, Edit, Upload } from 'lucide-react';
+import { Pencil, Trash2, Building2, Phone, Mail, MapPin, FileText, Calendar, Clock, User, Plus, Search, Edit, Upload, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
@@ -42,6 +42,7 @@ const clienteSchema = z.object({
     .refine(val => !val || /^\(?\d{2}\)?\s?\d{4,5}-?\d{4}$/.test(val), "Telefone inválido (formato: (00) 00000-0000)"),
   email: z.string().email("Email inválido").optional().or(z.literal("")),
   ufv_solarz: z.string().optional(),
+  prioridade: z.number().int().min(0, "Prioridade deve ser maior ou igual a 0").optional(),
   observacoes: z.string().optional(),
 });
 
@@ -51,6 +52,7 @@ interface Cliente extends ClienteForm {
   id: string;
   status: 'ativo' | 'inativo';
   ufv_solarz?: string;
+  prioridade?: number;
   profile?: {
     id: string;
     nome: string;
@@ -97,6 +99,7 @@ export default function Clientes() {
         telefone: cliente.profiles?.telefone || '',
         email: cliente.profiles?.email || '',
         ufv_solarz: cliente.ufv_solarz || '',
+        prioridade: (cliente as any).prioridade ?? 5,
         observacoes: '',
         status: 'ativo' as const,
         profile: cliente.profiles
@@ -123,6 +126,7 @@ export default function Clientes() {
       telefone: '',
       email: '',
       ufv_solarz: '',
+      prioridade: 5,
       observacoes: ''
     }
   });
@@ -153,7 +157,8 @@ export default function Clientes() {
             cidade: data.cidade,
             estado: data.estado,
             cep: data.cep,
-            ufv_solarz: data.ufv_solarz || null
+            ufv_solarz: data.ufv_solarz || null,
+            prioridade: data.prioridade ?? 5
           })
           .eq('id', editingClient.id);
 
@@ -173,7 +178,8 @@ export default function Clientes() {
             cidade: data.cidade,
             estado: data.estado,
             cep: data.cep,
-            ufv_solarz: data.ufv_solarz || null
+            ufv_solarz: data.ufv_solarz || null,
+            prioridade: data.prioridade ?? 5
           });
 
         if (clienteError) throw clienteError;
@@ -205,6 +211,7 @@ export default function Clientes() {
       telefone: cliente.telefone,
       email: cliente.email,
       ufv_solarz: cliente.ufv_solarz || '',
+      prioridade: cliente.prioridade ?? 5,
       observacoes: cliente.observacoes
     });
     setIsDialogOpen(true);
@@ -436,19 +443,42 @@ export default function Clientes() {
                   />
                 </div>
 
-                <FormField
-                  control={form.control}
-                  name="ufv_solarz"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>UFV/SolarZ (Opcional)</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="Identificador da usina ou projeto" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="ufv_solarz"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>UFV/SolarZ (Opcional)</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="Identificador da usina ou projeto" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="prioridade"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Prioridade</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number"
+                            min={0}
+                            {...field}
+                            value={field.value ?? 5}
+                            onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : 5)}
+                            placeholder="Quanto menor, maior a prioridade"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
 
                 <FormField
                   control={form.control}
@@ -536,6 +566,10 @@ export default function Clientes() {
                           <Building2 className="h-4 w-4" />
                           <span className="font-medium text-foreground">{cliente.empresa}</span>
                         </div>
+                        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs flex items-center gap-1">
+                          <Star className="h-3 w-3" />
+                          P{cliente.prioridade ?? 5}
+                        </Badge>
                         {cliente.ufv_solarz && (
                           <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-xs">
                             UFV/SolarZ: {cliente.ufv_solarz}

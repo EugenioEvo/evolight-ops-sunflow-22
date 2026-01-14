@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Download, ArrowLeft, FileText } from "lucide-react";
+import { Loader2, Download, ArrowLeft, FileText, Star } from "lucide-react";
 import { toast } from "sonner";
 import { generateOSPDF } from "@/utils/generateOSPDF";
 
@@ -32,7 +32,8 @@ const VisualizarOS = () => {
               endereco,
               cidade,
               estado,
-              ufv_solarz
+              ufv_solarz,
+              prioridade
             )
           )
         `)
@@ -145,10 +146,17 @@ const VisualizarOS = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <p className="text-sm text-muted-foreground">Cliente</p>
               <p className="font-medium">{ticket.clientes?.empresa || 'Não informado'}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Prioridade</p>
+              <div className="flex items-center gap-1">
+                <Star className="h-4 w-4 text-blue-600" />
+                <span className="font-medium">P{ticket.clientes?.prioridade ?? 5}</span>
+              </div>
             </div>
             {ticket.clientes?.ufv_solarz && (
               <div>

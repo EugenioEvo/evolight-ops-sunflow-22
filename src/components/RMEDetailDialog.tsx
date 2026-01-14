@@ -59,9 +59,10 @@ export const RMEDetailDialog: React.FC<RMEDetailDialogProps> = ({
                   <span className="font-medium">Título:</span>{' '}
                   {rme.tickets?.titulo}
                 </div>
-                <div>
+                <div className="flex items-center gap-2">
                   <span className="font-medium">Cliente:</span>{' '}
                   {rme.tickets?.clientes?.empresa}
+                  <span className="text-blue-600 text-sm">(P{(rme.tickets?.clientes as any)?.prioridade ?? 5})</span>
                 </div>
                 <div>
                   <span className="font-medium">Técnico:</span>{' '}
