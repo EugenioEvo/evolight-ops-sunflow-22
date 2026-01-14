@@ -8,7 +8,7 @@ import { ptBR } from "date-fns/locale";
 import { 
   Plus, Search, Filter, Calendar, MapPin, Users, 
   Clock, FileText, AlertTriangle, CheckCircle2, 
-  PlayCircle, XCircle, Loader2, ChevronDown
+  PlayCircle, XCircle, Loader2, ChevronDown, Star
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,6 +42,7 @@ interface WorkOrder {
     clientes: {
       empresa: string;
       ufv_solarz: string | null;
+      prioridade: number | null;
     };
   };
   rme_relatorios: Array<{
@@ -94,7 +95,7 @@ const WorkOrders = () => {
           *,
           tickets!inner(
             id, titulo, status, prioridade, endereco_servico,
-            clientes(empresa, ufv_solarz)
+            clientes(empresa, ufv_solarz, prioridade)
           ),
           rme_relatorios(id, status)
         `)
@@ -452,12 +453,16 @@ const WorkOrders = () => {
                       <Users className="h-4 w-4 flex-shrink-0" />
                       <span className="truncate">
                         {os.tickets.clientes?.empresa || "Cliente"}
-                        {os.tickets.clientes?.ufv_solarz && (
-                          <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-xs ml-2">
-                            {os.tickets.clientes.ufv_solarz}
-                          </Badge>
-                        )}
                       </span>
+                      <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs flex items-center gap-1">
+                        <Star className="h-3 w-3" />
+                        P{os.tickets.clientes?.prioridade ?? 5}
+                      </Badge>
+                      {os.tickets.clientes?.ufv_solarz && (
+                        <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-xs ml-1">
+                          {os.tickets.clientes.ufv_solarz}
+                        </Badge>
+                      )}
                     </div>
                     {os.site_name && (
                       <div className="flex items-center gap-2 text-muted-foreground">

@@ -17,7 +17,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Clock, MapPin, Plus, Search, Settings, FileText, CheckCircle, XCircle, Download, Eye, ExternalLink, Ticket as TicketIcon, MapPinOff, Loader2, RefreshCw } from 'lucide-react';
+import { Calendar, Clock, MapPin, Plus, Search, Settings, FileText, CheckCircle, XCircle, Download, Eye, ExternalLink, Ticket as TicketIcon, MapPinOff, Loader2, RefreshCw, Star } from 'lucide-react';
 import TicketFilters from '@/components/TicketFilters';
 import { LoadingState } from '@/components/LoadingState';
 import { EmptyState } from '@/components/EmptyState';
@@ -107,7 +107,7 @@ const Tickets = () => {
     try {
       setLoading(true);
       
-      // Carregar clientes com endereço completo e UFV/SolarZ
+      // Carregar clientes com endereço completo, UFV/SolarZ e prioridade
       const { data: clientesData } = await supabase
         .from('clientes')
         .select(`
@@ -119,6 +119,7 @@ const Tickets = () => {
           cep,
           cnpj_cpf,
           ufv_solarz,
+          prioridade,
           profiles(nome, email, telefone)
         `);
       setClientes(clientesData || []);
@@ -153,6 +154,7 @@ const Tickets = () => {
             estado,
             cep,
             ufv_solarz,
+            prioridade,
             profiles(nome, email)
           ),
           prestadores:tecnico_responsavel_id(
@@ -955,6 +957,10 @@ const Tickets = () => {
                         </div>
                         <CardDescription className="flex items-center gap-2 flex-wrap">
                           <span>Cliente: {ticket.clientes?.empresa || ticket.clientes?.profiles?.nome}</span>
+                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs flex items-center gap-1">
+                            <Star className="h-3 w-3" />
+                            P{ticket.clientes?.prioridade ?? 5}
+                          </Badge>
                           {ticket.clientes?.ufv_solarz && (
                             <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-xs">
                               UFV/SolarZ: {ticket.clientes.ufv_solarz}

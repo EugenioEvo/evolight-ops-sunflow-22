@@ -111,6 +111,7 @@ export type Database = {
           id: string
           latitude: number | null
           longitude: number | null
+          prioridade: number | null
           profile_id: string | null
           ufv_solarz: string | null
           updated_at: string
@@ -127,6 +128,7 @@ export type Database = {
           id?: string
           latitude?: number | null
           longitude?: number | null
+          prioridade?: number | null
           profile_id?: string | null
           ufv_solarz?: string | null
           updated_at?: string
@@ -143,6 +145,7 @@ export type Database = {
           id?: string
           latitude?: number | null
           longitude?: number | null
+          prioridade?: number | null
           profile_id?: string | null
           ufv_solarz?: string | null
           updated_at?: string

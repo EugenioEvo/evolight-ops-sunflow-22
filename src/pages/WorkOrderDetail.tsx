@@ -7,7 +7,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   ArrowLeft, Calendar, Clock, MapPin, Users, FileText, Download,
-  PlayCircle, CheckCircle2, AlertTriangle, XCircle, Edit, Loader2
+  PlayCircle, CheckCircle2, AlertTriangle, XCircle, Edit, Loader2, Star
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -43,6 +43,7 @@ interface WorkOrderDetail {
       cidade: string;
       estado: string;
       ufv_solarz: string | null;
+      prioridade?: number | null;
     };
   };
   rme_relatorios: Array<{
@@ -85,7 +86,7 @@ const WorkOrderDetail = () => {
           *,
           tickets!inner(
             id, titulo, descricao, status, prioridade, endereco_servico,
-            clientes(empresa, endereco, cidade, estado, ufv_solarz)
+            clientes(empresa, endereco, cidade, estado, ufv_solarz, prioridade)
           ),
           rme_relatorios(id, status, created_at)
         `)
@@ -388,10 +389,17 @@ const WorkOrderDetail = () => {
 
             <Separator />
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <p className="text-sm text-muted-foreground">Cliente</p>
                 <p className="font-medium mt-1">{workOrder.tickets.clientes?.empresa}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Prioridade</p>
+                <div className="flex items-center gap-1 mt-1">
+                  <Star className="h-4 w-4 text-blue-600" />
+                  <span className="font-medium">P{workOrder.tickets.clientes?.prioridade ?? 5}</span>
+                </div>
               </div>
               {workOrder.tickets.clientes?.ufv_solarz && (
                 <div>

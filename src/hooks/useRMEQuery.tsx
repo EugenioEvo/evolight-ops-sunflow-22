@@ -23,7 +23,7 @@ export const useRMEQuery = (params: RMEQueryParams = {}) => {
           tickets!inner(
             titulo,
             numero_ticket,
-            clientes!inner(empresa)
+            clientes!inner(empresa, prioridade)
           ),
           tecnicos!inner(
             profiles!inner(nome)
