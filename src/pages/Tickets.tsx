@@ -201,9 +201,23 @@ const Tickets = () => {
       // Definir técnico se selecionado, senão deixar null
       const tecnico_id = selectedTechnicianForTicket || null;
       
+      // Alertar se data de serviço ultrapassa data de vencimento
+      if (data.data_servico && data.data_vencimento) {
+        const servico = new Date(data.data_servico);
+        const vencimento = new Date(data.data_vencimento);
+        if (servico > vencimento) {
+          toast({
+            title: '⚠️ Atenção: Data de serviço após o vencimento',
+            description: `A data de serviço (${servico.toLocaleDateString('pt-BR')}) é posterior à data de vencimento limite (${vencimento.toLocaleDateString('pt-BR')}).`,
+            variant: 'destructive',
+          });
+        }
+      }
+
       const ticketData = {
         ...data,
         tempo_estimado: data.tempo_estimado || null,
+        data_servico: data.data_servico || null,
         data_vencimento: data.data_vencimento ? new Date(data.data_vencimento).toISOString() : null,
         created_by: user?.id,
         tecnico_responsavel_id: tecnico_id,
