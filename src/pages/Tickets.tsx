@@ -91,6 +91,7 @@ const Tickets = () => {
       equipamento_tipo: 'painel_solar',
       prioridade: 'media',
       endereco_servico: '',
+      data_servico: '',
       data_vencimento: '',
       horario_previsto_inicio: '',
       tempo_estimado: undefined,
