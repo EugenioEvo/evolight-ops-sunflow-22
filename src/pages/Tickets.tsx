@@ -31,6 +31,7 @@ const ticketSchema = z.object({
   equipamento_tipo: z.enum(['painel_solar', 'inversor', 'controlador_carga', 'bateria', 'cabeamento', 'estrutura', 'monitoramento', 'outros']),
   prioridade: z.enum(['baixa', 'media', 'alta', 'critica']),
   endereco_servico: z.string().min(1, 'Endereço do serviço é obrigatório'),
+  data_servico: z.string().optional(),
   data_vencimento: z.string().optional(),
   horario_previsto_inicio: z.string().optional(),
   tempo_estimado: z.number().min(1, 'Tempo estimado deve ser maior que 0').optional(),
