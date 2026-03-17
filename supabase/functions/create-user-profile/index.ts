@@ -90,10 +90,16 @@ serve(async (req) => {
       if (clienteError) throw clienteError
     }
 
-    // Se for técnico, criar registro na tabela tecnicos E prestadores
+    // Se for técnico, criar registro na tabela tecnicos E prestadores (pendente aprovação)
     if (userRole === 'tecnico_campo') {
-      // Criar registro em prestadores (visível para admins)
-      const { error: prestadorError } = await supabaseClient
+      // Usar service role client para operações administrativas
+      const serviceClient = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      )
+
+      // Criar registro em prestadores com ativo=false (pendente aprovação)
+      const { error: prestadorError } = await serviceClient
         .from('prestadores')
         .insert({
           nome: metadata.nome || user.email?.split('@')[0] || '',
@@ -101,7 +107,7 @@ serve(async (req) => {
           telefone: metadata.telefone || null,
           categoria: 'tecnico',
           especialidades: metadata.especialidades ? metadata.especialidades.split(',').map((e: string) => e.trim()) : [],
-          ativo: true,
+          ativo: false, // Pendente aprovação do admin
         })
 
       if (prestadorError) {
@@ -109,7 +115,7 @@ serve(async (req) => {
       }
 
       // Criar registro em tecnicos
-      const { error: tecnicoError } = await supabaseClient
+      const { error: tecnicoError } = await serviceClient
         .from('tecnicos')
         .insert({
           profile_id: profile.id,
@@ -119,6 +125,30 @@ serve(async (req) => {
         })
 
       if (tecnicoError) throw tecnicoError
+
+      // Enviar notificação para todos os admins
+      const { data: adminRoles } = await serviceClient
+        .from('user_roles')
+        .select('user_id')
+        .eq('role', 'admin')
+
+      if (adminRoles && adminRoles.length > 0) {
+        const notifications = adminRoles.map((admin: any) => ({
+          user_id: admin.user_id,
+          tipo: 'novo_prestador',
+          titulo: '🆕 Novo Prestador Aguardando Aprovação',
+          mensagem: `${metadata.nome || user.email} se cadastrou como técnico e aguarda sua aprovação.`,
+          link: '/prestadores',
+        }))
+
+        const { error: notifError } = await serviceClient
+          .from('notificacoes')
+          .insert(notifications)
+
+        if (notifError) {
+          console.error('Erro ao criar notificações:', notifError)
+        }
+      }
     }
 
     return new Response(JSON.stringify({ success: true, profile }), {
