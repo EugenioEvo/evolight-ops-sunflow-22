@@ -8,7 +8,7 @@ import { ptBR } from "date-fns/locale";
 import { 
   Plus, Search, Filter, Calendar, MapPin, Users, 
   Clock, FileText, AlertTriangle, CheckCircle2, 
-  PlayCircle, XCircle, Loader2, ChevronDown, Star
+  PlayCircle, XCircle, Loader2, ChevronDown, Star, Trash2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { EmptyState } from "@/components/EmptyState";
 import { LoadingState } from "@/components/LoadingState";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 interface WorkOrder {
   id: string;
@@ -201,6 +202,42 @@ const WorkOrders = () => {
   const hasRME = (os: WorkOrder) => os.rme_relatorios && os.rme_relatorios.length > 0;
   const isRMECompleted = (os: WorkOrder) =>
     os.rme_relatorios?.some((r) => r.status === "concluido");
+
+  const handleDeleteOS = async (e: React.MouseEvent, osId: string, ticketId: string) => {
+    e.stopPropagation();
+    try {
+      setLoading(true);
+
+      const { error: osError } = await supabase
+        .from("ordens_servico")
+        .delete()
+        .eq("id", osId);
+
+      if (osError) throw osError;
+
+      const { error: ticketError } = await supabase
+        .from("tickets")
+        .update({ status: "aprovado" })
+        .eq("id", ticketId);
+
+      if (ticketError) throw ticketError;
+
+      toast({
+        title: "OS excluída",
+        description: "Ordem de serviço excluída e ticket revertido para aprovado.",
+      });
+
+      loadWorkOrders();
+    } catch (error: any) {
+      toast({
+        title: "Erro ao excluir OS",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -497,22 +534,53 @@ const WorkOrders = () => {
                     </div>
                   )}
 
-                  {/* RME Status */}
-                  <div className="pt-2 border-t">
-                    {hasRME(os) ? (
-                      <Badge
-                        className={
-                          isRMECompleted(os)
-                            ? "bg-green-500/10 text-green-600 border-green-200"
-                            : "bg-amber-500/10 text-amber-600 border-amber-200"
-                        }
-                      >
-                        RME: {isRMECompleted(os) ? "Concluído" : "Rascunho"}
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="text-muted-foreground">
-                        Sem RME
-                      </Badge>
+                  {/* RME Status + Delete */}
+                  <div className="pt-2 border-t flex items-center justify-between">
+                    <div>
+                      {hasRME(os) ? (
+                        <Badge
+                          className={
+                            isRMECompleted(os)
+                              ? "bg-green-500/10 text-green-600 border-green-200"
+                              : "bg-amber-500/10 text-amber-600 border-amber-200"
+                          }
+                        >
+                          RME: {isRMECompleted(os) ? "Concluído" : "Rascunho"}
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-muted-foreground">
+                          Sem RME
+                        </Badge>
+                      )}
+                    </div>
+                    {canManageOS && status === "aberta" && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            className="h-7 px-2"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Trash2 className="h-3.5 w-3.5 mr-1" />
+                            Excluir
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Tem certeza que deseja excluir a OS {os.numero_os}? O ticket será revertido para o status "aprovado". Esta ação não pode ser desfeita.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction onClick={(e) => handleDeleteOS(e, os.id, os.tickets.id)}>
+                              Excluir
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     )}
                   </div>
                 </CardContent>
