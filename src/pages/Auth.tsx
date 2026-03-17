@@ -174,6 +174,13 @@ const Auth = () => {
 
         if (signInError) throw signInError;
 
+        // Chamar edge function para criar perfil do usuário
+        const { error: profileError } = await supabase.functions.invoke('create-user-profile');
+        
+        if (profileError) {
+          console.error('Erro ao criar perfil:', profileError);
+        }
+
         // Aguardar profile ser criado com polling (máximo 3 segundos)
         let attempts = 0;
         while (attempts < 6) {
