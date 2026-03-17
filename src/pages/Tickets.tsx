@@ -296,12 +296,34 @@ const Tickets = () => {
 
       if (error) throw error;
 
+      // Se já existe OS, atualizar o tecnico_id na OS também
+      // Buscar prestador para encontrar o técnico correspondente
+      const { data: prestador } = await supabase
+        .from('prestadores')
+        .select('email')
+        .eq('id', technicianId)
+        .single();
+
+      if (prestador?.email) {
+        const { data: tecnico } = await supabase
+          .from('tecnicos')
+          .select('id, profiles!inner(email)')
+          .ilike('profiles.email', prestador.email)
+          .maybeSingle();
+
+        if (tecnico) {
+          await supabase
+            .from('ordens_servico')
+            .update({ tecnico_id: tecnico.id })
+            .eq('ticket_id', ticketId);
+        }
+      }
+
       toast({
         title: 'Sucesso',
-        description: 'Técnico atribuído com sucesso. Pronto para gerar OS.',
+        description: 'Técnico atribuído com sucesso.',
       });
 
-      // Recarregar dados
       loadData();
     } catch (error: any) {
       console.error('Erro ao atribuir técnico:', error);
@@ -1154,6 +1176,18 @@ const Tickets = () => {
 
                           {ticket.status === 'aprovado' && ticket.tecnico_responsavel_id && (
                             <>
+                              <Select onValueChange={(value) => handleAssignTechnician(ticket.id, value)} defaultValue={ticket.tecnico_responsavel_id}>
+                                <SelectTrigger className="h-8 w-[200px]">
+                                  <SelectValue placeholder="Trocar técnico" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {prestadores.map((prestador) => (
+                                    <SelectItem key={prestador.id} value={prestador.id}>
+                                      {prestador.nome}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
                               <Button
                                 size="sm"
                                 onClick={() => handleGenerateOS(ticket.id)}
@@ -1192,6 +1226,21 @@ const Tickets = () => {
                                 </AlertDialogContent>
                               </AlertDialog>
                             </>
+                          )}
+
+                          {(ticket.status === 'ordem_servico_gerada' || ticket.status === 'em_execucao') && (
+                            <Select onValueChange={(value) => handleAssignTechnician(ticket.id, value)} defaultValue={ticket.tecnico_responsavel_id || undefined}>
+                              <SelectTrigger className="h-8 w-[200px]">
+                                <SelectValue placeholder="Trocar técnico" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {prestadores.map((prestador) => (
+                                  <SelectItem key={prestador.id} value={prestador.id}>
+                                    {prestador.nome}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           )}
 
                           {(ticket.status === 'ordem_servico_gerada' || ticket.status === 'em_execucao' || ticket.status === 'concluido') && (
