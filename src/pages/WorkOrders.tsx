@@ -203,6 +203,42 @@ const WorkOrders = () => {
   const isRMECompleted = (os: WorkOrder) =>
     os.rme_relatorios?.some((r) => r.status === "concluido");
 
+  const handleDeleteOS = async (e: React.MouseEvent, osId: string, ticketId: string) => {
+    e.stopPropagation();
+    try {
+      setLoading(true);
+
+      const { error: osError } = await supabase
+        .from("ordens_servico")
+        .delete()
+        .eq("id", osId);
+
+      if (osError) throw osError;
+
+      const { error: ticketError } = await supabase
+        .from("tickets")
+        .update({ status: "aprovado" })
+        .eq("id", ticketId);
+
+      if (ticketError) throw ticketError;
+
+      toast({
+        title: "OS excluída",
+        description: "Ordem de serviço excluída e ticket revertido para aprovado.",
+      });
+
+      loadWorkOrders();
+    } catch (error: any) {
+      toast({
+        title: "Erro ao excluir OS",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="p-4 sm:p-6">
