@@ -90,14 +90,31 @@ serve(async (req) => {
       if (clienteError) throw clienteError
     }
 
-    // Se for técnico, criar registro na tabela tecnicos DIRETAMENTE
+    // Se for técnico, criar registro na tabela tecnicos E prestadores
     if (userRole === 'tecnico_campo') {
+      // Criar registro em prestadores (visível para admins)
+      const { error: prestadorError } = await supabaseClient
+        .from('prestadores')
+        .insert({
+          nome: metadata.nome || user.email?.split('@')[0] || '',
+          email: user.email!,
+          telefone: metadata.telefone || null,
+          categoria: 'tecnico',
+          especialidades: metadata.especialidades ? metadata.especialidades.split(',').map((e: string) => e.trim()) : [],
+          ativo: true,
+        })
+
+      if (prestadorError) {
+        console.error('Erro ao criar prestador:', prestadorError)
+      }
+
+      // Criar registro em tecnicos
       const { error: tecnicoError } = await supabaseClient
         .from('tecnicos')
         .insert({
           profile_id: profile.id,
           registro_profissional: metadata.registro_profissional || '',
-          especialidades: metadata.especialidades || [],
+          especialidades: metadata.especialidades ? metadata.especialidades.split(',').map((e: string) => e.trim()) : [],
           regiao_atuacao: metadata.regiao_atuacao || '',
         })
 
