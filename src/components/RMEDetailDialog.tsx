@@ -111,7 +111,23 @@ export const RMEDetailDialog: React.FC<RMEDetailDialogProps> = ({
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
             <span>Detalhes do RME</span>
-            {getStatusBadge(rme.status_aprovacao)}
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportPDF}
+                disabled={exporting}
+                className="gap-2"
+              >
+                {exporting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Printer className="h-4 w-4" />
+                )}
+                Imprimir
+              </Button>
+              {getStatusBadge(rme.status_aprovacao)}
+            </div>
           </DialogTitle>
         </DialogHeader>
 
