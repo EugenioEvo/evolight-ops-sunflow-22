@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -9,8 +9,19 @@ interface UseAgendaRealtimeProps {
 
 export const useAgendaRealtime = ({ onUpdate, selectedDate }: UseAgendaRealtimeProps = {}) => {
   const { toast } = useToast();
+  const onUpdateRef = useRef(onUpdate);
+
+  // Keep ref in sync without triggering re-subscriptions
+  useEffect(() => {
+    onUpdateRef.current = onUpdate;
+  }, [onUpdate]);
 
   useEffect(() => {
+    let pollInterval = 15000; // 15s initial poll
+    let isActive = true;
+    let timeoutId: ReturnType<typeof setTimeout>;
+
+    // Primary: realtime subscription
     const channel = supabase
       .channel('ordens_servico_changes')
       .on(
@@ -21,7 +32,6 @@ export const useAgendaRealtime = ({ onUpdate, selectedDate }: UseAgendaRealtimeP
           table: 'ordens_servico'
         },
         (payload) => {
-          // Notificar usuário sobre mudanças
           if (payload.eventType === 'INSERT') {
             toast({
               title: '📅 Nova OS agendada',
@@ -31,7 +41,6 @@ export const useAgendaRealtime = ({ onUpdate, selectedDate }: UseAgendaRealtimeP
             const old = payload.old as any;
             const newData = payload.new as any;
             
-            // Detectar mudanças relevantes
             if (old.data_programada !== newData.data_programada || 
                 old.hora_inicio !== newData.hora_inicio) {
               toast({
@@ -54,14 +63,27 @@ export const useAgendaRealtime = ({ onUpdate, selectedDate }: UseAgendaRealtimeP
             });
           }
 
-          // Recarregar dados
-          onUpdate?.();
+          // Reset poll interval when realtime works
+          pollInterval = 15000;
+          onUpdateRef.current?.();
         }
       )
       .subscribe();
 
+    // Fallback: polling to catch any missed events
+    const poll = () => {
+      if (!isActive) return;
+      onUpdateRef.current?.();
+      pollInterval = Math.min(pollInterval * 1.2, 60000); // slowly back off up to 60s
+      timeoutId = setTimeout(poll, pollInterval);
+    };
+
+    timeoutId = setTimeout(poll, pollInterval);
+
     return () => {
+      isActive = false;
+      clearTimeout(timeoutId);
       supabase.removeChannel(channel);
     };
-  }, [onUpdate, selectedDate, toast]);
+  }, [selectedDate, toast]);
 };
