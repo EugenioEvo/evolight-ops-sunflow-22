@@ -282,6 +282,7 @@ const Tickets = () => {
       equipamento_tipo: ticket.equipamento_tipo,
       prioridade: ticket.prioridade,
       endereco_servico: ticket.endereco_servico,
+      data_servico: ticket.data_servico || '',
       data_vencimento: ticket.data_vencimento ? new Date(ticket.data_vencimento).toISOString().split('T')[0] : '',
       horario_previsto_inicio: ticket.horario_previsto_inicio || '',
       tempo_estimado: ticket.tempo_estimado || undefined,
