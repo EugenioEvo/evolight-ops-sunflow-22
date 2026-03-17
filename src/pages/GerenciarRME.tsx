@@ -230,6 +230,9 @@ const GerenciarRME = () => {
                                 {rme.status_aprovacao === 'aprovado' ? 'Aprovado' : 'Rejeitado'} em:
                               </strong>{' '}
                               {format(new Date(rme.data_aprovacao), 'dd/MM/yyyy HH:mm')}
+                              {rme.aprovador?.nome && (
+                                <span> por <strong>{rme.aprovador.nome}</strong></span>
+                              )}
                             </div>
                           )}
                           {rme.observacoes_aprovacao && (

@@ -53,8 +53,28 @@ export const useRMEQuery = (params: RMEQueryParams = {}) => {
 
       if (error) throw error;
 
+      // Fetch approver names for RMEs that have aprovado_por
+      const approverIds = [...new Set((data || []).filter((r: any) => r.aprovado_por).map((r: any) => r.aprovado_por))];
+      let approverMap: Record<string, string> = {};
+      
+      if (approverIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('user_id, nome')
+          .in('user_id', approverIds);
+        
+        if (profiles) {
+          approverMap = Object.fromEntries(profiles.map(p => [p.user_id, p.nome]));
+        }
+      }
+
+      const rmesWithApprover = (data || []).map((rme: any) => ({
+        ...rme,
+        aprovador: rme.aprovado_por ? { nome: approverMap[rme.aprovado_por] || 'Desconhecido' } : null,
+      }));
+
       return {
-        rmes: data || [],
+        rmes: rmesWithApprover,
         totalCount: count || 0,
         totalPages: Math.ceil((count || 0) / ITEMS_PER_PAGE),
         currentPage: page,

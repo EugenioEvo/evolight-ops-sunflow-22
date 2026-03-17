@@ -259,10 +259,12 @@ export const RMEDetailDialog: React.FC<RMEDetailDialogProps> = ({
                     {format(new Date(rme.data_aprovacao), 'dd/MM/yyyy HH:mm')}
                   </div>
                 )}
-                {rme.profiles && (
+                {rme.aprovador?.nome && (
                   <div>
-                    <span className="font-medium">Aprovado por:</span>{' '}
-                    {rme.profiles.nome}
+                    <span className="font-medium">
+                      {rme.status_aprovacao === 'aprovado' ? 'Aprovado' : 'Rejeitado'} por:
+                    </span>{' '}
+                    {rme.aprovador.nome}
                   </div>
                 )}
                 {rme.observacoes_aprovacao && (
