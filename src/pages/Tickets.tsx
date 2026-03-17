@@ -851,13 +851,26 @@ const Tickets = () => {
                   )}
                 />
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="data_servico"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Data de Serviço</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                   <FormField
                     control={form.control}
                     name="data_vencimento"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Data de Vencimento</FormLabel>
+                        <FormLabel>Data Limite (Vencimento)</FormLabel>
                         <FormControl>
                           <Input type="date" {...field} />
                         </FormControl>
@@ -870,7 +883,7 @@ const Tickets = () => {
                     name="horario_previsto_inicio"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Horário Previsto de Início</FormLabel>
+                        <FormLabel>Horário Previsto</FormLabel>
                         <FormControl>
                           <Input type="time" {...field} placeholder="08:00" />
                         </FormControl>
@@ -879,6 +892,12 @@ const Tickets = () => {
                     )}
                   />
                 </div>
+                {form.watch('data_servico') && form.watch('data_vencimento') && new Date(form.watch('data_servico')!) > new Date(form.watch('data_vencimento')!) && (
+                  <div className="flex items-center gap-2 p-3 rounded-md bg-destructive/10 text-destructive text-sm">
+                    <Clock className="h-4 w-4 shrink-0" />
+                    <span>A data de serviço está após a data limite de vencimento.</span>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
