@@ -195,6 +195,44 @@ const Prestadores = () => {
     }
   };
 
+  const handleApprove = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('prestadores')
+        .update({ ativo: true })
+        .eq('id', id);
+
+      if (error) {
+        toast.error('Erro ao aprovar prestador');
+        return;
+      }
+
+      toast.success("Prestador aprovado com sucesso!");
+      fetchPrestadores();
+    } catch (error) {
+      toast.error('Erro ao aprovar prestador');
+    }
+  };
+
+  const handleReject = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('prestadores')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        toast.error('Erro ao rejeitar prestador');
+        return;
+      }
+
+      toast.success("Prestador rejeitado e removido.");
+      fetchPrestadores();
+    } catch (error) {
+      toast.error('Erro ao rejeitar prestador');
+    }
+  };
+
   const getCategoriaColor = (categoria: string) => {
     switch (categoria) {
       case "engenharia": return "bg-blue-100 text-blue-800";
