@@ -317,10 +317,22 @@ const WorkOrderDetail = () => {
             <p className="text-muted-foreground">{workOrder.tickets.titulo}</p>
           </div>
         </div>
-        <Button variant="outline" onClick={handleDownloadPDF}>
-          <Download className="h-4 w-4 mr-2" />
-          PDF
-        </Button>
+        <div className="flex gap-2">
+          {canManageOS && (
+            <Button variant="outline" onClick={handleSendEmail} disabled={sendingEmail}>
+              {sendingEmail ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Mail className="h-4 w-4 mr-2" />
+              )}
+              Enviar Email
+            </Button>
+          )}
+          <Button variant="outline" onClick={handleDownloadPDF}>
+            <Download className="h-4 w-4 mr-2" />
+            PDF
+          </Button>
+        </div>
       </div>
 
       {/* Timeline de Status */}
