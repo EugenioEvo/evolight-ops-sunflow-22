@@ -31,6 +31,7 @@ const ticketSchema = z.object({
   equipamento_tipo: z.enum(['painel_solar', 'inversor', 'controlador_carga', 'bateria', 'cabeamento', 'estrutura', 'monitoramento', 'outros']),
   prioridade: z.enum(['baixa', 'media', 'alta', 'critica']),
   endereco_servico: z.string().min(1, 'Endereço do serviço é obrigatório'),
+  data_servico: z.string().optional(),
   data_vencimento: z.string().optional(),
   horario_previsto_inicio: z.string().optional(),
   tempo_estimado: z.number().min(1, 'Tempo estimado deve ser maior que 0').optional(),
@@ -90,6 +91,7 @@ const Tickets = () => {
       equipamento_tipo: 'painel_solar',
       prioridade: 'media',
       endereco_servico: '',
+      data_servico: '',
       data_vencimento: '',
       horario_previsto_inicio: '',
       tempo_estimado: undefined,
@@ -199,9 +201,23 @@ const Tickets = () => {
       // Definir técnico se selecionado, senão deixar null
       const tecnico_id = selectedTechnicianForTicket || null;
       
+      // Alertar se data de serviço ultrapassa data de vencimento
+      if (data.data_servico && data.data_vencimento) {
+        const servico = new Date(data.data_servico);
+        const vencimento = new Date(data.data_vencimento);
+        if (servico > vencimento) {
+          toast({
+            title: '⚠️ Atenção: Data de serviço após o vencimento',
+            description: `A data de serviço (${servico.toLocaleDateString('pt-BR')}) é posterior à data de vencimento limite (${vencimento.toLocaleDateString('pt-BR')}).`,
+            variant: 'destructive',
+          });
+        }
+      }
+
       const ticketData = {
         ...data,
         tempo_estimado: data.tempo_estimado || null,
+        data_servico: data.data_servico || null,
         data_vencimento: data.data_vencimento ? new Date(data.data_vencimento).toISOString() : null,
         created_by: user?.id,
         tecnico_responsavel_id: tecnico_id,
@@ -266,6 +282,7 @@ const Tickets = () => {
       equipamento_tipo: ticket.equipamento_tipo,
       prioridade: ticket.prioridade,
       endereco_servico: ticket.endereco_servico,
+      data_servico: ticket.data_servico || '',
       data_vencimento: ticket.data_vencimento ? new Date(ticket.data_vencimento).toISOString().split('T')[0] : '',
       horario_previsto_inicio: ticket.horario_previsto_inicio || '',
       tempo_estimado: ticket.tempo_estimado || undefined,
@@ -834,13 +851,26 @@ const Tickets = () => {
                   )}
                 />
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="data_servico"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Data de Serviço</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                   <FormField
                     control={form.control}
                     name="data_vencimento"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Data de Vencimento</FormLabel>
+                        <FormLabel>Data Limite (Vencimento)</FormLabel>
                         <FormControl>
                           <Input type="date" {...field} />
                         </FormControl>
@@ -853,7 +883,7 @@ const Tickets = () => {
                     name="horario_previsto_inicio"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Horário Previsto de Início</FormLabel>
+                        <FormLabel>Horário Previsto</FormLabel>
                         <FormControl>
                           <Input type="time" {...field} placeholder="08:00" />
                         </FormControl>
@@ -862,6 +892,12 @@ const Tickets = () => {
                     )}
                   />
                 </div>
+                {form.watch('data_servico') && form.watch('data_vencimento') && new Date(form.watch('data_servico')!) > new Date(form.watch('data_vencimento')!) && (
+                  <div className="flex items-center gap-2 p-3 rounded-md bg-destructive/10 text-destructive text-sm">
+                    <Clock className="h-4 w-4 shrink-0" />
+                    <span>A data de serviço está após a data limite de vencimento.</span>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
