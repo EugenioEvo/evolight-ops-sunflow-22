@@ -7,7 +7,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   ArrowLeft, Calendar, Clock, MapPin, Users, FileText, Download,
-  PlayCircle, CheckCircle2, AlertTriangle, XCircle, Edit, Loader2, Star
+  PlayCircle, CheckCircle2, AlertTriangle, XCircle, Edit, Loader2, Star, Mail
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
