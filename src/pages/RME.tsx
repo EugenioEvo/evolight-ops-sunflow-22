@@ -532,6 +532,87 @@ const RME = () => {
     rme.tickets?.clientes?.empresa?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const handleExportRMEPDF = async (rme: any) => {
+    try {
+      setExportingRMEId(rme.id);
+
+      // Fetch checklist items for this RME
+      const { data: checklistItems } = await supabase
+        .from('rme_checklist_items')
+        .select('*')
+        .eq('rme_id', rme.id)
+        .order('category, item_key');
+
+      // Fetch OS number
+      const { data: osData } = await supabase
+        .from('ordens_servico')
+        .select('numero_os')
+        .eq('id', rme.ordem_servico_id)
+        .single();
+
+      // Group checklists by category
+      const checklistMap: Record<string, { label: string; checked: boolean }[]> = {};
+      (checklistItems || []).forEach((item: any) => {
+        if (!checklistMap[item.category]) checklistMap[item.category] = [];
+        checklistMap[item.category].push({ label: item.label, checked: !!item.checked });
+      });
+
+      const checklists = Object.entries(checklistMap).map(([category, items]) => ({
+        category,
+        items,
+      }));
+
+      const pdfData: RMEPDFData = {
+        numero_os: osData?.numero_os || '-',
+        cliente: rme.tickets?.clientes?.empresa || '-',
+        endereco: rme.tickets?.endereco_servico || rme.tickets?.clientes?.endereco || '-',
+        site_name: rme.site_name || '-',
+        data_execucao: new Date(rme.data_execucao).toLocaleDateString('pt-BR'),
+        weekday: rme.weekday || '-',
+        shift: rme.shift || '-',
+        start_time: rme.start_time || '-',
+        end_time: rme.end_time || '-',
+        service_type: Array.isArray(rme.service_type) ? rme.service_type : [],
+        collaboration: Array.isArray(rme.collaboration) ? rme.collaboration : [],
+        checklists,
+        images_posted: !!rme.images_posted,
+        modules_cleaned_qty: rme.modules_cleaned_qty || 0,
+        string_box_qty: rme.string_box_qty || 0,
+        fotos_antes_count: rme.fotos_antes?.length || 0,
+        fotos_depois_count: rme.fotos_depois?.length || 0,
+        materiais_utilizados: Array.isArray(rme.materiais_utilizados) 
+          ? rme.materiais_utilizados.map((m: any) => ({
+              descricao: m.nome || m.descricao || '-',
+              quantidade: m.quantidade || 0,
+              tinha_estoque: !!m.tinha_estoque,
+            }))
+          : [],
+        servicos_executados: rme.servicos_executados || '-',
+        condicoes_encontradas: rme.condicoes_encontradas || '-',
+        signatures: rme.signatures || {},
+        tecnico_nome: rme.tecnicos?.profiles?.nome || '-',
+        status_aprovacao: rme.status_aprovacao || 'pendente',
+        ufv_solarz: rme.tickets?.clientes?.ufv_solarz || undefined,
+      };
+
+      await downloadRMEPDF(pdfData, `RME_${osData?.numero_os || rme.id}_${new Date(rme.data_execucao).toISOString().split('T')[0]}.pdf`);
+
+      toast({
+        title: 'PDF Exportado',
+        description: 'O relatório foi exportado com sucesso!',
+      });
+    } catch (error: any) {
+      console.error('Erro ao exportar PDF:', error);
+      toast({
+        title: 'Erro ao exportar',
+        description: error.message || 'Não foi possível gerar o PDF.',
+        variant: 'destructive',
+      });
+    } finally {
+      setExportingRMEId(null);
+    }
+  };
+
   // Validar se pode enviar (apenas campos obrigatórios)
   const canSubmit = () => {
     const values = form.watch();
