@@ -13,7 +13,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Badge } from '@/components/ui/badge';
-import { Upload, X, FileText, Download, Search, ArrowLeft, QrCode, Plus, Trash2, CheckCircle2, Circle, AlertCircle } from 'lucide-react';
+import { Upload, X, FileText, Download, Search, ArrowLeft, QrCode, Plus, Trash2, CheckCircle2, Circle, AlertCircle, Printer, Loader2 } from 'lucide-react';
+import { downloadRMEPDF, RMEPDFData } from '@/utils/generateRMEPDF';
 import SignatureCanvas from 'react-signature-canvas';
 import { Progress } from '@/components/ui/progress';
 import { QRCodeScanner } from '@/components/QRCodeScanner';
@@ -55,7 +56,7 @@ const RME = () => {
   const [scannedEquipment, setScannedEquipment] = useState<any>(null);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [materiais, setMateriais] = useState<Array<{ insumo_id: string; nome: string; quantidade: number }>>([]);
-
+  const [exportingRMEId, setExportingRMEId] = useState<string | null>(null);
   const { user, profile, loading: authLoading } = useAuth();
   const { toast } = useToast();
 
@@ -162,7 +163,9 @@ const RME = () => {
           observacoes_aprovacao,
           tickets!inner(
             titulo,
-            numero_ticket
+            numero_ticket,
+            endereco_servico,
+            clientes!inner(empresa, endereco, ufv_solarz)
           ),
           tecnicos!inner(
             profiles!inner(nome)
@@ -528,6 +531,87 @@ const RME = () => {
     rme.tickets?.numero_ticket?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     rme.tickets?.clientes?.empresa?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const handleExportRMEPDF = async (rme: any) => {
+    try {
+      setExportingRMEId(rme.id);
+
+      // Fetch checklist items for this RME
+      const { data: checklistItems } = await supabase
+        .from('rme_checklist_items')
+        .select('*')
+        .eq('rme_id', rme.id)
+        .order('category, item_key');
+
+      // Fetch OS number
+      const { data: osData } = await supabase
+        .from('ordens_servico')
+        .select('numero_os')
+        .eq('id', rme.ordem_servico_id)
+        .single();
+
+      // Group checklists by category
+      const checklistMap: Record<string, { label: string; checked: boolean }[]> = {};
+      (checklistItems || []).forEach((item: any) => {
+        if (!checklistMap[item.category]) checklistMap[item.category] = [];
+        checklistMap[item.category].push({ label: item.label, checked: !!item.checked });
+      });
+
+      const checklists = Object.entries(checklistMap).map(([category, items]) => ({
+        category,
+        items,
+      }));
+
+      const pdfData: RMEPDFData = {
+        numero_os: osData?.numero_os || '-',
+        cliente: rme.tickets?.clientes?.empresa || '-',
+        endereco: rme.tickets?.endereco_servico || rme.tickets?.clientes?.endereco || '-',
+        site_name: rme.site_name || '-',
+        data_execucao: new Date(rme.data_execucao).toLocaleDateString('pt-BR'),
+        weekday: rme.weekday || '-',
+        shift: rme.shift || '-',
+        start_time: rme.start_time || '-',
+        end_time: rme.end_time || '-',
+        service_type: Array.isArray(rme.service_type) ? rme.service_type : [],
+        collaboration: Array.isArray(rme.collaboration) ? rme.collaboration : [],
+        checklists,
+        images_posted: !!rme.images_posted,
+        modules_cleaned_qty: rme.modules_cleaned_qty || 0,
+        string_box_qty: rme.string_box_qty || 0,
+        fotos_antes_count: rme.fotos_antes?.length || 0,
+        fotos_depois_count: rme.fotos_depois?.length || 0,
+        materiais_utilizados: Array.isArray(rme.materiais_utilizados) 
+          ? rme.materiais_utilizados.map((m: any) => ({
+              descricao: m.nome || m.descricao || '-',
+              quantidade: m.quantidade || 0,
+              tinha_estoque: !!m.tinha_estoque,
+            }))
+          : [],
+        servicos_executados: rme.servicos_executados || '-',
+        condicoes_encontradas: rme.condicoes_encontradas || '-',
+        signatures: rme.signatures || {},
+        tecnico_nome: rme.tecnicos?.profiles?.nome || '-',
+        status_aprovacao: rme.status_aprovacao || 'pendente',
+        ufv_solarz: rme.tickets?.clientes?.ufv_solarz || undefined,
+      };
+
+      await downloadRMEPDF(pdfData, `RME_${osData?.numero_os || rme.id}_${new Date(rme.data_execucao).toISOString().split('T')[0]}.pdf`);
+
+      toast({
+        title: 'PDF Exportado',
+        description: 'O relatório foi exportado com sucesso!',
+      });
+    } catch (error: any) {
+      console.error('Erro ao exportar PDF:', error);
+      toast({
+        title: 'Erro ao exportar',
+        description: error.message || 'Não foi possível gerar o PDF.',
+        variant: 'destructive',
+      });
+    } finally {
+      setExportingRMEId(null);
+    }
+  };
 
   // Validar se pode enviar (apenas campos obrigatórios)
   const canSubmit = () => {
@@ -1299,16 +1383,30 @@ const RME = () => {
                   <p><strong>Técnico:</strong> {rme.tecnicos?.profiles?.nome}</p>
                   <p><strong>Condições Encontradas:</strong> {rme.condicoes_encontradas}</p>
                   <p><strong>Serviços Executados:</strong> {rme.servicos_executados}</p>
-                  {rme.pdf_url && (
-                    <div className="pt-2">
+                  <div className="flex gap-2 pt-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleExportRMEPDF(rme)}
+                      disabled={exportingRMEId === rme.id}
+                      className="gap-2"
+                    >
+                      {exportingRMEId === rme.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Printer className="h-4 w-4" />
+                      )}
+                      Exportar para Impressão
+                    </Button>
+                    {rme.pdf_url && (
                       <Button variant="outline" size="sm" asChild>
                         <a href={rme.pdf_url} target="_blank" rel="noopener noreferrer">
                           <Download className="h-4 w-4 mr-2" />
                           Download PDF
                         </a>
                       </Button>
-                    </div>
-                  )}
+                    )}
+                  </div>
                   <div className="flex justify-between items-center pt-2 border-t">
                     <span className="text-xs text-muted-foreground">
                       Criado em {new Date(rme.created_at).toLocaleString('pt-BR')}

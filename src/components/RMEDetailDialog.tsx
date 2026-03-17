@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -6,9 +6,14 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Printer, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
+import { supabase } from '@/integrations/supabase/client';
+import { downloadRMEPDF, RMEPDFData } from '@/utils/generateRMEPDF';
+import { useToast } from '@/hooks/use-toast';
 
 interface RMEDetailDialogProps {
   open: boolean;
@@ -21,7 +26,74 @@ export const RMEDetailDialog: React.FC<RMEDetailDialogProps> = ({
   onClose,
   rme,
 }) => {
+  const [exporting, setExporting] = useState(false);
+  const { toast } = useToast();
+
   if (!rme) return null;
+
+  const handleExportPDF = async () => {
+    try {
+      setExporting(true);
+
+      const { data: checklistItems } = await supabase
+        .from('rme_checklist_items')
+        .select('*')
+        .eq('rme_id', rme.id)
+        .order('category, item_key');
+
+      const { data: osData } = await supabase
+        .from('ordens_servico')
+        .select('numero_os')
+        .eq('id', rme.ordem_servico_id)
+        .single();
+
+      const checklistMap: Record<string, { label: string; checked: boolean }[]> = {};
+      (checklistItems || []).forEach((item: any) => {
+        if (!checklistMap[item.category]) checklistMap[item.category] = [];
+        checklistMap[item.category].push({ label: item.label, checked: !!item.checked });
+      });
+
+      const pdfData: RMEPDFData = {
+        numero_os: osData?.numero_os || '-',
+        cliente: rme.tickets?.clientes?.empresa || '-',
+        endereco: rme.tickets?.clientes?.endereco || '-',
+        site_name: rme.site_name || '-',
+        data_execucao: format(new Date(rme.data_execucao), 'dd/MM/yyyy'),
+        weekday: rme.weekday || '-',
+        shift: rme.shift || '-',
+        start_time: rme.start_time || '-',
+        end_time: rme.end_time || '-',
+        service_type: Array.isArray(rme.service_type) ? rme.service_type : [],
+        collaboration: Array.isArray(rme.collaboration) ? rme.collaboration : [],
+        checklists: Object.entries(checklistMap).map(([category, items]) => ({ category, items })),
+        images_posted: !!rme.images_posted,
+        modules_cleaned_qty: rme.modules_cleaned_qty || 0,
+        string_box_qty: rme.string_box_qty || 0,
+        fotos_antes_count: rme.fotos_antes?.length || 0,
+        fotos_depois_count: rme.fotos_depois?.length || 0,
+        materiais_utilizados: Array.isArray(rme.materiais_utilizados)
+          ? rme.materiais_utilizados.map((m: any) => ({
+              descricao: m.nome || m.descricao || '-',
+              quantidade: m.quantidade || 0,
+              tinha_estoque: !!m.tinha_estoque,
+            }))
+          : [],
+        servicos_executados: rme.servicos_executados || '-',
+        condicoes_encontradas: rme.condicoes_encontradas || '-',
+        signatures: rme.signatures || {},
+        tecnico_nome: rme.tecnicos?.profiles?.nome || '-',
+        status_aprovacao: rme.status_aprovacao || 'pendente',
+        ufv_solarz: rme.tickets?.clientes?.ufv_solarz || undefined,
+      };
+
+      await downloadRMEPDF(pdfData, `RME_${osData?.numero_os || rme.id}.pdf`);
+      toast({ title: 'PDF exportado com sucesso!' });
+    } catch (error: any) {
+      toast({ title: 'Erro ao exportar', description: error.message, variant: 'destructive' });
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, any> = {
@@ -39,7 +111,23 @@ export const RMEDetailDialog: React.FC<RMEDetailDialogProps> = ({
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
             <span>Detalhes do RME</span>
-            {getStatusBadge(rme.status_aprovacao)}
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportPDF}
+                disabled={exporting}
+                className="gap-2"
+              >
+                {exporting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Printer className="h-4 w-4" />
+                )}
+                Imprimir
+              </Button>
+              {getStatusBadge(rme.status_aprovacao)}
+            </div>
           </DialogTitle>
         </DialogHeader>
 
