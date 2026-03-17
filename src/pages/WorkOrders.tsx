@@ -8,7 +8,7 @@ import { ptBR } from "date-fns/locale";
 import { 
   Plus, Search, Filter, Calendar, MapPin, Users, 
   Clock, FileText, AlertTriangle, CheckCircle2, 
-  PlayCircle, XCircle, Loader2, ChevronDown, Star, Trash2
+  PlayCircle, XCircle, Loader2, ChevronDown, Star, Trash2, Mail
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
