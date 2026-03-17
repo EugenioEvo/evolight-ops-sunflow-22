@@ -77,7 +77,7 @@ const Agenda = () => {
   const { toast } = useToast();
 
   // Função para recarregar ordens de serviço
-  const loadOrdensServico = async () => {
+  const loadOrdensServico = useCallback(async () => {
     setLoading(true);
     try {
       const start = startOfMonth(selectedDate);
@@ -118,7 +118,7 @@ const Agenda = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedDate, selectedTecnico]);
   
   useTicketsRealtime();
   useAgendaRealtime({ onUpdate: loadOrdensServico, selectedDate });
