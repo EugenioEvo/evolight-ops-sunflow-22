@@ -1154,6 +1154,18 @@ const Tickets = () => {
 
                           {ticket.status === 'aprovado' && ticket.tecnico_responsavel_id && (
                             <>
+                              <Select onValueChange={(value) => handleAssignTechnician(ticket.id, value)} defaultValue={ticket.tecnico_responsavel_id}>
+                                <SelectTrigger className="h-8 w-[200px]">
+                                  <SelectValue placeholder="Trocar técnico" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {prestadores.map((prestador) => (
+                                    <SelectItem key={prestador.id} value={prestador.id}>
+                                      {prestador.nome}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
                               <Button
                                 size="sm"
                                 onClick={() => handleGenerateOS(ticket.id)}
