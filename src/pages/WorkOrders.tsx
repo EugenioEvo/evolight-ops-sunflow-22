@@ -240,6 +240,31 @@ const WorkOrders = () => {
     }
   };
 
+  const handleSendEmail = async (e: React.MouseEvent, osId: string) => {
+    e.stopPropagation();
+    setSendingEmailId(osId);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-calendar-invite", {
+        body: { os_id: osId, action: "create" },
+      });
+
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || "Erro ao enviar email");
+
+      toast({
+        title: "Email enviado!",
+        description: `Convite enviado para: ${data.recipients?.join(", ")}`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro ao enviar email",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setSendingEmailId(null);
+    }
+
   if (loading) {
     return (
       <div className="p-4 sm:p-6">
