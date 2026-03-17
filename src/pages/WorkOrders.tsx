@@ -264,6 +264,7 @@ const WorkOrders = () => {
     } finally {
       setSendingEmailId(null);
     }
+  };
 
   if (loading) {
     return (
