@@ -5,8 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CheckCircle, XCircle, Clock, Search, Eye, FileText, Star } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, Search, Eye, FileText, Star, Mail, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 import { RMEDetailDialog } from '@/components/RMEDetailDialog';
 import { ApprovalModal } from '@/components/ApprovalModal';
 import { Pagination } from '@/components/Pagination';
@@ -21,8 +23,10 @@ const GerenciarRME = () => {
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [approvalModalOpen, setApprovalModalOpen] = useState(false);
   const [approvalType, setApprovalType] = useState<'approve' | 'reject'>('approve');
+  const [sendingEmailId, setSendingEmailId] = useState<string | null>(null);
 
   const { profile } = useAuth();
+  const { toast } = useToast();
 
   // React Query hooks
   const { data, isLoading, refetch } = useRMEQuery({ page, searchTerm, status: statusFilter });
@@ -61,6 +65,28 @@ const GerenciarRME = () => {
 
     setApprovalModalOpen(false);
     setSelectedRME(null);
+  };
+
+  const handleSendEmail = async (rme: any) => {
+    try {
+      setSendingEmailId(rme.id);
+      const { data, error } = await supabase.functions.invoke('send-rme-email', {
+        body: { rme_id: rme.id },
+      });
+      if (error) throw error;
+      toast({
+        title: 'Email enviado!',
+        description: `Resumo do RME enviado para o técnico ${rme.tecnicos?.profiles?.nome}.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Erro ao enviar email',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setSendingEmailId(null);
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -255,6 +281,20 @@ const GerenciarRME = () => {
                     >
                       <Eye className="h-4 w-4" />
                       Ver Detalhes
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleSendEmail(rme)}
+                      disabled={sendingEmailId === rme.id}
+                      className="gap-2"
+                    >
+                      {sendingEmailId === rme.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Mail className="h-4 w-4" />
+                      )}
+                      Email
                     </Button>
                     {rme.pdf_url && (
                       <Button

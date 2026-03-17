@@ -13,7 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Badge } from '@/components/ui/badge';
-import { Upload, X, FileText, Download, Search, ArrowLeft, QrCode, Plus, Trash2, CheckCircle2, Circle, AlertCircle, Printer, Loader2 } from 'lucide-react';
+import { Upload, X, FileText, Download, Search, ArrowLeft, QrCode, Plus, Trash2, CheckCircle2, Circle, AlertCircle, Printer, Loader2, Mail } from 'lucide-react';
 import { downloadRMEPDF, RMEPDFData } from '@/utils/generateRMEPDF';
 import SignatureCanvas from 'react-signature-canvas';
 import { Progress } from '@/components/ui/progress';
@@ -57,6 +57,7 @@ const RME = () => {
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [materiais, setMateriais] = useState<Array<{ insumo_id: string; nome: string; quantidade: number }>>([]);
   const [exportingRMEId, setExportingRMEId] = useState<string | null>(null);
+  const [sendingEmailId, setSendingEmailId] = useState<string | null>(null);
   const { user, profile, loading: authLoading } = useAuth();
   const { toast } = useToast();
 
@@ -610,6 +611,28 @@ const RME = () => {
       });
     } finally {
       setExportingRMEId(null);
+    }
+  };
+
+  const handleSendRMEEmail = async (rme: any) => {
+    try {
+      setSendingEmailId(rme.id);
+      const { data, error } = await supabase.functions.invoke('send-rme-email', {
+        body: { rme_id: rme.id },
+      });
+      if (error) throw error;
+      toast({
+        title: 'Email enviado!',
+        description: `Resumo do RME enviado para o técnico.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Erro ao enviar email',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setSendingEmailId(null);
     }
   };
 
@@ -1397,6 +1420,20 @@ const RME = () => {
                         <Printer className="h-4 w-4" />
                       )}
                       Exportar para Impressão
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleSendRMEEmail(rme)}
+                      disabled={sendingEmailId === rme.id}
+                      className="gap-2"
+                    >
+                      {sendingEmailId === rme.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Mail className="h-4 w-4" />
+                      )}
+                      Email
                     </Button>
                     {rme.pdf_url && (
                       <Button variant="outline" size="sm" asChild>
