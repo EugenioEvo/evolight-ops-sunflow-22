@@ -1206,6 +1206,21 @@ const Tickets = () => {
                             </>
                           )}
 
+                          {(ticket.status === 'ordem_servico_gerada' || ticket.status === 'em_execucao') && (
+                            <Select onValueChange={(value) => handleAssignTechnician(ticket.id, value)} defaultValue={ticket.tecnico_responsavel_id || undefined}>
+                              <SelectTrigger className="h-8 w-[200px]">
+                                <SelectValue placeholder="Trocar técnico" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {prestadores.map((prestador) => (
+                                  <SelectItem key={prestador.id} value={prestador.id}>
+                                    {prestador.nome}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+
                           {(ticket.status === 'ordem_servico_gerada' || ticket.status === 'em_execucao' || ticket.status === 'concluido') && (
                             <>
                               <Button
