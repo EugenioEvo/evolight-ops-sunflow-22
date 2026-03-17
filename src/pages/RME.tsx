@@ -1421,6 +1421,20 @@ const RME = () => {
                       )}
                       Exportar para Impressão
                     </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleSendRMEEmail(rme)}
+                      disabled={sendingEmailId === rme.id}
+                      className="gap-2"
+                    >
+                      {sendingEmailId === rme.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Mail className="h-4 w-4" />
+                      )}
+                      Email
+                    </Button>
                     {rme.pdf_url && (
                       <Button variant="outline" size="sm" asChild>
                         <a href={rme.pdf_url} target="_blank" rel="noopener noreferrer">
