@@ -7,7 +7,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   ArrowLeft, Calendar, Clock, MapPin, Users, FileText, Download,
-  PlayCircle, CheckCircle2, AlertTriangle, XCircle, Edit, Loader2, Star
+  PlayCircle, CheckCircle2, AlertTriangle, XCircle, Edit, Loader2, Star, Mail
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -68,6 +68,7 @@ const WorkOrderDetail = () => {
 
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(false);
   const [workOrder, setWorkOrder] = useState<WorkOrderDetail | null>(null);
 
   const canManageOS = profile?.role === "admin" || profile?.role === "area_tecnica";
@@ -203,6 +204,32 @@ const WorkOrderDetail = () => {
     }
   };
 
+  const handleSendEmail = async () => {
+    if (!workOrder) return;
+    setSendingEmail(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-calendar-invite", {
+        body: { os_id: workOrder.id, action: "create" },
+      });
+
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || "Erro ao enviar email");
+
+      toast({
+        title: "Email enviado!",
+        description: `Convite enviado para: ${data.recipients?.join(", ")}`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro ao enviar email",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setSendingEmail(false);
+    }
+  };
+
   const handleDownloadPDF = async () => {
     if (!workOrder) return;
     try {
@@ -290,10 +317,22 @@ const WorkOrderDetail = () => {
             <p className="text-muted-foreground">{workOrder.tickets.titulo}</p>
           </div>
         </div>
-        <Button variant="outline" onClick={handleDownloadPDF}>
-          <Download className="h-4 w-4 mr-2" />
-          PDF
-        </Button>
+        <div className="flex gap-2">
+          {canManageOS && (
+            <Button variant="outline" onClick={handleSendEmail} disabled={sendingEmail}>
+              {sendingEmail ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Mail className="h-4 w-4 mr-2" />
+              )}
+              Enviar Email
+            </Button>
+          )}
+          <Button variant="outline" onClick={handleDownloadPDF}>
+            <Download className="h-4 w-4 mr-2" />
+            PDF
+          </Button>
+        </div>
       </div>
 
       {/* Timeline de Status */}

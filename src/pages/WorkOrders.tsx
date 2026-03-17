@@ -8,7 +8,7 @@ import { ptBR } from "date-fns/locale";
 import { 
   Plus, Search, Filter, Calendar, MapPin, Users, 
   Clock, FileText, AlertTriangle, CheckCircle2, 
-  PlayCircle, XCircle, Loader2, ChevronDown, Star, Trash2
+  PlayCircle, XCircle, Loader2, ChevronDown, Star, Trash2, Mail
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -68,6 +68,7 @@ const prioridadeConfig: Record<string, { label: string; color: string }> = {
 
 const WorkOrders = () => {
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
+  const [sendingEmailId, setSendingEmailId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -236,6 +237,32 @@ const WorkOrders = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSendEmail = async (e: React.MouseEvent, osId: string) => {
+    e.stopPropagation();
+    setSendingEmailId(osId);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-calendar-invite", {
+        body: { os_id: osId, action: "create" },
+      });
+
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || "Erro ao enviar email");
+
+      toast({
+        title: "Email enviado!",
+        description: `Convite enviado para: ${data.recipients?.join(", ")}`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro ao enviar email",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setSendingEmailId(null);
     }
   };
 
@@ -553,35 +580,53 @@ const WorkOrders = () => {
                         </Badge>
                       )}
                     </div>
-                    {canManageOS && status === "aberta" && (
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            className="h-7 px-2"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <Trash2 className="h-3.5 w-3.5 mr-1" />
-                            Excluir
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Tem certeza que deseja excluir a OS {os.numero_os}? O ticket será revertido para o status "aprovado". Esta ação não pode ser desfeita.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction onClick={(e) => handleDeleteOS(e, os.id, os.tickets.id)}>
+                    <div className="flex items-center gap-1.5">
+                      {canManageOS && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 px-2"
+                          disabled={sendingEmailId === os.id}
+                          onClick={(e) => handleSendEmail(e, os.id)}
+                        >
+                          {sendingEmailId === os.id ? (
+                            <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                          ) : (
+                            <Mail className="h-3.5 w-3.5 mr-1" />
+                          )}
+                          Email
+                        </Button>
+                      )}
+                      {canManageOS && status === "aberta" && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              className="h-7 px-2"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <Trash2 className="h-3.5 w-3.5 mr-1" />
                               Excluir
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    )}
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Tem certeza que deseja excluir a OS {os.numero_os}? O ticket será revertido para o status "aprovado". Esta ação não pode ser desfeita.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction onClick={(e) => handleDeleteOS(e, os.id, os.tickets.id)}>
+                                Excluir
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
+                    </div>
                   </div>
                 </CardContent>
               </Card>
