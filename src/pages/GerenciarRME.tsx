@@ -23,8 +23,10 @@ const GerenciarRME = () => {
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [approvalModalOpen, setApprovalModalOpen] = useState(false);
   const [approvalType, setApprovalType] = useState<'approve' | 'reject'>('approve');
+  const [sendingEmailId, setSendingEmailId] = useState<string | null>(null);
 
   const { profile } = useAuth();
+  const { toast } = useToast();
 
   // React Query hooks
   const { data, isLoading, refetch } = useRMEQuery({ page, searchTerm, status: statusFilter });
