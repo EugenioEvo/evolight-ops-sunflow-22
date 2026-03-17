@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Plus, Search, Mail, Phone, MapPin, Edit, Trash2, GraduationCap, Eye, Wrench } from "lucide-react";
+import { Users, Plus, Search, Mail, Phone, MapPin, Edit, Trash2, GraduationCap, Eye, Wrench, CheckCircle, XCircle, Clock } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -195,6 +195,44 @@ const Prestadores = () => {
     }
   };
 
+  const handleApprove = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('prestadores')
+        .update({ ativo: true })
+        .eq('id', id);
+
+      if (error) {
+        toast.error('Erro ao aprovar prestador');
+        return;
+      }
+
+      toast.success("Prestador aprovado com sucesso!");
+      fetchPrestadores();
+    } catch (error) {
+      toast.error('Erro ao aprovar prestador');
+    }
+  };
+
+  const handleReject = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('prestadores')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        toast.error('Erro ao rejeitar prestador');
+        return;
+      }
+
+      toast.success("Prestador rejeitado e removido.");
+      fetchPrestadores();
+    } catch (error) {
+      toast.error('Erro ao rejeitar prestador');
+    }
+  };
+
   const getCategoriaColor = (categoria: string) => {
     switch (categoria) {
       case "engenharia": return "bg-blue-100 text-blue-800";
@@ -213,21 +251,26 @@ const Prestadores = () => {
     }
   };
 
-  const filteredPrestadores = prestadores.filter(prestador => {
+  const pendingPrestadores = prestadores.filter(p => !p.ativo);
+  const activePrestadores = prestadores.filter(p => p.ativo);
+
+  const filteredPrestadores = activePrestadores.filter(prestador => {
     const matchesSearch = prestador.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          prestador.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (prestador.especialidades && Array.isArray(prestador.especialidades) ? 
                           prestador.especialidades.join(' ').toLowerCase().includes(searchTerm.toLowerCase()) : false);
     
     if (activeTab === "todos") return matchesSearch;
+    if (activeTab === "pendentes") return false;
     return matchesSearch && prestador.categoria === activeTab;
   });
 
   const categoryCounts = {
-    todos: prestadores.length,
-    engenharia: prestadores.filter(p => p.categoria === "engenharia").length,
-    supervisao: prestadores.filter(p => p.categoria === "supervisao").length,
-    tecnico: prestadores.filter(p => p.categoria === "tecnico").length,
+    todos: activePrestadores.length,
+    pendentes: pendingPrestadores.length,
+    engenharia: activePrestadores.filter(p => p.categoria === "engenharia").length,
+    supervisao: activePrestadores.filter(p => p.categoria === "supervisao").length,
+    tecnico: activePrestadores.filter(p => p.categoria === "tecnico").length,
   };
 
   if (loading) {
@@ -576,7 +619,13 @@ const Prestadores = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="pendentes" className="relative">
+            Pendentes ({categoryCounts.pendentes})
+            {categoryCounts.pendentes > 0 && (
+              <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-destructive animate-pulse" />
+            )}
+          </TabsTrigger>
           <TabsTrigger value="todos">
             Todos ({categoryCounts.todos})
           </TabsTrigger>
@@ -590,6 +639,68 @@ const Prestadores = () => {
             Técnicos ({categoryCounts.tecnico})
           </TabsTrigger>
         </TabsList>
+
+        {activeTab === 'pendentes' && (
+          <div className="mt-6 grid gap-4">
+            {pendingPrestadores.length === 0 ? (
+              <Card className="p-6 text-center">
+                <CheckCircle className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <h3 className="text-lg font-semibold mb-2">Nenhum cadastro pendente</h3>
+                <p className="text-muted-foreground">Todos os prestadores foram aprovados.</p>
+              </Card>
+            ) : (
+              pendingPrestadores.map((prestador) => (
+                <Card key={prestador.id} className="border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/40">
+                          <Clock className="h-5 w-5 text-amber-600" />
+                        </div>
+                        <div>
+                          <CardTitle className="text-lg font-semibold">{prestador.nome}</CardTitle>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Mail className="h-4 w-4" />
+                            {prestador.email}
+                            {prestador.telefone && (
+                              <>
+                                <span className="mx-1">·</span>
+                                <Phone className="h-4 w-4" />
+                                {prestador.telefone}
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="border-amber-300 text-amber-700 dark:text-amber-400">
+                          Pendente
+                        </Badge>
+                        <Button size="sm" variant="default" onClick={() => handleApprove(prestador.id)}>
+                          <CheckCircle className="h-4 w-4 mr-1" />
+                          Aprovar
+                        </Button>
+                        <Button size="sm" variant="destructive" onClick={() => handleReject(prestador.id)}>
+                          <XCircle className="h-4 w-4 mr-1" />
+                          Rejeitar
+                        </Button>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  {prestador.especialidades && Array.isArray(prestador.especialidades) && prestador.especialidades.length > 0 && (
+                    <CardContent className="pt-0">
+                      <div className="flex flex-wrap gap-1">
+                        {prestador.especialidades.map((esp: string) => (
+                          <Badge key={esp} variant="secondary" className="text-xs">{esp}</Badge>
+                        ))}
+                      </div>
+                    </CardContent>
+                  )}
+                </Card>
+              ))
+            )}
+          </div>
+        )}
 
         <TabsContent value={activeTab} className="mt-6">
           <div className="grid gap-4">
