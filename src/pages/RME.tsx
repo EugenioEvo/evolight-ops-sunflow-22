@@ -1383,16 +1383,30 @@ const RME = () => {
                   <p><strong>Técnico:</strong> {rme.tecnicos?.profiles?.nome}</p>
                   <p><strong>Condições Encontradas:</strong> {rme.condicoes_encontradas}</p>
                   <p><strong>Serviços Executados:</strong> {rme.servicos_executados}</p>
-                  {rme.pdf_url && (
-                    <div className="pt-2">
+                  <div className="flex gap-2 pt-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleExportRMEPDF(rme)}
+                      disabled={exportingRMEId === rme.id}
+                      className="gap-2"
+                    >
+                      {exportingRMEId === rme.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Printer className="h-4 w-4" />
+                      )}
+                      Exportar para Impressão
+                    </Button>
+                    {rme.pdf_url && (
                       <Button variant="outline" size="sm" asChild>
                         <a href={rme.pdf_url} target="_blank" rel="noopener noreferrer">
                           <Download className="h-4 w-4 mr-2" />
                           Download PDF
                         </a>
                       </Button>
-                    </div>
-                  )}
+                    )}
+                  </div>
                   <div className="flex justify-between items-center pt-2 border-t">
                     <span className="text-xs text-muted-foreground">
                       Criado em {new Date(rme.created_at).toLocaleString('pt-BR')}
