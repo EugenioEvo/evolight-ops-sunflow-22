@@ -1135,6 +1135,7 @@ export type Database = {
           data_abertura: string
           data_conclusao: string | null
           data_inicio_execucao: string | null
+          data_servico: string | null
           data_vencimento: string | null
           descricao: string
           endereco_servico: string
@@ -1163,6 +1164,7 @@ export type Database = {
           data_abertura?: string
           data_conclusao?: string | null
           data_inicio_execucao?: string | null
+          data_servico?: string | null
           data_vencimento?: string | null
           descricao: string
           endereco_servico: string
@@ -1191,6 +1193,7 @@ export type Database = {
           data_abertura?: string
           data_conclusao?: string | null
           data_inicio_execucao?: string | null
+          data_servico?: string | null
           data_vencimento?: string | null
           descricao?: string
           endereco_servico?: string
