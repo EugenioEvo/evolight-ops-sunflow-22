@@ -27,7 +27,8 @@ export const useRMEQuery = (params: RMEQueryParams = {}) => {
           ),
           tecnicos!inner(
             profiles!inner(nome)
-          )
+          ),
+          aprovador:profiles!rme_relatorios_aprovado_por_fkey(nome)
         `, { count: 'exact' })
         .order('created_at', { ascending: false });
 
