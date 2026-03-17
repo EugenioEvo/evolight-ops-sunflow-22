@@ -68,6 +68,7 @@ const prioridadeConfig: Record<string, { label: string; color: string }> = {
 
 const WorkOrders = () => {
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
+  const [sendingEmailId, setSendingEmailId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
