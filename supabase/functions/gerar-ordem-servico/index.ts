@@ -117,11 +117,11 @@ serve(async (req) => {
       )
     }
 
-    // Buscar técnico pelo email do prestador (opcional - pode não existir)
+    // Buscar técnico pelo email do prestador (case-insensitive)
     const { data: tecnico } = await supabaseClient
       .from('tecnicos')
       .select('id, profiles!inner(email)')
-      .eq('profiles.email', prestador.email)
+      .ilike('profiles.email', prestador.email)
       .maybeSingle()
 
     // Log para debug
