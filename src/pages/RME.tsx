@@ -57,6 +57,7 @@ const RME = () => {
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [materiais, setMateriais] = useState<Array<{ insumo_id: string; nome: string; quantidade: number }>>([]);
   const [exportingRMEId, setExportingRMEId] = useState<string | null>(null);
+  const [sendingEmailId, setSendingEmailId] = useState<string | null>(null);
   const { user, profile, loading: authLoading } = useAuth();
   const { toast } = useToast();
 
