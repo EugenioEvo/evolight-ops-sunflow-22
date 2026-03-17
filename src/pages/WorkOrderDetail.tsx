@@ -204,6 +204,32 @@ const WorkOrderDetail = () => {
     }
   };
 
+  const handleSendEmail = async () => {
+    if (!workOrder) return;
+    setSendingEmail(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-calendar-invite", {
+        body: { os_id: workOrder.id, action: "create" },
+      });
+
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || "Erro ao enviar email");
+
+      toast({
+        title: "Email enviado!",
+        description: `Convite enviado para: ${data.recipients?.join(", ")}`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro ao enviar email",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setSendingEmail(false);
+    }
+  };
+
   const handleDownloadPDF = async () => {
     if (!workOrder) return;
     try {
