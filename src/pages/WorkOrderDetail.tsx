@@ -68,6 +68,7 @@ const WorkOrderDetail = () => {
 
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(false);
   const [workOrder, setWorkOrder] = useState<WorkOrderDetail | null>(null);
 
   const canManageOS = profile?.role === "admin" || profile?.role === "area_tecnica";
