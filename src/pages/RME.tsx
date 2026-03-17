@@ -614,6 +614,28 @@ const RME = () => {
     }
   };
 
+  const handleSendRMEEmail = async (rme: any) => {
+    try {
+      setSendingEmailId(rme.id);
+      const { data, error } = await supabase.functions.invoke('send-rme-email', {
+        body: { rme_id: rme.id },
+      });
+      if (error) throw error;
+      toast({
+        title: 'Email enviado!',
+        description: `Resumo do RME enviado para o técnico.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Erro ao enviar email',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setSendingEmailId(null);
+    }
+  };
+
   // Validar se pode enviar (apenas campos obrigatórios)
   const canSubmit = () => {
     const values = form.watch();
