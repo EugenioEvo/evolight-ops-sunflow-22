@@ -162,7 +162,9 @@ const RME = () => {
           observacoes_aprovacao,
           tickets!inner(
             titulo,
-            numero_ticket
+            numero_ticket,
+            endereco_servico,
+            clientes!inner(empresa, endereco, ufv_solarz)
           ),
           tecnicos!inner(
             profiles!inner(nome)
