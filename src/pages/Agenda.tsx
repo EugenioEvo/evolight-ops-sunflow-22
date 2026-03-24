@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
-import { format, startOfMonth, endOfMonth } from 'date-fns';
+import { addMonths, format, startOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { CalendarIcon, Clock, User, MapPin, X, Mail, CheckCircle, Send, AlertCircle, AlertTriangle, Edit } from 'lucide-react';
 import { ScheduleModal } from '@/components/ScheduleModal';
@@ -76,33 +76,42 @@ const Agenda = () => {
   const { cancelOS, loading: cancelLoading } = useCancelOS();
   const { toast } = useToast();
 
+  const getDateKey = (value: string | Date | null | undefined) => {
+    if (!value) return '';
+    if (value instanceof Date) {
+      return format(value, 'yyyy-MM-dd');
+    }
+
+    return value.slice(0, 10);
+  };
+
   // Função para recarregar ordens de serviço
   const loadOrdensServico = useCallback(async () => {
     setLoading(true);
     try {
       const start = startOfMonth(selectedDate);
-      const end = endOfMonth(selectedDate);
+      const nextMonthStart = addMonths(start, 1);
 
       let query = supabase
         .from('ordens_servico')
         .select(`
           *,
-          tecnicos!tecnico_id(
+          tecnicos(
             id,
             profile_id,
-            profiles!inner(nome, email)
+            profiles(nome, email)
           ),
-          tickets!inner(
+          tickets(
             numero_ticket,
             titulo,
             endereco_servico,
             status,
             prioridade,
-            clientes!inner(empresa)
+            clientes(empresa)
           )
         `)
-        .gte('data_programada', start.toISOString())
-        .lte('data_programada', end.toISOString())
+        .gte('data_programada', `${format(start, 'yyyy-MM-dd')}T00:00:00+00:00`)
+        .lt('data_programada', `${format(nextMonthStart, 'yyyy-MM-dd')}T00:00:00+00:00`)
         .order('data_programada', { ascending: true })
         .order('hora_inicio', { ascending: true });
 
@@ -133,26 +142,30 @@ const Agenda = () => {
 
   const loadTecnicos = async () => {
     const { data } = await supabase
-      .from('prestadores')
-      .select('id, nome')
-      .eq('categoria', 'tecnico')
-      .order('nome');
+      .from('tecnicos')
+      .select('id, profiles!inner(nome)')
+      .order('profiles(nome)');
     
-    if (data) setTecnicos(data as any);
+    if (data) {
+      setTecnicos(
+        data.map((tecnico: any) => ({
+          id: tecnico.id,
+          nome: tecnico.profiles?.nome || 'Sem nome',
+        }))
+      );
+    }
   };
 
 
   const osDoDia = ordensServico.filter(os => {
-    // Parse date as local date to avoid timezone issues
-    const osDateStr = os.data_programada.split('T')[0]; // "2026-03-23"
-    const selectedDateStr = format(selectedDate, 'yyyy-MM-dd');
-    return osDateStr === selectedDateStr;
+    return getDateKey(os.data_programada) === getDateKey(selectedDate);
   });
 
   // Usar chave com ano-mês-dia para evitar conflitos entre meses
   const diasComOS = ordensServico.reduce((acc, os) => {
-    // Use date string directly to avoid timezone conversion issues
-    const dateStr = os.data_programada.split('T')[0]; // "2026-03-23"
+    const dateStr = getDateKey(os.data_programada);
+    if (!dateStr) return acc;
+
     const [year, month, day] = dateStr.split('-').map(Number);
     const key = `${year}-${month - 1}-${day}`;
     acc[key] = (acc[key] || 0) + 1;
