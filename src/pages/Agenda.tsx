@@ -142,9 +142,12 @@ const Agenda = () => {
   };
 
 
-  const osDoDia = ordensServico.filter(os => 
-    isSameDay(new Date(os.data_programada), selectedDate)
-  );
+  const osDoDia = ordensServico.filter(os => {
+    // Parse date as local date to avoid timezone issues
+    const osDateStr = os.data_programada.split('T')[0]; // "2026-03-23"
+    const selectedDateStr = format(selectedDate, 'yyyy-MM-dd');
+    return osDateStr === selectedDateStr;
+  });
 
   // Usar chave com ano-mês-dia para evitar conflitos entre meses
   const diasComOS = ordensServico.reduce((acc, os) => {
