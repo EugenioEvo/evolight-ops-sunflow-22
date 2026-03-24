@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
-import { format, startOfMonth, endOfMonth, isSameDay } from 'date-fns';
+import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { CalendarIcon, Clock, User, MapPin, X, Mail, CheckCircle, Send, AlertCircle, AlertTriangle, Edit } from 'lucide-react';
 import { ScheduleModal } from '@/components/ScheduleModal';
@@ -142,14 +142,19 @@ const Agenda = () => {
   };
 
 
-  const osDoDia = ordensServico.filter(os => 
-    isSameDay(new Date(os.data_programada), selectedDate)
-  );
+  const osDoDia = ordensServico.filter(os => {
+    // Parse date as local date to avoid timezone issues
+    const osDateStr = os.data_programada.split('T')[0]; // "2026-03-23"
+    const selectedDateStr = format(selectedDate, 'yyyy-MM-dd');
+    return osDateStr === selectedDateStr;
+  });
 
   // Usar chave com ano-mês-dia para evitar conflitos entre meses
   const diasComOS = ordensServico.reduce((acc, os) => {
-    const date = new Date(os.data_programada);
-    const key = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+    // Use date string directly to avoid timezone conversion issues
+    const dateStr = os.data_programada.split('T')[0]; // "2026-03-23"
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const key = `${year}-${month - 1}-${day}`;
     acc[key] = (acc[key] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
