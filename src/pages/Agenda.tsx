@@ -151,8 +151,10 @@ const Agenda = () => {
 
   // Usar chave com ano-mês-dia para evitar conflitos entre meses
   const diasComOS = ordensServico.reduce((acc, os) => {
-    const date = new Date(os.data_programada);
-    const key = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+    // Use date string directly to avoid timezone conversion issues
+    const dateStr = os.data_programada.split('T')[0]; // "2026-03-23"
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const key = `${year}-${month - 1}-${day}`;
     acc[key] = (acc[key] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
