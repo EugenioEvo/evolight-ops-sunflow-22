@@ -2,13 +2,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { CheckCircle, Clock, AlertCircle, QrCode, Mail, ExternalLink } from "lucide-react";
+import { CheckCircle, Clock, AlertCircle, QrCode, Mail } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import QRCode from "qrcode";
-import { useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface PresenceConfirmationStatusProps {
   ordemServico: {
@@ -36,6 +37,7 @@ export const PresenceConfirmationStatus = ({
   const [showQRDialog, setShowQRDialog] = useState(false);
   const [qrCodeDataURL, setQrCodeDataURL] = useState<string>('');
   const [generating, setGenerating] = useState(false);
+  const [presenceToken, setPresenceToken] = useState<string | null>(null);
 
   const isConfirmed = !!ordemServico.presence_confirmed_at;
   const hasQRCode = !!ordemServico.qr_code;
@@ -43,32 +45,42 @@ export const PresenceConfirmationStatus = ({
     ? new Date(ordemServico.data_programada) < new Date()
     : false;
 
-  // Gerar QR Code quando abrir o dialog
+  // Generate real presence token and QR code when dialog opens
   useEffect(() => {
-    if (showQRDialog && ordemServico.qr_code) {
-      generateQRCodeImage();
+    if (showQRDialog) {
+      generateRealToken();
     }
-  }, [showQRDialog, ordemServico.qr_code]);
+  }, [showQRDialog]);
 
-  const generateQRCodeImage = async () => {
-    if (!ordemServico.qr_code) return;
-
+  const generateRealToken = async () => {
     try {
+      // Generate a real token via the database RPC
+      const { data: token, error } = await supabase.rpc('generate_presence_token', {
+        p_os_id: ordemServico.id
+      });
+
+      if (error) {
+        console.error('Erro ao gerar token de presença:', error);
+        toast.error('Erro ao gerar token de confirmação');
+        return;
+      }
+
+      setPresenceToken(token);
+
+      // Build the confirmation URL using the real token
       const baseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const confirmUrl = `${baseUrl}/functions/v1/confirm-presence?os_id=${ordemServico.id}&token=${ordemServico.qr_code}`;
+      const confirmUrl = `${baseUrl}/functions/v1/confirm-presence?os_id=${ordemServico.id}&token=${token}`;
       
       const qrDataURL = await QRCode.toDataURL(confirmUrl, {
         width: 300,
         margin: 2,
-        color: {
-          dark: '#000000',
-          light: '#FFFFFF'
-        }
+        color: { dark: '#000000', light: '#FFFFFF' }
       });
 
       setQrCodeDataURL(qrDataURL);
     } catch (error) {
       console.error('Erro ao gerar QR Code:', error);
+      toast.error('Erro ao gerar QR Code');
     }
   };
 
@@ -132,7 +144,7 @@ export const PresenceConfirmationStatus = ({
       <div className="flex items-center gap-2 flex-wrap">
         {getStatusBadge()}
         
-        {!isConfirmed && hasQRCode && (
+        {!isConfirmed && (
           <Button
             variant="outline"
             size="sm"
@@ -142,21 +154,8 @@ export const PresenceConfirmationStatus = ({
             Ver QR Code
           </Button>
         )}
-
-        {!isConfirmed && !hasQRCode && onGenerateQR && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleGenerateQR}
-            disabled={generating}
-          >
-            <QrCode className="h-4 w-4 mr-2" />
-            {generating ? 'Gerando...' : 'Gerar QR Code'}
-          </Button>
-        )}
       </div>
 
-      {/* Dialog do QR Code */}
       <Dialog open={showQRDialog} onOpenChange={setShowQRDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -193,7 +192,7 @@ export const PresenceConfirmationStatus = ({
               </CardContent>
             </Card>
 
-            {qrCodeDataURL && (
+            {qrCodeDataURL ? (
               <div className="flex flex-col items-center gap-4">
                 <div className="bg-white p-4 rounded-lg border-2 border-primary/20">
                   <img 
@@ -227,6 +226,11 @@ export const PresenceConfirmationStatus = ({
                   Baixar QR Code
                 </Button>
               </div>
+            ) : (
+              <div className="flex flex-col items-center gap-2 py-8">
+                <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full" />
+                <p className="text-sm text-muted-foreground">Gerando QR Code...</p>
+              </div>
             )}
 
             {ordemServico.tecnicos?.profiles?.email && (
@@ -234,9 +238,9 @@ export const PresenceConfirmationStatus = ({
                 <div className="flex items-start gap-2">
                   <Mail className="h-4 w-4 mt-0.5 text-muted-foreground" />
                   <div className="flex-1 text-xs">
-                    <p className="font-medium mb-1">Envio Automático</p>
+                    <p className="font-medium mb-1">Email do Técnico</p>
                     <p className="text-muted-foreground">
-                      O QR Code foi enviado por email para <strong>{ordemServico.tecnicos.profiles.email}</strong>
+                      O link de confirmação também pode ser enviado por email para <strong>{ordemServico.tecnicos.profiles.email}</strong>
                     </p>
                   </div>
                 </div>
