@@ -66,10 +66,15 @@ const PerformanceMetrics = () => {
       : 0;
 
     setMetricsData({
-      ticketsPorMes: ticketsPorDia.slice(-7), // últimos 7 dias
+      ticketsPorMes: ticketsPorDia.slice(-7),
       slaData,
       tempoMedio: Math.round(tempoMedio * 10) / 10
     });
+    } catch (error) {
+      console.error('Erro ao carregar métricas:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
