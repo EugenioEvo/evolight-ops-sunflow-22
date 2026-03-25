@@ -25,6 +25,8 @@ const PerformanceMetrics = () => {
   }, []);
 
   const loadMetrics = async () => {
+    setLoading(true);
+    try {
     const now = new Date();
     const startDate = startOfMonth(now);
     const endDate = endOfMonth(now);
