@@ -71,8 +71,7 @@ const MinhasOS = () => {
   const isAreaTecnica = profile?.role === "area_tecnica" || profile?.role === "admin";
   const canViewOS = isTecnico || isAreaTecnica;
 
-  // Auto-reload quando houver mudanças em tickets/OS
-  useGlobalRealtime(canViewOS ? loadOrdensServico : undefined);
+  // loadOrdensServico defined below - realtime hook moved after it
 
   useEffect(() => {
     if (canViewOS) {
