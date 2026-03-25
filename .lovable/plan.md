@@ -1,33 +1,66 @@
 
 
-# Corrigir Score de Técnicos — Usar Dados Reais do Ticket
+# Recibo de Confirmação de Presença
 
 ## Problema
-O score mostra 70% para todos os técnicos porque `getSortedPrestadores` usa `globalScores` que é chamado com todos os parâmetros nulos. O cálculo real existe (`ticketScores`, linhas 113-120) mas não é utilizado.
+Após confirmar presença, o técnico vê apenas uma tela de sucesso sem opção de salvar um comprovante. Não há recibo formal.
 
-Sem dados de contexto: agenda=100, distância=50, habilidades=50 → `100×0.4 + 50×0.3 + 50×0.3 = 70` para todos.
+## Solução
+Adicionar na tela de sucesso (`PresenceConfirmation.tsx`) um botão "Baixar Comprovante" que gera um recibo visual em PDF ou imagem compartilhável.
 
-## Correção
+---
 
-### `src/pages/Tickets.tsx`
+## Implementação
 
-1. **Remover `globalScores`** (linhas 122-129) — não faz sentido score sem contexto de ticket
+### 1. `src/pages/PresenceConfirmation.tsx`
 
-2. **Alterar `getSortedPrestadores`** para aceitar um ticket e calcular scores sob demanda:
-   - Usar `ticketScores` quando há um ticket selecionado (expandido/modal)
-   - Nos selects de atribuição de técnico dentro da lista de tickets, passar o ticket da linha correspondente
+- Extrair mais detalhes da resposta HTML: endereço, cliente (se disponível)
+- Após status `success`, renderizar botão "Baixar Comprovante"
+- Ao clicar, gerar um canvas/imagem com layout de recibo contendo:
+  - Logo SunFlow + branding
+  - Número da OS
+  - Serviço, Data/Hora, Técnico
+  - Timestamp da confirmação (hora atual formatada)
+  - Texto: "Presença confirmada com sucesso"
+  - Código de verificação (últimos 8 chars do token)
+- Usar `html2canvas` ou canvas nativo para gerar imagem PNG baixável
+- Adicionar também botão "Compartilhar" (Web Share API) para mobile
 
-3. **Nos selects de técnico**: cada select já está dentro de um loop/contexto de ticket específico. Passar os dados desse ticket (data, coordenadas, equipamento_tipo) para o scoring.
+### 2. Dependência
 
-4. **Fallback**: quando não há ticket selecionado (ex: formulário de criação), usar os dados do formulário (`watch('data_vencimento')`, `watch('equipamento_tipo')`) para calcular score parcial — mesmo sem coordenadas, agenda + habilidades já diferenciam os técnicos.
+- Instalar `html2canvas` para captura do recibo como imagem
+- Alternativa: usar canvas nativo (sem dependência extra) para desenhar o recibo programaticamente
 
-### `src/hooks/useTechnicianScore.tsx`
+### 3. Layout do recibo
 
-5. **Melhorar contagem de agenda**: atualmente conta tickets ativos (sem filtrar por data) quando `ticketDate` é null. Ajustar para contar OS totais abertas do técnico como fallback de carga de trabalho geral quando não há data específica.
+```text
+┌─────────────────────────────┐
+│     ☀ SunFlow               │
+│  Comprovante de Presença    │
+│─────────────────────────────│
+│  OS: OS000123               │
+│  Serviço: Manutenção Prev.  │
+│  Data: 25/03/2026 às 08:00  │
+│  Técnico: João Silva        │
+│─────────────────────────────│
+│  ✅ Presença confirmada     │
+│  em 25/03/2026 às 07:45     │
+│                             │
+│  Código: A1B2C3D4           │
+│─────────────────────────────│
+│  Evolight Solar O&M         │
+└─────────────────────────────┘
+```
 
-## Resultado esperado
-- Técnicos com agenda livre na data do ticket terão score mais alto
-- Técnicos mais próximos geograficamente (baseado em OS existentes) terão score mais alto
-- Técnicos com especialidades compatíveis terão score mais alto
-- Scores diferenciados e úteis para tomada de decisão
+### 4. Detalhes técnicos
+
+- Renderizar um `div` oculto com o layout do recibo (ref)
+- `html2canvas` captura esse div como PNG
+- Download automático: `recibo-OS000123.png`
+- Web Share API para compartilhar em mobile (WhatsApp, etc.)
+- Fallback: se Web Share não disponível, mostrar apenas botão de download
+
+## Arquivos
+1. `src/pages/PresenceConfirmation.tsx` — adicionar recibo + botões
+2. `package.json` — adicionar `html2canvas`
 
