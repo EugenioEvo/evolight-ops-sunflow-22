@@ -117,6 +117,14 @@ serve(async (req) => {
       )
     }
 
+    // Validar email do prestador
+    if (!prestador.email || prestador.email.trim() === '') {
+      return new Response(
+        JSON.stringify({ error: 'O técnico atribuído não possui email cadastrado. Atualize o cadastro do prestador antes de gerar a OS.' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     // Buscar técnico pelo email do prestador (case-insensitive)
     const { data: tecnico } = await supabaseClient
       .from('tecnicos')
