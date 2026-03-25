@@ -47,7 +47,7 @@ const Tecnicos = () => {
   const { profile } = useAuth();
   const { toast } = useToast();
 
-  const isAdmin = profile?.role === "admin" || profile?.role === "area_tecnica";
+  const isAdmin = profile?.role === "admin" || profile?.role === "engenharia" || profile?.role === "supervisao";
 
   useEffect(() => {
     if (isAdmin) {

@@ -1313,6 +1313,7 @@ export type Database = {
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_admin_safe: { Args: never; Returns: boolean }
+      is_staff: { Args: { _user_id: string }; Returns: boolean }
       log_presence_attempt: {
         Args: { p_ip: string; p_os_id: string }
         Returns: undefined
@@ -1325,7 +1326,13 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "area_tecnica" | "tecnico_campo" | "cliente"
+      app_role:
+        | "admin"
+        | "area_tecnica"
+        | "tecnico_campo"
+        | "cliente"
+        | "engenharia"
+        | "supervisao"
       equipamento_tipo:
         | "painel_solar"
         | "inversor"
@@ -1346,7 +1353,13 @@ export type Database = {
         | "aguardando_rme"
         | "concluido"
         | "cancelado"
-      user_role: "admin" | "tecnico_campo" | "area_tecnica" | "cliente"
+      user_role:
+        | "admin"
+        | "tecnico_campo"
+        | "area_tecnica"
+        | "cliente"
+        | "engenharia"
+        | "supervisao"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1474,7 +1487,14 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "area_tecnica", "tecnico_campo", "cliente"],
+      app_role: [
+        "admin",
+        "area_tecnica",
+        "tecnico_campo",
+        "cliente",
+        "engenharia",
+        "supervisao",
+      ],
       equipamento_tipo: [
         "painel_solar",
         "inversor",
@@ -1497,7 +1517,14 @@ export const Constants = {
         "concluido",
         "cancelado",
       ],
-      user_role: ["admin", "tecnico_campo", "area_tecnica", "cliente"],
+      user_role: [
+        "admin",
+        "tecnico_campo",
+        "area_tecnica",
+        "cliente",
+        "engenharia",
+        "supervisao",
+      ],
     },
   },
 } as const

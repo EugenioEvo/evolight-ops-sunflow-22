@@ -71,7 +71,7 @@ export function AppSidebar() {
 
   const isTecnico = profile?.role === "tecnico_campo";
   const isCliente = profile?.role === "cliente";
-  const isAdminOrAreaTecnica = profile?.role === "admin" || profile?.role === "area_tecnica";
+  const isAdminOrAreaTecnica = profile?.role === "admin" || profile?.role === "engenharia" || profile?.role === "supervisao";
 
   useEffect(() => {
     if (isAdminOrAreaTecnica) {

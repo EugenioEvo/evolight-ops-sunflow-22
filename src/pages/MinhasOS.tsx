@@ -68,7 +68,7 @@ const MinhasOS = () => {
   const { tecnicoId, setTecnicoId, shouldRefetch, setOrdensServico: setCachedOS } = useTechnicianStore();
 
   const isTecnico = profile?.role === "tecnico_campo";
-  const isAreaTecnica = profile?.role === "area_tecnica" || profile?.role === "admin";
+  const isAreaTecnica = profile?.role === "engenharia" || profile?.role === "supervisao" || profile?.role === "admin";
   const canViewOS = isTecnico || isAreaTecnica;
 
   const realtimeCallback = useCallback(() => {

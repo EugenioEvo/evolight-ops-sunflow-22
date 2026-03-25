@@ -90,8 +90,8 @@ serve(async (req) => {
       if (clienteError) throw clienteError
     }
 
-    // Se for técnico ou área técnica, criar registro na tabela tecnicos E prestadores (pendente aprovação)
-    if (userRole === 'tecnico_campo' || userRole === 'area_tecnica') {
+    // Se for técnico, engenharia ou supervisão, criar registro na tabela tecnicos E prestadores (pendente aprovação)
+    if (userRole === 'tecnico_campo' || userRole === 'engenharia' || userRole === 'supervisao') {
       // Usar service role client para operações administrativas
       const serviceClient = createClient(
         Deno.env.get('SUPABASE_URL') ?? '',

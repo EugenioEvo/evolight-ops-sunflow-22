@@ -27,7 +27,7 @@ const signupSchema = z.object({
     .regex(/^\d{10,11}$/, 'Telefone deve ter 10 ou 11 dígitos')
     .optional()
     .or(z.literal('')),
-  role: z.enum(['cliente', 'tecnico_campo', 'area_tecnica']),
+  role: z.enum(['cliente', 'tecnico_campo', 'engenharia', 'supervisao']),
   empresa: z.string().max(200, 'Empresa deve ter no máximo 200 caracteres').optional(),
   cnpjCpf: z.string()
     .regex(/^\d{11}$|^\d{14}$/, 'CPF deve ter 11 dígitos ou CNPJ 14 dígitos')
@@ -51,7 +51,7 @@ const Auth = () => {
   const [password, setPassword] = useState('');
   const [nome, setNome] = useState('');
   const [telefone, setTelefone] = useState('');
-  const [role, setRole] = useState<'cliente' | 'tecnico_campo' | 'area_tecnica'>('cliente');
+  const [role, setRole] = useState<'cliente' | 'tecnico_campo' | 'engenharia' | 'supervisao'>('cliente');
   const [empresa, setEmpresa] = useState('');
   const [cnpjCpf, setCnpjCpf] = useState('');
   const [endereco, setEndereco] = useState('');
@@ -338,7 +338,8 @@ const Auth = () => {
                     <SelectContent>
                       <SelectItem value="cliente">Cliente</SelectItem>
                       <SelectItem value="tecnico_campo">Técnico de Campo</SelectItem>
-                      <SelectItem value="area_tecnica">Área Técnica</SelectItem>
+                      <SelectItem value="engenharia">Engenharia</SelectItem>
+                      <SelectItem value="supervisao">Supervisão</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

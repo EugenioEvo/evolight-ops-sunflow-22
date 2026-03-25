@@ -89,7 +89,7 @@ const RME = () => {
   });
 
   useEffect(() => {
-    if (profile && (profile.role === 'tecnico_campo' || profile.role === 'admin' || profile.role === 'area_tecnica')) {
+    if (profile && (profile.role === 'tecnico_campo' || profile.role === 'admin' || profile.role === 'engenharia' || profile.role === 'supervisao')) {
       loadData();
     }
   }, [profile]);
@@ -672,7 +672,7 @@ const RME = () => {
 
   const canAccessRME = profile?.role === 'tecnico_campo' || 
                        profile?.role === 'admin' || 
-                       profile?.role === 'area_tecnica';
+                       profile?.role === 'engenharia' || profile?.role === 'supervisao';
   
   const osLoading = !!osIdFromUrl && !selectedOS;
 

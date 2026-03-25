@@ -1199,7 +1199,7 @@ const Tickets = () => {
                       )}
 
                       {/* Botão reprocessar geocodificação */}
-                      {(ticket.geocoding_status === 'failed' || ticket.geocoding_status === 'pending' || !ticket.latitude || !ticket.longitude) && (profile?.role === 'admin' || profile?.role === 'area_tecnica') && (
+                      {(ticket.geocoding_status === 'failed' || ticket.geocoding_status === 'pending' || !ticket.latitude || !ticket.longitude) && (profile?.role === 'admin' || profile?.role === 'engenharia' || profile?.role === 'supervisao') && (
                         <div className="flex items-center gap-2">
                           <Button
                             size="sm"
@@ -1224,7 +1224,7 @@ const Tickets = () => {
                       )}
 
                       {/* Botões de ação conforme status e role */}
-                      {(profile?.role === 'admin' || profile?.role === 'area_tecnica') && (
+                      {(profile?.role === 'admin' || profile?.role === 'engenharia' || profile?.role === 'supervisao') && (
                         <div className="flex flex-wrap gap-2 pt-2 border-t">
                           {ticket.status === 'aberto' && (
                             <>
@@ -1557,7 +1557,7 @@ const Tickets = () => {
                         </div>
                       )}
 
-                      {profile?.role !== 'admin' && profile?.role !== 'area_tecnica' && (
+                      {profile?.role !== 'admin' && profile?.role !== 'engenharia' && profile?.role !== 'supervisao' && (
                         <div className="flex justify-end pt-2 border-t">
                           <span className="text-xs text-muted-foreground">
                             Criado em {new Date(ticket.created_at).toLocaleString('pt-BR')}
