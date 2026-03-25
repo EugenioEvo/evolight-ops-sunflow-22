@@ -1015,8 +1015,9 @@ const Tickets = () => {
               onAction={!debouncedSearchTerm ? () => setIsDialogOpen(true) : undefined}
             />
           ) : (
+            <div className="space-y-4">
             <div className="grid gap-4">
-              {filteredTickets.map((ticket) => (
+              {paginatedTickets.map((ticket) => (
                 <Card key={ticket.id} className="hover:shadow-md transition-shadow">
                   <CardHeader className="pb-4">
                     <div className="flex items-start justify-between">
