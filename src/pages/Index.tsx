@@ -158,9 +158,7 @@ const Index = () => {
     loadRecentActivity();
   }, []);
 
-  useTicketsRealtime({
-    onTicketChange: loadRecentActivity
-  });
+  useGlobalRealtime(loadRecentActivity);
 
   const getStatusLabel = (status: string) => {
     const labels: Record<string, string> = {

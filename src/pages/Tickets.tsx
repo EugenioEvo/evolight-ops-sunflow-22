@@ -192,10 +192,8 @@ const Tickets = () => {
     loadData();
   }, []);
 
-  // Realtime subscription - mover depois da definição de loadData
-  useTicketsRealtime({
-    onTicketChange: loadData
-  });
+  // Realtime subscription via global provider
+  useGlobalRealtime(loadData);
 
   const onSubmit = async (data: TicketForm) => {
     try {
