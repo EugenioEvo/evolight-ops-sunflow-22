@@ -95,7 +95,7 @@ const handler = async (req: Request): Promise<Response> => {
     const dtEnd = new Date(dataOS);
     dtEnd.setHours(horaFim, minFim, 0, 0);
 
-    // Formatar datas para iCalendar (formato: YYYYMMDDTHHmmss)
+    // Formatar datas para iCalendar
     const formatICalDate = (date: Date): string => {
       const year = date.getFullYear();
       const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -113,10 +113,8 @@ const handler = async (req: Request): Promise<Response> => {
     const now = new Date();
     const uid = `os-${os.numero_os}@sunflow.grupoevolight.com.br`;
     
-    // Incrementar sequence se for update e já tiver sido enviado antes
     let sequence = 0;
     if (action === "update" && os.calendar_invite_sent_at) {
-      // Calcular quantas vezes já foi enviado baseado no timestamp
       sequence = 1;
     }
     
@@ -152,6 +150,21 @@ const handler = async (req: Request): Promise<Response> => {
       "END:VCALENDAR",
     ].join("\r\n");
 
+    // Gerar token de confirmação de presença para incluir no email
+    let confirmUrl = "";
+    if (action !== "cancel") {
+      const { data: presenceToken, error: tokenError } = await supabase.rpc(
+        'generate_presence_token',
+        { p_os_id: os_id }
+      );
+
+      if (tokenError) {
+        console.warn("[send-calendar-invite] Erro ao gerar token de presença:", tokenError);
+      } else {
+        confirmUrl = `${supabaseUrl}/functions/v1/confirm-presence?os_id=${os_id}&token=${presenceToken}`;
+      }
+    }
+
     // Preparar email
     const recipients = [tecnicoEmail, CONFIG.teamEmail];
     const actionText = action === "create" ? "agendada" : action === "update" ? "reagendada" : "cancelada";
@@ -162,35 +175,50 @@ const handler = async (req: Request): Promise<Response> => {
       ? `Cancelamento: ${os.numero_os} - ${clienteNome}`
       : `Agendamento: ${os.numero_os} - ${clienteNome} - ${dataFormatada} ${horaFormatada}`;
 
+    const confirmButtonHtml = confirmUrl ? `
+<div style="text-align: center; margin: 30px 0;">
+  <a href="${confirmUrl}" 
+     style="display: inline-block; background: #16a34a; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px;">
+    ✅ Confirmar Presença
+  </a>
+  <p style="color: #6b7280; font-size: 12px; margin-top: 10px;">
+    Clique no botão acima para confirmar que você estará presente nesta OS
+  </p>
+</div>
+` : "";
+
     const emailBody = action === "cancel"
       ? `
-<h2>Ordem de Serviço Cancelada</h2>
-
-<p><strong>OS:</strong> ${os.numero_os}</p>
-<p><strong>Cliente:</strong> ${clienteNome}</p>
-<p><strong>Técnico:</strong> ${tecnicoNome}</p>
-<p><strong>Data:</strong> ${dataFormatada} às ${horaFormatada}</p>
-<p><strong>Endereço:</strong> ${endereco}</p>
-
-<hr>
-<p style="color: #666; font-size: 12px;">
-  Este evento foi cancelado. O convite em anexo removerá automaticamente o evento do seu calendário.
-</p>
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+  <h2>Ordem de Serviço Cancelada</h2>
+  <p><strong>OS:</strong> ${os.numero_os}</p>
+  <p><strong>Cliente:</strong> ${clienteNome}</p>
+  <p><strong>Técnico:</strong> ${tecnicoNome}</p>
+  <p><strong>Data:</strong> ${dataFormatada} às ${horaFormatada}</p>
+  <p><strong>Endereço:</strong> ${endereco}</p>
+  <hr>
+  <p style="color: #666; font-size: 12px;">
+    Este evento foi cancelado. O convite em anexo removerá automaticamente o evento do seu calendário.
+  </p>
+</div>
 `
       : `
-<h2>Nova Ordem de Serviço ${actionText.charAt(0).toUpperCase() + actionText.slice(1)}</h2>
-
-<p><strong>OS:</strong> ${os.numero_os}</p>
-<p><strong>Cliente:</strong> ${clienteNome}</p>
-<p><strong>Técnico:</strong> ${tecnicoNome}</p>
-<p><strong>Data:</strong> ${dataFormatada} às ${horaFormatada}</p>
-<p><strong>Duração:</strong> ${os.duracao_estimada_min || 120} minutos</p>
-<p><strong>Endereço:</strong> ${endereco}</p>
-
-<hr>
-<p style="color: #666; font-size: 12px;">
-  <strong>Importante:</strong> Abra o arquivo em anexo e clique em "Aceitar" para adicionar este agendamento ao seu calendário Outlook/Google Calendar.
-</p>
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+  <h2>Nova Ordem de Serviço ${actionText.charAt(0).toUpperCase() + actionText.slice(1)}</h2>
+  <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+    <p><strong>OS:</strong> ${os.numero_os}</p>
+    <p><strong>Cliente:</strong> ${clienteNome}</p>
+    <p><strong>Técnico:</strong> ${tecnicoNome}</p>
+    <p><strong>Data:</strong> ${dataFormatada} às ${horaFormatada}</p>
+    <p><strong>Duração:</strong> ${os.duracao_estimada_min || 120} minutos</p>
+    <p><strong>Endereço:</strong> ${endereco}</p>
+  </div>
+  ${confirmButtonHtml}
+  <hr>
+  <p style="color: #666; font-size: 12px;">
+    <strong>Importante:</strong> Abra o arquivo em anexo e clique em "Aceitar" para adicionar este agendamento ao seu calendário Outlook/Google Calendar.
+  </p>
+</div>
 `;
 
     // Enviar email via Resend
@@ -230,7 +258,7 @@ const handler = async (req: Request): Promise<Response> => {
               },
             ],
           },
-          next_retry_at: new Date(Date.now() + 60000).toISOString(), // Retry em 1 minuto
+          next_retry_at: new Date(Date.now() + 60000).toISOString(),
         });
 
       if (queueError) {
