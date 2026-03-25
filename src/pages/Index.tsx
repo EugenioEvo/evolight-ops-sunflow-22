@@ -18,6 +18,7 @@ const PerformanceMetrics = () => {
     slaData: [],
     tempoMedio: 0
   });
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadMetrics();
