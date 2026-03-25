@@ -23,6 +23,7 @@ import { LoadingState } from '@/components/LoadingState';
 import { EmptyState } from '@/components/EmptyState';
 import { FileUpload } from '@/components/FileUpload';
 import { useGeocoding } from '@/hooks/useGeocoding';
+import { Pagination } from '@/components/Pagination';
 
 const ticketSchema = z.object({
   titulo: z.string().min(1, 'Título é obrigatório'),
