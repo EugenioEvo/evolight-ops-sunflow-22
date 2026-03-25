@@ -119,18 +119,18 @@ const Tickets = () => {
     equipamentoTipo: ticket?.equipamento_tipo || null
   });
 
-  // Global score for all prestadores (used in selects)
-  const { scores: globalScores } = useTechnicianScore({
-    prestadores,
-    ticketDate: null,
-    ticketLat: null,
-    ticketLng: null,
-    equipamentoTipo: null
-  });
+  // Score engine: fetches data once, computes per-ticket
+  const { getScoresForTicket } = useTechnicianScoreEngine(prestadores);
+
+  // Current ticket context for rendering (cached per render)
+  const [activeTicketScores, setActiveTicketScores] = useState<Map<string, any>>(new Map());
 
   // Sort prestadores by score for a given ticket
   const getSortedPrestadores = (ticket?: any) => {
-    const scoreMap = new Map(globalScores.map(s => [s.prestadorId, s]));
+    const scores = getScoresForTicket(ticket);
+    const scoreMap = new Map(scores.map(s => [s.prestadorId, s]));
+    // Cache for renderPrestadorOption
+    setActiveTicketScores(scoreMap);
     return [...prestadores].sort((a, b) => {
       const scoreA = scoreMap.get(a.id)?.score ?? 0;
       const scoreB = scoreMap.get(b.id)?.score ?? 0;
@@ -139,7 +139,7 @@ const Tickets = () => {
   };
 
   const getScoreForPrestador = (prestadorId: string) => {
-    return globalScores.find(s => s.prestadorId === prestadorId);
+    return activeTicketScores.get(prestadorId);
   };
 
   const renderPrestadorOption = (prestador: any, index: number) => {
