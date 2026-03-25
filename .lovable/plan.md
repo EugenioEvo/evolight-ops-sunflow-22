@@ -1,99 +1,73 @@
 
 
-# Auditoria Completa do SunFlow
+# Auditoria Completa v2 — SunFlow
 
-## Resumo da Varredura
+## Status das Correções Anteriores
 
-Analisei o banco de dados, queries, rotas, componentes e fluxos end-to-end. Abaixo os achados organizados por severidade.
-
----
-
-## BUGS CRITICOS
-
-### 1. Rota "/configuracoes" não existe
-O sidebar (`AppSidebar.tsx`) tem um link para `/configuracoes`, mas nao existe nenhuma pagina para essa rota. Clicar nela leva ao NotFound.
-
-**Correção**: Criar uma página `Configuracoes.tsx` ou remover o item do menu.
-
-### 2. `require()` no ProtectedRoute (incompatível com Vite/ESM)
-Linha 60 usa `require('@/pages/PendingApproval')` — isso pode falhar em builds ESM/Vite. Deveria usar lazy import com `React.lazy()` + `Suspense`, ou importação estática.
-
-### 3. Ticket TK000002 tem status "aberto" mas já tem OS gerada
-No banco: `TK000002` está com `status: aberto` mas tem `OS000002` associada. Isso é inconsistente — o fluxo deveria ter mudado o status para `ordem_servico_gerada` ao gerar a OS.
-
-**Correção**: Verificar a edge function `gerar-ordem-servico` para garantir que atualiza o status do ticket. Corrigir o dado manualmente.
-
-### 4. Técnicos sem prestador vinculado
-3 técnicos (Edson Eulalio, Eugenio Garcia, ze faisca, zezinho das couves) existem na tabela `tecnicos` mas NÃO têm `prestadores` correspondente. Isso pode causar problemas ao atribuir técnicos em tickets, pois `tickets.tecnico_responsavel_id` referencia `prestadores.id`, não `tecnicos.id`.
-
-**Impacto**: Esses técnicos aparecem na Agenda e em Tecnicos, mas não podem ser atribuídos a tickets pelo fluxo normal.
+As correções da Fase 1 e 2 foram aplicadas com sucesso:
+- TK000002 agora está com status `ordem_servico_gerada` (confirmado no banco)
+- Todos os técnicos têm prestadores vinculados (confirmado: todos com `prestador_count: 1`)
+- Rota `/configuracoes` removida do sidebar
+- `require()` no ProtectedRoute corrigido para import estático
+- PerformanceMetrics com loading/error states
+- Paginação implementada em Tickets e WorkOrders
+- Realtime consolidado em provider global
 
 ---
 
-## BUGS MEDIANOS
+## NOVOS BUGS ENCONTRADOS
 
-### 5. Dualidade tecnicos vs prestadores causa confusão
-O sistema usa duas tabelas para representar técnicos:
-- `prestadores` (usado em Tickets para `tecnico_responsavel_id`)
-- `tecnicos` (usado em OS para `tecnico_id`)
+### 1. CRÍTICO: `useGlobalRealtime` causa re-subscribe infinito em Tickets e Index
+Em `Tickets.tsx` (linha 196): `useGlobalRealtime(loadData)` passa `loadData` que NÃO é memoizada com `useCallback`. A cada render, uma nova referência de função é criada, fazendo o `useEffect` dentro de `useGlobalRealtime` disparar continuamente (unsubscribe → subscribe → unsubscribe...).
 
-A correspondência é feita por email, o que é frágil. Se emails diferirem minimamente, o vínculo se perde.
+Mesmo problema em `Index.tsx` (linha 161): `useGlobalRealtime(loadRecentActivity)`.
 
-### 6. Agenda: `loadOrdensServico` chamado no `useEffect` sem `loadOrdensServico` na dependência
-Linha 140-141: `useEffect` depende de `[selectedDate, selectedTecnico]` mas deveria incluir `loadOrdensServico` (que é `useCallback`). Na prática funciona porque `loadOrdensServico` já depende dessas variáveis, mas é um antipattern.
+**Impacto**: Pode causar múltiplas chamadas simultâneas ao banco, race conditions, e degradação de performance. Pode explicar por que o usuário viu "Nenhum ticket encontrado" — uma race condition onde `setTickets([])` ocorre durante `setLoading(true)`.
 
-### 7. Dashboard: PerformanceMetrics faz queries diretas sem tratamento de erro visível
-O componente `PerformanceMetrics` no Index.tsx busca dados diretamente sem mostrar loading ou erros ao usuário.
+**Correção**: Envolver `loadData` e `loadRecentActivity` com `useCallback`, ou usar `useRef` dentro de `useGlobalRealtime` para evitar re-subscriptions.
 
-### 8. Sidebar: item "Configurações" visível para todos os roles, sem filtro `adminOnly`
-Todos os usuários veem "Configurações" no menu, incluindo técnicos e clientes, mas a rota nem existe.
+### 2. MÉDIO: Tabs de Tickets persistidas no localStorage podem mostrar lista vazia
+O `activeTab` é persistido via `localStorage.setItem('tickets_tab', activeTab)`. Se o usuário estava na aba "Abertos" e agora todos os tickets são `ordem_servico_gerada`, ao reabrir verá "Nenhum ticket encontrado" sem contexto claro.
 
-### 9. WorkOrders usa `!inner` join em tickets
-Se um ticket for deletado mas a OS permanecer, a OS desaparece silenciosamente da lista.
+O session replay mostra exatamente isso: o usuário vê a página vazia e troca de aba tentando encontrar os tickets.
 
----
+**Correção**: Mostrar contadores nas abas (ex: "Abertos (0)") para que o usuário saiba onde estão os tickets.
 
-## MELHORIAS SUGERIDAS
+### 3. MÉDIO: WorkOrders usa `!inner` join — OS sem ticket desaparece
+Linha 101: `tickets!inner(...)` faz inner join. Se um ticket for deletado mas a OS existir, a OS some silenciosamente da lista.
 
-### 10. Unificar tabelas tecnicos/prestadores
-A maior fonte de bugs é a duplicidade. Idealmente, `prestadores` com `categoria = 'tecnico'` deveria ser a tabela canônica, ou um campo `tecnico_id` FK deveria vincular diretamente.
+**Correção**: Remover `!inner` e tratar caso de ticket nulo no frontend.
 
-### 11. Adicionar paginação nas listas de tickets e OS
-Tickets e WorkOrders carregam TODOS os registros de uma vez. Com crescimento de dados, isso vai degradar performance. O limite padrão do Supabase é 1000 rows.
+### 4. BAIXO: `handleDeleteTicket` não verifica OS/RME vinculados
+Deletar um ticket que tem OS/RME associados pode causar dados órfãos ou erros de FK (dependendo de cascades). Não há confirmação ao usuário.
 
-### 12. Adicionar confirmação antes de deletar tickets
-`handleDeleteTicket` faz delete direto. Deveria verificar se há OS/RME vinculados e avisar o usuário.
+**Correção**: Verificar existência de OS/RME antes de deletar e avisar o usuário.
 
-### 13. Criar página de Configurações
-Adicionar configurações básicas: perfil do usuário, preferências de notificação, etc.
-
-### 14. Loading states consistentes
-Algumas páginas usam `LoadingState`, outras usam spinners customizados, e algumas (como PerformanceMetrics) não têm loading visual.
-
-### 15. Realtime duplicado
-`useTicketsRealtime` é chamado no Index.tsx, Tickets.tsx, MinhasOS.tsx e Agenda.tsx — cada um criando canais Realtime separados. Poderia ser centralizado.
+### 5. BAIXO: DashboardStats usa RPC separado + interval próprio, fora do Realtime global
+`DashboardStats.tsx` usa `supabase.rpc('get_dashboard_stats')` com `setInterval(30s)` próprio, não usa o `useGlobalRealtime`. Dupla fonte de atualização.
 
 ---
 
 ## PLANO DE IMPLEMENTAÇÃO
 
-### Fase 1 — Correções Críticas (prioridade)
-1. **Remover ou criar rota `/configuracoes`** — remover do sidebar por enquanto
-2. **Corrigir `require()` no ProtectedRoute** — trocar para import estático
-3. **Corrigir status do TK000002** no banco para `ordem_servico_gerada`
-4. **Criar prestadores faltantes** para técnicos sem vínculo (Edson, Eugenio, ze faisca, zezinho)
+### Fase 1 — Correção Crítica do Realtime (prioridade máxima)
+1. **Corrigir `useGlobalRealtime` para usar `useRef`** internamente, evitando que mudanças de referência da callback causem re-subscriptions. Isso resolve o bug em TODOS os consumidores de uma vez.
 
-### Fase 2 — Melhorias de Robustez
-5. **Adicionar `loadOrdensServico` como dependência** do useEffect na Agenda
-6. **Adicionar loading/error states** no PerformanceMetrics
-7. **Filtrar "Configurações"** do sidebar para não aparecer (ou criar a página)
+### Fase 2 — UX e Robustez
+2. **Adicionar contadores nas abas de Tickets** — mostrar "(N)" ao lado de cada status para o usuário saber onde estão os tickets
+3. **Remover `!inner` em WorkOrders** — usar join normal e tratar ticket nulo
+4. **Adicionar confirmação antes de deletar tickets** — verificar OS/RME vinculados
 
-### Fase 3 — Melhorias de Escala
-8. **Adicionar paginação** em Tickets e WorkOrders
-9. **Consolidar realtime** em um único hook global
+### Fase 3 — Otimização
+5. **Integrar DashboardStats ao realtime global** — remover setInterval redundante
 
 ### Detalhes Técnicos
-- **Arquivos a editar**: `AppSidebar.tsx`, `ProtectedRoute.tsx`, `Index.tsx` (PerformanceMetrics), `Agenda.tsx`
-- **Migrations SQL**: INSERT de prestadores faltantes, UPDATE status TK000002
-- **Nenhuma mudança de schema** necessária nesta fase
+
+**Arquivos a editar:**
+- `src/hooks/useRealtimeProvider.tsx` — usar `useRef` para callback
+- `src/pages/Tickets.tsx` — adicionar contadores nas abas
+- `src/pages/WorkOrders.tsx` — remover `!inner`
+- `src/pages/Tickets.tsx` — confirmação de delete com verificação de OS/RME
+
+**Nenhuma migration SQL necessária.**
 
