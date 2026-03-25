@@ -57,6 +57,8 @@ const Tickets = () => {
   const [selectedPrioridade, setSelectedPrioridade] = useState(localStorage.getItem('tickets_prioridade') || 'todas');
   const [selectedUfvSolarz, setSelectedUfvSolarz] = useState(localStorage.getItem('tickets_ufv_solarz') || 'todos');
   const [reprocessingTicketId, setReprocessingTicketId] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 20;
 
   const { geocodeAddress, loading: geocoding } = useGeocoding();
 
