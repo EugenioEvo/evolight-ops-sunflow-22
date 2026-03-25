@@ -2,7 +2,7 @@ import DashboardStats from "@/components/DashboardStats";
 import TechnicianDashboard from "@/components/TechnicianDashboard";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { TrendingUp, Activity } from "lucide-react";
-import { useTicketsRealtime } from "@/hooks/useTicketsRealtime";
+import { useGlobalRealtime } from "@/hooks/useRealtimeProvider";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
