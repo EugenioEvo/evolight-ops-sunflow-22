@@ -109,7 +109,62 @@ const Tickets = () => {
 
   const [ufvSolarzListForForm, setUfvSolarzListForForm] = useState<string[]>([]);
   const [selectedUfvSolarzForm, setSelectedUfvSolarzForm] = useState<string>('');
-  
+
+  // Helper to get score data for a specific ticket context
+  const getTicketScoreParams = (ticket?: any) => ({
+    prestadores,
+    ticketDate: ticket?.data_vencimento || ticket?.data_servico || null,
+    ticketLat: ticket?.latitude ? Number(ticket.latitude) : null,
+    ticketLng: ticket?.longitude ? Number(ticket.longitude) : null,
+    equipamentoTipo: ticket?.equipamento_tipo || null
+  });
+
+  // Global score for all prestadores (used in selects)
+  const { scores: globalScores } = useTechnicianScore({
+    prestadores,
+    ticketDate: null,
+    ticketLat: null,
+    ticketLng: null,
+    equipamentoTipo: null
+  });
+
+  // Sort prestadores by score for a given ticket
+  const getSortedPrestadores = (ticket?: any) => {
+    const scoreMap = new Map(globalScores.map(s => [s.prestadorId, s]));
+    return [...prestadores].sort((a, b) => {
+      const scoreA = scoreMap.get(a.id)?.score ?? 0;
+      const scoreB = scoreMap.get(b.id)?.score ?? 0;
+      return scoreB - scoreA;
+    });
+  };
+
+  const getScoreForPrestador = (prestadorId: string) => {
+    return globalScores.find(s => s.prestadorId === prestadorId);
+  };
+
+  const renderPrestadorOption = (prestador: any, index: number) => {
+    const scoreData = getScoreForPrestador(prestador.id);
+    const hasEmail = prestador.email && prestador.email.trim() !== '';
+    return (
+      <SelectItem key={prestador.id} value={prestador.id}>
+        <div className="flex items-center gap-2 w-full">
+          <span className={!hasEmail ? 'text-destructive' : ''}>{prestador.nome}</span>
+          {!hasEmail && <AlertTriangle className="h-3 w-3 text-destructive" />}
+          {scoreData && scoreData.score > 0 && (
+            <Badge variant="outline" className="text-[10px] px-1.5 py-0 ml-auto">
+              ⭐ {scoreData.score}%
+            </Badge>
+          )}
+          {index === 0 && scoreData && scoreData.score >= 60 && (
+            <Badge className="text-[10px] px-1.5 py-0 bg-green-100 text-green-800 border-green-300">
+              Recomendado
+            </Badge>
+          )}
+        </div>
+      </SelectItem>
+    );
+  };
+
   const loadData = async () => {
     try {
       setLoading(true);
