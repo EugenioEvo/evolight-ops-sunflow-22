@@ -9,10 +9,17 @@ export const useCancelOS = () => {
   const cancelOS = async (osId: string, motivo?: string): Promise<boolean> => {
     setLoading(true);
     try {
-      // Buscar dados da OS antes de cancelar
+      // Buscar dados da OS incluindo técnico e status do ticket
       const { data: os, error: fetchError } = await supabase
         .from('ordens_servico')
-        .select('numero_os, data_programada, calendar_invite_sent_at')
+        .select(`
+          id, numero_os, data_programada, calendar_invite_sent_at, tecnico_id,
+          tickets:ticket_id(id, status, titulo),
+          tecnicos:tecnico_id(
+            id,
+            profile:profiles(user_id, nome)
+          )
+        `)
         .eq('id', osId)
         .single();
 
@@ -20,21 +27,38 @@ export const useCancelOS = () => {
         throw new Error('OS não encontrada');
       }
 
-      // Atualizar ticket relacionado para status cancelado
-      const { data: osData } = await supabase
-        .from('ordens_servico')
-        .select('ticket_id')
-        .eq('id', osId)
-        .single();
+      // Bloquear se ticket está em execução
+      if ((os.tickets as any)?.status === 'em_execucao') {
+        toast({
+          title: 'Cancelamento bloqueado',
+          description: `A OS ${os.numero_os} está em execução pelo técnico. Não é possível cancelá-la enquanto estiver em andamento.`,
+          variant: 'destructive',
+        });
+        return false;
+      }
 
-      if (osData?.ticket_id) {
+      // Atualizar ticket para cancelado
+      const ticketId = (os.tickets as any)?.id;
+      if (ticketId) {
         await supabase
           .from('tickets')
           .update({ status: 'cancelado' })
-          .eq('id', osData.ticket_id);
+          .eq('id', ticketId);
       }
 
-      // Se tinha convite enviado, enviar cancelamento
+      // Notificar técnico (in-app)
+      const tecnicoUserId = (os.tecnicos as any)?.profile?.user_id;
+      if (tecnicoUserId) {
+        await supabase.from('notificacoes').insert({
+          user_id: tecnicoUserId,
+          tipo: 'os_cancelada',
+          titulo: 'Ordem de Serviço Cancelada',
+          mensagem: `A OS ${os.numero_os}${(os.tickets as any)?.titulo ? ` (${(os.tickets as any).titulo})` : ''} foi cancelada.${motivo ? ` Motivo: ${motivo}` : ''}`,
+          link: '/minhas-os',
+        });
+      }
+
+      // Enviar email de cancelamento ao técnico
       if (os.calendar_invite_sent_at && os.data_programada) {
         try {
           await supabase.functions.invoke('send-calendar-invite', {
@@ -45,7 +69,6 @@ export const useCancelOS = () => {
           });
         } catch (emailError) {
           console.error('Erro ao enviar cancelamento:', emailError);
-          // Não bloquear o cancelamento se email falhar
         }
       }
 
@@ -64,7 +87,7 @@ export const useCancelOS = () => {
 
       toast({
         title: 'OS cancelada',
-        description: `OS ${os.numero_os} foi cancelada. Convites de calendário removidos.`
+        description: `OS ${os.numero_os} foi cancelada. O técnico foi notificado.`
       });
 
       return true;
