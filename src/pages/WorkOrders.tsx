@@ -84,7 +84,7 @@ const WorkOrders = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  const canManageOS = profile?.role === "admin" || profile?.role === "area_tecnica";
+  const canManageOS = profile?.role === "admin" || profile?.role === "engenharia" || profile?.role === "supervisao";
 
   useEffect(() => {
     loadWorkOrders();

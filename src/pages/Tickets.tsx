@@ -1557,7 +1557,7 @@ const Tickets = () => {
                         </div>
                       )}
 
-                      {profile?.role !== 'admin' && profile?.role !== 'area_tecnica' && (
+                      {profile?.role !== 'admin' && profile?.role !== 'engenharia' && profile?.role !== 'supervisao' && (
                         <div className="flex justify-end pt-2 border-t">
                           <span className="text-xs text-muted-foreground">
                             Criado em {new Date(ticket.created_at).toLocaleString('pt-BR')}
