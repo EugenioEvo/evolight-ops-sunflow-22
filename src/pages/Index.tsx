@@ -18,12 +18,15 @@ const PerformanceMetrics = () => {
     slaData: [],
     tempoMedio: 0
   });
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadMetrics();
   }, []);
 
   const loadMetrics = async () => {
+    setLoading(true);
+    try {
     const now = new Date();
     const startDate = startOfMonth(now);
     const endDate = endOfMonth(now);
@@ -63,11 +66,24 @@ const PerformanceMetrics = () => {
       : 0;
 
     setMetricsData({
-      ticketsPorMes: ticketsPorDia.slice(-7), // últimos 7 dias
+      ticketsPorMes: ticketsPorDia.slice(-7),
       slaData,
       tempoMedio: Math.round(tempoMedio * 10) / 10
     });
+    } catch (error) {
+      console.error('Erro ao carregar métricas:', error);
+    } finally {
+      setLoading(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

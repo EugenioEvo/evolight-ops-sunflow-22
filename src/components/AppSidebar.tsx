@@ -57,9 +57,8 @@ const cadastroItems = [
 ];
 
 const systemItems = [
-  { title: "Relatórios", url: "/relatorios", icon: BarChart3 },
+  { title: "Relatórios", url: "/relatorios", icon: BarChart3, adminOnly: true },
   { title: "Auditoria", url: "/audit-logs", icon: ShieldAlert, adminOnly: true },
-  { title: "Configurações", url: "/configuracoes", icon: Settings },
 ];
 
 export function AppSidebar() {
@@ -192,10 +191,7 @@ export function AppSidebar() {
             <SidebarMenu>
               {systemItems
                 .filter(item => {
-                  // Filtrar Relatórios para técnicos
-                  if (item.title === "Relatórios" && !isAdminOrAreaTecnica) {
-                    return false;
-                  }
+                  if (item.adminOnly && !isAdminOrAreaTecnica) return false;
                   return true;
                 })
                 .map((item) => (

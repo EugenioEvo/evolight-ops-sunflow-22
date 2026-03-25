@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import PendingApproval from '@/pages/PendingApproval';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -56,8 +57,6 @@ export const ProtectedRoute = ({ children, roles }: ProtectedRouteProps) => {
 
   // Tecnico pending approval
   if (profile?.role === 'tecnico_campo' && approvalStatus === 'pending') {
-    // Lazy import to avoid circular deps
-    const PendingApproval = require('@/pages/PendingApproval').default;
     return <PendingApproval />;
   }
 
