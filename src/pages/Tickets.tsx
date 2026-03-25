@@ -1483,6 +1483,14 @@ const Tickets = () => {
                 </Card>
               ))}
             </div>
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              totalItems={filteredTickets.length}
+              itemsPerPage={ITEMS_PER_PAGE}
+            />
+            </div>
           )}
         </TabsContent>
       </Tabs>
