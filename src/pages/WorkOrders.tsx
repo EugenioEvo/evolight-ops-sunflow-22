@@ -77,6 +77,8 @@ const WorkOrders = () => {
   const [ufvSolarzFilter, setUfvSolarzFilter] = useState<string>("all");
   const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({});
   const [clientes, setClientes] = useState<{ id: string; empresa: string }[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 18;
 
   const { profile } = useAuth();
   const { toast } = useToast();
