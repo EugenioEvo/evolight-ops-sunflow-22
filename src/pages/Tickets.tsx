@@ -1294,11 +1294,7 @@ const Tickets = () => {
                                   <SelectValue placeholder="Atribuir técnico" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {prestadores.map((prestador) => (
-                                    <SelectItem key={prestador.id} value={prestador.id}>
-                                      {prestador.nome}
-                                    </SelectItem>
-                                  ))}
+                                  {getSortedPrestadores(ticket).map((prestador, index) => renderPrestadorOption(prestador, index))}
                                 </SelectContent>
                               </Select>
                               <Button
