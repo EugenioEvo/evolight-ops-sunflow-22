@@ -1,66 +1,94 @@
 
 
-# Recibo de Confirmação de Presença
+# Reestruturação de Roles: De 4 para 5 perfis
 
-## Problema
-Após confirmar presença, o técnico vê apenas uma tela de sucesso sem opção de salvar um comprovante. Não há recibo formal.
+## Resumo
 
-## Solução
-Adicionar na tela de sucesso (`PresenceConfirmation.tsx`) um botão "Baixar Comprovante" que gera um recibo visual em PDF ou imagem compartilhável.
+Substituir o role `area_tecnica` por dois novos roles: `engenharia` e `supervisao`, ambos com o **mesmo nível de acesso**, mas responsabilidades distintas:
 
----
+- **Engenharia**: análise técnica, RME, relatórios
+- **Supervisão**: operação de campo, agenda, distribuição de OS, presença
 
-## Implementação
+Ambos podem aprovar tudo (RME, OS, prestadores).
 
-### 1. `src/pages/PresenceConfirmation.tsx`
-
-- Extrair mais detalhes da resposta HTML: endereço, cliente (se disponível)
-- Após status `success`, renderizar botão "Baixar Comprovante"
-- Ao clicar, gerar um canvas/imagem com layout de recibo contendo:
-  - Logo SunFlow + branding
-  - Número da OS
-  - Serviço, Data/Hora, Técnico
-  - Timestamp da confirmação (hora atual formatada)
-  - Texto: "Presença confirmada com sucesso"
-  - Código de verificação (últimos 8 chars do token)
-- Usar `html2canvas` ou canvas nativo para gerar imagem PNG baixável
-- Adicionar também botão "Compartilhar" (Web Share API) para mobile
-
-### 2. Dependência
-
-- Instalar `html2canvas` para captura do recibo como imagem
-- Alternativa: usar canvas nativo (sem dependência extra) para desenhar o recibo programaticamente
-
-### 3. Layout do recibo
+## Roles finais
 
 ```text
-┌─────────────────────────────┐
-│     ☀ SunFlow               │
-│  Comprovante de Presença    │
-│─────────────────────────────│
-│  OS: OS000123               │
-│  Serviço: Manutenção Prev.  │
-│  Data: 25/03/2026 às 08:00  │
-│  Técnico: João Silva        │
-│─────────────────────────────│
-│  ✅ Presença confirmada     │
-│  em 25/03/2026 às 07:45     │
-│                             │
-│  Código: A1B2C3D4           │
-│─────────────────────────────│
-│  Evolight Solar O&M         │
-└─────────────────────────────┘
+admin          → Acesso total, configurações, auditoria
+engenharia     → Análise técnica, RME, relatórios, aprovações
+supervisao     → Gestão campo, agenda, OS, presença, aprovações
+tecnico_campo  → Executa OS, preenche RME, confirma presença
+cliente        → Abre tickets, acompanha status, painel próprio
 ```
 
-### 4. Detalhes técnicos
+## Mudanças necessárias
 
-- Renderizar um `div` oculto com o layout do recibo (ref)
-- `html2canvas` captura esse div como PNG
-- Download automático: `recibo-OS000123.png`
-- Web Share API para compartilhar em mobile (WhatsApp, etc.)
-- Fallback: se Web Share não disponível, mostrar apenas botão de download
+### 1. Migração de banco de dados
 
-## Arquivos
-1. `src/pages/PresenceConfirmation.tsx` — adicionar recibo + botões
-2. `package.json` — adicionar `html2canvas`
+- Alterar o enum `app_role`: adicionar `engenharia` e `supervisao`, remover `area_tecnica`
+- Migrar registros existentes em `user_roles` de `area_tecnica` para um dos dois novos roles (definir qual será o padrão)
+- Atualizar todas as funções SQL que referenciam `area_tecnica` (RLS policies, `has_role`, etc.)
+- Atualizar **todas as 30+ RLS policies** que usam `has_role(auth.uid(), 'area_tecnica')` para incluir ambos os novos roles
+
+### 2. RLS Policies — padrão de substituição
+
+Onde hoje existe:
+```sql
+has_role(auth.uid(), 'area_tecnica'::app_role)
+```
+Passará a ser:
+```sql
+(has_role(auth.uid(), 'engenharia'::app_role) OR has_role(auth.uid(), 'supervisao'::app_role))
+```
+
+Tabelas afetadas: `tickets`, `ordens_servico`, `profiles`, `clientes`, `equipamentos`, `insumos`, `prestadores`, `tecnicos`, `rme_relatorios`, `rme_checklist_items`, `aprovacoes`, `notificacoes`, `movimentacoes`, `responsaveis`, `geocoding_cache`, `route_optimizations`, `status_historico`, `rme_checklist_catalog`.
+
+### 3. Edge Function `create-user-profile`
+
+Atualizar para aceitar `engenharia` e `supervisao` como roles válidos no cadastro. Remover referência a `area_tecnica`.
+
+### 4. Frontend — Arquivos afetados (~13 arquivos)
+
+| Arquivo | Mudança |
+|---|---|
+| `src/hooks/useAuth.tsx` | Atualizar tipo `UserProfile.role` com novos valores |
+| `src/App.tsx` | Substituir `'area_tecnica'` por `['engenharia', 'supervisao']` em todas as rotas protegidas |
+| `src/components/AppSidebar.tsx` | Atualizar lógica `isAdminOrAreaTecnica` para incluir novos roles |
+| `src/components/ProtectedRoute.tsx` | Sem mudança estrutural (já usa array de roles) |
+| `src/components/TopHeader.tsx` | Atualizar labels de exibição do role |
+| `src/pages/Tickets.tsx` | Substituir `area_tecnica` em verificações de permissão |
+| `src/pages/MinhasOS.tsx` | Atualizar `isAreaTecnica` |
+| `src/pages/WorkOrderDetail.tsx` | Atualizar `canManageOS` |
+| `src/pages/GerenciarRME.tsx` | Atualizar verificação de role |
+| `src/pages/Auth.tsx` | Atualizar formulário de cadastro com novos roles |
+| `src/pages/Prestadores.tsx` | Atualizar verificações de role |
+| `src/pages/ClientDashboard.tsx` | Sem mudança (usa `cliente`) |
+| `src/pages/WorkOrderCreate.tsx` | Atualizar verificações |
+
+### 5. Formulário de cadastro (`Auth.tsx`)
+
+Atualizar o select de role para oferecer: Administrador, Engenharia, Supervisão, Técnico de Campo, Cliente.
+
+### 6. Helper de permissão (novo)
+
+Criar função utilitária para simplificar verificações recorrentes:
+```typescript
+const isStaff = (role?: string) => 
+  ['admin', 'engenharia', 'supervisao'].includes(role || '');
+```
+
+Isso reduz duplicação em todos os componentes.
+
+## Ordem de execução
+
+1. Migração SQL (enum + policies + dados existentes)
+2. Atualizar Edge Function `create-user-profile`
+3. Atualizar `useAuth.tsx` (tipo)
+4. Criar helper `isStaff`
+5. Atualizar todos os componentes frontend
+6. Atualizar `AppSidebar` e `Auth.tsx`
+
+## Pergunta pendente antes de executar
+
+Usuários que hoje têm `area_tecnica` devem ser migrados para `engenharia` ou `supervisao`? Ou será feito manualmente depois?
 
