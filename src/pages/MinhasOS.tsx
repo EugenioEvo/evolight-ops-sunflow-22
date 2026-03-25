@@ -71,7 +71,8 @@ const MinhasOS = () => {
   const isAreaTecnica = profile?.role === "area_tecnica" || profile?.role === "admin";
   const canViewOS = isTecnico || isAreaTecnica;
 
-  // loadOrdensServico defined below - realtime hook moved after it
+  // Realtime callback ref to avoid hoisting issues
+  const realtimeCallbackRef = useRef<(() => void) | undefined>();
 
   useEffect(() => {
     if (canViewOS) {
