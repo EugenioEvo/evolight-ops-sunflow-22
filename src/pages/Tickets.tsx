@@ -487,7 +487,34 @@ const Tickets = () => {
   const handleDeleteTicket = async (ticketId: string) => {
     try {
       setLoading(true);
-      
+
+      // Verificar OS vinculadas
+      const { data: osData } = await supabase
+        .from('ordens_servico')
+        .select('id, numero_os')
+        .eq('ticket_id', ticketId);
+
+      // Verificar RME vinculados
+      const { data: rmeData } = await supabase
+        .from('rme_relatorios')
+        .select('id')
+        .eq('ticket_id', ticketId);
+
+      if ((osData && osData.length > 0) || (rmeData && rmeData.length > 0)) {
+        const osCount = osData?.length || 0;
+        const rmeCount = rmeData?.length || 0;
+        const parts = [];
+        if (osCount > 0) parts.push(`${osCount} OS`);
+        if (rmeCount > 0) parts.push(`${rmeCount} RME`);
+
+        toast({
+          title: "Não é possível excluir",
+          description: `Este ticket possui ${parts.join(' e ')} vinculado(s). Remova-os antes de excluir o ticket.`,
+          variant: "destructive",
+        });
+        return;
+      }
+
       const { error } = await supabase
         .from("tickets")
         .delete()
@@ -993,14 +1020,14 @@ const Tickets = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="todos">Todos</TabsTrigger>
-          <TabsTrigger value="aberto">Abertos</TabsTrigger>
-          <TabsTrigger value="aprovado">Aprovados</TabsTrigger>
-          <TabsTrigger value="ordem_servico_gerada">OS Gerada</TabsTrigger>
-          <TabsTrigger value="em_execucao">Em Execução</TabsTrigger>
-          <TabsTrigger value="concluido">Concluídos</TabsTrigger>
-          <TabsTrigger value="cancelado">Cancelados</TabsTrigger>
+        <TabsList className="flex-wrap h-auto gap-1">
+          <TabsTrigger value="todos">Todos ({tickets.length})</TabsTrigger>
+          <TabsTrigger value="aberto">Abertos ({tickets.filter(t => t.status === 'aberto').length})</TabsTrigger>
+          <TabsTrigger value="aprovado">Aprovados ({tickets.filter(t => t.status === 'aprovado').length})</TabsTrigger>
+          <TabsTrigger value="ordem_servico_gerada">OS Gerada ({tickets.filter(t => t.status === 'ordem_servico_gerada').length})</TabsTrigger>
+          <TabsTrigger value="em_execucao">Em Execução ({tickets.filter(t => t.status === 'em_execucao').length})</TabsTrigger>
+          <TabsTrigger value="concluido">Concluídos ({tickets.filter(t => t.status === 'concluido').length})</TabsTrigger>
+          <TabsTrigger value="cancelado">Cancelados ({tickets.filter(t => t.status === 'cancelado').length})</TabsTrigger>
         </TabsList>
 
         <TabsContent value={activeTab} className="space-y-4">

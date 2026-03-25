@@ -98,7 +98,7 @@ const WorkOrders = () => {
         .from("ordens_servico")
         .select(`
           *,
-          tickets!inner(
+          tickets(
             id, titulo, status, prioridade, endereco_servico,
             clientes(empresa, ufv_solarz, prioridade)
           ),
