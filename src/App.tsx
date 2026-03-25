@@ -77,54 +77,54 @@ const App = () => (
                             <Route path="/tickets" element={<Tickets />} />
                             <Route path="/routes" element={<RoutesPage />} />
                             <Route path="/agenda" element={
-                              <ProtectedRoute roles={['admin', 'area_tecnica']}>
+                              <ProtectedRoute roles={['admin', 'engenharia', 'supervisao']}>
                                 <Agenda />
                               </ProtectedRoute>
                             } />
                             <Route path="/carga-trabalho" element={
-                              <ProtectedRoute roles={['admin', 'area_tecnica']}>
+                              <ProtectedRoute roles={['admin', 'engenharia', 'supervisao']}>
                                 <CargaTrabalho />
                               </ProtectedRoute>
                             } />
                             <Route path="/dashboard-presenca" element={
-                              <ProtectedRoute roles={['admin', 'area_tecnica']}>
+                              <ProtectedRoute roles={['admin', 'engenharia', 'supervisao']}>
                                 <DashboardPresenca />
                               </ProtectedRoute>
                             } />
                             <Route path="/clientes" element={
-                              <ProtectedRoute roles={['admin', 'area_tecnica']}>
+                              <ProtectedRoute roles={['admin', 'engenharia', 'supervisao']}>
                                 <Clientes />
                               </ProtectedRoute>
                             } />
                             <Route path="/prestadores" element={
-                              <ProtectedRoute roles={['admin', 'area_tecnica']}>
+                              <ProtectedRoute roles={['admin', 'engenharia', 'supervisao']}>
                                 <Prestadores />
                               </ProtectedRoute>
                             } />
                             <Route path="/tecnicos" element={
-                              <ProtectedRoute roles={['admin', 'area_tecnica']}>
+                              <ProtectedRoute roles={['admin', 'engenharia', 'supervisao']}>
                                 <Tecnicos />
                               </ProtectedRoute>
                             } />
                             <Route path="/minhas-os" element={<MinhasOS />} />
                             <Route path="/equipamentos" element={
-                              <ProtectedRoute roles={['admin', 'area_tecnica']}>
+                              <ProtectedRoute roles={['admin', 'engenharia', 'supervisao']}>
                                 <Equipamentos />
                               </ProtectedRoute>
                             } />
                             <Route path="/insumos" element={
-                              <ProtectedRoute roles={['admin', 'area_tecnica']}>
+                              <ProtectedRoute roles={['admin', 'engenharia', 'supervisao']}>
                                 <Insumos />
                               </ProtectedRoute>
                             } />
                             <Route path="/rme" element={<RME />} />
                             <Route path="/gerenciar-rme" element={
-                              <ProtectedRoute roles={['admin', 'area_tecnica']}>
+                              <ProtectedRoute roles={['admin', 'engenharia', 'supervisao']}>
                                 <GerenciarRME />
                               </ProtectedRoute>
                             } />
                             <Route path="/relatorios" element={
-                              <ProtectedRoute roles={['admin', 'area_tecnica']}>
+                              <ProtectedRoute roles={['admin', 'engenharia', 'supervisao']}>
                                 <Relatorios />
                               </ProtectedRoute>
                             } />
