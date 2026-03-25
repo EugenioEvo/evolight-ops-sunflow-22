@@ -225,6 +225,33 @@ const WorkOrders = () => {
     try {
       setLoading(true);
 
+      // Buscar dados da OS incluindo técnico e status do ticket
+      const { data: osData, error: osFetchError } = await supabase
+        .from("ordens_servico")
+        .select(`
+          id, numero_os, data_programada, calendar_invite_sent_at, tecnico_id,
+          tickets(id, titulo, status),
+          tecnicos:tecnico_id(
+            id,
+            profile:profiles(user_id, nome)
+          )
+        `)
+        .eq("id", osId)
+        .single();
+
+      if (osFetchError || !osData) throw new Error("OS não encontrada");
+
+      // Bloquear se ticket está em execução
+      if (osData.tickets?.status === "em_execucao") {
+        toast({
+          title: "Exclusão bloqueada",
+          description: `A OS ${osData.numero_os} está em execução pelo técnico. Não é possível excluí-la enquanto estiver em andamento.`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Excluir OS
       const { error: osError } = await supabase
         .from("ordens_servico")
         .delete()
@@ -232,6 +259,7 @@ const WorkOrders = () => {
 
       if (osError) throw osError;
 
+      // Reverter ticket para aprovado
       const { error: ticketError } = await supabase
         .from("tickets")
         .update({ status: "aprovado" })
@@ -239,9 +267,32 @@ const WorkOrders = () => {
 
       if (ticketError) throw ticketError;
 
+      // Notificar técnico (in-app) se houver técnico atribuído
+      const tecnicoUserId = (osData.tecnicos as any)?.profile?.user_id;
+      if (tecnicoUserId) {
+        await supabase.from("notificacoes").insert({
+          user_id: tecnicoUserId,
+          tipo: "os_cancelada",
+          titulo: "Ordem de Serviço Cancelada",
+          mensagem: `A OS ${osData.numero_os} (${osData.tickets?.titulo || ""}) foi cancelada pelo administrador.`,
+          link: "/minhas-os",
+        });
+      }
+
+      // Enviar email de cancelamento ao técnico se tinha convite enviado
+      if (osData.calendar_invite_sent_at) {
+        try {
+          await supabase.functions.invoke("send-calendar-invite", {
+            body: { os_id: osId, action: "cancel" },
+          });
+        } catch (emailError) {
+          console.error("Erro ao enviar email de cancelamento:", emailError);
+        }
+      }
+
       toast({
         title: "OS excluída",
-        description: "Ordem de serviço excluída e ticket revertido para aprovado.",
+        description: "Ordem de serviço excluída e ticket revertido para aprovado. O técnico foi notificado.",
       });
 
       loadWorkOrders();
