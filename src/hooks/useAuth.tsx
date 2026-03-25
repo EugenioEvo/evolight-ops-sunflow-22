@@ -75,7 +75,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
           // Se tem role, sucesso!
           if (roleData?.role) {
-            setProfile({ ...data, role: roleData.role });
+            setProfile({ ...data, role: roleData.role as UserProfile['role'] });
             return;
           }
 
