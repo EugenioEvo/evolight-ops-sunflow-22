@@ -27,7 +27,7 @@ const signupSchema = z.object({
     .regex(/^\d{10,11}$/, 'Telefone deve ter 10 ou 11 dígitos')
     .optional()
     .or(z.literal('')),
-  role: z.enum(['cliente', 'tecnico_campo', 'area_tecnica']),
+  role: z.enum(['cliente', 'tecnico_campo', 'engenharia', 'supervisao']),
   empresa: z.string().max(200, 'Empresa deve ter no máximo 200 caracteres').optional(),
   cnpjCpf: z.string()
     .regex(/^\d{11}$|^\d{14}$/, 'CPF deve ter 11 dígitos ou CNPJ 14 dígitos')
