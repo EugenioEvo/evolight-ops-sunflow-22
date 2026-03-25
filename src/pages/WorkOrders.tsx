@@ -479,8 +479,9 @@ const WorkOrders = () => {
           description="Ajuste os filtros ou crie uma nova OS"
         />
       ) : (
+        <div className="space-y-4">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {filteredOrders.map((os) => {
+          {paginatedOrders.map((os) => {
             const status = getOSStatus(os);
             const config = statusConfig[status];
             const StatusIcon = config.icon;
