@@ -1,73 +1,88 @@
 
 
-# Auditoria Completa v2 — SunFlow
+# Análise: Email ao Técnico + Confirmação de Presença
 
-## Status das Correções Anteriores
+## Fluxo Atual (como deveria funcionar)
 
-As correções da Fase 1 e 2 foram aplicadas com sucesso:
-- TK000002 agora está com status `ordem_servico_gerada` (confirmado no banco)
-- Todos os técnicos têm prestadores vinculados (confirmado: todos com `prestador_count: 1`)
-- Rota `/configuracoes` removida do sidebar
-- `require()` no ProtectedRoute corrigido para import estático
-- PerformanceMetrics com loading/error states
-- Paginação implementada em Tickets e WorkOrders
-- Realtime consolidado em provider global
-
----
-
-## NOVOS BUGS ENCONTRADOS
-
-### 1. CRÍTICO: `useGlobalRealtime` causa re-subscribe infinito em Tickets e Index
-Em `Tickets.tsx` (linha 196): `useGlobalRealtime(loadData)` passa `loadData` que NÃO é memoizada com `useCallback`. A cada render, uma nova referência de função é criada, fazendo o `useEffect` dentro de `useGlobalRealtime` disparar continuamente (unsubscribe → subscribe → unsubscribe...).
-
-Mesmo problema em `Index.tsx` (linha 161): `useGlobalRealtime(loadRecentActivity)`.
-
-**Impacto**: Pode causar múltiplas chamadas simultâneas ao banco, race conditions, e degradação de performance. Pode explicar por que o usuário viu "Nenhum ticket encontrado" — uma race condition onde `setTickets([])` ocorre durante `setLoading(true)`.
-
-**Correção**: Envolver `loadData` e `loadRecentActivity` com `useCallback`, ou usar `useRef` dentro de `useGlobalRealtime` para evitar re-subscriptions.
-
-### 2. MÉDIO: Tabs de Tickets persistidas no localStorage podem mostrar lista vazia
-O `activeTab` é persistido via `localStorage.setItem('tickets_tab', activeTab)`. Se o usuário estava na aba "Abertos" e agora todos os tickets são `ordem_servico_gerada`, ao reabrir verá "Nenhum ticket encontrado" sem contexto claro.
-
-O session replay mostra exatamente isso: o usuário vê a página vazia e troca de aba tentando encontrar os tickets.
-
-**Correção**: Mostrar contadores nas abas (ex: "Abertos (0)") para que o usuário saiba onde estão os tickets.
-
-### 3. MÉDIO: WorkOrders usa `!inner` join — OS sem ticket desaparece
-Linha 101: `tickets!inner(...)` faz inner join. Se um ticket for deletado mas a OS existir, a OS some silenciosamente da lista.
-
-**Correção**: Remover `!inner` e tratar caso de ticket nulo no frontend.
-
-### 4. BAIXO: `handleDeleteTicket` não verifica OS/RME vinculados
-Deletar um ticket que tem OS/RME associados pode causar dados órfãos ou erros de FK (dependendo de cascades). Não há confirmação ao usuário.
-
-**Correção**: Verificar existência de OS/RME antes de deletar e avisar o usuário.
-
-### 5. BAIXO: DashboardStats usa RPC separado + interval próprio, fora do Realtime global
-`DashboardStats.tsx` usa `supabase.rpc('get_dashboard_stats')` com `setInterval(30s)` próprio, não usa o `useGlobalRealtime`. Dupla fonte de atualização.
+```text
+OS Gerada → [manual] Enviar Convite (send-calendar-invite) → Técnico recebe email .ics
+                                                                    ↓
+OS D-1    → [cron?] send-os-reminders → Email lembrete com botão "Confirmar Presença"
+                                         (gera token em presence_confirmation_tokens)
+                                                                    ↓
+Técnico clica → confirm-presence edge function → Valida token → Marca presence_confirmed_at
+                                                                    ↓
+QR Code na UI → PresenceConfirmationStatus → Gera QR apontando para confirm-presence
+```
 
 ---
 
-## PLANO DE IMPLEMENTAÇÃO
+## BUGS ENCONTRADOS
 
-### Fase 1 — Correção Crítica do Realtime (prioridade máxima)
-1. **Corrigir `useGlobalRealtime` para usar `useRef`** internamente, evitando que mudanças de referência da callback causem re-subscriptions. Isso resolve o bug em TODOS os consumidores de uma vez.
+### 1. CRITICO: QR Code usa `qr_code` como token — mas `confirm-presence` valida contra `presence_confirmation_tokens`
 
-### Fase 2 — UX e Robustez
-2. **Adicionar contadores nas abas de Tickets** — mostrar "(N)" ao lado de cada status para o usuário saber onde estão os tickets
-3. **Remover `!inner` em WorkOrders** — usar join normal e tratar ticket nulo
-4. **Adicionar confirmação antes de deletar tickets** — verificar OS/RME vinculados
+O `PresenceConfirmationStatus.tsx` (linha 58) gera o QR Code assim:
+```
+confirmUrl = `${baseUrl}/functions/v1/confirm-presence?os_id=${id}&token=${ordemServico.qr_code}`
+```
 
-### Fase 3 — Otimização
-5. **Integrar DashboardStats ao realtime global** — remover setInterval redundante
+O campo `qr_code` contém valores como `OS-OS000004-34641b5b-...` (gerado na criação da OS).
+
+Porém, `confirm-presence` valida o token com `validate_presence_token()`, que busca na tabela `presence_confirmation_tokens`. Os tokens reais nessa tabela são UUIDs como `04ecc225-3ff9-...`, gerados APENAS por `send-os-reminders` via `generate_presence_token()`.
+
+**Resultado**: O QR Code da UI NUNCA funciona. O token `OS-OS000004-...` nunca existirá na tabela `presence_confirmation_tokens`, então `validate_presence_token` sempre retorna `false`.
+
+### 2. CRITICO: `PresenceConfirmation.tsx` redireciona para URL errada
+
+Linha 23: `const confirmUrl = ${baseUrl}/supabase/functions/v1/confirm-presence?...`
+
+O path `/supabase/functions/v1/` não existe no domínio do app. O correto seria usar `VITE_SUPABASE_URL` + `/functions/v1/confirm-presence`. Porém essa página nem é necessária — o email do lembrete já aponta direto para o edge function.
+
+### 3. MEDIO: `send-calendar-invite` não envia link de confirmação de presença
+
+O convite de calendário (.ics) é enviado quando o admin clica "Enviar convite" na UI, mas esse email NÃO contém botão/link de confirmação de presença. O link de confirmação só é enviado pelo `send-os-reminders` (lembrete D-1).
+
+Se o `send-os-reminders` não rodar (não há cron job configurado), o técnico NUNCA recebe o link de confirmação.
+
+### 4. MEDIO: `send-os-reminders` não tem cron job ativo
+
+Não há evidência de um `pg_cron` configurado para disparar `send-os-reminders` automaticamente. OS000001 e OS000002 tiveram `reminder_sent_at` preenchido (provavelmente disparados manualmente), mas OS000003 e OS000004 não.
+
+### 5. MEDIO: Nenhuma OS teve `calendar_invite_sent_at` preenchido
+
+Todas as 4 OS têm `calendar_invite_sent_at: null` — o envio de convite por email nunca funcionou ou nunca foi acionado. Os logs do `send-calendar-invite` estão vazios.
+
+---
+
+## PLANO DE CORREÇÃO
+
+### Fase 1 — Corrigir QR Code (bug crítico)
+
+**`PresenceConfirmationStatus.tsx`**: Em vez de usar `ordemServico.qr_code` como token, gerar um token real via `generate_presence_token` RPC ao abrir o QR Code. Guardar o token gerado e usá-lo na URL.
+
+Alternativamente, gerar o token no momento de "Gerar QR Code" e armazená-lo junto com o qr_code.
+
+### Fase 2 — Corrigir `PresenceConfirmation.tsx`
+
+Reescrever para chamar o edge function via `VITE_SUPABASE_URL` (não `window.location.origin`), ou melhor: fazer a confirmação inline no próprio componente React chamando o edge function via fetch e mostrando o resultado sem redirect.
+
+### Fase 3 — Adicionar link de confirmação no email do convite
+
+Modificar `send-calendar-invite` para também gerar um `presence_token` e incluir o botão "Confirmar Presença" no corpo do email, assim o técnico pode confirmar já no primeiro email (não apenas no lembrete D-1).
+
+### Fase 4 — Verificar/criar cron para `send-os-reminders`
+
+Verificar se existe cron job para disparar os lembretes automaticamente e criar se necessário.
+
+---
 
 ### Detalhes Técnicos
 
 **Arquivos a editar:**
-- `src/hooks/useRealtimeProvider.tsx` — usar `useRef` para callback
-- `src/pages/Tickets.tsx` — adicionar contadores nas abas
-- `src/pages/WorkOrders.tsx` — remover `!inner`
-- `src/pages/Tickets.tsx` — confirmação de delete com verificação de OS/RME
+- `src/components/PresenceConfirmationStatus.tsx` — gerar token real via RPC
+- `src/pages/PresenceConfirmation.tsx` — corrigir URL ou reescrever como inline
+- `supabase/functions/send-calendar-invite/index.ts` — adicionar link de confirmação
+- Possível migration SQL para cron job do `send-os-reminders`
 
-**Nenhuma migration SQL necessária.**
+**Nenhuma mudança de schema necessária.**
 
