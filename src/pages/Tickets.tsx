@@ -344,6 +344,16 @@ const Tickets = () => {
         description: 'Técnico atribuído com sucesso.',
       });
 
+      // Verificar se o prestador tem email
+      const prestadorAssigned = prestadores.find((p: any) => p.id === technicianId);
+      if (prestadorAssigned && (!prestadorAssigned.email || prestadorAssigned.email.trim() === '')) {
+        toast({
+          title: '⚠️ Atenção: Técnico sem email',
+          description: 'Este técnico não possui email cadastrado. Atualize o cadastro do prestador antes de gerar a OS.',
+          variant: 'destructive',
+        });
+      }
+
       loadData();
     } catch (error: any) {
       console.error('Erro ao atribuir técnico:', error);
