@@ -178,6 +178,19 @@ const WorkOrders = () => {
     });
   }, [workOrders, searchTerm, statusFilter, clienteFilter, ufvSolarzFilter, dateRange]);
 
+  const totalPages = Math.ceil(filteredOrders.length / ITEMS_PER_PAGE);
+  const paginatedOrders = useMemo(() => {
+    return filteredOrders.slice(
+      (currentPage - 1) * ITEMS_PER_PAGE,
+      currentPage * ITEMS_PER_PAGE
+    );
+  }, [filteredOrders, currentPage, ITEMS_PER_PAGE]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, clienteFilter, ufvSolarzFilter, dateRange]);
+
   // Dashboard stats
   const stats = useMemo(() => {
     const total = workOrders.length;
