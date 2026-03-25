@@ -1313,6 +1313,7 @@ export type Database = {
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_admin_safe: { Args: never; Returns: boolean }
+      is_staff: { Args: { _user_id: string }; Returns: boolean }
       log_presence_attempt: {
         Args: { p_ip: string; p_os_id: string }
         Returns: undefined
