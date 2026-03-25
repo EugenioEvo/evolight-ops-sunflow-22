@@ -51,7 +51,7 @@ const Auth = () => {
   const [password, setPassword] = useState('');
   const [nome, setNome] = useState('');
   const [telefone, setTelefone] = useState('');
-  const [role, setRole] = useState<'cliente' | 'tecnico_campo' | 'area_tecnica'>('cliente');
+  const [role, setRole] = useState<'cliente' | 'tecnico_campo' | 'engenharia' | 'supervisao'>('cliente');
   const [empresa, setEmpresa] = useState('');
   const [cnpjCpf, setCnpjCpf] = useState('');
   const [endereco, setEndereco] = useState('');
