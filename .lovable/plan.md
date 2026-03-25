@@ -1,94 +1,67 @@
 
 
-# Reestruturação de Roles: De 4 para 5 perfis
+# Auditoria de Cadastros Existentes
 
-## Resumo
+## Resumo dos dados encontrados
 
-Substituir o role `area_tecnica` por dois novos roles: `engenharia` e `supervisao`, ambos com o **mesmo nível de acesso**, mas responsabilidades distintas:
+### user_roles (12 registros)
+| Nome | Email | Role Atual |
+|---|---|---|
+| Amanda Barbosa | gerenciadeprojetos@grupoevolight.com.br | **admin** |
+| Eugenio Garcia | eugenio@grupoevolight.com.br | **admin** |
+| Edson Eulalio | manutencao@grupoevolight.com.br | **area_tecnica** |
+| Jonh Lucas M Soares | jonh.lucas@grupoevolight.com.br | **area_tecnica** |
+| Weldner Alves | weldner@grupoevolight.com.br | **area_tecnica** |
+| ADRIAN | adrianmateuszl2k@gmail.com | tecnico_campo |
+| DIEGO | diego14borges@gmail.com | tecnico_campo |
+| HERCULES ALVES VIEIRA | hercules.vieira@grupoevolight.com.br | tecnico_campo |
+| WEBERSON | weberson_gt@live.com | tecnico_campo |
+| ze faisca | eugenio.garcia@me.com | tecnico_campo |
+| zezinho das couves | genin.garcia@gmail.com | tecnico_campo |
+| ⚠️ SEM PERFIL | (user_id: b18c5e50...) | tecnico_campo |
 
-- **Engenharia**: análise técnica, RME, relatórios
-- **Supervisão**: operação de campo, agenda, distribuição de OS, presença
+---
 
-Ambos podem aprovar tudo (RME, OS, prestadores).
+## Problemas encontrados
 
-## Roles finais
+### 1. Registro órfão
+- Um `user_role` com `tecnico_campo` existe para user_id `b18c5e50...` mas **não tem profile associado**. Deve ser removido.
 
-```text
-admin          → Acesso total, configurações, auditoria
-engenharia     → Análise técnica, RME, relatórios, aprovações
-supervisao     → Gestão campo, agenda, OS, presença, aprovações
-tecnico_campo  → Executa OS, preenche RME, confirma presença
-cliente        → Abre tickets, acompanha status, painel próprio
-```
+### 2. Contas de teste
+- **ze faisca** (eugenio.garcia@me.com) — parece conta de teste do Eugenio
+- **zezinho das couves** (genin.garcia@gmail.com) — parece conta de teste
 
-## Mudanças necessárias
+### 3. Duplicatas na tabela prestadores
+- **ze faisca** tem **2 registros** em prestadores (emails `eugenio.garcia@me.com` e `Eugenio.garcia@me.com` — diferença de capitalização)
+- **Eugenio Garcia** (admin) tem registro como prestador/tecnico — inconsistente
+- **Edson Eulalio** (area_tecnica) tem registro como prestador/tecnico — pode ser correto se ele também atua em campo
 
-### 1. Migração de banco de dados
+### 4. Categorias em prestadores já existentes
+- ADTLHYER ARTHUR e JONH LUCAS já têm `categoria: engenharia` na tabela prestadores
+- Weldner Alves tem `categoria: tecnico` mas role `area_tecnica` — inconsistente
 
-- Alterar o enum `app_role`: adicionar `engenharia` e `supervisao`, remover `area_tecnica`
-- Migrar registros existentes em `user_roles` de `area_tecnica` para um dos dois novos roles (definir qual será o padrão)
-- Atualizar todas as funções SQL que referenciam `area_tecnica` (RLS policies, `has_role`, etc.)
-- Atualizar **todas as 30+ RLS policies** que usam `has_role(auth.uid(), 'area_tecnica')` para incluir ambos os novos roles
+### 5. Migração area_tecnica → novos roles
+Os 3 usuários com `area_tecnica` precisam de definição:
 
-### 2. RLS Policies — padrão de substituição
+| Nome | Sugestão | Justificativa |
+|---|---|---|
+| Edson Eulalio | **supervisao** | Email "manutencao@" sugere operação de campo |
+| Jonh Lucas M Soares | **engenharia** | Prestador já categorizado como "engenharia" |
+| Weldner Alves | ? | Precisa de sua definição |
 
-Onde hoje existe:
-```sql
-has_role(auth.uid(), 'area_tecnica'::app_role)
-```
-Passará a ser:
-```sql
-(has_role(auth.uid(), 'engenharia'::app_role) OR has_role(auth.uid(), 'supervisao'::app_role))
-```
+---
 
-Tabelas afetadas: `tickets`, `ordens_servico`, `profiles`, `clientes`, `equipamentos`, `insumos`, `prestadores`, `tecnicos`, `rme_relatorios`, `rme_checklist_items`, `aprovacoes`, `notificacoes`, `movimentacoes`, `responsaveis`, `geocoding_cache`, `route_optimizations`, `status_historico`, `rme_checklist_catalog`.
+## Ações recomendadas para limpeza
 
-### 3. Edge Function `create-user-profile`
+1. **Remover registro órfão** — deletar user_role sem profile (b18c5e50...)
+2. **Decidir sobre contas de teste** — remover ou manter "ze faisca" e "zezinho das couves"
+3. **Remover prestador duplicado** — deletar o registro duplicado de "ze faisca" em prestadores
+4. **Remover admin de prestadores** — Eugenio Garcia não deveria estar na tabela prestadores como técnico
+5. **Definir role do Weldner** — engenharia ou supervisão?
+6. **Confirmar mapeamento** — Edson → supervisao, Jonh Lucas → engenharia
 
-Atualizar para aceitar `engenharia` e `supervisao` como roles válidos no cadastro. Remover referência a `area_tecnica`.
-
-### 4. Frontend — Arquivos afetados (~13 arquivos)
-
-| Arquivo | Mudança |
-|---|---|
-| `src/hooks/useAuth.tsx` | Atualizar tipo `UserProfile.role` com novos valores |
-| `src/App.tsx` | Substituir `'area_tecnica'` por `['engenharia', 'supervisao']` em todas as rotas protegidas |
-| `src/components/AppSidebar.tsx` | Atualizar lógica `isAdminOrAreaTecnica` para incluir novos roles |
-| `src/components/ProtectedRoute.tsx` | Sem mudança estrutural (já usa array de roles) |
-| `src/components/TopHeader.tsx` | Atualizar labels de exibição do role |
-| `src/pages/Tickets.tsx` | Substituir `area_tecnica` em verificações de permissão |
-| `src/pages/MinhasOS.tsx` | Atualizar `isAreaTecnica` |
-| `src/pages/WorkOrderDetail.tsx` | Atualizar `canManageOS` |
-| `src/pages/GerenciarRME.tsx` | Atualizar verificação de role |
-| `src/pages/Auth.tsx` | Atualizar formulário de cadastro com novos roles |
-| `src/pages/Prestadores.tsx` | Atualizar verificações de role |
-| `src/pages/ClientDashboard.tsx` | Sem mudança (usa `cliente`) |
-| `src/pages/WorkOrderCreate.tsx` | Atualizar verificações |
-
-### 5. Formulário de cadastro (`Auth.tsx`)
-
-Atualizar o select de role para oferecer: Administrador, Engenharia, Supervisão, Técnico de Campo, Cliente.
-
-### 6. Helper de permissão (novo)
-
-Criar função utilitária para simplificar verificações recorrentes:
-```typescript
-const isStaff = (role?: string) => 
-  ['admin', 'engenharia', 'supervisao'].includes(role || '');
-```
-
-Isso reduz duplicação em todos os componentes.
-
-## Ordem de execução
-
-1. Migração SQL (enum + policies + dados existentes)
-2. Atualizar Edge Function `create-user-profile`
-3. Atualizar `useAuth.tsx` (tipo)
-4. Criar helper `isStaff`
-5. Atualizar todos os componentes frontend
-6. Atualizar `AppSidebar` e `Auth.tsx`
-
-## Pergunta pendente antes de executar
-
-Usuários que hoje têm `area_tecnica` devem ser migrados para `engenharia` ou `supervisao`? Ou será feito manualmente depois?
+Preciso que você confirme:
+- Weldner Alves deve ser **engenharia** ou **supervisão**?
+- Remover as contas de teste (ze faisca, zezinho das couves)?
+- Confirma Edson → supervisão e Jonh Lucas → engenharia?
 
