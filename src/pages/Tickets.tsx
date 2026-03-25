@@ -454,6 +454,21 @@ const Tickets = () => {
   const handleGenerateOS = async (ticketId: string) => {
     try {
       setGeneratingOsId(ticketId);
+
+      // Verificar se o técnico tem email antes de gerar OS
+      const ticket = tickets.find((t: any) => t.id === ticketId);
+      if (ticket?.tecnico_responsavel_id) {
+        const prestador = prestadores.find((p: any) => p.id === ticket.tecnico_responsavel_id);
+        if (prestador && (!prestador.email || prestador.email.trim() === '')) {
+          toast({
+            title: '❌ Técnico sem email cadastrado',
+            description: 'Não é possível gerar a OS. Atualize o email do técnico na página de Prestadores antes de continuar.',
+            variant: 'destructive',
+          });
+          setGeneratingOsId(null);
+          return;
+        }
+      }
       
       const { data, error } = await supabase.functions.invoke('gerar-ordem-servico', {
         body: { ticketId }
