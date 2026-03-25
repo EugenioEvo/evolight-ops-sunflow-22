@@ -529,6 +529,17 @@ const Tickets = () => {
     return matchesSearch && matchesCliente && matchesPrioridade && matchesUfvSolarz && ticket.status === activeTab;
   });
 
+  const totalPages = Math.ceil(filteredTickets.length / ITEMS_PER_PAGE);
+  const paginatedTickets = filteredTickets.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearchTerm, activeTab, selectedCliente, selectedPrioridade, selectedUfvSolarz]);
+
   const getStatusColor = (status: string) => {
     const colors = {
       'aberto': 'bg-blue-100 text-blue-800',
