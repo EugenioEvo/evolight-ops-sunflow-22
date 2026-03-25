@@ -277,6 +277,63 @@ QR Code: ${ordemServico.qr_code}
       .update({ status: 'ordem_servico_gerada' })
       .eq('id', ticketId)
 
+    // Enviar email de notificação ao técnico
+    try {
+      const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
+      if (RESEND_API_KEY && prestador.email) {
+        const dataProgramada = ticket.data_vencimento 
+          ? new Date(ticket.data_vencimento).toLocaleDateString('pt-BR') 
+          : 'A definir'
+        
+        const horario = osData.hora_inicio && osData.hora_fim
+          ? `${osData.hora_inicio} - ${osData.hora_fim}`
+          : 'A definir'
+
+        const emailHtml = `
+          <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
+            <h2 style="color:#1a56db">Nova Ordem de Serviço: ${numeroOS}</h2>
+            <p>Olá <strong>${prestador.nome}</strong>,</p>
+            <p>Uma nova OS foi atribuída a você:</p>
+            <table style="border-collapse:collapse;width:100%;margin:16px 0">
+              <tr><td style="padding:8px;border:1px solid #ddd;background:#f9fafb"><strong>Nº OS</strong></td><td style="padding:8px;border:1px solid #ddd">${numeroOS}</td></tr>
+              <tr><td style="padding:8px;border:1px solid #ddd;background:#f9fafb"><strong>Cliente</strong></td><td style="padding:8px;border:1px solid #ddd">${ticket.clientes.empresa || ticket.clientes.profiles?.nome || 'N/A'}</td></tr>
+              <tr><td style="padding:8px;border:1px solid #ddd;background:#f9fafb"><strong>Serviço</strong></td><td style="padding:8px;border:1px solid #ddd">${ticket.titulo}</td></tr>
+              <tr><td style="padding:8px;border:1px solid #ddd;background:#f9fafb"><strong>Endereço</strong></td><td style="padding:8px;border:1px solid #ddd">${ticket.endereco_servico}</td></tr>
+              <tr><td style="padding:8px;border:1px solid #ddd;background:#f9fafb"><strong>Data</strong></td><td style="padding:8px;border:1px solid #ddd">${dataProgramada}</td></tr>
+              <tr><td style="padding:8px;border:1px solid #ddd;background:#f9fafb"><strong>Horário</strong></td><td style="padding:8px;border:1px solid #ddd">${horario}</td></tr>
+              <tr><td style="padding:8px;border:1px solid #ddd;background:#f9fafb"><strong>Prioridade</strong></td><td style="padding:8px;border:1px solid #ddd">${ticket.prioridade.toUpperCase()}</td></tr>
+            </table>
+            <p style="margin-top:16px">Acesse o sistema para mais detalhes.</p>
+            <p style="color:#6b7280;font-size:14px">— Equipe Evolight O&M</p>
+          </div>
+        `
+
+        const emailRes = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            from: 'agendamento@grupoevolight.com.br',
+            to: [prestador.email],
+            subject: `Nova OS Atribuída: ${numeroOS} - ${ticket.clientes.empresa || 'Cliente'}`,
+            html: emailHtml,
+          }),
+        })
+
+        if (!emailRes.ok) {
+          const errText = await emailRes.text()
+          console.error('Erro ao enviar email:', errText)
+          await supabaseClient
+            .from('ordens_servico')
+            .update({ email_error_log: [{ error: errText, timestamp: new Date().toISOString(), type: 'os_criada' }] })
+            .eq('id', ordemServico.id)
+        } else {
+          console.log(`Email enviado para ${prestador.email} - OS ${numeroOS}`)
+        }
+      }
+    } catch (emailError) {
+      console.error('Erro ao enviar email ao técnico:', emailError)
+    }
+
     return new Response(JSON.stringify({ 
       success: true, 
       ordemServico,
