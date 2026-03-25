@@ -487,7 +487,34 @@ const Tickets = () => {
   const handleDeleteTicket = async (ticketId: string) => {
     try {
       setLoading(true);
-      
+
+      // Verificar OS vinculadas
+      const { data: osData } = await supabase
+        .from('ordens_servico')
+        .select('id, numero_os')
+        .eq('ticket_id', ticketId);
+
+      // Verificar RME vinculados
+      const { data: rmeData } = await supabase
+        .from('rme_relatorios')
+        .select('id')
+        .eq('ticket_id', ticketId);
+
+      if ((osData && osData.length > 0) || (rmeData && rmeData.length > 0)) {
+        const osCount = osData?.length || 0;
+        const rmeCount = rmeData?.length || 0;
+        const parts = [];
+        if (osCount > 0) parts.push(`${osCount} OS`);
+        if (rmeCount > 0) parts.push(`${rmeCount} RME`);
+
+        toast({
+          title: "Não é possível excluir",
+          description: `Este ticket possui ${parts.join(' e ')} vinculado(s). Remova-os antes de excluir o ticket.`,
+          variant: "destructive",
+        });
+        return;
+      }
+
       const { error } = await supabase
         .from("tickets")
         .delete()

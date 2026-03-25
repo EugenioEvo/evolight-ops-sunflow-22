@@ -57,11 +57,10 @@ const DashboardStats = () => {
 
   useEffect(() => {
     loadStats();
-    
-    // Atualizar stats a cada 30 segundos
-    const interval = setInterval(loadStats, 30000);
-    return () => clearInterval(interval);
   }, []);
+
+  // Atualizar stats via realtime global em vez de polling
+  useGlobalRealtime(loadStats);
 
   const statsConfig = [
     {

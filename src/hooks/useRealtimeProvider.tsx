@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, useState, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useCallback, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 type Listener = () => void;
