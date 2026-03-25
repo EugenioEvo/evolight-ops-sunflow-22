@@ -1224,7 +1224,7 @@ const Tickets = () => {
                       )}
 
                       {/* Botões de ação conforme status e role */}
-                      {(profile?.role === 'admin' || profile?.role === 'area_tecnica') && (
+                      {(profile?.role === 'admin' || profile?.role === 'engenharia' || profile?.role === 'supervisao') && (
                         <div className="flex flex-wrap gap-2 pt-2 border-t">
                           {ticket.status === 'aberto' && (
                             <>
