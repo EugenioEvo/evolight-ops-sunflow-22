@@ -138,7 +138,7 @@ const Agenda = () => {
 
   useEffect(() => {
     loadOrdensServico();
-  }, [selectedDate, selectedTecnico]);
+  }, [loadOrdensServico]);
 
   const loadTecnicos = async () => {
     const { data } = await supabase

@@ -191,10 +191,7 @@ export function AppSidebar() {
             <SidebarMenu>
               {systemItems
                 .filter(item => {
-                  // Filtrar Relatórios para técnicos
-                  if (item.title === "Relatórios" && !isAdminOrAreaTecnica) {
-                    return false;
-                  }
+                  if (item.adminOnly && !isAdminOrAreaTecnica) return false;
                   return true;
                 })
                 .map((item) => (

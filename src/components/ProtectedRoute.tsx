@@ -57,8 +57,6 @@ export const ProtectedRoute = ({ children, roles }: ProtectedRouteProps) => {
 
   // Tecnico pending approval
   if (profile?.role === 'tecnico_campo' && approvalStatus === 'pending') {
-    // Lazy import to avoid circular deps
-    const PendingApproval = require('@/pages/PendingApproval').default;
     return <PendingApproval />;
   }
 
