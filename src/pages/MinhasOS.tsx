@@ -151,6 +151,9 @@ const MinhasOS = () => {
     }
   };
 
+  // Auto-reload quando houver mudanças em tickets/OS
+  useGlobalRealtime(canViewOS ? loadOrdensServico : undefined);
+
   const handleIniciarExecucao = async (os: OrdemServico) => {
     setStartingId(os.id);
     try {
