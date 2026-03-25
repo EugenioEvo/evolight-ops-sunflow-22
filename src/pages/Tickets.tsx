@@ -7,7 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useGlobalRealtime } from '@/hooks/useRealtimeProvider';
-import { useTechnicianScore } from '@/hooks/useTechnicianScore';
+import { useTechnicianScoreEngine } from '@/hooks/useTechnicianScore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
