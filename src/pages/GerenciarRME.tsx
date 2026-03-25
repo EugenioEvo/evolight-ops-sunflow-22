@@ -35,7 +35,7 @@ const GerenciarRME = () => {
   const rejectMutation = useRejectRMEMutation();
 
   // Realtime updates
-  useTicketsRealtime({ onTicketChange: () => refetch() });
+  useGlobalRealtime(() => refetch());
 
   const handleViewDetails = (rme: any) => {
     setSelectedRME(rme);

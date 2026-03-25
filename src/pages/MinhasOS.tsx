@@ -72,13 +72,7 @@ const MinhasOS = () => {
   const canViewOS = isTecnico || isAreaTecnica;
 
   // Auto-reload quando houver mudanças em tickets/OS
-  useTicketsRealtime({
-    onTicketChange: () => {
-      if (canViewOS) {
-        loadOrdensServico();
-      }
-    }
-  });
+  useGlobalRealtime(canViewOS ? loadOrdensServico : undefined);
 
   useEffect(() => {
     if (canViewOS) {

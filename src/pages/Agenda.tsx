@@ -129,7 +129,7 @@ const Agenda = () => {
     }
   }, [selectedDate, selectedTecnico]);
   
-  useTicketsRealtime();
+  useGlobalRealtime(loadOrdensServico);
   useAgendaRealtime({ onUpdate: loadOrdensServico, selectedDate });
 
   useEffect(() => {

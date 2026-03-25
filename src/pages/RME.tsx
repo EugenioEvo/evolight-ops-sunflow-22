@@ -62,11 +62,9 @@ const RME = () => {
   const { toast } = useToast();
 
   // Auto-reload quando houver mudanças em tickets/OS
-  useTicketsRealtime({
-    onTicketChange: () => {
-      if (osIdFromUrl) {
-        loadOSFromUrl(osIdFromUrl);
-      }
+  useGlobalRealtime(() => {
+    if (osIdFromUrl) {
+      loadOSFromUrl(osIdFromUrl);
     }
   });
 
