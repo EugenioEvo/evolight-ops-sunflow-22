@@ -9,7 +9,7 @@ import { addMonths, format, startOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { CalendarIcon, Clock, User, MapPin, X, Mail, CheckCircle, Send, AlertCircle, AlertTriangle, Edit } from 'lucide-react';
 import { ScheduleModal } from '@/components/ScheduleModal';
-import { useTicketsRealtime } from '@/hooks/useTicketsRealtime';
+import { useGlobalRealtime } from '@/hooks/useRealtimeProvider';
 import { useCancelOS } from '@/hooks/useCancelOS';
 import { useAgendaRealtime } from '@/hooks/useAgendaRealtime';
 import { EditTechnicianEmailDialog } from '@/components/EditTechnicianEmailDialog';
