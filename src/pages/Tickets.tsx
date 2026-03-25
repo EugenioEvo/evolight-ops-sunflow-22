@@ -993,14 +993,14 @@ const Tickets = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="todos">Todos</TabsTrigger>
-          <TabsTrigger value="aberto">Abertos</TabsTrigger>
-          <TabsTrigger value="aprovado">Aprovados</TabsTrigger>
-          <TabsTrigger value="ordem_servico_gerada">OS Gerada</TabsTrigger>
-          <TabsTrigger value="em_execucao">Em Execução</TabsTrigger>
-          <TabsTrigger value="concluido">Concluídos</TabsTrigger>
-          <TabsTrigger value="cancelado">Cancelados</TabsTrigger>
+        <TabsList className="flex-wrap h-auto gap-1">
+          <TabsTrigger value="todos">Todos ({tickets.length})</TabsTrigger>
+          <TabsTrigger value="aberto">Abertos ({tickets.filter(t => t.status === 'aberto').length})</TabsTrigger>
+          <TabsTrigger value="aprovado">Aprovados ({tickets.filter(t => t.status === 'aprovado').length})</TabsTrigger>
+          <TabsTrigger value="ordem_servico_gerada">OS Gerada ({tickets.filter(t => t.status === 'ordem_servico_gerada').length})</TabsTrigger>
+          <TabsTrigger value="em_execucao">Em Execução ({tickets.filter(t => t.status === 'em_execucao').length})</TabsTrigger>
+          <TabsTrigger value="concluido">Concluídos ({tickets.filter(t => t.status === 'concluido').length})</TabsTrigger>
+          <TabsTrigger value="cancelado">Cancelados ({tickets.filter(t => t.status === 'cancelado').length})</TabsTrigger>
         </TabsList>
 
         <TabsContent value={activeTab} className="space-y-4">
