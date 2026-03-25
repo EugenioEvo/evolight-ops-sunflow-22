@@ -136,7 +136,7 @@ const App = () => (
                             <Route path="/visualizar-os/:id" element={<VisualizarOS />} />
                             <Route path="/work-orders" element={<WorkOrders />} />
                             <Route path="/work-orders/new" element={
-                              <ProtectedRoute roles={['admin', 'area_tecnica']}>
+                              <ProtectedRoute roles={['admin', 'engenharia', 'supervisao']}>
                                 <WorkOrderCreate />
                               </ProtectedRoute>
                             } />

@@ -11,7 +11,7 @@ interface UserProfile {
   ativo: boolean;
   created_at: string;
   updated_at: string;
-  role?: 'admin' | 'area_tecnica' | 'tecnico_campo' | 'cliente';
+  role?: 'admin' | 'engenharia' | 'supervisao' | 'tecnico_campo' | 'cliente';
 }
 
 interface AuthContextType {

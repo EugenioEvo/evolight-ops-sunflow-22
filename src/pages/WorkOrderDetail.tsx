@@ -71,7 +71,7 @@ const WorkOrderDetail = () => {
   const [sendingEmail, setSendingEmail] = useState(false);
   const [workOrder, setWorkOrder] = useState<WorkOrderDetail | null>(null);
 
-  const canManageOS = profile?.role === "admin" || profile?.role === "area_tecnica";
+  const canManageOS = profile?.role === "admin" || profile?.role === "engenharia" || profile?.role === "supervisao";
   const canCreateRME = profile?.role === "tecnico_campo" || canManageOS;
 
   useEffect(() => {

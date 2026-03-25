@@ -105,7 +105,7 @@ const GerenciarRME = () => {
     );
   };
 
-  if (profile?.role !== 'admin' && profile?.role !== 'area_tecnica') {
+  if (profile?.role !== 'admin' && profile?.role !== 'engenharia' && profile?.role !== 'supervisao') {
     return (
       <div className="p-6">
         <Card>
