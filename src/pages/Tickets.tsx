@@ -110,14 +110,6 @@ const Tickets = () => {
   const [ufvSolarzListForForm, setUfvSolarzListForForm] = useState<string[]>([]);
   const [selectedUfvSolarzForm, setSelectedUfvSolarzForm] = useState<string>('');
 
-  // Helper to get score data for a specific ticket context
-  const getTicketScoreParams = (ticket?: any) => ({
-    prestadores,
-    ticketDate: ticket?.data_vencimento || ticket?.data_servico || null,
-    ticketLat: ticket?.latitude ? Number(ticket.latitude) : null,
-    ticketLng: ticket?.longitude ? Number(ticket.longitude) : null,
-    equipamentoTipo: ticket?.equipamento_tipo || null
-  });
 
   // Score engine: fetches data once, computes per-ticket
   const { getScoresForTicket } = useTechnicianScoreEngine(prestadores);
