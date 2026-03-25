@@ -13,7 +13,7 @@ import { RMEDetailDialog } from '@/components/RMEDetailDialog';
 import { ApprovalModal } from '@/components/ApprovalModal';
 import { Pagination } from '@/components/Pagination';
 import { useRMEQuery, useRMEStatsQuery, useApproveRMEMutation, useRejectRMEMutation } from '@/hooks/useRMEQuery';
-import { useTicketsRealtime } from '@/hooks/useTicketsRealtime';
+import { useGlobalRealtime } from '@/hooks/useRealtimeProvider';
 
 const GerenciarRME = () => {
   const [page, setPage] = useState(1);
@@ -35,7 +35,7 @@ const GerenciarRME = () => {
   const rejectMutation = useRejectRMEMutation();
 
   // Realtime updates
-  useTicketsRealtime({ onTicketChange: () => refetch() });
+  useGlobalRealtime(() => refetch());
 
   const handleViewDetails = (rme: any) => {
     setSelectedRME(rme);

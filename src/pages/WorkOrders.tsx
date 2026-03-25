@@ -19,6 +19,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { EmptyState } from "@/components/EmptyState";
 import { LoadingState } from "@/components/LoadingState";
+import { Pagination } from "@/components/Pagination";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 interface WorkOrder {
@@ -76,6 +77,8 @@ const WorkOrders = () => {
   const [ufvSolarzFilter, setUfvSolarzFilter] = useState<string>("all");
   const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({});
   const [clientes, setClientes] = useState<{ id: string; empresa: string }[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 18;
 
   const { profile } = useAuth();
   const { toast } = useToast();
@@ -174,6 +177,19 @@ const WorkOrders = () => {
       return matchesSearch && matchesStatus && matchesCliente && matchesUfvSolarz && matchesDate;
     });
   }, [workOrders, searchTerm, statusFilter, clienteFilter, ufvSolarzFilter, dateRange]);
+
+  const totalPages = Math.ceil(filteredOrders.length / ITEMS_PER_PAGE);
+  const paginatedOrders = useMemo(() => {
+    return filteredOrders.slice(
+      (currentPage - 1) * ITEMS_PER_PAGE,
+      currentPage * ITEMS_PER_PAGE
+    );
+  }, [filteredOrders, currentPage, ITEMS_PER_PAGE]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, clienteFilter, ufvSolarzFilter, dateRange]);
 
   // Dashboard stats
   const stats = useMemo(() => {
@@ -463,8 +479,9 @@ const WorkOrders = () => {
           description="Ajuste os filtros ou crie uma nova OS"
         />
       ) : (
+        <div className="space-y-4">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {filteredOrders.map((os) => {
+          {paginatedOrders.map((os) => {
             const status = getOSStatus(os);
             const config = statusConfig[status];
             const StatusIcon = config.icon;
@@ -632,6 +649,14 @@ const WorkOrders = () => {
               </Card>
             );
           })}
+        </div>
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+          totalItems={filteredOrders.length}
+          itemsPerPage={ITEMS_PER_PAGE}
+        />
         </div>
       )}
     </div>

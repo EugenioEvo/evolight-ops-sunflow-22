@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { useTicketsRealtime } from '@/hooks/useTicketsRealtime';
+import { useGlobalRealtime } from '@/hooks/useRealtimeProvider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -62,11 +62,9 @@ const RME = () => {
   const { toast } = useToast();
 
   // Auto-reload quando houver mudanças em tickets/OS
-  useTicketsRealtime({
-    onTicketChange: () => {
-      if (osIdFromUrl) {
-        loadOSFromUrl(osIdFromUrl);
-      }
+  useGlobalRealtime(() => {
+    if (osIdFromUrl) {
+      loadOSFromUrl(osIdFromUrl);
     }
   });
 

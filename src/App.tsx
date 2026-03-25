@@ -7,6 +7,7 @@ import { TopHeader } from "@/components/TopHeader";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
+import { RealtimeProvider } from "@/hooks/useRealtimeProvider";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Index from "./pages/Index";
@@ -50,6 +51,7 @@ const App = () => (
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
+        <RealtimeProvider>
         <TooltipProvider>
           <Toaster />
           <Sonner />
@@ -151,6 +153,7 @@ const App = () => (
             </Routes>
           </BrowserRouter>
         </TooltipProvider>
+        </RealtimeProvider>
       </AuthProvider>
     </QueryClientProvider>
   </ErrorBoundary>

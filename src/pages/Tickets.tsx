@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { useDebounce } from '@/hooks/useDebounce';
-import { useTicketsRealtime } from '@/hooks/useTicketsRealtime';
+import { useGlobalRealtime } from '@/hooks/useRealtimeProvider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -23,6 +23,7 @@ import { LoadingState } from '@/components/LoadingState';
 import { EmptyState } from '@/components/EmptyState';
 import { FileUpload } from '@/components/FileUpload';
 import { useGeocoding } from '@/hooks/useGeocoding';
+import { Pagination } from '@/components/Pagination';
 
 const ticketSchema = z.object({
   titulo: z.string().min(1, 'Título é obrigatório'),
@@ -56,6 +57,8 @@ const Tickets = () => {
   const [selectedPrioridade, setSelectedPrioridade] = useState(localStorage.getItem('tickets_prioridade') || 'todas');
   const [selectedUfvSolarz, setSelectedUfvSolarz] = useState(localStorage.getItem('tickets_ufv_solarz') || 'todos');
   const [reprocessingTicketId, setReprocessingTicketId] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 20;
 
   const { geocodeAddress, loading: geocoding } = useGeocoding();
 
@@ -189,10 +192,8 @@ const Tickets = () => {
     loadData();
   }, []);
 
-  // Realtime subscription - mover depois da definição de loadData
-  useTicketsRealtime({
-    onTicketChange: loadData
-  });
+  // Realtime subscription via global provider
+  useGlobalRealtime(loadData);
 
   const onSubmit = async (data: TicketForm) => {
     try {
@@ -525,6 +526,17 @@ const Tickets = () => {
     if (activeTab === 'todos') return matchesSearch && matchesCliente && matchesPrioridade && matchesUfvSolarz;
     return matchesSearch && matchesCliente && matchesPrioridade && matchesUfvSolarz && ticket.status === activeTab;
   });
+
+  const totalPages = Math.ceil(filteredTickets.length / ITEMS_PER_PAGE);
+  const paginatedTickets = filteredTickets.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearchTerm, activeTab, selectedCliente, selectedPrioridade, selectedUfvSolarz]);
 
   const getStatusColor = (status: string) => {
     const colors = {
@@ -1001,8 +1013,9 @@ const Tickets = () => {
               onAction={!debouncedSearchTerm ? () => setIsDialogOpen(true) : undefined}
             />
           ) : (
+            <div className="space-y-4">
             <div className="grid gap-4">
-              {filteredTickets.map((ticket) => (
+              {paginatedTickets.map((ticket) => (
                 <Card key={ticket.id} className="hover:shadow-md transition-shadow">
                   <CardHeader className="pb-4">
                     <div className="flex items-start justify-between">
@@ -1467,6 +1480,14 @@ const Tickets = () => {
                   </CardContent>
                 </Card>
               ))}
+            </div>
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              totalItems={filteredTickets.length}
+              itemsPerPage={ITEMS_PER_PAGE}
+            />
             </div>
           )}
         </TabsContent>

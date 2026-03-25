@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { useTicketsRealtime } from "@/hooks/useTicketsRealtime";
+import { useGlobalRealtime } from "@/hooks/useRealtimeProvider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -71,14 +71,10 @@ const MinhasOS = () => {
   const isAreaTecnica = profile?.role === "area_tecnica" || profile?.role === "admin";
   const canViewOS = isTecnico || isAreaTecnica;
 
-  // Auto-reload quando houver mudanças em tickets/OS
-  useTicketsRealtime({
-    onTicketChange: () => {
-      if (canViewOS) {
-        loadOrdensServico();
-      }
-    }
-  });
+  const realtimeCallback = useCallback(() => {
+    if (canViewOS) loadOrdensServico();
+  }, [canViewOS]);
+  useGlobalRealtime(realtimeCallback);
 
   useEffect(() => {
     if (canViewOS) {
