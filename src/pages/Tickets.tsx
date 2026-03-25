@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useGlobalRealtime } from '@/hooks/useRealtimeProvider';
+import { useTechnicianScore } from '@/hooks/useTechnicianScore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -17,7 +18,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Clock, MapPin, Plus, Search, Settings, FileText, CheckCircle, XCircle, Download, Eye, ExternalLink, Ticket as TicketIcon, MapPinOff, Loader2, RefreshCw, Star } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Calendar, Clock, MapPin, Plus, Search, Settings, FileText, CheckCircle, XCircle, Download, Eye, ExternalLink, Ticket as TicketIcon, MapPinOff, Loader2, RefreshCw, Star, AlertTriangle, Mail } from 'lucide-react';
 import TicketFilters from '@/components/TicketFilters';
 import { LoadingState } from '@/components/LoadingState';
 import { EmptyState } from '@/components/EmptyState';
@@ -107,7 +109,62 @@ const Tickets = () => {
 
   const [ufvSolarzListForForm, setUfvSolarzListForForm] = useState<string[]>([]);
   const [selectedUfvSolarzForm, setSelectedUfvSolarzForm] = useState<string>('');
-  
+
+  // Helper to get score data for a specific ticket context
+  const getTicketScoreParams = (ticket?: any) => ({
+    prestadores,
+    ticketDate: ticket?.data_vencimento || ticket?.data_servico || null,
+    ticketLat: ticket?.latitude ? Number(ticket.latitude) : null,
+    ticketLng: ticket?.longitude ? Number(ticket.longitude) : null,
+    equipamentoTipo: ticket?.equipamento_tipo || null
+  });
+
+  // Global score for all prestadores (used in selects)
+  const { scores: globalScores } = useTechnicianScore({
+    prestadores,
+    ticketDate: null,
+    ticketLat: null,
+    ticketLng: null,
+    equipamentoTipo: null
+  });
+
+  // Sort prestadores by score for a given ticket
+  const getSortedPrestadores = (ticket?: any) => {
+    const scoreMap = new Map(globalScores.map(s => [s.prestadorId, s]));
+    return [...prestadores].sort((a, b) => {
+      const scoreA = scoreMap.get(a.id)?.score ?? 0;
+      const scoreB = scoreMap.get(b.id)?.score ?? 0;
+      return scoreB - scoreA;
+    });
+  };
+
+  const getScoreForPrestador = (prestadorId: string) => {
+    return globalScores.find(s => s.prestadorId === prestadorId);
+  };
+
+  const renderPrestadorOption = (prestador: any, index: number) => {
+    const scoreData = getScoreForPrestador(prestador.id);
+    const hasEmail = prestador.email && prestador.email.trim() !== '';
+    return (
+      <SelectItem key={prestador.id} value={prestador.id}>
+        <div className="flex items-center gap-2 w-full">
+          <span className={!hasEmail ? 'text-destructive' : ''}>{prestador.nome}</span>
+          {!hasEmail && <AlertTriangle className="h-3 w-3 text-destructive" />}
+          {scoreData && scoreData.score > 0 && (
+            <Badge variant="outline" className="text-[10px] px-1.5 py-0 ml-auto">
+              ⭐ {scoreData.score}%
+            </Badge>
+          )}
+          {index === 0 && scoreData && scoreData.score >= 60 && (
+            <Badge className="text-[10px] px-1.5 py-0 bg-green-100 text-green-800 border-green-300">
+              Recomendado
+            </Badge>
+          )}
+        </div>
+      </SelectItem>
+    );
+  };
+
   const loadData = async () => {
     try {
       setLoading(true);
@@ -342,6 +399,16 @@ const Tickets = () => {
         description: 'Técnico atribuído com sucesso.',
       });
 
+      // Verificar se o prestador tem email
+      const prestadorAssigned = prestadores.find((p: any) => p.id === technicianId);
+      if (prestadorAssigned && (!prestadorAssigned.email || prestadorAssigned.email.trim() === '')) {
+        toast({
+          title: '⚠️ Atenção: Técnico sem email',
+          description: 'Este técnico não possui email cadastrado. Atualize o cadastro do prestador antes de gerar a OS.',
+          variant: 'destructive',
+        });
+      }
+
       loadData();
     } catch (error: any) {
       console.error('Erro ao atribuir técnico:', error);
@@ -442,6 +509,21 @@ const Tickets = () => {
   const handleGenerateOS = async (ticketId: string) => {
     try {
       setGeneratingOsId(ticketId);
+
+      // Verificar se o técnico tem email antes de gerar OS
+      const ticket = tickets.find((t: any) => t.id === ticketId);
+      if (ticket?.tecnico_responsavel_id) {
+        const prestador = prestadores.find((p: any) => p.id === ticket.tecnico_responsavel_id);
+        if (prestador && (!prestador.email || prestador.email.trim() === '')) {
+          toast({
+            title: '❌ Técnico sem email cadastrado',
+            description: 'Não é possível gerar a OS. Atualize o email do técnico na página de Prestadores antes de continuar.',
+            variant: 'destructive',
+          });
+          setGeneratingOsId(null);
+          return;
+        }
+      }
       
       const { data, error } = await supabase.functions.invoke('gerar-ordem-servico', {
         body: { ticketId }
@@ -1212,11 +1294,7 @@ const Tickets = () => {
                                   <SelectValue placeholder="Atribuir técnico" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {prestadores.map((prestador) => (
-                                    <SelectItem key={prestador.id} value={prestador.id}>
-                                      {prestador.nome}
-                                    </SelectItem>
-                                  ))}
+                                  {getSortedPrestadores(ticket).map((prestador, index) => renderPrestadorOption(prestador, index))}
                                 </SelectContent>
                               </Select>
                               <Button
@@ -1257,11 +1335,7 @@ const Tickets = () => {
                                   <SelectValue placeholder="Trocar técnico" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {prestadores.map((prestador) => (
-                                    <SelectItem key={prestador.id} value={prestador.id}>
-                                      {prestador.nome}
-                                    </SelectItem>
-                                  ))}
+                                  {getSortedPrestadores(ticket).map((prestador, index) => renderPrestadorOption(prestador, index))}
                                 </SelectContent>
                               </Select>
                               <Button
@@ -1310,11 +1384,7 @@ const Tickets = () => {
                                 <SelectValue placeholder="Trocar técnico" />
                               </SelectTrigger>
                               <SelectContent>
-                                {prestadores.map((prestador) => (
-                                  <SelectItem key={prestador.id} value={prestador.id}>
-                                    {prestador.nome}
-                                  </SelectItem>
-                                ))}
+                                {getSortedPrestadores(ticket).map((prestador, index) => renderPrestadorOption(prestador, index))}
                               </SelectContent>
                             </Select>
                           )}
