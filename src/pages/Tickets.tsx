@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -7,7 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useGlobalRealtime } from '@/hooks/useRealtimeProvider';
-import { useTechnicianScore } from '@/hooks/useTechnicianScore';
+import { useTechnicianScoreEngine } from '@/hooks/useTechnicianScore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -110,27 +110,18 @@ const Tickets = () => {
   const [ufvSolarzListForForm, setUfvSolarzListForForm] = useState<string[]>([]);
   const [selectedUfvSolarzForm, setSelectedUfvSolarzForm] = useState<string>('');
 
-  // Helper to get score data for a specific ticket context
-  const getTicketScoreParams = (ticket?: any) => ({
-    prestadores,
-    ticketDate: ticket?.data_vencimento || ticket?.data_servico || null,
-    ticketLat: ticket?.latitude ? Number(ticket.latitude) : null,
-    ticketLng: ticket?.longitude ? Number(ticket.longitude) : null,
-    equipamentoTipo: ticket?.equipamento_tipo || null
-  });
 
-  // Global score for all prestadores (used in selects)
-  const { scores: globalScores } = useTechnicianScore({
-    prestadores,
-    ticketDate: null,
-    ticketLat: null,
-    ticketLng: null,
-    equipamentoTipo: null
-  });
+  // Score engine: fetches data once, computes per-ticket
+  const { getScoresForTicket } = useTechnicianScoreEngine(prestadores);
+
+  // Use ref to avoid re-render loop when caching scores
+  const activeTicketScoresRef = useRef<Map<string, any>>(new Map());
 
   // Sort prestadores by score for a given ticket
   const getSortedPrestadores = (ticket?: any) => {
-    const scoreMap = new Map(globalScores.map(s => [s.prestadorId, s]));
+    const scores = getScoresForTicket(ticket);
+    const scoreMap = new Map(scores.map(s => [s.prestadorId, s]));
+    activeTicketScoresRef.current = scoreMap;
     return [...prestadores].sort((a, b) => {
       const scoreA = scoreMap.get(a.id)?.score ?? 0;
       const scoreB = scoreMap.get(b.id)?.score ?? 0;
@@ -139,7 +130,7 @@ const Tickets = () => {
   };
 
   const getScoreForPrestador = (prestadorId: string) => {
-    return globalScores.find(s => s.prestadorId === prestadorId);
+    return activeTicketScoresRef.current.get(prestadorId);
   };
 
   const renderPrestadorOption = (prestador: any, index: number) => {
