@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
-import { CheckCircle, AlertCircle, Loader2, Sun, Calendar, User, FileText } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { CheckCircle, AlertCircle, Loader2, Sun, Calendar, User, FileText, Download, Share2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import html2canvas from 'html2canvas';
 
 interface OSDetails {
   numeroOS?: string;
@@ -16,10 +18,14 @@ const PresenceConfirmation = () => {
   const [status, setStatus] = useState<'loading' | 'success' | 'already' | 'error'>('loading');
   const [message, setMessage] = useState('');
   const [osDetails, setOsDetails] = useState<OSDetails>({});
+  const [confirmedAt] = useState(() => new Date().toLocaleString('pt-BR'));
+  const receiptRef = useRef<HTMLDivElement>(null);
+
+  const token = searchParams.get('token') || '';
+  const verificationCode = token.slice(-8).toUpperCase();
 
   useEffect(() => {
     const osId = searchParams.get('os_id');
-    const token = searchParams.get('token');
 
     if (!osId || !token) {
       setStatus('error');
@@ -34,7 +40,6 @@ const PresenceConfirmation = () => {
         const response = await fetch(confirmUrl);
         const html = await response.text();
 
-        // Extract OS details from HTML response
         const extractField = (label: string) => {
           const match = html.match(new RegExp(`<strong>${label}:<\\/strong>\\s*(.+?)\\s*<\\/p>`));
           return match?.[1]?.trim();
@@ -67,7 +72,50 @@ const PresenceConfirmation = () => {
     };
 
     confirmPresence();
-  }, [searchParams]);
+  }, [searchParams, token]);
+
+  const handleDownloadReceipt = async () => {
+    if (!receiptRef.current) return;
+    try {
+      const canvas = await html2canvas(receiptRef.current, {
+        scale: 2,
+        backgroundColor: '#ffffff',
+        useCORS: true,
+      });
+      const link = document.createElement('a');
+      link.download = `recibo-${osDetails.numeroOS || 'presenca'}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    } catch (err) {
+      console.error('Erro ao gerar recibo:', err);
+    }
+  };
+
+  const handleShareReceipt = async () => {
+    if (!receiptRef.current) return;
+    try {
+      const canvas = await html2canvas(receiptRef.current, {
+        scale: 2,
+        backgroundColor: '#ffffff',
+        useCORS: true,
+      });
+      canvas.toBlob(async (blob) => {
+        if (!blob) return;
+        const file = new File([blob], `recibo-${osDetails.numeroOS || 'presenca'}.png`, { type: 'image/png' });
+        if (navigator.share) {
+          await navigator.share({
+            title: 'Comprovante de Presença',
+            text: `Presença confirmada - OS ${osDetails.numeroOS || ''}`,
+            files: [file],
+          });
+        }
+      }, 'image/png');
+    } catch (err) {
+      console.error('Erro ao compartilhar recibo:', err);
+    }
+  };
+
+  const canShare = typeof navigator !== 'undefined' && !!navigator.share;
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-solar">
@@ -140,6 +188,20 @@ const PresenceConfirmation = () => {
                     )}
                   </div>
                 )}
+
+                {/* Action buttons */}
+                <div className="flex gap-3 pt-2">
+                  <Button onClick={handleDownloadReceipt} className="flex-1 gap-2" variant="default">
+                    <Download className="h-4 w-4" />
+                    Baixar Comprovante
+                  </Button>
+                  {canShare && (
+                    <Button onClick={handleShareReceipt} variant="outline" className="gap-2">
+                      <Share2 className="h-4 w-4" />
+                      Compartilhar
+                    </Button>
+                  )}
+                </div>
               </>
             )}
 
@@ -175,6 +237,88 @@ const PresenceConfirmation = () => {
           </CardContent>
         </Card>
       </main>
+
+      {/* Hidden receipt for capture */}
+      {status === 'success' && (
+        <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
+          <div
+            ref={receiptRef}
+            style={{
+              width: 400,
+              padding: 32,
+              backgroundColor: '#ffffff',
+              fontFamily: 'Arial, sans-serif',
+              color: '#1a2a3a',
+            }}
+          >
+            {/* Receipt header */}
+            <div style={{ textAlign: 'center', marginBottom: 24 }}>
+              <div style={{ fontSize: 28, fontWeight: 700, color: '#0066FF', marginBottom: 4 }}>
+                ☀ SunFlow
+              </div>
+              <div style={{ fontSize: 16, fontWeight: 600, color: '#555' }}>
+                Comprovante de Presença
+              </div>
+              <div style={{ height: 2, background: 'linear-gradient(90deg, #0066FF, #FF9900)', margin: '12px 0' }} />
+            </div>
+
+            {/* Receipt details */}
+            <div style={{ background: '#f8fafc', borderRadius: 8, padding: 16, marginBottom: 16, borderLeft: '4px solid #0066FF' }}>
+              {osDetails.numeroOS && (
+                <div style={{ fontSize: 14, marginBottom: 8 }}>
+                  <span style={{ color: '#777' }}>OS: </span>
+                  <strong>{osDetails.numeroOS}</strong>
+                </div>
+              )}
+              {osDetails.servico && (
+                <div style={{ fontSize: 14, marginBottom: 8 }}>
+                  <span style={{ color: '#777' }}>Serviço: </span>
+                  <strong>{osDetails.servico}</strong>
+                </div>
+              )}
+              {osDetails.data && (
+                <div style={{ fontSize: 14, marginBottom: 8 }}>
+                  <span style={{ color: '#777' }}>Data: </span>
+                  <strong>{osDetails.data}</strong>
+                </div>
+              )}
+              {osDetails.tecnico && (
+                <div style={{ fontSize: 14, marginBottom: 0 }}>
+                  <span style={{ color: '#777' }}>Técnico: </span>
+                  <strong>{osDetails.tecnico}</strong>
+                </div>
+              )}
+            </div>
+
+            {/* Confirmation stamp */}
+            <div style={{ textAlign: 'center', background: '#f0fdf4', borderRadius: 8, padding: 16, marginBottom: 16, border: '1px solid #bbf7d0' }}>
+              <div style={{ fontSize: 24, marginBottom: 4 }}>✅</div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: '#16a34a' }}>
+                Presença confirmada
+              </div>
+              <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
+                em {confirmedAt}
+              </div>
+            </div>
+
+            {/* Verification code */}
+            {verificationCode && (
+              <div style={{ textAlign: 'center', marginBottom: 16 }}>
+                <span style={{ fontSize: 11, color: '#999' }}>Código de verificação: </span>
+                <span style={{ fontSize: 13, fontWeight: 700, fontFamily: 'monospace', color: '#0066FF', letterSpacing: 2 }}>
+                  {verificationCode}
+                </span>
+              </div>
+            )}
+
+            {/* Footer */}
+            <div style={{ height: 2, background: 'linear-gradient(90deg, #0066FF, #FF9900)', margin: '12px 0' }} />
+            <div style={{ textAlign: 'center', fontSize: 11, color: '#999' }}>
+              Evolight Solar O&M
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Footer */}
       <footer className="text-center pb-6">
