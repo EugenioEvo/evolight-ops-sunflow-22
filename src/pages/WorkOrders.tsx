@@ -650,6 +650,14 @@ const WorkOrders = () => {
             );
           })}
         </div>
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+          totalItems={filteredOrders.length}
+          itemsPerPage={ITEMS_PER_PAGE}
+        />
+        </div>
       )}
     </div>
   );
