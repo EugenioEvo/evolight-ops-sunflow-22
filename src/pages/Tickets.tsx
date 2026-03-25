@@ -1199,7 +1199,7 @@ const Tickets = () => {
                       )}
 
                       {/* Botão reprocessar geocodificação */}
-                      {(ticket.geocoding_status === 'failed' || ticket.geocoding_status === 'pending' || !ticket.latitude || !ticket.longitude) && (profile?.role === 'admin' || profile?.role === 'area_tecnica') && (
+                      {(ticket.geocoding_status === 'failed' || ticket.geocoding_status === 'pending' || !ticket.latitude || !ticket.longitude) && (profile?.role === 'admin' || profile?.role === 'engenharia' || profile?.role === 'supervisao') && (
                         <div className="flex items-center gap-2">
                           <Button
                             size="sm"
