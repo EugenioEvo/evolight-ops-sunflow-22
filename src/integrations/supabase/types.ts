@@ -1325,7 +1325,13 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "area_tecnica" | "tecnico_campo" | "cliente"
+      app_role:
+        | "admin"
+        | "area_tecnica"
+        | "tecnico_campo"
+        | "cliente"
+        | "engenharia"
+        | "supervisao"
       equipamento_tipo:
         | "painel_solar"
         | "inversor"
@@ -1346,7 +1352,13 @@ export type Database = {
         | "aguardando_rme"
         | "concluido"
         | "cancelado"
-      user_role: "admin" | "tecnico_campo" | "area_tecnica" | "cliente"
+      user_role:
+        | "admin"
+        | "tecnico_campo"
+        | "area_tecnica"
+        | "cliente"
+        | "engenharia"
+        | "supervisao"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1474,7 +1486,14 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "area_tecnica", "tecnico_campo", "cliente"],
+      app_role: [
+        "admin",
+        "area_tecnica",
+        "tecnico_campo",
+        "cliente",
+        "engenharia",
+        "supervisao",
+      ],
       equipamento_tipo: [
         "painel_solar",
         "inversor",
@@ -1497,7 +1516,14 @@ export const Constants = {
         "concluido",
         "cancelado",
       ],
-      user_role: ["admin", "tecnico_campo", "area_tecnica", "cliente"],
+      user_role: [
+        "admin",
+        "tecnico_campo",
+        "area_tecnica",
+        "cliente",
+        "engenharia",
+        "supervisao",
+      ],
     },
   },
 } as const
