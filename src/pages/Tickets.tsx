@@ -122,15 +122,14 @@ const Tickets = () => {
   // Score engine: fetches data once, computes per-ticket
   const { getScoresForTicket } = useTechnicianScoreEngine(prestadores);
 
-  // Current ticket context for rendering (cached per render)
-  const [activeTicketScores, setActiveTicketScores] = useState<Map<string, any>>(new Map());
+  // Use ref to avoid re-render loop when caching scores
+  const activeTicketScoresRef = useRef<Map<string, any>>(new Map());
 
   // Sort prestadores by score for a given ticket
   const getSortedPrestadores = (ticket?: any) => {
     const scores = getScoresForTicket(ticket);
     const scoreMap = new Map(scores.map(s => [s.prestadorId, s]));
-    // Cache for renderPrestadorOption
-    setActiveTicketScores(scoreMap);
+    activeTicketScoresRef.current = scoreMap;
     return [...prestadores].sort((a, b) => {
       const scoreA = scoreMap.get(a.id)?.score ?? 0;
       const scoreB = scoreMap.get(b.id)?.score ?? 0;
@@ -139,7 +138,7 @@ const Tickets = () => {
   };
 
   const getScoreForPrestador = (prestadorId: string) => {
-    return activeTicketScores.get(prestadorId);
+    return activeTicketScoresRef.current.get(prestadorId);
   };
 
   const renderPrestadorOption = (prestador: any, index: number) => {
