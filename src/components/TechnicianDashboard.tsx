@@ -17,6 +17,8 @@ interface OSStats {
   emExecucao: number;
   concluidasHoje: number;
   totalConcluidas: number;
+  aguardandoAceite: number;
+  recusadas: number;
 }
 
 const TechnicianDashboard = () => {
