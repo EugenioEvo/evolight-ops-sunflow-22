@@ -723,6 +723,15 @@ const MinhasOS = () => {
         </Tabs>
       )}
       </div>
+
+      {/* Dialog de Recusa */}
+      <RecusaOSDialog
+        open={!!recusaDialogOS}
+        onOpenChange={(open) => !open && setRecusaDialogOS(null)}
+        onConfirm={handleRecusarOS}
+        numeroOS={recusaDialogOS?.numero_os || ''}
+        loading={aceiteLoading}
+      />
     </TooltipProvider>
   );
 };

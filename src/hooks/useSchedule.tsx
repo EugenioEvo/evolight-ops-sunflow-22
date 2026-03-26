@@ -123,8 +123,12 @@ export const useSchedule = () => {
           hora_fim: params.horaFim,
           duracao_estimada_min: params.duracaoMin,
           // Resetar calendar_invite_sent_at para indicar que precisa enviar novo
-          calendar_invite_sent_at: null
-        })
+          calendar_invite_sent_at: null,
+          // Resetar aceite para que o técnico precise aceitar novamente
+          aceite_tecnico: 'pendente',
+          aceite_at: null,
+          motivo_recusa: null,
+        } as any)
         .eq('id', params.osId);
 
       if (updateError) throw updateError;
