@@ -26,6 +26,7 @@ import { EmptyState } from '@/components/EmptyState';
 import { FileUpload } from '@/components/FileUpload';
 import { useGeocoding } from '@/hooks/useGeocoding';
 import { Pagination } from '@/components/Pagination';
+import { MultiTechnicianOSDialog } from '@/components/MultiTechnicianOSDialog';
 
 const ticketSchema = z.object({
   titulo: z.string().min(1, 'Título é obrigatório'),
@@ -60,6 +61,7 @@ const Tickets = () => {
   const [selectedUfvSolarz, setSelectedUfvSolarz] = useState(localStorage.getItem('tickets_ufv_solarz') || 'todos');
   const [reprocessingTicketId, setReprocessingTicketId] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [multiOSDialogTicket, setMultiOSDialogTicket] = useState<any>(null);
   const ITEMS_PER_PAGE = 20;
 
   const { geocodeAddress, loading: geocoding } = useGeocoding();
@@ -400,42 +402,120 @@ const Tickets = () => {
         return;
       }
 
+      // Buscar técnico antigo (se houver) para notificações
+      const ticket = tickets.find((t: any) => t.id === ticketId);
+      const oldPrestadorId = ticket?.tecnico_responsavel_id;
+      const isReassignment = oldPrestadorId && oldPrestadorId !== technicianId;
+
       // Atribuir técnico ao ticket
       const { error } = await supabase
         .from('tickets')
-        .update({ 
-          tecnico_responsavel_id: technicianId
-        })
+        .update({ tecnico_responsavel_id: technicianId })
         .eq('id', ticketId);
 
       if (error) throw error;
 
-      // Se já existe OS, atualizar o tecnico_id na OS também
-      // Buscar prestador para encontrar o técnico correspondente
+      // Buscar novo prestador para encontrar o técnico correspondente
       const { data: prestador } = await supabase
         .from('prestadores')
-        .select('email')
+        .select('email, nome')
         .eq('id', technicianId)
         .single();
 
+      let newTecnicoId: string | null = null;
       if (prestador?.email) {
         const { data: tecnico } = await supabase
           .from('tecnicos')
-          .select('id, profiles!inner(email)')
+          .select('id, profiles!inner(email, user_id)')
           .ilike('profiles.email', prestador.email)
           .maybeSingle();
 
         if (tecnico) {
-          await supabase
+          newTecnicoId = tecnico.id;
+
+          // Buscar OS vinculadas para atualizar
+          const { data: linkedOS } = await supabase
             .from('ordens_servico')
-            .update({ tecnico_id: tecnico.id })
+            .select('id, numero_os, tecnico_id')
             .eq('ticket_id', ticketId);
+
+          if (linkedOS && linkedOS.length > 0) {
+            for (const os of linkedOS) {
+              const oldTecnicoId = os.tecnico_id;
+
+              // Se é reatribuição e tinha técnico antigo, notificar o antigo
+              if (isReassignment && oldTecnicoId && oldTecnicoId !== tecnico.id) {
+                // Notificar antigo por email (reassign_removed)
+                try {
+                  await supabase.functions.invoke('send-calendar-invite', {
+                    body: { os_id: os.id, action: 'reassign_removed' },
+                  });
+                } catch (e) {
+                  console.error('Erro ao enviar email de reatribuição:', e);
+                }
+
+                // Notificar antigo in-app
+                const { data: oldTecData } = await supabase
+                  .from('tecnicos')
+                  .select('profiles!inner(user_id)')
+                  .eq('id', oldTecnicoId)
+                  .single();
+
+                const oldTecUserId = (oldTecData as any)?.profiles?.user_id;
+                if (oldTecUserId) {
+                  await supabase.from('notificacoes').insert({
+                    user_id: oldTecUserId,
+                    tipo: 'os_reatribuida',
+                    titulo: 'OS Reatribuída',
+                    mensagem: `A OS ${os.numero_os} foi reatribuída a outro técnico.`,
+                    link: '/minhas-os',
+                  });
+                }
+              }
+
+              // Atualizar tecnico_id na OS e resetar aceite
+              await supabase
+                .from('ordens_servico')
+                .update({
+                  tecnico_id: tecnico.id,
+                  aceite_tecnico: 'pendente',
+                  aceite_at: null,
+                  motivo_recusa: null,
+                } as any)
+                .eq('id', os.id);
+
+              // Enviar email ao novo técnico
+              if (isReassignment) {
+                try {
+                  await supabase.functions.invoke('send-calendar-invite', {
+                    body: { os_id: os.id, action: 'create' },
+                  });
+                } catch (e) {
+                  console.error('Erro ao enviar email ao novo técnico:', e);
+                }
+              }
+
+              // Notificar novo técnico in-app
+              const newTecUserId = (tecnico as any)?.profiles?.user_id;
+              if (newTecUserId && isReassignment) {
+                await supabase.from('notificacoes').insert({
+                  user_id: newTecUserId,
+                  tipo: 'os_atribuida',
+                  titulo: 'Nova OS Atribuída',
+                  mensagem: `A OS ${os.numero_os} foi atribuída a você.`,
+                  link: '/minhas-os',
+                });
+              }
+            }
+          }
         }
       }
 
       toast({
         title: 'Sucesso',
-        description: 'Técnico atribuído com sucesso.',
+        description: isReassignment
+          ? 'Técnico reatribuído. Ambos os técnicos foram notificados.'
+          : 'Técnico atribuído com sucesso.',
       });
 
       // Verificar se o prestador tem email
@@ -1419,12 +1499,11 @@ const Tickets = () => {
                               </Select>
                               <Button
                                 size="sm"
-                                onClick={() => handleGenerateOS(ticket.id)}
-                                disabled={generatingOsId === ticket.id}
+                                onClick={() => setMultiOSDialogTicket(ticket)}
                                 className="flex items-center gap-2"
                               >
                                 <FileText className="h-4 w-4" />
-                                {generatingOsId === ticket.id ? 'Gerando...' : 'Gerar Ordem de Serviço'}
+                                Gerar Ordem de Serviço
                               </Button>
                               <Button
                                 size="sm"
@@ -1661,6 +1740,19 @@ const Tickets = () => {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Multi-Technician OS Dialog */}
+      <MultiTechnicianOSDialog
+        open={!!multiOSDialogTicket}
+        onOpenChange={(open) => { if (!open) setMultiOSDialogTicket(null); }}
+        ticketId={multiOSDialogTicket?.id || ''}
+        ticket={multiOSDialogTicket}
+        prestadores={prestadores.filter((p: any) => p.email && p.email.trim() !== '')}
+        onSuccess={() => {
+          setActiveTab('ordem_servico_gerada');
+          loadData();
+        }}
+      />
     </div>
   );
 };
