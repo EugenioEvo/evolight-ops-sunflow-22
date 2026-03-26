@@ -35,6 +35,8 @@ interface WorkOrder {
   inspetor_responsavel: string | null;
   equipe: string[] | null;
   notes: string | null;
+  aceite_tecnico: string;
+  motivo_recusa: string | null;
   tickets: {
     id: string;
     titulo: string;
@@ -73,6 +75,7 @@ const WorkOrders = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [aceiteFilter, setAceiteFilter] = useState<string>("all");
   const [clienteFilter, setClienteFilter] = useState<string>("all");
   const [ufvSolarzFilter, setUfvSolarzFilter] = useState<string>("all");
   const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({});
@@ -170,13 +173,17 @@ const WorkOrders = () => {
         ufvSolarzFilter === "all" ||
         os.tickets.clientes?.ufv_solarz === ufvSolarzFilter;
 
+      const matchesAceite =
+        aceiteFilter === "all" ||
+        os.aceite_tecnico === aceiteFilter;
+
       const matchesDate =
         (!dateRange.from || new Date(os.data_programada || os.data_emissao) >= dateRange.from) &&
         (!dateRange.to || new Date(os.data_programada || os.data_emissao) <= dateRange.to);
 
-      return matchesSearch && matchesStatus && matchesCliente && matchesUfvSolarz && matchesDate;
+      return matchesSearch && matchesStatus && matchesCliente && matchesUfvSolarz && matchesAceite && matchesDate;
     });
-  }, [workOrders, searchTerm, statusFilter, clienteFilter, ufvSolarzFilter, dateRange]);
+  }, [workOrders, searchTerm, statusFilter, aceiteFilter, clienteFilter, ufvSolarzFilter, dateRange]);
 
   const totalPages = Math.ceil(filteredOrders.length / ITEMS_PER_PAGE);
   const paginatedOrders = useMemo(() => {
@@ -189,7 +196,7 @@ const WorkOrders = () => {
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, statusFilter, clienteFilter, ufvSolarzFilter, dateRange]);
+  }, [searchTerm, statusFilter, aceiteFilter, clienteFilter, ufvSolarzFilter, dateRange]);
 
   // Dashboard stats
   const stats = useMemo(() => {
@@ -204,8 +211,9 @@ const WorkOrders = () => {
         !["concluido", "cancelado"].includes(os.tickets.status);
     }).length;
     const concluidas = workOrders.filter((os) => os.tickets.status === "concluido").length;
+    const recusadas = workOrders.filter((os) => os.aceite_tecnico === "recusado").length;
 
-    return { total, abertas, emExecucao, atrasadas, concluidas };
+    return { total, abertas, emExecucao, atrasadas, concluidas, recusadas };
   }, [workOrders]);
 
   const getOSStatus = (os: WorkOrder) => {
@@ -415,6 +423,22 @@ const WorkOrders = () => {
           </CardContent>
         </Card>
 
+        {stats.recusadas > 0 && (
+          <Card className="cursor-pointer hover:shadow-md transition-shadow border-red-400/50" onClick={() => setAceiteFilter("recusado")}>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-red-500/10">
+                  <XCircle className="h-5 w-5 text-red-500" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-red-600">{stats.recusadas}</p>
+                  <p className="text-xs text-muted-foreground">Recusadas</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setStatusFilter("concluida")}>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
@@ -454,6 +478,18 @@ const WorkOrders = () => {
                 <SelectItem value="em_execucao">Em Execução</SelectItem>
                 <SelectItem value="concluida">Concluídas</SelectItem>
                 <SelectItem value="cancelada">Canceladas</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={aceiteFilter} onValueChange={setAceiteFilter}>
+              <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectValue placeholder="Aceite" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos aceites</SelectItem>
+                <SelectItem value="pendente">Aguardando Aceite</SelectItem>
+                <SelectItem value="aceito">Aceita</SelectItem>
+                <SelectItem value="recusado">Recusada</SelectItem>
               </SelectContent>
             </Select>
 
@@ -546,20 +582,42 @@ const WorkOrders = () => {
               <Card
                 key={os.id}
                 className={`cursor-pointer hover:shadow-lg transition-all hover:-translate-y-0.5 ${
-                  isAtrasada ? "border-destructive/50" : ""
+                  os.aceite_tecnico === "recusado"
+                    ? "border-red-400 bg-red-50/30 dark:bg-red-950/10"
+                    : isAtrasada
+                    ? "border-destructive/50"
+                    : ""
                 }`}
                 onClick={() => navigate(`/work-orders/${os.id}`)}
               >
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between gap-2">
                     <div className="space-y-1 min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <CardTitle className="text-base font-semibold truncate">
                           {os.numero_os}
                         </CardTitle>
                         {isAtrasada && (
                           <Badge variant="destructive" className="text-[10px] px-1.5">
                             ATRASADA
+                          </Badge>
+                        )}
+                        {os.aceite_tecnico === "recusado" && (
+                          <Badge className="bg-red-100 text-red-700 border-red-300 text-[10px] px-1.5">
+                            <XCircle className="h-3 w-3 mr-0.5" />
+                            RECUSADA
+                          </Badge>
+                        )}
+                        {os.aceite_tecnico === "pendente" && status === "aberta" && (
+                          <Badge className="bg-amber-100 text-amber-700 border-amber-300 text-[10px] px-1.5">
+                            <Clock className="h-3 w-3 mr-0.5" />
+                            AGUARDANDO
+                          </Badge>
+                        )}
+                        {os.aceite_tecnico === "aceito" && (
+                          <Badge className="bg-green-100 text-green-700 border-green-300 text-[10px] px-1.5">
+                            <CheckCircle2 className="h-3 w-3 mr-0.5" />
+                            ACEITA
                           </Badge>
                         )}
                       </div>
@@ -612,6 +670,19 @@ const WorkOrders = () => {
                       </span>
                     </div>
                   </div>
+
+                  {/* Motivo da Recusa */}
+                  {os.aceite_tecnico === "recusado" && os.motivo_recusa && (
+                    <div className="p-2 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded text-xs text-red-700 dark:text-red-400">
+                      <div className="flex items-start gap-1">
+                        <AlertTriangle className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <span className="font-medium">Motivo da recusa: </span>
+                          <span className="line-clamp-2">{os.motivo_recusa}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Work Type Tags */}
                   {os.work_type && os.work_type.length > 0 && (
