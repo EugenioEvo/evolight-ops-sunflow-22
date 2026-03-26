@@ -173,6 +173,10 @@ const WorkOrders = () => {
         ufvSolarzFilter === "all" ||
         os.tickets.clientes?.ufv_solarz === ufvSolarzFilter;
 
+      const matchesAceite =
+        aceiteFilter === "all" ||
+        os.aceite_tecnico === aceiteFilter;
+
       const matchesDate =
         (!dateRange.from || new Date(os.data_programada || os.data_emissao) >= dateRange.from) &&
         (!dateRange.to || new Date(os.data_programada || os.data_emissao) <= dateRange.to);
