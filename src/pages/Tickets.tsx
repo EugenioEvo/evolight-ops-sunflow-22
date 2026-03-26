@@ -1021,20 +1021,6 @@ const Tickets = () => {
                   />
                 </div>
 
-                <FormField
-                  control={form.control}
-                  name="endereco_servico"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Endereço do Serviço</FormLabel>
-                      <FormControl>
-                        <Textarea {...field} placeholder="Endereço completo onde o serviço será realizado..." rows={2} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
                 <div className="grid grid-cols-3 gap-4">
                   <FormField
                     control={form.control}
