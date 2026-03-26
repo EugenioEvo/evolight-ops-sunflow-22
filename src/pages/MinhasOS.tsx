@@ -275,6 +275,20 @@ const MinhasOS = () => {
     window.open(`https://www.google.com/maps/search/?api=1&query=${encodedAddress}`, "_blank");
   };
 
+  const handleAceitarOS = async (os: OrdemServico) => {
+    const success = await aceitarOS(os.id);
+    if (success) await loadOrdensServico();
+  };
+
+  const handleRecusarOS = async (motivo: string) => {
+    if (!recusaDialogOS) return;
+    const success = await recusarOS(recusaDialogOS.id, motivo);
+    if (success) {
+      setRecusaDialogOS(null);
+      await loadOrdensServico();
+    }
+  };
+
   const getPrioridadeColor = (prioridade: string) => {
     switch (prioridade) {
       case "critica":
