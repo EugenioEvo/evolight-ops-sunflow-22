@@ -336,11 +336,20 @@ const MinhasOS = () => {
                 <Badge variant="outline" className="text-xs">
                   {os.tickets.numero_ticket}
                 </Badge>
-                {isPendente && (
-                  <Badge variant="secondary" className="text-xs flex items-center gap-1">
-                    <Info className="h-3 w-3" />
-                    <span className="hidden sm:inline">Próximo: Iniciar</span>
-                    <span className="sm:hidden">Iniciar</span>
+                {aguardandoAceite && (
+                  <Badge className="text-xs bg-amber-100 text-amber-800 border-amber-200">
+                    Aguardando Aceite
+                  </Badge>
+                )}
+                {aceito && isPendente && (
+                  <Badge className="text-xs bg-green-100 text-green-800 border-green-200">
+                    <CheckCircle2 className="h-3 w-3 mr-1" />
+                    Aceita
+                  </Badge>
+                )}
+                {recusado && isPendente && (
+                  <Badge variant="destructive" className="text-xs">
+                    Recusada
                   </Badge>
                 )}
               </div>
