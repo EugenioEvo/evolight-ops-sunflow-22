@@ -14,6 +14,7 @@ const DashboardStats = () => {
     osGeradas: 0,
     emExecucao: 0,
     concluidos: 0,
+    osRecusadas: 0,
   });
   const [loading, setLoading] = useState(true);
 
