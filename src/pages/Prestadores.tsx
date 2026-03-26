@@ -637,7 +637,7 @@ const Prestadores = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="pendentes" className="relative">
             Pendentes ({categoryCounts.pendentes})
             {categoryCounts.pendentes > 0 && (
@@ -646,6 +646,9 @@ const Prestadores = () => {
           </TabsTrigger>
           <TabsTrigger value="todos">
             Todos ({categoryCounts.todos})
+          </TabsTrigger>
+          <TabsTrigger value="admin">
+            Admin ({categoryCounts.admin})
           </TabsTrigger>
           <TabsTrigger value="engenharia">
             Engenharia ({categoryCounts.engenharia})
