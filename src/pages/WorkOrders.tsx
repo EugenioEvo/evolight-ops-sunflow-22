@@ -671,6 +671,19 @@ const WorkOrders = () => {
                     </div>
                   </div>
 
+                  {/* Motivo da Recusa */}
+                  {os.aceite_tecnico === "recusado" && os.motivo_recusa && (
+                    <div className="p-2 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded text-xs text-red-700 dark:text-red-400">
+                      <div className="flex items-start gap-1">
+                        <AlertTriangle className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <span className="font-medium">Motivo da recusa: </span>
+                          <span className="line-clamp-2">{os.motivo_recusa}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Work Type Tags */}
                   {os.work_type && os.work_type.length > 0 && (
                     <div className="flex flex-wrap gap-1">
