@@ -14,7 +14,7 @@ export const useAceiteOS = () => {
         .update({
           aceite_tecnico: 'aceito',
           aceite_at: new Date().toISOString(),
-        })
+        } as any)
         .eq('id', osId);
 
       if (error) throw error;
