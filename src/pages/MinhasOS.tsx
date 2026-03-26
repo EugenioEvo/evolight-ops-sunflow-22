@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, FileText, Eye, Calendar, MapPin, User, Play, Edit, Phone, Navigation, ClipboardList, AlertCircle, CheckCircle2, Info, Filter, ThumbsUp, ThumbsDown } from "lucide-react";
+import { Loader2, FileText, Eye, Calendar, MapPin, User, Play, Edit, Phone, Navigation, ClipboardList, AlertCircle, CheckCircle2, Info, Filter, ThumbsUp, ThumbsDown, Clock, Hourglass } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 import { LoadingState } from "@/components/LoadingState";
 import { TechnicianBreadcrumb } from "@/components/TechnicianBreadcrumb";
