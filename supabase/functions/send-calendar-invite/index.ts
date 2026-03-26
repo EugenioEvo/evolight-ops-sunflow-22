@@ -125,8 +125,8 @@ const handler = async (req: Request): Promise<Response> => {
         sequence = 1;
       }
       
-      const method = action === "cancel" ? "CANCEL" : "REQUEST";
-      const status = action === "cancel" ? "CANCELLED" : "CONFIRMED";
+      const method = (action === "cancel" || action === "reassign_removed") ? "CANCEL" : "REQUEST";
+      const status = (action === "cancel" || action === "reassign_removed") ? "CANCELLED" : "CONFIRMED";
 
       icsContent = [
         "BEGIN:VCALENDAR",
