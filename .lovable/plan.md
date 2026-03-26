@@ -1,67 +1,35 @@
 
 
-# Fluxo de Aceite/Recusa de OS pelo Técnico
+# Resetar Aceite e Notificar Técnico ao Alterar/Excluir Ticket ou OS
 
-## Problema atual
-- A OS usa `data_vencimento` (data limite) como `data_programada`, quando deveria usar `data_servico`
-- Não existe fluxo de aceite/recusa — o técnico recebe a OS e pronto
+## Contexto
+Quando o gestor altera campos críticos (data, hora, tipo de serviço) no ticket ou na OS, ou exclui o ticket, o técnico que já aceitou precisa ser notificado e o ciclo de aceite deve ser resetado.
 
-## Nova lógica
+## Cenários cobertos
 
-```text
-OS Gerada → Técnico notificado
-  ├─ ACEITAR → data_programada = data da OS confirmada, status = "aceita"
-  └─ RECUSAR → técnico pede reagendamento
-       ├─ Gestor reagenda (mesma OS, nova data) → técnico original notificado
-       └─ Gestor reatribui a outro técnico → técnico original recebe cancelamento
-            └─ Novo técnico recebe fluxo inicial (aceite/recusa)
-```
+1. **Ticket editado** (data_servico, horario_previsto_inicio, equipamento_tipo alterados) — se já existe OS com aceite, resetar aceite e notificar técnico
+2. **Ticket excluído** — se existe OS com técnico que aceitou, notificar técnico sobre cancelamento
+3. **OS excluída** — já notifica o técnico (existente), apenas garantir que menciona o reset do aceite
+4. **OS reagendada via ScheduleModal** — já reseta aceite (existente em useSchedule.tsx)
 
 ## Mudanças
 
-### 1. Database Migration
-- Adicionar coluna `aceite_tecnico` na tabela `ordens_servico`: `text DEFAULT 'pendente'` (valores: `pendente`, `aceito`, `recusado`)
-- Adicionar coluna `aceite_at` (timestamp) e `motivo_recusa` (text)
-- Habilitar realtime na tabela `ordens_servico` para aceite
+### 1. `src/pages/Tickets.tsx` — onSubmit (edição de ticket)
+Após atualizar o ticket no modo edição, verificar se existe OS vinculada com `aceite_tecnico = 'aceito'`. Se sim:
+- Resetar `aceite_tecnico` para `'pendente'`, limpar `aceite_at` e `motivo_recusa` na OS
+- Inserir notificação ao técnico informando que houve alteração no ticket e que ele precisa aceitar novamente
+- Só fazer isso se campos críticos mudaram (`data_servico`, `horario_previsto_inicio`, `equipamento_tipo`)
 
-### 2. Edge Function `gerar-ordem-servico`
-- Mudar de `data_programada: ticket.data_vencimento` para `data_programada: ticket.data_servico || ticket.data_vencimento`
-- Priorizar `data_servico` sobre `data_vencimento`
+### 2. `src/pages/Tickets.tsx` — handleDeleteTicket
+Antes de excluir o ticket, buscar OS vinculada e técnico. Se técnico tinha aceite, notificá-lo sobre o cancelamento (complementar à notificação existente no handleDeleteOS de WorkOrders).
 
-### 3. Tela "Minhas OS" (MinhasOS.tsx)
-- Para OS com `aceite_tecnico = 'pendente'`: mostrar botões "Aceitar" e "Recusar"
-- Aceitar: atualiza `aceite_tecnico = 'aceito'`, `aceite_at = now()`
-- Recusar: abre modal pedindo motivo, atualiza `aceite_tecnico = 'recusado'`, `motivo_recusa`, envia notificação ao gestor
+### 3. `src/pages/WorkOrders.tsx` — handleDeleteOS
+A exclusão já notifica o técnico. Nenhuma mudança necessária aqui, pois a OS é excluída e o aceite deixa de existir.
 
-### 4. Novo componente: AceiteOSDialog
-- Modal de recusa com campo de motivo obrigatório
-- Confirma a recusa e notifica gestores
+### 4. `src/pages/WorkOrderDetail.tsx` / Edição de OS inline
+Se houver edição de campos da OS (work_type, servico_solicitado, data_programada, hora_inicio/fim), resetar aceite e notificar. Atualmente não há formulário de edição inline na OS — a edição acontece via ScheduleModal (que já reseta). Se work_type/servico_solicitado forem editáveis no futuro, aplicar a mesma lógica.
 
-### 5. Notificações
-- **Aceite**: notificação para gestores (staff) informando que técnico aceitou
-- **Recusa**: notificação para gestores com motivo, link para reagendar/reatribuir
-- **Reagendamento**: notificação ao técnico original informando nova data
-- **Reatribuição**: notificação ao técnico original (cancelamento) + notificação ao novo técnico (fluxo inicial)
-
-### 6. Tela de Gestão (WorkOrderDetail.tsx / Tickets.tsx)
-- Mostrar status de aceite na OS (badge: Pendente/Aceito/Recusado)
-- Para OS recusadas: botões "Reagendar" e "Reatribuir Técnico"
-- Reatribuição: ao trocar técnico, reseta `aceite_tecnico = 'pendente'`, envia cancelamento ao antigo e notificação ao novo
-
-### 7. Hook useSchedule
-- No reagendamento: resetar `aceite_tecnico = 'pendente'` para que o técnico precise aceitar novamente
-
-### 8. Hook useCancelOS
-- Ao cancelar: notificar técnico atual do cancelamento
-
-### Arquivos impactados
-- `supabase/migrations/` — nova migration (3 colunas em ordens_servico)
-- `supabase/functions/gerar-ordem-servico/index.ts` — priorizar data_servico
-- `src/pages/MinhasOS.tsx` — botões aceitar/recusar
-- `src/pages/WorkOrderDetail.tsx` — badge de aceite, ações de reatribuição
-- `src/pages/Tickets.tsx` — exibir status aceite
-- `src/hooks/useSchedule.tsx` — resetar aceite no reagendamento
-- `src/hooks/useCancelOS.tsx` — notificação de cancelamento
-- Novo: `src/components/RecusaOSDialog.tsx` — modal de recusa com motivo
-- Novo: `src/hooks/useAceiteOS.tsx` — lógica de aceite/recusa
+## Resumo dos arquivos impactados
+- `src/pages/Tickets.tsx` — lógica de reset de aceite ao editar/excluir ticket
+- Nenhuma migration necessária (colunas já existem)
 
