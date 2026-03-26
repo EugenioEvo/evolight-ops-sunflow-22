@@ -481,6 +481,18 @@ const WorkOrders = () => {
               </SelectContent>
             </Select>
 
+            <Select value={aceiteFilter} onValueChange={setAceiteFilter}>
+              <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectValue placeholder="Aceite" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos aceites</SelectItem>
+                <SelectItem value="pendente">Aguardando Aceite</SelectItem>
+                <SelectItem value="aceito">Aceita</SelectItem>
+                <SelectItem value="recusado">Recusada</SelectItem>
+              </SelectContent>
+            </Select>
+
             <Select value={clienteFilter} onValueChange={setClienteFilter}>
               <SelectTrigger className="w-full sm:w-[200px]">
                 <SelectValue placeholder="Cliente" />
