@@ -17,10 +17,12 @@ interface OSStats {
   emExecucao: number;
   concluidasHoje: number;
   totalConcluidas: number;
+  aguardandoAceite: number;
+  recusadas: number;
 }
 
 const TechnicianDashboard = () => {
-  const [stats, setStats] = useState<OSStats>({ pendentes: 0, emExecucao: 0, concluidasHoje: 0, totalConcluidas: 0 });
+  const [stats, setStats] = useState<OSStats>({ pendentes: 0, emExecucao: 0, concluidasHoje: 0, totalConcluidas: 0, aguardandoAceite: 0, recusadas: 0 });
   const [recentOS, setRecentOS] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const { profile } = useAuth();
@@ -48,6 +50,8 @@ const TechnicianDashboard = () => {
         .from("ordens_servico")
         .select(`
           *,
+          aceite_tecnico,
+          motivo_recusa,
           data_programada,
           hora_inicio,
           hora_fim,
@@ -68,13 +72,15 @@ const TechnicianDashboard = () => {
         const hoje = new Date().toISOString().split('T')[0];
         
         setStats({
-          pendentes: osData.filter(os => os.tickets.status === 'ordem_servico_gerada').length,
+          pendentes: osData.filter(os => os.tickets.status === 'ordem_servico_gerada' && os.aceite_tecnico === 'pendente').length,
           emExecucao: osData.filter(os => os.tickets.status === 'em_execucao').length,
           concluidasHoje: osData.filter(os => 
             os.tickets.status === 'concluido' && 
             os.tickets.data_conclusao?.startsWith(hoje)
           ).length,
           totalConcluidas: osData.filter(os => os.tickets.status === 'concluido').length,
+          aguardandoAceite: osData.filter(os => os.aceite_tecnico === 'pendente' && os.tickets.status === 'ordem_servico_gerada').length,
+          recusadas: osData.filter(os => os.aceite_tecnico === 'recusado').length,
         });
 
         // OS recentes (não concluídas)
@@ -123,22 +129,22 @@ const TechnicianDashboard = () => {
       )}
 
       {/* Cards de Estatísticas */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">OS Pendentes</CardTitle>
-            <ClipboardList className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Aguardando Aceite</CardTitle>
+            <ClipboardList className="h-4 w-4 text-yellow-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.pendentes}</div>
-            <p className="text-xs text-muted-foreground">Aguardando início</p>
+            <div className="text-2xl font-bold">{stats.aguardandoAceite}</div>
+            <p className="text-xs text-muted-foreground">Necessitam sua confirmação</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Em Execução</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
+            <Clock className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.emExecucao}</div>
@@ -149,11 +155,22 @@ const TechnicianDashboard = () => {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Concluídas Hoje</CardTitle>
-            <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+            <CheckCircle2 className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.concluidasHoje}</div>
             <p className="text-xs text-muted-foreground">Trabalhos finalizados</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">OS Recusadas</CardTitle>
+            <AlertCircle className="h-4 w-4 text-red-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.recusadas}</div>
+            <p className="text-xs text-muted-foreground">Recusadas por você</p>
           </CardContent>
         </Card>
 
@@ -221,9 +238,19 @@ const TechnicianDashboard = () => {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <p className="font-medium text-sm truncate">{os.numero_os}</p>
-                          <Badge variant={os.tickets.status === 'em_execucao' ? 'default' : 'outline'} className="flex-shrink-0">
+                      <Badge variant={os.tickets.status === 'em_execucao' ? 'default' : 'outline'} className="flex-shrink-0">
                             {os.tickets.status === 'em_execucao' ? 'Em Execução' : 'Pendente'}
                           </Badge>
+                          {os.aceite_tecnico === 'pendente' && (
+                            <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200 text-xs flex-shrink-0">
+                              Aguardando Aceite
+                            </Badge>
+                          )}
+                          {os.aceite_tecnico === 'recusado' && (
+                            <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 text-xs flex-shrink-0">
+                              Recusada
+                            </Badge>
+                          )}
                         </div>
                         <p className="text-sm text-muted-foreground truncate">{os.tickets.titulo}</p>
                         <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
@@ -258,9 +285,9 @@ const TechnicianDashboard = () => {
             <ClipboardList className="mr-2 h-4 w-4" />
             Ver Minhas OS
           </Button>
-          <Button onClick={() => navigate("/agenda")} variant="outline" className="flex-1 min-w-[200px]">
-            <Clock className="mr-2 h-4 w-4" />
-            Ver Agenda
+          <Button onClick={() => navigate("/routes")} variant="outline" className="flex-1 min-w-[200px]">
+            <MapPin className="mr-2 h-4 w-4" />
+            Ver Rota
           </Button>
           <Button onClick={() => navigate("/rme")} variant="outline" className="flex-1 min-w-[200px]">
             <FileText className="mr-2 h-4 w-4" />
@@ -293,6 +320,16 @@ const TechnicianDashboard = () => {
                       <Badge variant={os.tickets.status === 'em_execucao' ? 'default' : 'outline'}>
                         {os.tickets.status === 'em_execucao' ? 'Em Execução' : 'Pendente'}
                       </Badge>
+                      {os.aceite_tecnico === 'pendente' && (
+                        <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200 text-xs">
+                          Aguardando Aceite
+                        </Badge>
+                      )}
+                      {os.aceite_tecnico === 'recusado' && (
+                        <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 text-xs">
+                          Recusada
+                        </Badge>
+                      )}
                     </div>
                     <p className="text-sm text-muted-foreground">{os.tickets.titulo}</p>
                     <p className="text-xs text-muted-foreground">{os.tickets.clientes?.empresa}</p>

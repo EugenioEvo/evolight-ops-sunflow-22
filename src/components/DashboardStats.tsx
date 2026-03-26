@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
-import { AlertTriangle, CheckCircle, Clock, FileText, Wrench, ClipboardCheck } from "lucide-react";
+import { AlertTriangle, CheckCircle, Clock, FileText, Wrench, ClipboardCheck, XCircle } from "lucide-react";
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useGlobalRealtime } from '@/hooks/useRealtimeProvider';
@@ -14,6 +14,7 @@ const DashboardStats = () => {
     osGeradas: 0,
     emExecucao: 0,
     concluidos: 0,
+    osRecusadas: 0,
   });
   const [loading, setLoading] = useState(true);
 
@@ -37,6 +38,7 @@ const DashboardStats = () => {
           os_geradas: number;
           em_execucao: number;
           concluidos: number;
+          os_recusadas: number;
         };
 
         setStats({
@@ -46,6 +48,7 @@ const DashboardStats = () => {
           osGeradas: statsData.os_geradas || 0,
           emExecucao: statsData.em_execucao || 0,
           concluidos: statsData.concluidos || 0,
+          osRecusadas: statsData.os_recusadas || 0,
         });
       }
     } catch (error) {
@@ -99,6 +102,13 @@ const DashboardStats = () => {
       iconColor: "text-secondary"
     },
     {
+      title: "OS Recusadas",
+      value: stats.osRecusadas,
+      icon: XCircle,
+      className: "bg-gradient-to-br from-rose-50 to-rose-100 border-rose-200",
+      iconColor: "text-destructive"
+    },
+    {
       title: "Total Concluídos",
       value: stats.concluidos,
       icon: ClipboardCheck,
@@ -109,8 +119,8 @@ const DashboardStats = () => {
 
   if (loading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6">
-        {[1, 2, 3, 4, 5, 6].map((i) => (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-6">
+        {[1, 2, 3, 4, 5, 6, 7].map((i) => (
           <Card key={i} className="animate-pulse">
             <CardContent className="p-6">
               <div className="h-20 bg-gray-200 rounded"></div>
@@ -122,7 +132,7 @@ const DashboardStats = () => {
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-6">
       {statsConfig.map((stat) => (
         <Card key={stat.title} className={`${stat.className} shadow-sm hover:shadow-md transition-all duration-300`}>
           <CardContent className="p-6">

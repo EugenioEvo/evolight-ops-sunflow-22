@@ -1,0 +1,59 @@
+CREATE OR REPLACE FUNCTION public.get_dashboard_stats()
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE SECURITY DEFINER
+SET search_path TO 'public'
+AS $function$
+DECLARE
+  v_tickets_abertos INTEGER;
+  v_tickets_criticos INTEGER;
+  v_tickets_hoje INTEGER;
+  v_os_geradas INTEGER;
+  v_em_execucao INTEGER;
+  v_concluidos INTEGER;
+  v_os_recusadas INTEGER;
+  v_hoje TIMESTAMP WITH TIME ZONE;
+BEGIN
+  v_hoje := date_trunc('day', now());
+
+  SELECT COUNT(*) INTO v_tickets_abertos
+  FROM public.tickets
+  WHERE status NOT IN ('concluido', 'cancelado');
+
+  SELECT COUNT(*) INTO v_tickets_criticos
+  FROM public.tickets
+  WHERE prioridade IN ('alta', 'critica')
+    AND status NOT IN ('concluido', 'cancelado');
+
+  SELECT COUNT(*) INTO v_tickets_hoje
+  FROM public.tickets
+  WHERE status = 'concluido'
+    AND data_conclusao >= v_hoje;
+
+  SELECT COUNT(*) INTO v_os_geradas
+  FROM public.ordens_servico
+  WHERE created_at >= v_hoje;
+
+  SELECT COUNT(*) INTO v_em_execucao
+  FROM public.tickets
+  WHERE status = 'em_execucao';
+
+  SELECT COUNT(*) INTO v_concluidos
+  FROM public.tickets
+  WHERE status = 'concluido';
+
+  SELECT COUNT(*) INTO v_os_recusadas
+  FROM public.ordens_servico
+  WHERE aceite_tecnico = 'recusado';
+
+  RETURN jsonb_build_object(
+    'tickets_abertos', COALESCE(v_tickets_abertos, 0),
+    'tickets_criticos', COALESCE(v_tickets_criticos, 0),
+    'tickets_hoje', COALESCE(v_tickets_hoje, 0),
+    'os_geradas', COALESCE(v_os_geradas, 0),
+    'em_execucao', COALESCE(v_em_execucao, 0),
+    'concluidos', COALESCE(v_concluidos, 0),
+    'os_recusadas', COALESCE(v_os_recusadas, 0)
+  );
+END;
+$function$;
