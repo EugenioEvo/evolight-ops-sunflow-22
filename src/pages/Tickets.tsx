@@ -293,7 +293,7 @@ const Tickets = () => {
         if (criticalChanged) {
           const { data: linkedOS } = await supabase
             .from('ordens_servico')
-            .select('id, numero_os, tecnico_id, aceite_tecnico')
+            .select('id, numero_os, tecnico_id')
             .eq('ticket_id', editingTicket.id);
 
           if (linkedOS && linkedOS.length > 0) {
