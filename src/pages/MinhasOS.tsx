@@ -67,10 +67,12 @@ const MinhasOS = () => {
   const [activeTab, setActiveTab] = useState<string>('pendentes');
   const [startingId, setStartingId] = useState<string | null>(null);
   const [navigating, setNavigating] = useState<string | null>(null);
+  const [recusaDialogOS, setRecusaDialogOS] = useState<OrdemServico | null>(null);
   const { profile } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const { tecnicoId, setTecnicoId, shouldRefetch, setOrdensServico: setCachedOS } = useTechnicianStore();
+  const { aceitarOS, recusarOS, loading: aceiteLoading } = useAceiteOS();
 
   const isTecnico = profile?.role === "tecnico_campo";
   const isAreaTecnica = profile?.role === "engenharia" || profile?.role === "supervisao" || profile?.role === "admin";
