@@ -181,9 +181,9 @@ const WorkOrders = () => {
         (!dateRange.from || new Date(os.data_programada || os.data_emissao) >= dateRange.from) &&
         (!dateRange.to || new Date(os.data_programada || os.data_emissao) <= dateRange.to);
 
-      return matchesSearch && matchesStatus && matchesCliente && matchesUfvSolarz && matchesDate;
+      return matchesSearch && matchesStatus && matchesCliente && matchesUfvSolarz && matchesAceite && matchesDate;
     });
-  }, [workOrders, searchTerm, statusFilter, clienteFilter, ufvSolarzFilter, dateRange]);
+  }, [workOrders, searchTerm, statusFilter, aceiteFilter, clienteFilter, ufvSolarzFilter, dateRange]);
 
   const totalPages = Math.ceil(filteredOrders.length / ITEMS_PER_PAGE);
   const paginatedOrders = useMemo(() => {
