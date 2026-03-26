@@ -168,12 +168,14 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Preparar email
     const recipients = [tecnicoEmail, CONFIG.teamEmail];
-    const actionText = action === "create" ? "agendada" : action === "update" ? "reagendada" : "cancelada";
+    const actionText = action === "create" ? "agendada" : action === "update" ? "reagendada" : action === "rejection_reschedule" ? "reagendada após recusa" : "cancelada";
     const dataFormatada = dtStart.toLocaleDateString("pt-BR");
     const horaFormatada = dtStart.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 
     const emailSubject = action === "cancel"
       ? `Cancelamento: ${os.numero_os} - ${clienteNome}`
+      : isRejectionReschedule
+      ? `Reagendamento: ${os.numero_os} - ${clienteNome} — Nova atribuição após recusa`
       : `Agendamento: ${os.numero_os} - ${clienteNome} - ${dataFormatada} ${horaFormatada}`;
 
     const confirmButtonHtml = confirmUrl ? `
