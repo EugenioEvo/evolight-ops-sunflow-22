@@ -9,15 +9,17 @@ export const useAceiteOS = () => {
   const aceitarOS = async (osId: string): Promise<boolean> => {
     setLoading(true);
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('ordens_servico')
         .update({
           aceite_tecnico: 'aceito',
           aceite_at: new Date().toISOString(),
         } as any)
-        .eq('id', osId);
+        .eq('id', osId)
+        .select();
 
       if (error) throw error;
+      if (!data || data.length === 0) throw new Error('Não foi possível atualizar. Verifique suas permissões.');
 
       // Notificar gestores
       const { data: staffUsers } = await supabase
@@ -64,16 +66,18 @@ export const useAceiteOS = () => {
   const recusarOS = async (osId: string, motivo: string): Promise<boolean> => {
     setLoading(true);
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('ordens_servico')
         .update({
           aceite_tecnico: 'recusado',
           aceite_at: new Date().toISOString(),
           motivo_recusa: motivo,
         } as any)
-        .eq('id', osId);
+        .eq('id', osId)
+        .select();
 
       if (error) throw error;
+      if (!data || data.length === 0) throw new Error('Não foi possível atualizar. Verifique suas permissões.');
 
       // Notificar gestores
       const { data: staffUsers } = await supabase
