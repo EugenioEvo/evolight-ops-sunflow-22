@@ -631,7 +631,7 @@ const Tickets = () => {
         // Antes de bloquear, notificar técnicos de OS aceitas sobre o cancelamento
         if (osData) {
           for (const os of osData) {
-            if ((os as any).aceite_tecnico === 'aceito' && os.tecnico_id) {
+            if (os.tecnico_id) {
               const { data: tecData } = await supabase
                 .from('tecnicos')
                 .select('profiles!inner(user_id)')
