@@ -38,6 +38,7 @@ const DashboardStats = () => {
           os_geradas: number;
           em_execucao: number;
           concluidos: number;
+          os_recusadas: number;
         };
 
         setStats({
