@@ -199,7 +199,7 @@ const Tickets = () => {
         .from('tickets')
         .select(`
           *,
-          ordens_servico(numero_os, id, pdf_url),
+          ordens_servico(numero_os, id, pdf_url, aceite_tecnico, motivo_recusa),
           clientes(
             empresa,
             endereco,
