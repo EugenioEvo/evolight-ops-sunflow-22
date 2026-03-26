@@ -611,10 +611,10 @@ const Tickets = () => {
     try {
       setLoading(true);
 
-      // Verificar OS vinculadas
+      // Verificar OS vinculadas (incluindo dados do técnico para notificação)
       const { data: osData } = await supabase
         .from('ordens_servico')
-        .select('id, numero_os')
+        .select('id, numero_os, tecnico_id, aceite_tecnico')
         .eq('ticket_id', ticketId);
 
       // Verificar RME vinculados
@@ -629,6 +629,30 @@ const Tickets = () => {
         const parts = [];
         if (osCount > 0) parts.push(`${osCount} OS`);
         if (rmeCount > 0) parts.push(`${rmeCount} RME`);
+
+        // Antes de bloquear, notificar técnicos de OS aceitas sobre o cancelamento
+        if (osData) {
+          for (const os of osData) {
+            if ((os as any).aceite_tecnico === 'aceito' && os.tecnico_id) {
+              const { data: tecData } = await supabase
+                .from('tecnicos')
+                .select('profiles!inner(user_id)')
+                .eq('id', os.tecnico_id)
+                .single();
+
+              const tecUserId = (tecData as any)?.profiles?.user_id;
+              if (tecUserId) {
+                await supabase.from('notificacoes').insert({
+                  user_id: tecUserId,
+                  tipo: 'ticket_excluido',
+                  titulo: 'Ticket Excluído',
+                  mensagem: `O ticket vinculado à OS ${os.numero_os} foi excluído pelo gestor. A OS será removida.`,
+                  link: '/minhas-os',
+                });
+              }
+            }
+          }
+        }
 
         toast({
           title: "Não é possível excluir",
