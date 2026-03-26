@@ -259,6 +259,7 @@ const Prestadores = () => {
 
   const getCategoriaIcon = (categoria: string) => {
     switch (categoria) {
+      case "admin": return ShieldAlert;
       case "engenharia": return GraduationCap;
       case "supervisao": return Eye;
       case "tecnico": return Wrench;
