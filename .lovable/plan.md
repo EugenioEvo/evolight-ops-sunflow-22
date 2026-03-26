@@ -1,67 +1,67 @@
 
 
-# Auditoria de Cadastros Existentes
+# Fluxo de Aceite/Recusa de OS pelo Técnico
 
-## Resumo dos dados encontrados
+## Problema atual
+- A OS usa `data_vencimento` (data limite) como `data_programada`, quando deveria usar `data_servico`
+- Não existe fluxo de aceite/recusa — o técnico recebe a OS e pronto
 
-### user_roles (12 registros)
-| Nome | Email | Role Atual |
-|---|---|---|
-| Amanda Barbosa | gerenciadeprojetos@grupoevolight.com.br | **admin** |
-| Eugenio Garcia | eugenio@grupoevolight.com.br | **admin** |
-| Edson Eulalio | manutencao@grupoevolight.com.br | **area_tecnica** |
-| Jonh Lucas M Soares | jonh.lucas@grupoevolight.com.br | **area_tecnica** |
-| Weldner Alves | weldner@grupoevolight.com.br | **area_tecnica** |
-| ADRIAN | adrianmateuszl2k@gmail.com | tecnico_campo |
-| DIEGO | diego14borges@gmail.com | tecnico_campo |
-| HERCULES ALVES VIEIRA | hercules.vieira@grupoevolight.com.br | tecnico_campo |
-| WEBERSON | weberson_gt@live.com | tecnico_campo |
-| ze faisca | eugenio.garcia@me.com | tecnico_campo |
-| zezinho das couves | genin.garcia@gmail.com | tecnico_campo |
-| ⚠️ SEM PERFIL | (user_id: b18c5e50...) | tecnico_campo |
+## Nova lógica
 
----
+```text
+OS Gerada → Técnico notificado
+  ├─ ACEITAR → data_programada = data da OS confirmada, status = "aceita"
+  └─ RECUSAR → técnico pede reagendamento
+       ├─ Gestor reagenda (mesma OS, nova data) → técnico original notificado
+       └─ Gestor reatribui a outro técnico → técnico original recebe cancelamento
+            └─ Novo técnico recebe fluxo inicial (aceite/recusa)
+```
 
-## Problemas encontrados
+## Mudanças
 
-### 1. Registro órfão
-- Um `user_role` com `tecnico_campo` existe para user_id `b18c5e50...` mas **não tem profile associado**. Deve ser removido.
+### 1. Database Migration
+- Adicionar coluna `aceite_tecnico` na tabela `ordens_servico`: `text DEFAULT 'pendente'` (valores: `pendente`, `aceito`, `recusado`)
+- Adicionar coluna `aceite_at` (timestamp) e `motivo_recusa` (text)
+- Habilitar realtime na tabela `ordens_servico` para aceite
 
-### 2. Contas de teste
-- **ze faisca** (eugenio.garcia@me.com) — parece conta de teste do Eugenio
-- **zezinho das couves** (genin.garcia@gmail.com) — parece conta de teste
+### 2. Edge Function `gerar-ordem-servico`
+- Mudar de `data_programada: ticket.data_vencimento` para `data_programada: ticket.data_servico || ticket.data_vencimento`
+- Priorizar `data_servico` sobre `data_vencimento`
 
-### 3. Duplicatas na tabela prestadores
-- **ze faisca** tem **2 registros** em prestadores (emails `eugenio.garcia@me.com` e `Eugenio.garcia@me.com` — diferença de capitalização)
-- **Eugenio Garcia** (admin) tem registro como prestador/tecnico — inconsistente
-- **Edson Eulalio** (area_tecnica) tem registro como prestador/tecnico — pode ser correto se ele também atua em campo
+### 3. Tela "Minhas OS" (MinhasOS.tsx)
+- Para OS com `aceite_tecnico = 'pendente'`: mostrar botões "Aceitar" e "Recusar"
+- Aceitar: atualiza `aceite_tecnico = 'aceito'`, `aceite_at = now()`
+- Recusar: abre modal pedindo motivo, atualiza `aceite_tecnico = 'recusado'`, `motivo_recusa`, envia notificação ao gestor
 
-### 4. Categorias em prestadores já existentes
-- ADTLHYER ARTHUR e JONH LUCAS já têm `categoria: engenharia` na tabela prestadores
-- Weldner Alves tem `categoria: tecnico` mas role `area_tecnica` — inconsistente
+### 4. Novo componente: AceiteOSDialog
+- Modal de recusa com campo de motivo obrigatório
+- Confirma a recusa e notifica gestores
 
-### 5. Migração area_tecnica → novos roles
-Os 3 usuários com `area_tecnica` precisam de definição:
+### 5. Notificações
+- **Aceite**: notificação para gestores (staff) informando que técnico aceitou
+- **Recusa**: notificação para gestores com motivo, link para reagendar/reatribuir
+- **Reagendamento**: notificação ao técnico original informando nova data
+- **Reatribuição**: notificação ao técnico original (cancelamento) + notificação ao novo técnico (fluxo inicial)
 
-| Nome | Sugestão | Justificativa |
-|---|---|---|
-| Edson Eulalio | **supervisao** | Email "manutencao@" sugere operação de campo |
-| Jonh Lucas M Soares | **engenharia** | Prestador já categorizado como "engenharia" |
-| Weldner Alves | ? | Precisa de sua definição |
+### 6. Tela de Gestão (WorkOrderDetail.tsx / Tickets.tsx)
+- Mostrar status de aceite na OS (badge: Pendente/Aceito/Recusado)
+- Para OS recusadas: botões "Reagendar" e "Reatribuir Técnico"
+- Reatribuição: ao trocar técnico, reseta `aceite_tecnico = 'pendente'`, envia cancelamento ao antigo e notificação ao novo
 
----
+### 7. Hook useSchedule
+- No reagendamento: resetar `aceite_tecnico = 'pendente'` para que o técnico precise aceitar novamente
 
-## Ações recomendadas para limpeza
+### 8. Hook useCancelOS
+- Ao cancelar: notificar técnico atual do cancelamento
 
-1. **Remover registro órfão** — deletar user_role sem profile (b18c5e50...)
-2. **Decidir sobre contas de teste** — remover ou manter "ze faisca" e "zezinho das couves"
-3. **Remover prestador duplicado** — deletar o registro duplicado de "ze faisca" em prestadores
-4. **Remover admin de prestadores** — Eugenio Garcia não deveria estar na tabela prestadores como técnico
-5. **Definir role do Weldner** — engenharia ou supervisão?
-6. **Confirmar mapeamento** — Edson → supervisao, Jonh Lucas → engenharia
-
-Preciso que você confirme:
-- Weldner Alves deve ser **engenharia** ou **supervisão**?
-- Remover as contas de teste (ze faisca, zezinho das couves)?
-- Confirma Edson → supervisão e Jonh Lucas → engenharia?
+### Arquivos impactados
+- `supabase/migrations/` — nova migration (3 colunas em ordens_servico)
+- `supabase/functions/gerar-ordem-servico/index.ts` — priorizar data_servico
+- `src/pages/MinhasOS.tsx` — botões aceitar/recusar
+- `src/pages/WorkOrderDetail.tsx` — badge de aceite, ações de reatribuição
+- `src/pages/Tickets.tsx` — exibir status aceite
+- `src/hooks/useSchedule.tsx` — resetar aceite no reagendamento
+- `src/hooks/useCancelOS.tsx` — notificação de cancelamento
+- Novo: `src/components/RecusaOSDialog.tsx` — modal de recusa com motivo
+- Novo: `src/hooks/useAceiteOS.tsx` — lógica de aceite/recusa
 
