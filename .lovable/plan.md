@@ -1,37 +1,57 @@
 
 
-# Corrigir cancelamento definitivo: email + atualização no app do técnico
+# Revisao geral: alinhar tickets e todos os perfis com o fluxo atual
 
 ## Problemas identificados
 
-### Problema 1: Email nunca chega ao técnico na exclusão da OS
-Em `WorkOrders.tsx` → `handleDeleteOS`:
-- A OS é **deletada primeiro** (linha 263), depois tenta enviar email (linha 293)
-- A edge function `send-calendar-invite` busca a OS por ID — que já foi deletada. Resultado: erro "OS não encontrada"
-- Além disso, a condição `if (osData.calendar_invite_sent_at)` ainda existe, bloqueando o envio quando nunca houve convite prévio
+### 1. Tickets.tsx — Formulario com campo duplicado
+- `endereco_servico` aparece duas vezes (linhas 957-969 e 1024-1036)
 
-### Problema 2: Edge function exige data/hora mesmo para cancelamento
-Em `send-calendar-invite` (linha 71-74), a validação `if (!os.data_programada || !os.hora_inicio || !os.hora_fim)` bloqueia a action `cancel` quando a OS não tem horário definido.
+### 2. Tickets.tsx — Sem indicador de aceite/recusa da OS vinculada
+- Cards de tickets com status `ordem_servico_gerada` nao mostram se a OS foi aceita, recusada ou esta pendente de aceite
+- Quando ticket voltou para `aprovado` apos recusa de OS, nao ha indicacao visual
 
-### Problema 3: App do técnico não atualiza
-A tela `MinhasOS.tsx` usa realtime, mas se a OS foi deletada do banco, ela desaparece da query. O problema pode ser que o realtime não está capturando DELETEs, ou que a recarga não acontece.
+### 3. Tickets.tsx — Botao Editar aparece em estados onde nao deveria
+- Ticket em `em_execucao` e `concluido` ainda permite editar (linhas 1517, 1577), o que pode causar inconsistencias com OS ativa
 
-## Plano de correção
+### 4. TechnicianDashboard — Sem dados de aceite/recusa
+- Stats nao contam OS aguardando aceite vs recusadas (linha 71: conta tudo como `pendentes`)
+- Cards de OS nao mostram badge de aceite/recusa
+- Botao "Ver Agenda" (linha 261) aponta para `/agenda` que e bloqueada para tecnicos
 
-### 1. `src/pages/WorkOrders.tsx` — Enviar email ANTES de deletar
-- Mover o bloco de envio de email para **antes** do `delete`
-- Remover a condição `if (osData.calendar_invite_sent_at)` — enviar sempre que houver técnico
+### 5. DashboardStats (gestao) — Sem metricas de recusa
+- RPC `get_dashboard_stats()` nao retorna contagem de OS recusadas
+- Nao ha card "OS Recusadas" no dashboard
 
-### 2. `supabase/functions/send-calendar-invite/index.ts` — Permitir cancel sem data/hora
-- Na action `cancel`, pular a validação de `data_programada`/`hora_inicio`/`hora_fim`
-- Quando esses campos são null no cancel, gerar o email sem anexo .ics (apenas notificação HTML) ou usar dados placeholder no .ics
+## Plano de correcao
 
-### 3. `src/pages/MinhasOS.tsx` — Garantir atualização
-- Verificar se o realtime listener captura eventos DELETE e força refetch
-- Se necessário, adicionar listener específico para `ordens_servico` DELETE events
+### A. `src/pages/Tickets.tsx`
+1. Remover campo `endereco_servico` duplicado (linhas 1024-1036)
+2. Adicionar badge de aceite da OS vinculada nos cards de tickets com status `ordem_servico_gerada`:
+   - Buscar `aceite_tecnico` na query de tickets (ja vem via `ordens_servico`)
+   - Expandir select para incluir `aceite_tecnico, motivo_recusa` de `ordens_servico`
+   - Mostrar badge: "Aguardando Aceite" (amarelo), "Aceita" (verde), "Recusada" (vermelho)
+   - Se recusada, mostrar motivo truncado
+3. Quando ticket esta em `aprovado` e possui OS recusada vinculada, mostrar alerta "Retornou apos recusa"
+4. Remover botao "Editar" para tickets em status `em_execucao` e `concluido`
+
+### B. `src/components/TechnicianDashboard.tsx`
+1. Separar stats: `aguardandoAceite` (aceite_tecnico = 'pendente'), `recusadas` (aceite_tecnico = 'recusado')
+2. Adicionar badge de aceite nos cards de OS ativas
+3. Substituir botao "Ver Agenda" por "Ver Rota" (aponta para `/routes` que ja funciona para tecnicos)
+
+### C. `src/components/DashboardStats.tsx` + SQL Migration
+1. Atualizar RPC `get_dashboard_stats()` para incluir `os_recusadas`:
+   ```sql
+   SELECT COUNT(*) INTO v_os_recusadas
+   FROM public.ordens_servico
+   WHERE aceite_tecnico = 'recusado';
+   ```
+2. Adicionar card "OS Recusadas" no DashboardStats com icone XCircle e cor vermelha
 
 ## Arquivos impactados
-- `src/pages/WorkOrders.tsx` — reordenar email antes do delete, remover condição
-- `supabase/functions/send-calendar-invite/index.ts` — skip validação data/hora no cancel
-- `src/pages/MinhasOS.tsx` — verificar/ajustar realtime para DELETEs
+- `src/pages/Tickets.tsx`
+- `src/components/TechnicianDashboard.tsx`
+- `src/components/DashboardStats.tsx`
+- Migration SQL para `get_dashboard_stats()`
 
