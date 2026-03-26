@@ -1,31 +1,42 @@
 
+# Corrigir: RLS bloqueando aceite/recusa do técnico
 
-# Layout diferenciado para OS recusada no card
+## Problema raiz
+A recusa/aceite do técnico falha silenciosamente porque a tabela `ordens_servico` só tem policy de update para `is_staff()`. Técnicos não conseguem atualizar nenhum campo, incluindo `aceite_tecnico`, `aceite_at` e `motivo_recusa`.
 
-## Problema
-O card da OS recusada mantém o mesmo visual de um card pendente normal. Falta diferenciação visual clara no card inteiro para refletir que o técnico já recusou e está aguardando gestão.
+O toast "OS recusada" aparece porque o `useAceiteOS` não verifica se rows foram realmente afetadas — o Supabase retorna sucesso com 0 rows atualizadas quando RLS bloqueia.
 
-## Mudanças em `src/pages/MinhasOS.tsx`
+## Solução
 
-### 1. Estilo do Card diferenciado
-Quando `aceite_tecnico === 'recusado'`, o `<Card>` terá:
-- Borda amarela/âmbar (`border-amber-300`)
-- Fundo levemente amarelado (`bg-amber-50/50`)
-- Opacity reduzida nos botões de ação para indicar que não há ação disponível
+### 1. Database Migration — RLS policy para técnicos
+Criar policy permitindo técnicos atualizarem apenas suas próprias OS:
 
-### 2. Header do card
-- Ocultar badges de prioridade e status genérico ("Pendente"), substituindo por badge grande "Aguardando Resposta da Gestão" com ícone Hourglass
-- Manter número da OS e ticket
+```sql
+CREATE POLICY "Technicians can update aceite on their own OS"
+ON public.ordens_servico
+FOR UPDATE
+TO authenticated
+USING (
+  EXISTS (
+    SELECT 1 FROM tecnicos t
+    JOIN profiles p ON p.id = t.profile_id
+    WHERE t.id = ordens_servico.tecnico_id
+    AND p.user_id = auth.uid()
+  )
+)
+WITH CHECK (
+  EXISTS (
+    SELECT 1 FROM tecnicos t
+    JOIN profiles p ON p.id = t.profile_id
+    WHERE t.id = ordens_servico.tecnico_id
+    AND p.user_id = auth.uid()
+  )
+);
+```
 
-### 3. Alert de recusa mais proeminente
-- Mover o Alert de recusa para o topo do CardContent (antes das informações de data)
-- Usar cor âmbar em vez de muted para maior destaque
-- Exibir motivo da recusa com destaque
+### 2. Corrigir `useAceiteOS` — verificar rows afetadas
+Após o `.update()`, verificar se `data` retornou rows (ou usar `.select()` encadeado) para detectar quando RLS bloqueou silenciosamente.
 
-### 4. Ocultar botões desnecessários
-- Remover completamente botões "Aceitar", "Recusar" e "Iniciar Execução" (já está feito)
-- Manter apenas "Ligar", "Mapa" e "Ver OS em PDF"
-
-### Arquivo impactado
-- `src/pages/MinhasOS.tsx` — condicional no className do Card e reorganização do conteúdo para estado recusado
-
+## Arquivos impactados
+- Nova migration SQL (via ferramenta)
+- `src/hooks/useAceiteOS.tsx` — verificação de sucesso real
