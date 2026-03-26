@@ -170,7 +170,21 @@ const Prestadores = () => {
 
   const handleEdit = (prestador: any) => {
     setEditingPrestador(prestador);
-    form.reset(prestador);
+    form.reset({
+      nome: prestador.nome || "",
+      email: prestador.email || "",
+      telefone: prestador.telefone || "",
+      cpf: prestador.cpf || "",
+      endereco: prestador.endereco || "",
+      cidade: prestador.cidade || "",
+      estado: prestador.estado || "",
+      cep: prestador.cep || "",
+      categoria: prestador.categoria || "",
+      especialidades: prestador.especialidades || [],
+      certificacoes: prestador.certificacoes || [],
+      experiencia: prestador.experiencia || "",
+      data_admissao: prestador.data_admissao || "",
+    });
     setIsDialogOpen(true);
   };
 
