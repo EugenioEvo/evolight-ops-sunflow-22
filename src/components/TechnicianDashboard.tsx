@@ -68,13 +68,15 @@ const TechnicianDashboard = () => {
         const hoje = new Date().toISOString().split('T')[0];
         
         setStats({
-          pendentes: osData.filter(os => os.tickets.status === 'ordem_servico_gerada').length,
+          pendentes: osData.filter(os => os.tickets.status === 'ordem_servico_gerada' && os.aceite_tecnico === 'pendente').length,
           emExecucao: osData.filter(os => os.tickets.status === 'em_execucao').length,
           concluidasHoje: osData.filter(os => 
             os.tickets.status === 'concluido' && 
             os.tickets.data_conclusao?.startsWith(hoje)
           ).length,
           totalConcluidas: osData.filter(os => os.tickets.status === 'concluido').length,
+          aguardandoAceite: osData.filter(os => os.aceite_tecnico === 'pendente' && os.tickets.status === 'ordem_servico_gerada').length,
+          recusadas: osData.filter(os => os.aceite_tecnico === 'recusado').length,
         });
 
         // OS recentes (não concluídas)
