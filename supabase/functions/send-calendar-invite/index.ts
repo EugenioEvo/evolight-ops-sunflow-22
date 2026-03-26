@@ -120,6 +120,7 @@ const handler = async (req: Request): Promise<Response> => {
     
     const method = action === "cancel" ? "CANCEL" : "REQUEST";
     const status = action === "cancel" ? "CANCELLED" : "CONFIRMED";
+    const isRejectionReschedule = action === "rejection_reschedule";
 
     // Gerar arquivo .ics
     const icsContent = [
