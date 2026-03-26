@@ -249,6 +249,7 @@ const Prestadores = () => {
 
   const getCategoriaColor = (categoria: string) => {
     switch (categoria) {
+      case "admin": return "bg-purple-100 text-purple-800";
       case "engenharia": return "bg-blue-100 text-blue-800";
       case "supervisao": return "bg-orange-100 text-orange-800";
       case "tecnico": return "bg-green-100 text-green-800";
