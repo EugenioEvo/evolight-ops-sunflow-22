@@ -211,8 +211,9 @@ const WorkOrders = () => {
         !["concluido", "cancelado"].includes(os.tickets.status);
     }).length;
     const concluidas = workOrders.filter((os) => os.tickets.status === "concluido").length;
+    const recusadas = workOrders.filter((os) => os.aceite_tecnico === "recusado").length;
 
-    return { total, abertas, emExecucao, atrasadas, concluidas };
+    return { total, abertas, emExecucao, atrasadas, concluidas, recusadas };
   }, [workOrders]);
 
   const getOSStatus = (os: WorkOrder) => {
