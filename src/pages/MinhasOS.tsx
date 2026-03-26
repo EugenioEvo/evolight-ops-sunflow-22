@@ -324,7 +324,7 @@ const MinhasOS = () => {
     const recusado = aceite === 'recusado';
 
     return (
-      <Card key={os.id} className="hover:shadow-lg transition-shadow">
+      <Card key={os.id} className={`hover:shadow-lg transition-shadow ${recusado && isPendente ? 'border-amber-300 bg-amber-50/50' : ''}`}>
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between gap-2">
             <div className="space-y-1 min-w-0 flex-1">
@@ -348,24 +348,38 @@ const MinhasOS = () => {
                   </Badge>
                 )}
                 {recusado && isPendente && (
-                  <Badge className="text-xs bg-muted text-muted-foreground border-border">
-                    <Clock className="h-3 w-3 mr-1" />
-                    Aguardando Gestão
+                  <Badge className="text-xs bg-amber-100 text-amber-800 border-amber-300">
+                    <Hourglass className="h-3 w-3 mr-1" />
+                    Aguardando Resposta da Gestão
                   </Badge>
                 )}
               </div>
             </div>
-            <div className="flex flex-col gap-1 items-end flex-shrink-0">
-              <Badge variant={getPrioridadeColor(os.tickets.prioridade)} className="text-xs">
-                {os.tickets.prioridade}
-              </Badge>
-              <Badge variant={statusBadge.variant as any} className="text-xs">
-                {statusBadge.label}
-              </Badge>
-            </div>
+            {!(recusado && isPendente) && (
+              <div className="flex flex-col gap-1 items-end flex-shrink-0">
+                <Badge variant={getPrioridadeColor(os.tickets.prioridade)} className="text-xs">
+                  {os.tickets.prioridade}
+                </Badge>
+                <Badge variant={statusBadge.variant as any} className="text-xs">
+                  {statusBadge.label}
+                </Badge>
+              </div>
+            )}
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Alert de recusa no topo do conteúdo */}
+          {recusado && isPendente && (
+            <Alert className="border-amber-300 bg-amber-100/60">
+              <Hourglass className="h-4 w-4 text-amber-700" />
+              <AlertDescription className="text-amber-900 text-xs space-y-1">
+                <p className="font-semibold text-sm">OS Recusada — Aguardando Resposta da Gestão</p>
+                {(os as any).motivo_recusa && (
+                  <p className="italic">Motivo: {(os as any).motivo_recusa}</p>
+                )}
+              </AlertDescription>
+            </Alert>
+          )}
           <div>
             <h4 className="font-medium text-sm mb-2">{os.tickets.titulo}</h4>
             <div className="space-y-2 text-sm text-muted-foreground">
@@ -468,18 +482,8 @@ const MinhasOS = () => {
             </div>
           )}
 
-          {/* Recusado — Aguardando Resposta da Gestão */}
-          {recusado && isPendente && (
-            <Alert className="border-muted bg-muted/50">
-              <Hourglass className="h-4 w-4 text-muted-foreground" />
-              <AlertDescription className="text-muted-foreground text-xs space-y-1">
-                <p className="font-medium text-sm text-foreground">Aguardando Resposta da Gestão</p>
-                {(os as any).motivo_recusa && (
-                  <p>Motivo da recusa: {(os as any).motivo_recusa}</p>
-                )}
-              </AlertDescription>
-            </Alert>
-          )}
+
+
 
           {/* Botões de Ação Principal (só aparecem se aceito ou se não é técnico) */}
           <div className="space-y-2">
