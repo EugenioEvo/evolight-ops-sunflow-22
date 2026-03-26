@@ -348,8 +348,9 @@ const MinhasOS = () => {
                   </Badge>
                 )}
                 {recusado && isPendente && (
-                  <Badge variant="destructive" className="text-xs">
-                    Recusada
+                  <Badge className="text-xs bg-muted text-muted-foreground border-border">
+                    <Clock className="h-3 w-3 mr-1" />
+                    Aguardando Gestão
                   </Badge>
                 )}
               </div>
