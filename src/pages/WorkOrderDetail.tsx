@@ -313,6 +313,14 @@ const WorkOrderDetail = () => {
               >
                 {statusTimeline.find(s => s.key === currentStatus)?.label || currentStatus}
               </Badge>
+              {/* Aceite badge */}
+              {(() => {
+                const aceite = (workOrder as any).aceite_tecnico;
+                if (aceite === 'aceito') return <Badge className="bg-green-100 text-green-800 border-green-200">Aceita pelo Técnico</Badge>;
+                if (aceite === 'recusado') return <Badge variant="destructive">Recusada pelo Técnico</Badge>;
+                if (aceite === 'pendente' && currentStatus === 'aberta') return <Badge className="bg-amber-100 text-amber-800 border-amber-200">Aguardando Aceite</Badge>;
+                return null;
+              })()}
             </div>
             <p className="text-muted-foreground">{workOrder.tickets.titulo}</p>
           </div>
