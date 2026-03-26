@@ -48,6 +48,7 @@ const DashboardStats = () => {
           osGeradas: statsData.os_geradas || 0,
           emExecucao: statsData.em_execucao || 0,
           concluidos: statsData.concluidos || 0,
+          osRecusadas: statsData.os_recusadas || 0,
         });
       }
     } catch (error) {
