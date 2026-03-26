@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Plus, Search, Mail, Phone, MapPin, Edit, Trash2, GraduationCap, Eye, Wrench, CheckCircle, XCircle, Clock } from "lucide-react";
+import { Users, Plus, Search, Mail, Phone, MapPin, Edit, Trash2, GraduationCap, Eye, Wrench, CheckCircle, XCircle, Clock, ShieldAlert } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -259,6 +259,7 @@ const Prestadores = () => {
 
   const getCategoriaIcon = (categoria: string) => {
     switch (categoria) {
+      case "admin": return ShieldAlert;
       case "engenharia": return GraduationCap;
       case "supervisao": return Eye;
       case "tecnico": return Wrench;
@@ -283,6 +284,7 @@ const Prestadores = () => {
   const categoryCounts = {
     todos: activePrestadores.length,
     pendentes: pendingPrestadores.length,
+    admin: activePrestadores.filter(p => p.categoria === "admin").length,
     engenharia: activePrestadores.filter(p => p.categoria === "engenharia").length,
     supervisao: activePrestadores.filter(p => p.categoria === "supervisao").length,
     tecnico: activePrestadores.filter(p => p.categoria === "tecnico").length,
@@ -635,7 +637,7 @@ const Prestadores = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="pendentes" className="relative">
             Pendentes ({categoryCounts.pendentes})
             {categoryCounts.pendentes > 0 && (
@@ -644,6 +646,9 @@ const Prestadores = () => {
           </TabsTrigger>
           <TabsTrigger value="todos">
             Todos ({categoryCounts.todos})
+          </TabsTrigger>
+          <TabsTrigger value="admin">
+            Admin ({categoryCounts.admin})
           </TabsTrigger>
           <TabsTrigger value="engenharia">
             Engenharia ({categoryCounts.engenharia})
