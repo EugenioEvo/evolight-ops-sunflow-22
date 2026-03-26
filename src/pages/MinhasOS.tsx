@@ -42,6 +42,9 @@ interface OrdemServico {
   servico_solicitado?: string;
   inspetor_responsavel?: string;
   tipo_trabalho?: string[];
+  aceite_tecnico?: string;
+  aceite_at?: string;
+  motivo_recusa?: string;
   tickets: {
     id: string;
     numero_ticket: string;
