@@ -129,22 +129,22 @@ const TechnicianDashboard = () => {
       )}
 
       {/* Cards de Estatísticas */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">OS Pendentes</CardTitle>
-            <ClipboardList className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Aguardando Aceite</CardTitle>
+            <ClipboardList className="h-4 w-4 text-yellow-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.pendentes}</div>
-            <p className="text-xs text-muted-foreground">Aguardando início</p>
+            <div className="text-2xl font-bold">{stats.aguardandoAceite}</div>
+            <p className="text-xs text-muted-foreground">Necessitam sua confirmação</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Em Execução</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
+            <Clock className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.emExecucao}</div>
@@ -155,11 +155,22 @@ const TechnicianDashboard = () => {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Concluídas Hoje</CardTitle>
-            <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+            <CheckCircle2 className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.concluidasHoje}</div>
             <p className="text-xs text-muted-foreground">Trabalhos finalizados</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">OS Recusadas</CardTitle>
+            <AlertCircle className="h-4 w-4 text-red-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.recusadas}</div>
+            <p className="text-xs text-muted-foreground">Recusadas por você</p>
           </CardContent>
         </Card>
 
