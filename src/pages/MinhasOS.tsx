@@ -318,6 +318,10 @@ const MinhasOS = () => {
     const isPendente = os.tickets.status === 'ordem_servico_gerada';
     const emExecucao = os.tickets.status === 'em_execucao';
     const concluido = os.tickets.status === 'concluido';
+    const aceite = (os as any).aceite_tecnico || 'pendente';
+    const aguardandoAceite = isPendente && aceite === 'pendente';
+    const aceito = aceite === 'aceito';
+    const recusado = aceite === 'recusado';
 
     return (
       <Card key={os.id} className="hover:shadow-lg transition-shadow">
