@@ -423,6 +423,22 @@ const WorkOrders = () => {
           </CardContent>
         </Card>
 
+        {stats.recusadas > 0 && (
+          <Card className="cursor-pointer hover:shadow-md transition-shadow border-red-400/50" onClick={() => setAceiteFilter("recusado")}>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-red-500/10">
+                  <XCircle className="h-5 w-5 text-red-500" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-red-600">{stats.recusadas}</p>
+                  <p className="text-xs text-muted-foreground">Recusadas</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setStatusFilter("concluida")}>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
