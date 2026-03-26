@@ -70,7 +70,7 @@ export const useAceiteOS = () => {
           aceite_tecnico: 'recusado',
           aceite_at: new Date().toISOString(),
           motivo_recusa: motivo,
-        })
+        } as any)
         .eq('id', osId);
 
       if (error) throw error;
