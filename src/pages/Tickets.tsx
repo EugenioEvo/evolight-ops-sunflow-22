@@ -1740,6 +1740,19 @@ const Tickets = () => {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Multi-Technician OS Dialog */}
+      <MultiTechnicianOSDialog
+        open={!!multiOSDialogTicket}
+        onOpenChange={(open) => { if (!open) setMultiOSDialogTicket(null); }}
+        ticketId={multiOSDialogTicket?.id || ''}
+        ticket={multiOSDialogTicket}
+        prestadores={prestadores.filter((p: any) => p.email && p.email.trim() !== '')}
+        onSuccess={() => {
+          setActiveTab('ordem_servico_gerada');
+          loadData();
+        }}
+      />
     </div>
   );
 };
