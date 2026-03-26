@@ -482,18 +482,8 @@ const MinhasOS = () => {
             </div>
           )}
 
-          {/* Recusado — Aguardando Resposta da Gestão */}
-          {recusado && isPendente && (
-            <Alert className="border-muted bg-muted/50">
-              <Hourglass className="h-4 w-4 text-muted-foreground" />
-              <AlertDescription className="text-muted-foreground text-xs space-y-1">
-                <p className="font-medium text-sm text-foreground">Aguardando Resposta da Gestão</p>
-                {(os as any).motivo_recusa && (
-                  <p>Motivo da recusa: {(os as any).motivo_recusa}</p>
-                )}
-              </AlertDescription>
-            </Alert>
-          )}
+
+
 
           {/* Botões de Ação Principal (só aparecem se aceito ou se não é técnico) */}
           <div className="space-y-2">
