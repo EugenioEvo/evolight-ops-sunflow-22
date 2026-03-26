@@ -1,51 +1,47 @@
 
 
-# Corrigir visibilidade da aba "Ordens de Serviço" para staff
+# Sugestoes e detalhes adicionais para o plano de multi-tecnico e conflito
 
-## Causa raiz
+## Pontos que o plano atual ja cobre bem
+- Troca de tecnico com notificacoes (email + in-app)
+- Multi-selecao de tecnicos gerando N OS
+- Bloqueio por conflito via `check_schedule_conflict` RPC
 
-Em `useAuth.tsx`, `setLoading(false)` é chamado **antes** de `fetchProfile` terminar (pois `fetchProfile` é async mas não é aguardado). Isso causa:
+## Detalhes esquecidos / Sugestoes
 
-1. `loading = false` com `profile = null`
-2. `ProtectedRoute` renderiza o layout antes do perfil carregar
-3. `AppSidebar` calcula `isAdminOrAreaTecnica = false` (profile é null)
-4. A página `WorkOrders` calcula `canManageOS = false`
-5. Quando o profile finalmente carrega, o state atualiza — mas em conexões lentas ou com muitas retentativas, a UI pode ficar dessincronizada
+### 1. Edge function `gerar-ordem-servico` bloqueia multiplas OS (linha 44)
+A edge function atual faz `maybeSingle()` e retorna a OS existente se ja houver uma para o ticket. Para multi-tecnico funcionar, essa checagem precisa ser removida ou ajustada para verificar por `tecnico_id` especifico, nao apenas por `ticket_id`. **Ja esta no plano, mas e critico.**
 
-## Correção
+### 2. Validacao de status `aprovado` na edge function (linha 139)
+Ao gerar a 2a OS para o mesmo ticket, o status ja sera `ordem_servico_gerada` (setado na 1a chamada, linha 277). A edge function precisa aceitar tanto `aprovado` quanto `ordem_servico_gerada` quando `tecnico_override_id` for fornecido, senao a 2a OS falhara.
 
-### 1. `src/hooks/useAuth.tsx` — Aguardar `fetchProfile` antes de liberar loading
+### 3. Pagina WorkOrders.tsx — visualizacao de multiplas OS por ticket
+Hoje o layout mostra OS agrupadas por ticket implicitamente. Com multiplas OS por ticket, seria bom agrupar visualmente ou ao menos mostrar um indicador "1 de 3 OS para este ticket".
 
-Alterar para que `setLoading(false)` só seja chamado **depois** que `fetchProfile` terminar:
+### 4. WorkOrderDetail.tsx — Troca de tecnico diretamente da OS
+Alem de trocar pelo Tickets.tsx, faz sentido permitir trocar tecnico diretamente na pagina de detalhe da OS (WorkOrderDetail), ja que o gestor pode estar visualizando a OS quando decide trocar.
 
-```typescript
-// onAuthStateChange
-if (session?.user) {
-  await fetchProfile(session.user.id);
-}
-setLoading(false);
+### 5. Historico de atribuicoes
+Quando um tecnico e trocado, registrar no `audit_logs` ou criar um campo `historico_tecnicos` na OS para rastreabilidade. O trigger `audit_trigger` ja existe, entao isso ja pode ser coberto automaticamente se estiver ativo na tabela `ordens_servico`.
 
-// getSession
-if (session?.user) {
-  await fetchProfile(session.user.id);
-}
-setLoading(false);
-```
+### 6. MinhasOS.tsx — Tecnico ver que foi desatribuido
+Se o tecnico esta na tela MinhasOS e a OS e reatribuida, o realtime precisa capturar o UPDATE e remover a OS da lista. Verificar se o listener atual faz refetch completo ou apenas append.
 
-O `onAuthStateChange` precisa de cuidado especial pois o callback não pode ser async diretamente — usar `.then()` encadeado.
+### 7. Notificacao ao tecnico antigo — conteudo do email
+No cancelamento por troca, o email deveria dizer "Voce foi reatribuido" e nao "OS cancelada", para evitar confusao. Pode precisar de um novo action type `reassign_removed` no `send-calendar-invite`.
 
-### 2. `src/components/ProtectedRoute.tsx` — Aguardar profile para roles
+### 8. GerarOSDialog.tsx — Substituir por MultiTechnicianOSDialog
+O dialog atual (`GerarOSDialog`) e usado em Tickets.tsx. Para multi-tecnico, substituir ou estender para incluir selecao de multiplos tecnicos com checkboxes + indicador de disponibilidade.
 
-Quando `profile` ainda é `null` mas `user` existe e `loading` é `false`, mostrar loading em vez de redirecionar:
+## Resumo de ajustes ao plano aprovado
 
-```typescript
-if (!profile && user) {
-  // Profile ainda carregando
-  return <LoadingSpinner />;
-}
-```
+| Item | Impacto | Prioridade |
+|------|---------|------------|
+| Ajustar validacao de status na edge function (aceitar `ordem_servico_gerada`) | Bloqueante para multi-OS | Alta |
+| Novo action `reassign_removed` no email | Clareza para tecnico | Media |
+| Agrupar OS por ticket no WorkOrders | UX | Media |
+| Troca de tecnico direto do WorkOrderDetail | Conveniencia | Baixa |
+| Verificar realtime em MinhasOS para reatribuicao | Consistencia | Alta |
 
-## Arquivos impactados
-- `src/hooks/useAuth.tsx`
-- `src/components/ProtectedRoute.tsx`
+Se concordar, posso seguir com a implementacao incluindo esses ajustes.
 
