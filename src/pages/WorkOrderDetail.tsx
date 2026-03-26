@@ -393,6 +393,17 @@ const WorkOrderDetail = () => {
       </Card>
 
       {/* Alerta de RME */}
+      {/* Alerta de OS Recusada */}
+      {(workOrder as any).aceite_tecnico === 'recusado' && (
+        <Alert variant="destructive">
+          <XCircle className="h-4 w-4" />
+          <AlertTitle>OS Recusada pelo Técnico</AlertTitle>
+          <AlertDescription>
+            Motivo: {(workOrder as any).motivo_recusa || 'Não informado'}. Você pode reagendar ou reatribuir esta OS a outro técnico.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {currentStatus === "em_execucao" && !isRMECompleted && (
         <Alert>
           <AlertTriangle className="h-4 w-4" />
