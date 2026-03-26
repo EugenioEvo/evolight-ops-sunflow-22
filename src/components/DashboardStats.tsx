@@ -102,6 +102,13 @@ const DashboardStats = () => {
       iconColor: "text-secondary"
     },
     {
+      title: "OS Recusadas",
+      value: stats.osRecusadas,
+      icon: XCircle,
+      className: "bg-gradient-to-br from-rose-50 to-rose-100 border-rose-200",
+      iconColor: "text-destructive"
+    },
+    {
       title: "Total Concluídos",
       value: stats.concluidos,
       icon: ClipboardCheck,
