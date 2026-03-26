@@ -196,7 +196,7 @@ const WorkOrders = () => {
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, statusFilter, clienteFilter, ufvSolarzFilter, dateRange]);
+  }, [searchTerm, statusFilter, aceiteFilter, clienteFilter, ufvSolarzFilter, dateRange]);
 
   // Dashboard stats
   const stats = useMemo(() => {
