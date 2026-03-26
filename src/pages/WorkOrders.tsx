@@ -582,20 +582,42 @@ const WorkOrders = () => {
               <Card
                 key={os.id}
                 className={`cursor-pointer hover:shadow-lg transition-all hover:-translate-y-0.5 ${
-                  isAtrasada ? "border-destructive/50" : ""
+                  os.aceite_tecnico === "recusado"
+                    ? "border-red-400 bg-red-50/30 dark:bg-red-950/10"
+                    : isAtrasada
+                    ? "border-destructive/50"
+                    : ""
                 }`}
                 onClick={() => navigate(`/work-orders/${os.id}`)}
               >
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between gap-2">
                     <div className="space-y-1 min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <CardTitle className="text-base font-semibold truncate">
                           {os.numero_os}
                         </CardTitle>
                         {isAtrasada && (
                           <Badge variant="destructive" className="text-[10px] px-1.5">
                             ATRASADA
+                          </Badge>
+                        )}
+                        {os.aceite_tecnico === "recusado" && (
+                          <Badge className="bg-red-100 text-red-700 border-red-300 text-[10px] px-1.5">
+                            <XCircle className="h-3 w-3 mr-0.5" />
+                            RECUSADA
+                          </Badge>
+                        )}
+                        {os.aceite_tecnico === "pendente" && status === "aberta" && (
+                          <Badge className="bg-amber-100 text-amber-700 border-amber-300 text-[10px] px-1.5">
+                            <Clock className="h-3 w-3 mr-0.5" />
+                            AGUARDANDO
+                          </Badge>
+                        )}
+                        {os.aceite_tecnico === "aceito" && (
+                          <Badge className="bg-green-100 text-green-700 border-green-300 text-[10px] px-1.5">
+                            <CheckCircle2 className="h-3 w-3 mr-0.5" />
+                            ACEITA
                           </Badge>
                         )}
                       </div>
