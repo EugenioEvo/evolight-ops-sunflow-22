@@ -665,9 +665,16 @@ const MinhasOS = () => {
             <TabsTrigger value="pendentes" className="relative">
               Pendentes
               {pendentes.length > 0 && (
-                <Badge className="ml-2 h-5 w-5 rounded-full p-0 flex items-center justify-center">
-                  {pendentes.length}
-                </Badge>
+                <span className="ml-2 inline-flex items-center gap-1">
+                  <Badge className="h-5 w-5 rounded-full p-0 flex items-center justify-center">
+                    {pendentes.length}
+                  </Badge>
+                  {aguardandoGestaoCount > 0 && (
+                    <Badge variant="outline" className="h-5 rounded-full px-1.5 text-[10px] bg-muted text-muted-foreground">
+                      {aguardandoGestaoCount} gestão
+                    </Badge>
+                  )}
+                </span>
               )}
             </TabsTrigger>
             <TabsTrigger value="execucao" className="relative">
