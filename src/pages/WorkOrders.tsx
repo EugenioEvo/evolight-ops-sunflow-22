@@ -259,6 +259,18 @@ const WorkOrders = () => {
         return;
       }
 
+      // Enviar email de cancelamento ao técnico ANTES de deletar (a edge function precisa da OS no banco)
+      const tecnicoUserId = (osData.tecnicos as any)?.profile?.user_id;
+      if (tecnicoUserId) {
+        try {
+          await supabase.functions.invoke("send-calendar-invite", {
+            body: { os_id: osId, action: "cancel" },
+          });
+        } catch (emailError) {
+          console.error("Erro ao enviar email de cancelamento:", emailError);
+        }
+      }
+
       // Excluir OS
       const { error: osError } = await supabase
         .from("ordens_servico")
@@ -276,7 +288,6 @@ const WorkOrders = () => {
       if (ticketError) throw ticketError;
 
       // Notificar técnico (in-app) se houver técnico atribuído
-      const tecnicoUserId = (osData.tecnicos as any)?.profile?.user_id;
       if (tecnicoUserId) {
         await supabase.from("notificacoes").insert({
           user_id: tecnicoUserId,
@@ -285,17 +296,6 @@ const WorkOrders = () => {
           mensagem: `A OS ${osData.numero_os} (${osData.tickets?.titulo || ""}) foi cancelada pelo administrador.`,
           link: "/minhas-os",
         });
-      }
-
-      // Enviar email de cancelamento ao técnico se tinha convite enviado
-      if (osData.calendar_invite_sent_at) {
-        try {
-          await supabase.functions.invoke("send-calendar-invite", {
-            body: { os_id: osId, action: "cancel" },
-          });
-        } catch (emailError) {
-          console.error("Erro ao enviar email de cancelamento:", emailError);
-        }
       }
 
       toast({

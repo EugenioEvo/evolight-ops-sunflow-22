@@ -68,7 +68,8 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("OS não encontrada");
     }
 
-    if (!os.data_programada || !os.hora_inicio || !os.hora_fim) {
+    // Para cancelamento, permitir OS sem data/hora programada
+    if (action !== "cancel" && (!os.data_programada || !os.hora_inicio || !os.hora_fim)) {
       console.error("[send-calendar-invite] OS sem data/hora programada");
       throw new Error("OS sem data/hora programada");
     }
