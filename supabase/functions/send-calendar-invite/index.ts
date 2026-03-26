@@ -183,6 +183,8 @@ const handler = async (req: Request): Promise<Response> => {
 
     const emailSubject = action === "cancel"
       ? `Cancelamento: ${os.numero_os} - ${clienteNome}`
+      : isReassignRemoved
+      ? `Reatribuição: ${os.numero_os} - ${clienteNome} — Você foi desatribuído`
       : isRejectionReschedule
       ? `Reagendamento: ${os.numero_os} - ${clienteNome} — Nova atribuição após recusa`
       : `Agendamento: ${os.numero_os} - ${clienteNome} - ${dataFormatada} ${horaFormatada}`;
