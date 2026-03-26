@@ -1,33 +1,26 @@
 
 
-# Implementar fluxo de recusa na tela Ordens de Serviço (gestão)
+# Alinhar emails com o fluxo de aceite/recusa
 
-## Contexto
-A tela `WorkOrders.tsx` lista as OS para gestores mas não mostra o status de aceite/recusa do técnico. Os gestores precisam ver quais OS foram recusadas e poder agir (reagendar/reatribuir).
+## Mudanças
 
-## Mudanças em `src/pages/WorkOrders.tsx`
+### 1. `supabase/functions/send-calendar-invite/index.ts` — nova action `rejection_reschedule`
+Adicionar suporte a `action: 'rejection_reschedule'` com template específico:
+- Subject: "Reagendamento: OS XXXX — Nova atribuição após recusa"
+- Body menciona que a OS foi revista e reagendada, pedindo novo aceite
+- Mantém convite .ics anexado normalmente
 
-### 1. Badge de aceite no card da OS
-Adicionar badge no header do card mostrando o status de aceite:
-- `recusado` → Badge destrutivo "Recusada pelo Técnico"
-- `pendente` (quando OS aberta) → Badge âmbar "Aguardando Aceite"
-- `aceito` → Badge verde "Aceita"
+### 2. `src/hooks/useCancelOS.tsx` — remover condição de envio
+Remover a condição `if (os.calendar_invite_sent_at && os.data_programada)` para que o email de cancelamento seja enviado **sempre** que a OS tiver técnico com email.
 
-### 2. Indicador visual no card recusado
-Quando `aceite_tecnico === 'recusado'`:
-- Borda vermelha/âmbar no card para destaque
-- Exibir motivo da recusa truncado abaixo das informações
+### 3. `src/hooks/useSchedule.tsx` — detectar reagendamento pós-recusa
+Antes de invocar `send-calendar-invite`, verificar se `aceite_tecnico === 'recusado'`. Se sim, usar action `rejection_reschedule` em vez de `update`/`create`.
 
-### 3. Filtro por status de aceite
-Adicionar filtro select no bloco de filtros:
-- "Todos aceites" / "Aguardando Aceite" / "Aceita" / "Recusada"
+### 4. Gap 2 — Recusa do técnico
+Mantém apenas notificação in-app (já implementado no `useAceiteOS`). Sem email para gestão.
 
-### 4. Stat card de recusadas
-Adicionar contagem de OS recusadas nos stats (ou incorporar no card "Atrasadas" como sub-indicador)
-
-### 5. Interface WorkOrder
-Adicionar `aceite_tecnico` e `motivo_recusa` à interface `WorkOrder` (já vêm do select `*`)
-
-## Arquivo impactado
-- `src/pages/WorkOrders.tsx`
+## Arquivos impactados
+- `supabase/functions/send-calendar-invite/index.ts`
+- `src/hooks/useCancelOS.tsx`
+- `src/hooks/useSchedule.tsx`
 
