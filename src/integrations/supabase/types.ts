@@ -473,6 +473,8 @@ export type Database = {
       }
       ordens_servico: {
         Row: {
+          aceite_at: string | null
+          aceite_tecnico: string
           assinatura_cliente: string | null
           assinatura_tecnico: string | null
           calendar_invite_recipients: string[] | null
@@ -489,6 +491,7 @@ export type Database = {
           hora_inicio: string | null
           id: string
           inspetor_responsavel: string | null
+          motivo_recusa: string | null
           nome_cliente_assinatura: string | null
           notes: string | null
           numero_os: string
@@ -506,6 +509,8 @@ export type Database = {
           work_type: Json | null
         }
         Insert: {
+          aceite_at?: string | null
+          aceite_tecnico?: string
           assinatura_cliente?: string | null
           assinatura_tecnico?: string | null
           calendar_invite_recipients?: string[] | null
@@ -522,6 +527,7 @@ export type Database = {
           hora_inicio?: string | null
           id?: string
           inspetor_responsavel?: string | null
+          motivo_recusa?: string | null
           nome_cliente_assinatura?: string | null
           notes?: string | null
           numero_os: string
@@ -539,6 +545,8 @@ export type Database = {
           work_type?: Json | null
         }
         Update: {
+          aceite_at?: string | null
+          aceite_tecnico?: string
           assinatura_cliente?: string | null
           assinatura_tecnico?: string | null
           calendar_invite_recipients?: string[] | null
@@ -555,6 +563,7 @@ export type Database = {
           hora_inicio?: string | null
           id?: string
           inspetor_responsavel?: string | null
+          motivo_recusa?: string | null
           nome_cliente_assinatura?: string | null
           notes?: string | null
           numero_os?: string
