@@ -423,9 +423,51 @@ const MinhasOS = () => {
             </Button>
           </div>
 
-          {/* Botões de Ação Principal */}
+          {/* Botões de Aceite (para técnicos com OS pendente de aceite) */}
+          {aguardandoAceite && isTecnico && (
+            <div className="space-y-2">
+              <Alert className="border-amber-200 bg-amber-50">
+                <AlertCircle className="h-4 w-4 text-amber-600" />
+                <AlertDescription className="text-amber-800 text-xs">
+                  Você precisa aceitar ou recusar esta OS antes de iniciar a execução.
+                </AlertDescription>
+              </Alert>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => handleAceitarOS(os)}
+                  className="flex-1"
+                  disabled={aceiteLoading}
+                >
+                  {aceiteLoading ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <ThumbsUp className="h-4 w-4 mr-2" />
+                  )}
+                  Aceitar
+                </Button>
+                <Button
+                  onClick={() => setRecusaDialogOS(os)}
+                  variant="destructive"
+                  className="flex-1"
+                  disabled={aceiteLoading}
+                >
+                  <ThumbsDown className="h-4 w-4 mr-2" />
+                  Recusar
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Recusado badge */}
+          {recusado && isPendente && (
+            <Badge variant="destructive" className="w-full justify-center py-2">
+              OS Recusada — Aguardando reagendamento
+            </Badge>
+          )}
+
+          {/* Botões de Ação Principal (só aparecem se aceito ou se não é técnico) */}
           <div className="space-y-2">
-            {isPendente && (
+            {isPendente && (aceito || !isTecnico) && !recusado && (
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -474,10 +516,10 @@ const MinhasOS = () => {
               </Button>
             )}
 
-            {isPendente && (
-              <Badge variant="outline" className="w-full justify-center py-2">
-                <ClipboardList className="h-3 w-3 mr-1" />
-                Próximo: Iniciar Execução
+            {isPendente && aceito && (
+              <Badge variant="outline" className="w-full justify-center py-2 bg-green-50 text-green-700 border-green-200">
+                <CheckCircle2 className="h-3 w-3 mr-1" />
+                Aceita — Próximo: Iniciar Execução
               </Badge>
             )}
 
