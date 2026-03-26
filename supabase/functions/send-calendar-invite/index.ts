@@ -205,6 +205,28 @@ const handler = async (req: Request): Promise<Response> => {
   </p>
 </div>
 `
+      : isRejectionReschedule
+      ? `
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+  <h2 style="color: #d97706;">Ordem de Serviço Reagendada após Recusa</h2>
+  <div style="background: #fffbeb; padding: 16px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #d97706;">
+    <p style="margin: 0; color: #92400e;">Esta OS foi revista e reagendada pela gestão. É necessário um novo aceite da sua parte.</p>
+  </div>
+  <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+    <p><strong>OS:</strong> ${os.numero_os}</p>
+    <p><strong>Cliente:</strong> ${clienteNome}</p>
+    <p><strong>Técnico:</strong> ${tecnicoNome}</p>
+    <p><strong>Data:</strong> ${dataFormatada} às ${horaFormatada}</p>
+    <p><strong>Duração:</strong> ${os.duracao_estimada_min || 120} minutos</p>
+    <p><strong>Endereço:</strong> ${endereco}</p>
+  </div>
+  ${confirmButtonHtml}
+  <hr>
+  <p style="color: #666; font-size: 12px;">
+    <strong>Importante:</strong> Abra o arquivo em anexo e clique em "Aceitar" para adicionar este agendamento ao seu calendário Outlook/Google Calendar.
+  </p>
+</div>
+`
       : `
 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
   <h2>Nova Ordem de Serviço ${actionText.charAt(0).toUpperCase() + actionText.slice(1)}</h2>

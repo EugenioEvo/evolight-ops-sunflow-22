@@ -58,8 +58,8 @@ export const useCancelOS = () => {
         });
       }
 
-      // Enviar email de cancelamento ao técnico
-      if (os.calendar_invite_sent_at && os.data_programada) {
+      // Enviar email de cancelamento ao técnico (sempre que tiver técnico com email)
+      if (tecnicoUserId) {
         try {
           await supabase.functions.invoke('send-calendar-invite', {
             body: {

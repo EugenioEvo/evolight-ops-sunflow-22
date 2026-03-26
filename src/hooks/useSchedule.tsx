@@ -138,10 +138,11 @@ export const useSchedule = () => {
       // ===== ENVIAR CONVITE (SE TÉCNICO TEM EMAIL) =====
       if (hasEmail) {
         try {
+          const inviteAction = wasRejected ? 'rejection_reschedule' : isUpdate ? 'update' : 'create';
           const { error: inviteError } = await supabase.functions.invoke('send-calendar-invite', {
             body: {
               os_id: params.osId,
-              action: isUpdate ? 'update' : 'create'
+              action: inviteAction
             }
           });
 
