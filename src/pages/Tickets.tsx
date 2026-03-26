@@ -1211,6 +1211,36 @@ const Tickets = () => {
                             {ticket.ordens_servico[0].numero_os}
                           </Badge>
                         )}
+                        {/* Badge de aceite da OS */}
+                        {ticket.ordens_servico?.[0] && (
+                          <>
+                            {ticket.ordens_servico[0].aceite_tecnico === 'pendente' && (
+                              <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200 text-xs">
+                                <Clock className="h-3 w-3 mr-1" />
+                                Aguardando Aceite
+                              </Badge>
+                            )}
+                            {ticket.ordens_servico[0].aceite_tecnico === 'aceito' && (
+                              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-xs">
+                                <CheckCircle className="h-3 w-3 mr-1" />
+                                OS Aceita
+                              </Badge>
+                            )}
+                            {ticket.ordens_servico[0].aceite_tecnico === 'recusado' && (
+                              <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 text-xs">
+                                <XCircle className="h-3 w-3 mr-1" />
+                                OS Recusada
+                              </Badge>
+                            )}
+                          </>
+                        )}
+                        {/* Indicação de ticket que retornou após recusa */}
+                        {ticket.status === 'aprovado' && ticket.ordens_servico?.[0]?.aceite_tecnico === 'recusado' && (
+                          <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 text-xs">
+                            <AlertTriangle className="h-3 w-3 mr-1" />
+                            Retornou após recusa
+                          </Badge>
+                        )}
                       </div>
                     </div>
                   </CardHeader>
