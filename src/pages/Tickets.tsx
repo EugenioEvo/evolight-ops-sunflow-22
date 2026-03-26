@@ -276,12 +276,60 @@ const Tickets = () => {
       };
 
       if (editingTicket) {
+        // Detectar mudanças em campos críticos
+        const criticalChanged =
+          (data.data_servico || null) !== (editingTicket.data_servico || null) ||
+          (data.horario_previsto_inicio || null) !== (editingTicket.horario_previsto_inicio || null) ||
+          data.equipamento_tipo !== editingTicket.equipamento_tipo;
+
         const { error } = await supabase
           .from('tickets')
           .update(ticketData as any)
           .eq('id', editingTicket.id);
 
         if (error) throw error;
+
+        // Se campos críticos mudaram, resetar aceite na OS vinculada e notificar técnico
+        if (criticalChanged) {
+          const { data: linkedOS } = await supabase
+            .from('ordens_servico')
+            .select('id, numero_os, tecnico_id')
+            .eq('ticket_id', editingTicket.id);
+
+          if (linkedOS && linkedOS.length > 0) {
+            for (const os of linkedOS) {
+              // Resetar aceite (campos críticos mudaram)
+              await supabase
+                .from('ordens_servico')
+                .update({
+                  aceite_tecnico: 'pendente',
+                  aceite_at: null,
+                  motivo_recusa: null,
+                } as any)
+                .eq('id', os.id);
+
+              // Notificar técnico
+              if (os.tecnico_id) {
+                const { data: tecData } = await supabase
+                  .from('tecnicos')
+                  .select('profiles!inner(user_id)')
+                  .eq('id', os.tecnico_id)
+                  .single();
+
+                const tecUserId = (tecData as any)?.profiles?.user_id;
+                if (tecUserId) {
+                  await supabase.from('notificacoes').insert({
+                    user_id: tecUserId,
+                    tipo: 'os_alterada',
+                    titulo: 'Ticket Alterado — Aceite Necessário',
+                    mensagem: `O ticket vinculado à OS ${os.numero_os} foi alterado (data, horário ou tipo de serviço). Você precisa aceitar novamente.`,
+                    link: '/minhas-os',
+                  });
+                }
+              }
+            }
+          }
+        }
 
         toast({
           title: 'Sucesso',
@@ -561,10 +609,10 @@ const Tickets = () => {
     try {
       setLoading(true);
 
-      // Verificar OS vinculadas
+      // Verificar OS vinculadas (incluindo dados do técnico para notificação)
       const { data: osData } = await supabase
         .from('ordens_servico')
-        .select('id, numero_os')
+        .select('id, numero_os, tecnico_id')
         .eq('ticket_id', ticketId);
 
       // Verificar RME vinculados
@@ -579,6 +627,30 @@ const Tickets = () => {
         const parts = [];
         if (osCount > 0) parts.push(`${osCount} OS`);
         if (rmeCount > 0) parts.push(`${rmeCount} RME`);
+
+        // Antes de bloquear, notificar técnicos de OS aceitas sobre o cancelamento
+        if (osData) {
+          for (const os of osData) {
+            if (os.tecnico_id) {
+              const { data: tecData } = await supabase
+                .from('tecnicos')
+                .select('profiles!inner(user_id)')
+                .eq('id', os.tecnico_id)
+                .single();
+
+              const tecUserId = (tecData as any)?.profiles?.user_id;
+              if (tecUserId) {
+                await supabase.from('notificacoes').insert({
+                  user_id: tecUserId,
+                  tipo: 'ticket_excluido',
+                  titulo: 'Ticket Excluído',
+                  mensagem: `O ticket vinculado à OS ${os.numero_os} foi excluído pelo gestor. A OS será removida.`,
+                  link: '/minhas-os',
+                });
+              }
+            }
+          }
+        }
 
         toast({
           title: "Não é possível excluir",
