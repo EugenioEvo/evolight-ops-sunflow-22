@@ -614,7 +614,7 @@ const Tickets = () => {
       // Verificar OS vinculadas (incluindo dados do técnico para notificação)
       const { data: osData } = await supabase
         .from('ordens_servico')
-        .select('id, numero_os, tecnico_id, aceite_tecnico')
+        .select('id, numero_os, tecnico_id')
         .eq('ticket_id', ticketId);
 
       // Verificar RME vinculados
