@@ -275,9 +275,9 @@ const TechnicianDashboard = () => {
             <ClipboardList className="mr-2 h-4 w-4" />
             Ver Minhas OS
           </Button>
-          <Button onClick={() => navigate("/agenda")} variant="outline" className="flex-1 min-w-[200px]">
-            <Clock className="mr-2 h-4 w-4" />
-            Ver Agenda
+          <Button onClick={() => navigate("/routes")} variant="outline" className="flex-1 min-w-[200px]">
+            <MapPin className="mr-2 h-4 w-4" />
+            Ver Rota
           </Button>
           <Button onClick={() => navigate("/rme")} variant="outline" className="flex-1 min-w-[200px]">
             <FileText className="mr-2 h-4 w-4" />
