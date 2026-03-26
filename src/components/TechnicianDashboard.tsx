@@ -22,7 +22,7 @@ interface OSStats {
 }
 
 const TechnicianDashboard = () => {
-  const [stats, setStats] = useState<OSStats>({ pendentes: 0, emExecucao: 0, concluidasHoje: 0, totalConcluidas: 0 });
+  const [stats, setStats] = useState<OSStats>({ pendentes: 0, emExecucao: 0, concluidasHoje: 0, totalConcluidas: 0, aguardandoAceite: 0, recusadas: 0 });
   const [recentOS, setRecentOS] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const { profile } = useAuth();
