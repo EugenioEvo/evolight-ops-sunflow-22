@@ -65,6 +65,7 @@ export const useSchedule = () => {
           data_programada, 
           hora_inicio, 
           hora_fim,
+          aceite_tecnico,
           tickets!inner(status)
         `)
         .eq('id', params.osId)
@@ -95,6 +96,7 @@ export const useSchedule = () => {
       const hasEmail = !!tecnicoEmail;
 
       const isUpdate = currentOS?.data_programada && currentOS?.hora_inicio && currentOS?.hora_fim;
+      const wasRejected = (currentOS as any)?.aceite_tecnico === 'recusado';
 
       // ===== VERIFICAR CONFLITO =====
       const hasConflict = await checkConflict(
@@ -136,10 +138,11 @@ export const useSchedule = () => {
       // ===== ENVIAR CONVITE (SE TÉCNICO TEM EMAIL) =====
       if (hasEmail) {
         try {
+          const inviteAction = wasRejected ? 'rejection_reschedule' : isUpdate ? 'update' : 'create';
           const { error: inviteError } = await supabase.functions.invoke('send-calendar-invite', {
             body: {
               os_id: params.osId,
-              action: isUpdate ? 'update' : 'create'
+              action: inviteAction
             }
           });
 

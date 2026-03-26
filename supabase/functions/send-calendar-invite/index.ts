@@ -20,7 +20,7 @@ const CONFIG = {
 
 interface CalendarInviteRequest {
   os_id: string;
-  action: "create" | "update" | "cancel";
+  action: "create" | "update" | "cancel" | "rejection_reschedule";
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -120,6 +120,7 @@ const handler = async (req: Request): Promise<Response> => {
     
     const method = action === "cancel" ? "CANCEL" : "REQUEST";
     const status = action === "cancel" ? "CANCELLED" : "CONFIRMED";
+    const isRejectionReschedule = action === "rejection_reschedule";
 
     // Gerar arquivo .ics
     const icsContent = [
@@ -167,12 +168,14 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Preparar email
     const recipients = [tecnicoEmail, CONFIG.teamEmail];
-    const actionText = action === "create" ? "agendada" : action === "update" ? "reagendada" : "cancelada";
+    const actionText = action === "create" ? "agendada" : action === "update" ? "reagendada" : action === "rejection_reschedule" ? "reagendada após recusa" : "cancelada";
     const dataFormatada = dtStart.toLocaleDateString("pt-BR");
     const horaFormatada = dtStart.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 
     const emailSubject = action === "cancel"
       ? `Cancelamento: ${os.numero_os} - ${clienteNome}`
+      : isRejectionReschedule
+      ? `Reagendamento: ${os.numero_os} - ${clienteNome} — Nova atribuição após recusa`
       : `Agendamento: ${os.numero_os} - ${clienteNome} - ${dataFormatada} ${horaFormatada}`;
 
     const confirmButtonHtml = confirmUrl ? `
@@ -199,6 +202,28 @@ const handler = async (req: Request): Promise<Response> => {
   <hr>
   <p style="color: #666; font-size: 12px;">
     Este evento foi cancelado. O convite em anexo removerá automaticamente o evento do seu calendário.
+  </p>
+</div>
+`
+      : isRejectionReschedule
+      ? `
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+  <h2 style="color: #d97706;">Ordem de Serviço Reagendada após Recusa</h2>
+  <div style="background: #fffbeb; padding: 16px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #d97706;">
+    <p style="margin: 0; color: #92400e;">Esta OS foi revista e reagendada pela gestão. É necessário um novo aceite da sua parte.</p>
+  </div>
+  <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+    <p><strong>OS:</strong> ${os.numero_os}</p>
+    <p><strong>Cliente:</strong> ${clienteNome}</p>
+    <p><strong>Técnico:</strong> ${tecnicoNome}</p>
+    <p><strong>Data:</strong> ${dataFormatada} às ${horaFormatada}</p>
+    <p><strong>Duração:</strong> ${os.duracao_estimada_min || 120} minutos</p>
+    <p><strong>Endereço:</strong> ${endereco}</p>
+  </div>
+  ${confirmButtonHtml}
+  <hr>
+  <p style="color: #666; font-size: 12px;">
+    <strong>Importante:</strong> Abra o arquivo em anexo e clique em "Aceitar" para adicionar este agendamento ao seu calendário Outlook/Google Calendar.
   </p>
 </div>
 `
