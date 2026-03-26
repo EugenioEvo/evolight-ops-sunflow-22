@@ -298,35 +298,33 @@ const Tickets = () => {
 
           if (linkedOS && linkedOS.length > 0) {
             for (const os of linkedOS) {
-              if ((os as any).aceite_tecnico === 'aceito' || (os as any).aceite_tecnico === 'recusado') {
-                // Resetar aceite
-                await supabase
-                  .from('ordens_servico')
-                  .update({
-                    aceite_tecnico: 'pendente',
-                    aceite_at: null,
-                    motivo_recusa: null,
-                  } as any)
-                  .eq('id', os.id);
+              // Resetar aceite (campos críticos mudaram)
+              await supabase
+                .from('ordens_servico')
+                .update({
+                  aceite_tecnico: 'pendente',
+                  aceite_at: null,
+                  motivo_recusa: null,
+                } as any)
+                .eq('id', os.id);
 
-                // Notificar técnico
-                if (os.tecnico_id) {
-                  const { data: tecData } = await supabase
-                    .from('tecnicos')
-                    .select('profiles!inner(user_id)')
-                    .eq('id', os.tecnico_id)
-                    .single();
+              // Notificar técnico
+              if (os.tecnico_id) {
+                const { data: tecData } = await supabase
+                  .from('tecnicos')
+                  .select('profiles!inner(user_id)')
+                  .eq('id', os.tecnico_id)
+                  .single();
 
-                  const tecUserId = (tecData as any)?.profiles?.user_id;
-                  if (tecUserId) {
-                    await supabase.from('notificacoes').insert({
-                      user_id: tecUserId,
-                      tipo: 'os_alterada',
-                      titulo: 'Ticket Alterado — Aceite Necessário',
-                      mensagem: `O ticket vinculado à OS ${os.numero_os} foi alterado (data, horário ou tipo de serviço). Você precisa aceitar novamente.`,
-                      link: '/minhas-os',
-                    });
-                  }
+                const tecUserId = (tecData as any)?.profiles?.user_id;
+                if (tecUserId) {
+                  await supabase.from('notificacoes').insert({
+                    user_id: tecUserId,
+                    tipo: 'os_alterada',
+                    titulo: 'Ticket Alterado — Aceite Necessário',
+                    mensagem: `O ticket vinculado à OS ${os.numero_os} foi alterado (data, horário ou tipo de serviço). Você precisa aceitar novamente.`,
+                    link: '/minhas-os',
+                  });
                 }
               }
             }
