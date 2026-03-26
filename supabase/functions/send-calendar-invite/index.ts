@@ -20,7 +20,7 @@ const CONFIG = {
 
 interface CalendarInviteRequest {
   os_id: string;
-  action: "create" | "update" | "cancel";
+  action: "create" | "update" | "cancel" | "rejection_reschedule";
 }
 
 const handler = async (req: Request): Promise<Response> => {
