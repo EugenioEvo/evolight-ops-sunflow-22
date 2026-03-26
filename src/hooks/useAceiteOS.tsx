@@ -79,6 +79,15 @@ export const useAceiteOS = () => {
       if (error) throw error;
       if (!data || data.length === 0) throw new Error('Não foi possível atualizar. Verifique suas permissões.');
 
+      // Buscar ticket_id da OS para reverter status
+      const osData = data[0] as any;
+      if (osData?.ticket_id) {
+        await supabase
+          .from('tickets')
+          .update({ status: 'aprovado' as any })
+          .eq('id', osData.ticket_id);
+      }
+
       // Notificar gestores
       const { data: staffUsers } = await supabase
         .from('user_roles')
