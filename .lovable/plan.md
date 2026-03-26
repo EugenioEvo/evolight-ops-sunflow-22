@@ -1,42 +1,33 @@
 
-# Corrigir: RLS bloqueando aceite/recusa do técnico
 
-## Problema raiz
-A recusa/aceite do técnico falha silenciosamente porque a tabela `ordens_servico` só tem policy de update para `is_staff()`. Técnicos não conseguem atualizar nenhum campo, incluindo `aceite_tecnico`, `aceite_at` e `motivo_recusa`.
+# Implementar fluxo de recusa na tela Ordens de Serviço (gestão)
 
-O toast "OS recusada" aparece porque o `useAceiteOS` não verifica se rows foram realmente afetadas — o Supabase retorna sucesso com 0 rows atualizadas quando RLS bloqueia.
+## Contexto
+A tela `WorkOrders.tsx` lista as OS para gestores mas não mostra o status de aceite/recusa do técnico. Os gestores precisam ver quais OS foram recusadas e poder agir (reagendar/reatribuir).
 
-## Solução
+## Mudanças em `src/pages/WorkOrders.tsx`
 
-### 1. Database Migration — RLS policy para técnicos
-Criar policy permitindo técnicos atualizarem apenas suas próprias OS:
+### 1. Badge de aceite no card da OS
+Adicionar badge no header do card mostrando o status de aceite:
+- `recusado` → Badge destrutivo "Recusada pelo Técnico"
+- `pendente` (quando OS aberta) → Badge âmbar "Aguardando Aceite"
+- `aceito` → Badge verde "Aceita"
 
-```sql
-CREATE POLICY "Technicians can update aceite on their own OS"
-ON public.ordens_servico
-FOR UPDATE
-TO authenticated
-USING (
-  EXISTS (
-    SELECT 1 FROM tecnicos t
-    JOIN profiles p ON p.id = t.profile_id
-    WHERE t.id = ordens_servico.tecnico_id
-    AND p.user_id = auth.uid()
-  )
-)
-WITH CHECK (
-  EXISTS (
-    SELECT 1 FROM tecnicos t
-    JOIN profiles p ON p.id = t.profile_id
-    WHERE t.id = ordens_servico.tecnico_id
-    AND p.user_id = auth.uid()
-  )
-);
-```
+### 2. Indicador visual no card recusado
+Quando `aceite_tecnico === 'recusado'`:
+- Borda vermelha/âmbar no card para destaque
+- Exibir motivo da recusa truncado abaixo das informações
 
-### 2. Corrigir `useAceiteOS` — verificar rows afetadas
-Após o `.update()`, verificar se `data` retornou rows (ou usar `.select()` encadeado) para detectar quando RLS bloqueou silenciosamente.
+### 3. Filtro por status de aceite
+Adicionar filtro select no bloco de filtros:
+- "Todos aceites" / "Aguardando Aceite" / "Aceita" / "Recusada"
 
-## Arquivos impactados
-- Nova migration SQL (via ferramenta)
-- `src/hooks/useAceiteOS.tsx` — verificação de sucesso real
+### 4. Stat card de recusadas
+Adicionar contagem de OS recusadas nos stats (ou incorporar no card "Atrasadas" como sub-indicador)
+
+### 5. Interface WorkOrder
+Adicionar `aceite_tecnico` e `motivo_recusa` à interface `WorkOrder` (já vêm do select `*`)
+
+## Arquivo impactado
+- `src/pages/WorkOrders.tsx`
+
