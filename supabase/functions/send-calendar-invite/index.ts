@@ -68,7 +68,8 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("OS não encontrada");
     }
 
-    if (!os.data_programada || !os.hora_inicio || !os.hora_fim) {
+    // Para cancelamento, permitir OS sem data/hora programada
+    if (action !== "cancel" && (!os.data_programada || !os.hora_inicio || !os.hora_fim)) {
       console.error("[send-calendar-invite] OS sem data/hora programada");
       throw new Error("OS sem data/hora programada");
     }
@@ -83,73 +84,80 @@ const handler = async (req: Request): Promise<Response> => {
     const tecnicoNome = os.tecnico.profile.nome;
     const clienteNome = os.ticket.cliente?.empresa || os.ticket.cliente?.profile?.nome || "Cliente";
     const endereco = os.ticket.endereco_servico;
-    const dataOS = new Date(os.data_programada);
     
-    // Combinar data com hora
-    const [horaInicio, minInicio] = os.hora_inicio.split(":").map(Number);
-    const [horaFim, minFim] = os.hora_fim.split(":").map(Number);
+    const hasSchedule = os.data_programada && os.hora_inicio && os.hora_fim;
     
-    const dtStart = new Date(dataOS);
-    dtStart.setHours(horaInicio, minInicio, 0, 0);
-    
-    const dtEnd = new Date(dataOS);
-    dtEnd.setHours(horaFim, minFim, 0, 0);
+    let dtStart: Date | null = null;
+    let dtEnd: Date | null = null;
+    let icsContent: string | null = null;
 
-    // Formatar datas para iCalendar
-    const formatICalDate = (date: Date): string => {
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, "0");
-      const day = String(date.getDate()).padStart(2, "0");
-      const hours = String(date.getHours()).padStart(2, "0");
-      const minutes = String(date.getMinutes()).padStart(2, "0");
-      const seconds = String(date.getSeconds()).padStart(2, "0");
-      return `${year}${month}${day}T${hours}${minutes}${seconds}`;
-    };
+    if (hasSchedule) {
+      const dataOS = new Date(os.data_programada);
+      const [horaInicio, minInicio] = os.hora_inicio.split(":").map(Number);
+      const [horaFim, minFim] = os.hora_fim.split(":").map(Number);
+      
+      dtStart = new Date(dataOS);
+      dtStart.setHours(horaInicio, minInicio, 0, 0);
+      
+      dtEnd = new Date(dataOS);
+      dtEnd.setHours(horaFim, minFim, 0, 0);
 
-    const formatICalDateUTC = (date: Date): string => {
-      return formatICalDate(date) + "Z";
-    };
+      // Formatar datas para iCalendar
+      const formatICalDate = (date: Date): string => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+        const hours = String(date.getHours()).padStart(2, "0");
+        const minutes = String(date.getMinutes()).padStart(2, "0");
+        const seconds = String(date.getSeconds()).padStart(2, "0");
+        return `${year}${month}${day}T${hours}${minutes}${seconds}`;
+      };
 
-    const now = new Date();
-    const uid = `os-${os.numero_os}@sunflow.grupoevolight.com.br`;
-    
-    let sequence = 0;
-    if (action === "update" && os.calendar_invite_sent_at) {
-      sequence = 1;
+      const formatICalDateUTC = (date: Date): string => {
+        return formatICalDate(date) + "Z";
+      };
+
+      const now = new Date();
+      const uid = `os-${os.numero_os}@sunflow.grupoevolight.com.br`;
+      
+      let sequence = 0;
+      if (action === "update" && os.calendar_invite_sent_at) {
+        sequence = 1;
+      }
+      
+      const method = action === "cancel" ? "CANCEL" : "REQUEST";
+      const status = action === "cancel" ? "CANCELLED" : "CONFIRMED";
+
+      icsContent = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//SunFlow//Agendamento OS//PT",
+        `METHOD:${method}`,
+        "CALSCALE:GREGORIAN",
+        "BEGIN:VEVENT",
+        `UID:${uid}`,
+        `DTSTAMP:${formatICalDateUTC(now)}`,
+        `DTSTART:${formatICalDate(dtStart)}`,
+        `DTEND:${formatICalDate(dtEnd)}`,
+        `SUMMARY:${os.numero_os} - ${clienteNome}`,
+        `DESCRIPTION:Ordem de Serviço\\n\\nCliente: ${clienteNome}\\nTécnico: ${tecnicoNome}\\nEndereço: ${endereco}\\n\\nDescrição: ${os.ticket.titulo}`,
+        `LOCATION:${endereco}`,
+        `STATUS:${action === "cancel" ? "CANCELLED" : "CONFIRMED"}`,
+        `SEQUENCE:${sequence}`,
+        `ORGANIZER;CN=${CONFIG.companyName}:mailto:${CONFIG.organizerEmail}`,
+        `ATTENDEE;CN=${tecnicoNome};RSVP=TRUE:mailto:${tecnicoEmail}`,
+        `ATTENDEE;CN=Equipe O&M;RSVP=TRUE:mailto:${CONFIG.teamEmail}`,
+        "BEGIN:VALARM",
+        "TRIGGER:-PT30M",
+        "ACTION:DISPLAY",
+        "DESCRIPTION:Lembrete: OS em 30 minutos",
+        "END:VALARM",
+        "END:VEVENT",
+        "END:VCALENDAR",
+      ].join("\r\n");
     }
-    
-    const method = action === "cancel" ? "CANCEL" : "REQUEST";
-    const status = action === "cancel" ? "CANCELLED" : "CONFIRMED";
-    const isRejectionReschedule = action === "rejection_reschedule";
 
-    // Gerar arquivo .ics
-    const icsContent = [
-      "BEGIN:VCALENDAR",
-      "VERSION:2.0",
-      "PRODID:-//SunFlow//Agendamento OS//PT",
-      `METHOD:${method}`,
-      "CALSCALE:GREGORIAN",
-      "BEGIN:VEVENT",
-      `UID:${uid}`,
-      `DTSTAMP:${formatICalDateUTC(now)}`,
-      `DTSTART:${formatICalDate(dtStart)}`,
-      `DTEND:${formatICalDate(dtEnd)}`,
-      `SUMMARY:${os.numero_os} - ${clienteNome}`,
-      `DESCRIPTION:Ordem de Serviço\\n\\nCliente: ${clienteNome}\\nTécnico: ${tecnicoNome}\\nEndereço: ${endereco}\\n\\nDescrição: ${os.ticket.titulo}`,
-      `LOCATION:${endereco}`,
-      `STATUS:${status}`,
-      `SEQUENCE:${sequence}`,
-      `ORGANIZER;CN=${CONFIG.companyName}:mailto:${CONFIG.organizerEmail}`,
-      `ATTENDEE;CN=${tecnicoNome};RSVP=TRUE:mailto:${tecnicoEmail}`,
-      `ATTENDEE;CN=Equipe O&M;RSVP=TRUE:mailto:${CONFIG.teamEmail}`,
-      "BEGIN:VALARM",
-      "TRIGGER:-PT30M",
-      "ACTION:DISPLAY",
-      "DESCRIPTION:Lembrete: OS em 30 minutos",
-      "END:VALARM",
-      "END:VEVENT",
-      "END:VCALENDAR",
-    ].join("\r\n");
+    const isRejectionReschedule = action === "rejection_reschedule";
 
     // Gerar token de confirmação de presença para incluir no email
     let confirmUrl = "";
@@ -169,8 +177,8 @@ const handler = async (req: Request): Promise<Response> => {
     // Preparar email
     const recipients = [tecnicoEmail, CONFIG.teamEmail];
     const actionText = action === "create" ? "agendada" : action === "update" ? "reagendada" : action === "rejection_reschedule" ? "reagendada após recusa" : "cancelada";
-    const dataFormatada = dtStart.toLocaleDateString("pt-BR");
-    const horaFormatada = dtStart.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    const dataFormatada = dtStart ? dtStart.toLocaleDateString("pt-BR") : "Não definida";
+    const horaFormatada = dtStart ? dtStart.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "";
 
     const emailSubject = action === "cancel"
       ? `Cancelamento: ${os.numero_os} - ${clienteNome}`
@@ -190,6 +198,10 @@ const handler = async (req: Request): Promise<Response> => {
 </div>
 ` : "";
 
+    const cancelFooter = hasSchedule
+      ? `<p style="color: #666; font-size: 12px;">Este evento foi cancelado. O convite em anexo removerá automaticamente o evento do seu calendário.</p>`
+      : `<p style="color: #666; font-size: 12px;">Esta ordem de serviço foi cancelada pelo administrador.</p>`;
+
     const emailBody = action === "cancel"
       ? `
 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -197,12 +209,10 @@ const handler = async (req: Request): Promise<Response> => {
   <p><strong>OS:</strong> ${os.numero_os}</p>
   <p><strong>Cliente:</strong> ${clienteNome}</p>
   <p><strong>Técnico:</strong> ${tecnicoNome}</p>
-  <p><strong>Data:</strong> ${dataFormatada} às ${horaFormatada}</p>
+  ${hasSchedule ? `<p><strong>Data:</strong> ${dataFormatada} às ${horaFormatada}</p>` : ""}
   <p><strong>Endereço:</strong> ${endereco}</p>
   <hr>
-  <p style="color: #666; font-size: 12px;">
-    Este evento foi cancelado. O convite em anexo removerá automaticamente o evento do seu calendário.
-  </p>
+  ${cancelFooter}
 </div>
 `
       : isRejectionReschedule
@@ -249,18 +259,24 @@ const handler = async (req: Request): Promise<Response> => {
     // Enviar email via Resend
     console.log(`[send-calendar-invite] Enviando para: ${recipients.join(", ")}`);
 
-    const emailResponse = await resend.emails.send({
+    const emailPayload: any = {
       from: `${CONFIG.companyName} <${CONFIG.senderEmail}>`,
       to: recipients,
       subject: emailSubject,
       html: emailBody,
-      attachments: [
+    };
+
+    // Anexar .ics apenas se tiver dados de agendamento
+    if (icsContent) {
+      emailPayload.attachments = [
         {
           filename: "convite.ics",
           content: icsContent,
         },
-      ],
-    });
+      ];
+    }
+
+    const emailResponse = await resend.emails.send(emailPayload);
 
     console.log("[send-calendar-invite] Email enviado:", emailResponse);
 
