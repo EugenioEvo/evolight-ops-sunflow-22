@@ -96,6 +96,7 @@ export const useSchedule = () => {
       const hasEmail = !!tecnicoEmail;
 
       const isUpdate = currentOS?.data_programada && currentOS?.hora_inicio && currentOS?.hora_fim;
+      const wasRejected = (currentOS as any)?.aceite_tecnico === 'recusado';
 
       // ===== VERIFICAR CONFLITO =====
       const hasConflict = await checkConflict(
