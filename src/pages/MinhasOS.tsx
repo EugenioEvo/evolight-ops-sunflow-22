@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, FileText, Eye, Calendar, MapPin, User, Play, Edit, Phone, Navigation, ClipboardList, AlertCircle, CheckCircle2, Info, Filter, ThumbsUp, ThumbsDown } from "lucide-react";
+import { Loader2, FileText, Eye, Calendar, MapPin, User, Play, Edit, Phone, Navigation, ClipboardList, AlertCircle, CheckCircle2, Info, Filter, ThumbsUp, ThumbsDown, Clock, Hourglass } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 import { LoadingState } from "@/components/LoadingState";
 import { TechnicianBreadcrumb } from "@/components/TechnicianBreadcrumb";
@@ -348,8 +348,9 @@ const MinhasOS = () => {
                   </Badge>
                 )}
                 {recusado && isPendente && (
-                  <Badge variant="destructive" className="text-xs">
-                    Recusada
+                  <Badge className="text-xs bg-muted text-muted-foreground border-border">
+                    <Clock className="h-3 w-3 mr-1" />
+                    Aguardando Gestão
                   </Badge>
                 )}
               </div>
@@ -467,11 +468,17 @@ const MinhasOS = () => {
             </div>
           )}
 
-          {/* Recusado badge */}
+          {/* Recusado — Aguardando Resposta da Gestão */}
           {recusado && isPendente && (
-            <Badge variant="destructive" className="w-full justify-center py-2">
-              OS Recusada — Aguardando reagendamento
-            </Badge>
+            <Alert className="border-muted bg-muted/50">
+              <Hourglass className="h-4 w-4 text-muted-foreground" />
+              <AlertDescription className="text-muted-foreground text-xs space-y-1">
+                <p className="font-medium text-sm text-foreground">Aguardando Resposta da Gestão</p>
+                {(os as any).motivo_recusa && (
+                  <p>Motivo da recusa: {(os as any).motivo_recusa}</p>
+                )}
+              </AlertDescription>
+            </Alert>
           )}
 
           {/* Botões de Ação Principal (só aparecem se aceito ou se não é técnico) */}
@@ -584,6 +591,8 @@ const MinhasOS = () => {
   }
 
   const pendentes = osFiltradas.filter(os => os.tickets.status === 'ordem_servico_gerada');
+  const aguardandoAceiteCount = pendentes.filter(os => (os as any).aceite_tecnico === 'pendente' || !(os as any).aceite_tecnico).length;
+  const aguardandoGestaoCount = pendentes.filter(os => (os as any).aceite_tecnico === 'recusado').length;
   const emExecucao = osFiltradas.filter(os => os.tickets.status === 'em_execucao');
   const concluidas = osFiltradas.filter(os => os.tickets.status === 'concluido');
 
@@ -656,9 +665,16 @@ const MinhasOS = () => {
             <TabsTrigger value="pendentes" className="relative">
               Pendentes
               {pendentes.length > 0 && (
-                <Badge className="ml-2 h-5 w-5 rounded-full p-0 flex items-center justify-center">
-                  {pendentes.length}
-                </Badge>
+                <span className="ml-2 inline-flex items-center gap-1">
+                  <Badge className="h-5 w-5 rounded-full p-0 flex items-center justify-center">
+                    {pendentes.length}
+                  </Badge>
+                  {aguardandoGestaoCount > 0 && (
+                    <Badge variant="outline" className="h-5 rounded-full px-1.5 text-[10px] bg-muted text-muted-foreground">
+                      {aguardandoGestaoCount} gestão
+                    </Badge>
+                  )}
+                </span>
               )}
             </TabsTrigger>
             <TabsTrigger value="execucao" className="relative">
