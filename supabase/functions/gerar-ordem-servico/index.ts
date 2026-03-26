@@ -31,43 +31,9 @@ serve(async (req) => {
       equipe = [], 
       servico_solicitado = 'MANUTENÇÃO',
       inspetor_responsavel = 'TODOS',
-      tipo_trabalho = []
+      tipo_trabalho = [],
+      tecnico_override_id = null
     } = await req.json()
-
-    // Verificar se já existe OS
-    const { data: existingOS, error: osCheckError } = await supabaseClient
-      .from('ordens_servico')
-      .select('*, pdf_url')
-      .eq('ticket_id', ticketId)
-      .maybeSingle()
-
-    if (existingOS) {
-      let signedUrl = null
-      if (existingOS.pdf_url) {
-        const fileName = existingOS.pdf_url
-        const { data: signedData } = await supabaseClient.storage
-          .from('ordens-servico')
-          .createSignedUrl(fileName, 60 * 60 * 24 * 7)
-
-        signedUrl = signedData?.signedUrl
-      }
-
-      // Garantir que o status do ticket está atualizado
-      await supabaseClient
-        .from('tickets')
-        .update({ status: 'ordem_servico_gerada' })
-        .eq('id', ticketId)
-
-      return new Response(JSON.stringify({ 
-        success: true, 
-        ordemServico: existingOS,
-        pdfUrl: signedUrl,
-        message: 'Ordem de serviço já existente'
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
-      })
-    }
 
     // Buscar dados do ticket com cliente
     const { data: ticket, error: ticketError } = await supabaseClient
@@ -95,8 +61,10 @@ serve(async (req) => {
       )
     }
 
-    // Validar técnico atribuído
-    if (!ticket.tecnico_responsavel_id) {
+    // Determinar o prestador a usar (override ou do ticket)
+    const prestadorId = tecnico_override_id || ticket.tecnico_responsavel_id;
+
+    if (!prestadorId) {
       return new Response(
         JSON.stringify({ error: 'É necessário atribuir um técnico antes de gerar a OS' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -107,7 +75,7 @@ serve(async (req) => {
     const { data: prestador, error: prestadorError } = await supabaseClient
       .from('prestadores')
       .select('id, nome, email, telefone')
-      .eq('id', ticket.tecnico_responsavel_id)
+      .eq('id', prestadorId)
       .single()
 
     if (prestadorError || !prestador) {
@@ -132,13 +100,33 @@ serve(async (req) => {
       .ilike('profiles.email', prestador.email)
       .maybeSingle()
 
-    // Log para debug
     console.log(`Prestador: ${prestador.nome} (${prestador.email}), Técnico encontrado: ${tecnico?.id || 'nenhum'}`)
 
-    // Validar status aprovado
-    if (ticket.status !== 'aprovado') {
+    // Verificar se já existe OS para este ticket + este técnico específico
+    if (tecnico) {
+      const { data: existingOS } = await supabaseClient
+        .from('ordens_servico')
+        .select('id, numero_os')
+        .eq('ticket_id', ticketId)
+        .eq('tecnico_id', tecnico.id)
+        .maybeSingle()
+
+      if (existingOS) {
+        return new Response(JSON.stringify({ 
+          success: true, 
+          ordemServico: existingOS,
+          message: `OS já existente para este técnico: ${existingOS.numero_os}`
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        })
+      }
+    }
+
+    // Validar status — aceitar 'aprovado' ou 'ordem_servico_gerada' (multi-técnico)
+    if (ticket.status !== 'aprovado' && ticket.status !== 'ordem_servico_gerada') {
       return new Response(
-        JSON.stringify({ error: 'Apenas tickets aprovados com técnico atribuído podem gerar OS' }),
+        JSON.stringify({ error: 'Apenas tickets aprovados ou com OS gerada podem gerar novas OS' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -159,11 +147,9 @@ serve(async (req) => {
       tipo_trabalho: tipo_trabalho
     }
 
-    // Se o ticket tem horário previsto, definir hora_inicio e calcular hora_fim (estimativa de 1h)
+    // Se o ticket tem horário previsto, definir hora_inicio e calcular hora_fim
     if (ticket.horario_previsto_inicio) {
       osData.hora_inicio = ticket.horario_previsto_inicio
-      
-      // Calcular hora_fim somando tempo estimado (ou 1h por padrão)
       const tempoEstimadoHoras = ticket.tempo_estimado || 1
       const [horas, minutos] = ticket.horario_previsto_inicio.split(':').map(Number)
       const horaFimDate = new Date()
@@ -190,20 +176,13 @@ serve(async (req) => {
         const geocodeResponse = await fetch(geocodeUrl, {
           headers: { 'User-Agent': 'OrdemServicoApp/1.0' }
         })
-        
         const geocodeData = await geocodeResponse.json()
-        
         if (geocodeData && geocodeData[0]) {
           const latitude = parseFloat(geocodeData[0].lat)
           const longitude = parseFloat(geocodeData[0].lon)
-          
           await supabaseClient
             .from('tickets')
-            .update({ 
-              latitude, 
-              longitude,
-              geocoded_at: new Date().toISOString()
-            })
+            .update({ latitude, longitude, geocoded_at: new Date().toISOString() })
             .eq('id', ticketId)
         }
       } catch (geocodeError) {
@@ -244,7 +223,6 @@ Técnico Responsável          Cliente
 
 QR Code: ${ordemServico.qr_code}
 `
-    
     const pdfBuffer = new TextEncoder().encode(pdfContent)
     const fileName = `OS_${numeroOS}_${Date.now()}.txt`
     
@@ -258,14 +236,12 @@ QR Code: ${ordemServico.qr_code}
       throw uploadError
     }
 
-    // Gerar URL assinada
     const { data: signedUrlData } = await supabaseClient.storage
       .from('ordens-servico')
       .createSignedUrl(fileName, 60 * 60 * 24 * 7)
 
     const signedUrl = signedUrlData?.signedUrl || null
 
-    // Atualizar OS com caminho do arquivo
     await supabaseClient
       .from('ordens_servico')
       .update({ pdf_url: fileName })
