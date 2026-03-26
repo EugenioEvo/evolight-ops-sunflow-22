@@ -35,6 +35,8 @@ interface WorkOrder {
   inspetor_responsavel: string | null;
   equipe: string[] | null;
   notes: string | null;
+  aceite_tecnico: string;
+  motivo_recusa: string | null;
   tickets: {
     id: string;
     titulo: string;
