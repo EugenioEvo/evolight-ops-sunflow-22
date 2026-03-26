@@ -456,6 +456,7 @@ const Prestadores = () => {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
+                            <SelectItem value="admin">Administração</SelectItem>
                             <SelectItem value="engenharia">Engenharia</SelectItem>
                             <SelectItem value="supervisao">Supervisão</SelectItem>
                             <SelectItem value="tecnico">Técnico de Campo</SelectItem>
