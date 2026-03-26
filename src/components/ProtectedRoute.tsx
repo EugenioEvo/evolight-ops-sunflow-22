@@ -55,6 +55,15 @@ export const ProtectedRoute = ({ children, roles }: ProtectedRouteProps) => {
     return <Navigate to="/auth" />;
   }
 
+  // Profile still loading after auth resolved
+  if (!profile && user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
   // Tecnico pending approval
   if (profile?.role === 'tecnico_campo' && approvalStatus === 'pending') {
     return <PendingApproval />;
