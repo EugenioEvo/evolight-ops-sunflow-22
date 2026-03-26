@@ -284,6 +284,7 @@ const Prestadores = () => {
   const categoryCounts = {
     todos: activePrestadores.length,
     pendentes: pendingPrestadores.length,
+    admin: activePrestadores.filter(p => p.categoria === "admin").length,
     engenharia: activePrestadores.filter(p => p.categoria === "engenharia").length,
     supervisao: activePrestadores.filter(p => p.categoria === "supervisao").length,
     tecnico: activePrestadores.filter(p => p.categoria === "tecnico").length,
