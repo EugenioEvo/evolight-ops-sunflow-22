@@ -218,6 +218,25 @@ const handler = async (req: Request): Promise<Response> => {
   ${cancelFooter}
 </div>
 `
+      : isReassignRemoved
+      ? `
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+  <h2 style="color: #dc2626;">Você foi desatribuído desta OS</h2>
+  <div style="background: #fef2f2; padding: 16px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #dc2626;">
+    <p style="margin: 0; color: #991b1b;">Esta OS foi reatribuída a outro técnico pela gestão. Nenhuma ação é necessária da sua parte.</p>
+  </div>
+  <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+    <p><strong>OS:</strong> ${os.numero_os}</p>
+    <p><strong>Cliente:</strong> ${clienteNome}</p>
+    ${hasSchedule ? `<p><strong>Data:</strong> ${dataFormatada} às ${horaFormatada}</p>` : ""}
+    <p><strong>Endereço:</strong> ${endereco}</p>
+  </div>
+  <hr>
+  <p style="color: #666; font-size: 12px;">
+    Se você tinha este evento no calendário, o arquivo em anexo o removerá automaticamente.
+  </p>
+</div>
+`
       : isRejectionReschedule
       ? `
 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
