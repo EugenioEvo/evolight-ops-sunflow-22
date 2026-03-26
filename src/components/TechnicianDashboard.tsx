@@ -50,6 +50,8 @@ const TechnicianDashboard = () => {
         .from("ordens_servico")
         .select(`
           *,
+          aceite_tecnico,
+          motivo_recusa,
           data_programada,
           hora_inicio,
           hora_fim,
