@@ -320,6 +320,16 @@ const TechnicianDashboard = () => {
                       <Badge variant={os.tickets.status === 'em_execucao' ? 'default' : 'outline'}>
                         {os.tickets.status === 'em_execucao' ? 'Em Execução' : 'Pendente'}
                       </Badge>
+                      {os.aceite_tecnico === 'pendente' && (
+                        <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200 text-xs">
+                          Aguardando Aceite
+                        </Badge>
+                      )}
+                      {os.aceite_tecnico === 'recusado' && (
+                        <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 text-xs">
+                          Recusada
+                        </Badge>
+                      )}
                     </div>
                     <p className="text-sm text-muted-foreground">{os.tickets.titulo}</p>
                     <p className="text-xs text-muted-foreground">{os.tickets.clientes?.empresa}</p>

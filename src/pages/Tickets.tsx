@@ -1588,13 +1588,6 @@ const Tickets = () => {
                                 <Download className="h-4 w-4 mr-1" />
                                 Ver OS
                               </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleEdit(ticket)}
-                              >
-                                Editar
-                              </Button>
                               <AlertDialog>
                                 <AlertDialogTrigger asChild>
                                   <Button size="sm" variant="destructive">
