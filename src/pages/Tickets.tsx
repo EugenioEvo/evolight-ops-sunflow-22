@@ -1499,12 +1499,11 @@ const Tickets = () => {
                               </Select>
                               <Button
                                 size="sm"
-                                onClick={() => handleGenerateOS(ticket.id)}
-                                disabled={generatingOsId === ticket.id}
+                                onClick={() => setMultiOSDialogTicket(ticket)}
                                 className="flex items-center gap-2"
                               >
                                 <FileText className="h-4 w-4" />
-                                {generatingOsId === ticket.id ? 'Gerando...' : 'Gerar Ordem de Serviço'}
+                                Gerar Ordem de Serviço
                               </Button>
                               <Button
                                 size="sm"
