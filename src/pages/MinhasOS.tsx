@@ -7,13 +7,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, FileText, Eye, Calendar, MapPin, User, Play, Edit, Phone, Navigation, ClipboardList, AlertCircle, CheckCircle2, Info, Filter } from "lucide-react";
+import { Loader2, FileText, Eye, Calendar, MapPin, User, Play, Edit, Phone, Navigation, ClipboardList, AlertCircle, CheckCircle2, Info, Filter, ThumbsUp, ThumbsDown } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 import { LoadingState } from "@/components/LoadingState";
 import { TechnicianBreadcrumb } from "@/components/TechnicianBreadcrumb";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { RecusaOSDialog } from "@/components/RecusaOSDialog";
+import { useAceiteOS } from "@/hooks/useAceiteOS";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
@@ -33,6 +35,9 @@ interface OrdemServico {
   servico_solicitado?: string;
   inspetor_responsavel?: string;
   tipo_trabalho?: string[];
+  aceite_tecnico?: string;
+  aceite_at?: string;
+  motivo_recusa?: string;
   tickets: {
     id: string;
     numero_ticket: string;
@@ -62,10 +67,12 @@ const MinhasOS = () => {
   const [activeTab, setActiveTab] = useState<string>('pendentes');
   const [startingId, setStartingId] = useState<string | null>(null);
   const [navigating, setNavigating] = useState<string | null>(null);
+  const [recusaDialogOS, setRecusaDialogOS] = useState<OrdemServico | null>(null);
   const { profile } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const { tecnicoId, setTecnicoId, shouldRefetch, setOrdensServico: setCachedOS } = useTechnicianStore();
+  const { aceitarOS, recusarOS, loading: aceiteLoading } = useAceiteOS();
 
   const isTecnico = profile?.role === "tecnico_campo";
   const isAreaTecnica = profile?.role === "engenharia" || profile?.role === "supervisao" || profile?.role === "admin";
@@ -268,6 +275,20 @@ const MinhasOS = () => {
     window.open(`https://www.google.com/maps/search/?api=1&query=${encodedAddress}`, "_blank");
   };
 
+  const handleAceitarOS = async (os: OrdemServico) => {
+    const success = await aceitarOS(os.id);
+    if (success) await loadOrdensServico();
+  };
+
+  const handleRecusarOS = async (motivo: string) => {
+    if (!recusaDialogOS) return;
+    const success = await recusarOS(recusaDialogOS.id, motivo);
+    if (success) {
+      setRecusaDialogOS(null);
+      await loadOrdensServico();
+    }
+  };
+
   const getPrioridadeColor = (prioridade: string) => {
     switch (prioridade) {
       case "critica":
@@ -297,6 +318,10 @@ const MinhasOS = () => {
     const isPendente = os.tickets.status === 'ordem_servico_gerada';
     const emExecucao = os.tickets.status === 'em_execucao';
     const concluido = os.tickets.status === 'concluido';
+    const aceite = (os as any).aceite_tecnico || 'pendente';
+    const aguardandoAceite = isPendente && aceite === 'pendente';
+    const aceito = aceite === 'aceito';
+    const recusado = aceite === 'recusado';
 
     return (
       <Card key={os.id} className="hover:shadow-lg transition-shadow">
@@ -311,11 +336,20 @@ const MinhasOS = () => {
                 <Badge variant="outline" className="text-xs">
                   {os.tickets.numero_ticket}
                 </Badge>
-                {isPendente && (
-                  <Badge variant="secondary" className="text-xs flex items-center gap-1">
-                    <Info className="h-3 w-3" />
-                    <span className="hidden sm:inline">Próximo: Iniciar</span>
-                    <span className="sm:hidden">Iniciar</span>
+                {aguardandoAceite && (
+                  <Badge className="text-xs bg-amber-100 text-amber-800 border-amber-200">
+                    Aguardando Aceite
+                  </Badge>
+                )}
+                {aceito && isPendente && (
+                  <Badge className="text-xs bg-green-100 text-green-800 border-green-200">
+                    <CheckCircle2 className="h-3 w-3 mr-1" />
+                    Aceita
+                  </Badge>
+                )}
+                {recusado && isPendente && (
+                  <Badge variant="destructive" className="text-xs">
+                    Recusada
                   </Badge>
                 )}
               </div>
@@ -398,9 +432,51 @@ const MinhasOS = () => {
             </Button>
           </div>
 
-          {/* Botões de Ação Principal */}
+          {/* Botões de Aceite (para técnicos com OS pendente de aceite) */}
+          {aguardandoAceite && isTecnico && (
+            <div className="space-y-2">
+              <Alert className="border-amber-200 bg-amber-50">
+                <AlertCircle className="h-4 w-4 text-amber-600" />
+                <AlertDescription className="text-amber-800 text-xs">
+                  Você precisa aceitar ou recusar esta OS antes de iniciar a execução.
+                </AlertDescription>
+              </Alert>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => handleAceitarOS(os)}
+                  className="flex-1"
+                  disabled={aceiteLoading}
+                >
+                  {aceiteLoading ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <ThumbsUp className="h-4 w-4 mr-2" />
+                  )}
+                  Aceitar
+                </Button>
+                <Button
+                  onClick={() => setRecusaDialogOS(os)}
+                  variant="destructive"
+                  className="flex-1"
+                  disabled={aceiteLoading}
+                >
+                  <ThumbsDown className="h-4 w-4 mr-2" />
+                  Recusar
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Recusado badge */}
+          {recusado && isPendente && (
+            <Badge variant="destructive" className="w-full justify-center py-2">
+              OS Recusada — Aguardando reagendamento
+            </Badge>
+          )}
+
+          {/* Botões de Ação Principal (só aparecem se aceito ou se não é técnico) */}
           <div className="space-y-2">
-            {isPendente && (
+            {isPendente && (aceito || !isTecnico) && !recusado && (
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -449,10 +525,10 @@ const MinhasOS = () => {
               </Button>
             )}
 
-            {isPendente && (
-              <Badge variant="outline" className="w-full justify-center py-2">
-                <ClipboardList className="h-3 w-3 mr-1" />
-                Próximo: Iniciar Execução
+            {isPendente && aceito && (
+              <Badge variant="outline" className="w-full justify-center py-2 bg-green-50 text-green-700 border-green-200">
+                <CheckCircle2 className="h-3 w-3 mr-1" />
+                Aceita — Próximo: Iniciar Execução
               </Badge>
             )}
 
@@ -647,6 +723,15 @@ const MinhasOS = () => {
         </Tabs>
       )}
       </div>
+
+      {/* Dialog de Recusa */}
+      <RecusaOSDialog
+        open={!!recusaDialogOS}
+        onOpenChange={(open) => !open && setRecusaDialogOS(null)}
+        onConfirm={handleRecusarOS}
+        numeroOS={recusaDialogOS?.numero_os || ''}
+        loading={aceiteLoading}
+      />
     </TooltipProvider>
   );
 };

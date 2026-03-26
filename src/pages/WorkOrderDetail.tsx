@@ -313,6 +313,14 @@ const WorkOrderDetail = () => {
               >
                 {statusTimeline.find(s => s.key === currentStatus)?.label || currentStatus}
               </Badge>
+              {/* Aceite badge */}
+              {(() => {
+                const aceite = (workOrder as any).aceite_tecnico;
+                if (aceite === 'aceito') return <Badge className="bg-green-100 text-green-800 border-green-200">Aceita pelo Técnico</Badge>;
+                if (aceite === 'recusado') return <Badge variant="destructive">Recusada pelo Técnico</Badge>;
+                if (aceite === 'pendente' && currentStatus === 'aberta') return <Badge className="bg-amber-100 text-amber-800 border-amber-200">Aguardando Aceite</Badge>;
+                return null;
+              })()}
             </div>
             <p className="text-muted-foreground">{workOrder.tickets.titulo}</p>
           </div>
@@ -385,6 +393,17 @@ const WorkOrderDetail = () => {
       </Card>
 
       {/* Alerta de RME */}
+      {/* Alerta de OS Recusada */}
+      {(workOrder as any).aceite_tecnico === 'recusado' && (
+        <Alert variant="destructive">
+          <XCircle className="h-4 w-4" />
+          <AlertTitle>OS Recusada pelo Técnico</AlertTitle>
+          <AlertDescription>
+            Motivo: {(workOrder as any).motivo_recusa || 'Não informado'}. Você pode reagendar ou reatribuir esta OS a outro técnico.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {currentStatus === "em_execucao" && !isRMECompleted && (
         <Alert>
           <AlertTriangle className="h-4 w-4" />

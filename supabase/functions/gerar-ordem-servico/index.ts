@@ -151,7 +151,7 @@ serve(async (req) => {
       ticket_id: ticketId,
       numero_os: numeroOS,
       tecnico_id: tecnico?.id || null,
-      data_programada: ticket.data_vencimento,
+      data_programada: ticket.data_servico || ticket.data_vencimento,
       qr_code: `OS-${numeroOS}-${ticketId}`,
       equipe: equipe,
       servico_solicitado: servico_solicitado,
