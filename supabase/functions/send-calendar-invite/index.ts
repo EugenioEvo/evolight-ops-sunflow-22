@@ -158,6 +158,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const isRejectionReschedule = action === "rejection_reschedule";
+    const isReassignRemoved = action === "reassign_removed";
 
     // Gerar token de confirmação de presença para incluir no email
     let confirmUrl = "";
