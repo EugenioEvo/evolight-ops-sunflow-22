@@ -591,6 +591,8 @@ const MinhasOS = () => {
   }
 
   const pendentes = osFiltradas.filter(os => os.tickets.status === 'ordem_servico_gerada');
+  const aguardandoAceiteCount = pendentes.filter(os => (os as any).aceite_tecnico === 'pendente' || !(os as any).aceite_tecnico).length;
+  const aguardandoGestaoCount = pendentes.filter(os => (os as any).aceite_tecnico === 'recusado').length;
   const emExecucao = osFiltradas.filter(os => os.tickets.status === 'em_execucao');
   const concluidas = osFiltradas.filter(os => os.tickets.status === 'concluido');
 
