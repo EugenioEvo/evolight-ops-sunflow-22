@@ -238,9 +238,19 @@ const TechnicianDashboard = () => {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <p className="font-medium text-sm truncate">{os.numero_os}</p>
-                          <Badge variant={os.tickets.status === 'em_execucao' ? 'default' : 'outline'} className="flex-shrink-0">
+                      <Badge variant={os.tickets.status === 'em_execucao' ? 'default' : 'outline'} className="flex-shrink-0">
                             {os.tickets.status === 'em_execucao' ? 'Em Execução' : 'Pendente'}
                           </Badge>
+                          {os.aceite_tecnico === 'pendente' && (
+                            <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200 text-xs flex-shrink-0">
+                              Aguardando Aceite
+                            </Badge>
+                          )}
+                          {os.aceite_tecnico === 'recusado' && (
+                            <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 text-xs flex-shrink-0">
+                              Recusada
+                            </Badge>
+                          )}
                         </div>
                         <p className="text-sm text-muted-foreground truncate">{os.tickets.titulo}</p>
                         <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
