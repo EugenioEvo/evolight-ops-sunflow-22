@@ -65,6 +65,7 @@ export const useSchedule = () => {
           data_programada, 
           hora_inicio, 
           hora_fim,
+          aceite_tecnico,
           tickets!inner(status)
         `)
         .eq('id', params.osId)
