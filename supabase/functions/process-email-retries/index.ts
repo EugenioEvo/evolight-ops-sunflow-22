@@ -22,6 +22,25 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
+    // SECURITY: Validate auth for background functions
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
+    }
+    const supabaseAuth = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
+      global: { headers: { Authorization: authHeader } }
+    });
+    const { data: claimsData, error: claimsError } = await supabaseAuth.auth.getClaims(authHeader.replace('Bearer ', ''));
+    if (claimsError || !claimsData?.claims) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
+    }
+    const userId = claimsData.claims.sub;
+    const { data: roleData } = await createClient(supabaseUrl, supabaseServiceKey)
+      .from('user_roles').select('role').eq('user_id', userId).maybeSingle();
+    if (!roleData || !['admin', 'engenharia', 'supervisao'].includes(roleData.role)) {
+      return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: corsHeaders });
+    }
+
     console.log("[process-email-retries] Iniciando processamento de retries");
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);

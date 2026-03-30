@@ -70,6 +70,28 @@ serve(async (req) => {
   const startTime = Date.now();
 
   try {
+    // SECURITY: Validate auth and role
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
+    }
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2.58.0');
+    const supabaseAuth = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, {
+      global: { headers: { Authorization: authHeader } }
+    });
+    const { data: claimsData, error: claimsError } = await supabaseAuth.auth.getClaims(authHeader.replace('Bearer ', ''));
+    if (claimsError || !claimsData?.claims) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
+    }
+    const userId = claimsData.claims.sub;
+    const supabaseService = createClient(supabaseUrl, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+    const { data: roleData } = await supabaseService
+      .from('user_roles').select('role').eq('user_id', userId).maybeSingle();
+    if (!roleData || !['admin', 'engenharia', 'supervisao', 'tecnico_campo'].includes(roleData.role)) {
+      return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: corsHeaders });
+    }
+
     const { coordinates } = await req.json();
 
     if (!coordinates || !Array.isArray(coordinates) || coordinates.length < 2) {

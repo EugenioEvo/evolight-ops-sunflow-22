@@ -390,35 +390,6 @@ const Auth = () => {
                   </>
                 )}
 
-                {role === 'tecnico_campo' && (
-                  <>
-                    <div className="space-y-2">
-                      <Label htmlFor="registroProfissional">Registro Profissional</Label>
-                      <Input
-                        id="registroProfissional"
-                        value={registroProfissional}
-                        onChange={(e) => setRegistroProfissional(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="especialidades">Especialidades (separadas por vírgula)</Label>
-                      <Input
-                        id="especialidades"
-                        value={especialidades}
-                        onChange={(e) => setEspecialidades(e.target.value)}
-                        placeholder="Ex: Painel Solar, Inversor, Bateria"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="regiaoAtuacao">Região de Atuação</Label>
-                      <Input
-                        id="regiaoAtuacao"
-                        value={regiaoAtuacao}
-                        onChange={(e) => setRegiaoAtuacao(e.target.value)}
-                      />
-                    </div>
-                  </>
-                )}
 
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading ? 'Criando conta...' : 'Criar Conta'}
