@@ -117,16 +117,13 @@ const Auth = () => {
         email,
         password,
         telefone: telefone || '',
-        role,
-        empresa: role === 'cliente' ? empresa : undefined,
-        cnpjCpf: role === 'cliente' ? cnpjCpf : '',
-        endereco: role === 'cliente' ? endereco : undefined,
-        cidade: role === 'cliente' ? cidade : undefined,
-        estado: role === 'cliente' ? estado : undefined,
-        cep: role === 'cliente' ? cep : '',
-        registroProfissional: role === 'tecnico_campo' ? registroProfissional : undefined,
-        especialidades: role === 'tecnico_campo' ? especialidades : undefined,
-        regiaoAtuacao: role === 'tecnico_campo' ? regiaoAtuacao : undefined,
+        role: 'cliente' as const,
+        empresa,
+        cnpjCpf: cnpjCpf || '',
+        endereco,
+        cidade,
+        estado,
+        cep: cep || '',
       };
 
       const validationResult = signupSchema.safeParse(formData);
