@@ -329,20 +329,8 @@ const Auth = () => {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="role">Tipo de Usuário</Label>
-                  <Select value={role} onValueChange={(value: any) => setRole(value)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="cliente">Cliente</SelectItem>
-                      <SelectItem value="tecnico_campo">Técnico de Campo</SelectItem>
-                      <SelectItem value="engenharia">Engenharia</SelectItem>
-                      <SelectItem value="supervisao">Supervisão</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                {/* Role is always 'cliente' for self-registration. 
+                    Elevated roles (tecnico_campo, engenharia, supervisao) are assigned by admins only. */}
 
                 {role === 'cliente' && (
                   <>
