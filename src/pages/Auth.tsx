@@ -332,7 +332,7 @@ const Auth = () => {
                 {/* Role is always 'cliente' for self-registration. 
                     Elevated roles (tecnico_campo, engenharia, supervisao) are assigned by admins only. */}
 
-                {role === 'cliente' && (
+                {true && (
                   <>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
