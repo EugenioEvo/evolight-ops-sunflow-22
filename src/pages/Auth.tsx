@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
 import { Textarea } from '@/components/ui/textarea';
 import { Eye, EyeOff, Zap } from 'lucide-react';
 import { z } from 'zod';
@@ -51,7 +51,7 @@ const Auth = () => {
   const [password, setPassword] = useState('');
   const [nome, setNome] = useState('');
   const [telefone, setTelefone] = useState('');
-  const [role, setRole] = useState<'cliente' | 'tecnico_campo' | 'engenharia' | 'supervisao'>('cliente');
+  const role = 'cliente'; // Self-registration always creates cliente accounts
   const [empresa, setEmpresa] = useState('');
   const [cnpjCpf, setCnpjCpf] = useState('');
   const [endereco, setEndereco] = useState('');
@@ -117,16 +117,13 @@ const Auth = () => {
         email,
         password,
         telefone: telefone || '',
-        role,
-        empresa: role === 'cliente' ? empresa : undefined,
-        cnpjCpf: role === 'cliente' ? cnpjCpf : '',
-        endereco: role === 'cliente' ? endereco : undefined,
-        cidade: role === 'cliente' ? cidade : undefined,
-        estado: role === 'cliente' ? estado : undefined,
-        cep: role === 'cliente' ? cep : '',
-        registroProfissional: role === 'tecnico_campo' ? registroProfissional : undefined,
-        especialidades: role === 'tecnico_campo' ? especialidades : undefined,
-        regiaoAtuacao: role === 'tecnico_campo' ? regiaoAtuacao : undefined,
+        role: 'cliente' as const,
+        empresa,
+        cnpjCpf: cnpjCpf || '',
+        endereco,
+        cidade,
+        estado,
+        cep: cep || '',
       };
 
       const validationResult = signupSchema.safeParse(formData);
@@ -329,22 +326,10 @@ const Auth = () => {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="role">Tipo de Usuário</Label>
-                  <Select value={role} onValueChange={(value: any) => setRole(value)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="cliente">Cliente</SelectItem>
-                      <SelectItem value="tecnico_campo">Técnico de Campo</SelectItem>
-                      <SelectItem value="engenharia">Engenharia</SelectItem>
-                      <SelectItem value="supervisao">Supervisão</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                {/* Role is always 'cliente' for self-registration. 
+                    Elevated roles (tecnico_campo, engenharia, supervisao) are assigned by admins only. */}
 
-                {role === 'cliente' && (
+                {true && (
                   <>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
@@ -402,35 +387,6 @@ const Auth = () => {
                   </>
                 )}
 
-                {role === 'tecnico_campo' && (
-                  <>
-                    <div className="space-y-2">
-                      <Label htmlFor="registroProfissional">Registro Profissional</Label>
-                      <Input
-                        id="registroProfissional"
-                        value={registroProfissional}
-                        onChange={(e) => setRegistroProfissional(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="especialidades">Especialidades (separadas por vírgula)</Label>
-                      <Input
-                        id="especialidades"
-                        value={especialidades}
-                        onChange={(e) => setEspecialidades(e.target.value)}
-                        placeholder="Ex: Painel Solar, Inversor, Bateria"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="regiaoAtuacao">Região de Atuação</Label>
-                      <Input
-                        id="regiaoAtuacao"
-                        value={regiaoAtuacao}
-                        onChange={(e) => setRegiaoAtuacao(e.target.value)}
-                      />
-                    </div>
-                  </>
-                )}
 
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading ? 'Criando conta...' : 'Criar Conta'}

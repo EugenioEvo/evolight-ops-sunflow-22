@@ -48,7 +48,11 @@ serve(async (req) => {
 
     // Criar perfil baseado nos metadados do usuário
     const metadata = user.user_metadata || {}
-    const userRole = metadata.role || 'cliente'
+    // SECURITY: Only allow 'cliente' role for self-registration
+    // Elevated roles must be assigned by admins through the admin panel
+    const ALLOWED_SELF_ASSIGN_ROLES = ['cliente']
+    const rawRole = metadata.role || 'cliente'
+    const userRole = ALLOWED_SELF_ASSIGN_ROLES.includes(rawRole) ? rawRole : 'cliente'
     
     const { data: profile, error: profileError } = await supabaseClient
       .from('profiles')
