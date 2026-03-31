@@ -124,7 +124,7 @@ const WorkOrderCreate = () => {
             <CardContent className="space-y-4">
               <FormField control={form.control} name="servico_solicitado" render={({ field }) => (
                 <FormItem><FormLabel>Serviço Solicitado *</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value || undefined}>
                     <FormControl><SelectTrigger className="h-12"><SelectValue placeholder="Selecione o tipo" /></SelectTrigger></FormControl>
                     <SelectContent>{serviceTypes.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
                   </Select><FormMessage /></FormItem>
