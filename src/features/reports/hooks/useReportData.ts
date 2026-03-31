@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
-import { toast } from 'sonner';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
 import { reportService } from '../services/reportService';
+import type { ReportTicket, ReportRME, ReportOS, ReportTecnico, ReportCliente } from '../types';
 
 export const useReportData = () => {
-  const [tickets, setTickets] = useState<any[]>([]);
-  const [rmes, setRmes] = useState<any[]>([]);
-  const [ordensServico, setOrdensServico] = useState<any[]>([]);
-  const [tecnicos, setTecnicos] = useState<any[]>([]);
-  const [clientes, setClientes] = useState<any[]>([]);
+  const [tickets, setTickets] = useState<ReportTicket[]>([]);
+  const [rmes, setRmes] = useState<ReportRME[]>([]);
+  const [ordensServico, setOrdensServico] = useState<ReportOS[]>([]);
+  const [tecnicos, setTecnicos] = useState<ReportTecnico[]>([]);
+  const [clientes, setClientes] = useState<ReportCliente[]>([]);
   const [loading, setLoading] = useState(false);
   const [dateRange, setDateRange] = useState({
     start: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
@@ -35,41 +35,37 @@ export const useReportData = () => {
   useEffect(() => { loadData(); }, [dateRange]);
 
   const getTicketsByStatus = () => {
-    const counts = tickets.reduce((acc: any, t: any) => {
-      acc[t.status] = (acc[t.status] || 0) + 1;
-      return acc;
-    }, {});
+    const counts: Record<string, number> = {};
+    tickets.forEach(t => { counts[t.status] = (counts[t.status] || 0) + 1; });
     return Object.entries(counts).map(([status, count]) => ({
       status: status.replace('_', ' ').toUpperCase(),
-      count: count as number,
+      count,
     }));
   };
 
   const getTicketsByPriority = () => {
-    const counts = tickets.reduce((acc: any, t: any) => {
-      acc[t.prioridade] = (acc[t.prioridade] || 0) + 1;
-      return acc;
-    }, {});
+    const counts: Record<string, number> = {};
+    tickets.forEach(t => { counts[t.prioridade] = (counts[t.prioridade] || 0) + 1; });
     const colors: Record<string, string> = { baixa: '#10B981', media: '#F59E0B', alta: '#F97316', critica: '#EF4444' };
     return Object.entries(counts).map(([p, count]) => ({
-      name: p.toUpperCase(), value: count as number, color: colors[p] || '#6B7280',
+      name: p.toUpperCase(), value: count, color: colors[p] || '#6B7280',
     }));
   };
 
   const getTicketsByMonth = () => {
-    const counts = tickets.reduce((acc: any, t: any) => {
+    const counts: Record<string, number> = {};
+    tickets.forEach(t => {
       const month = new Date(t.created_at).toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
-      acc[month] = (acc[month] || 0) + 1;
-      return acc;
-    }, {});
-    return Object.entries(counts).map(([month, count]) => ({ month, tickets: count as number }));
+      counts[month] = (counts[month] || 0) + 1;
+    });
+    return Object.entries(counts).map(([month, count]) => ({ month, tickets: count }));
   };
 
   const getTechnicianPerformance = () => {
     return tecnicos
-      .map((t: any) => {
-        const techRMEs = rmes.filter((r: any) => r.tecnico_id === t.id);
-        const techTickets = tickets.filter((tk: any) => tk.tecnico_responsavel_id === t.id);
+      .map(t => {
+        const techRMEs = rmes.filter(r => r.tecnico_id === t.id);
+        const techTickets = tickets.filter(tk => tk.tecnico_responsavel_id === t.id);
         return {
           nome: t.profiles.nome,
           tickets_atribuidos: techTickets.length,

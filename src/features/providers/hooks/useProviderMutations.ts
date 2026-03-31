@@ -4,11 +4,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { useErrorHandler } from "@/hooks/useErrorHandler";
 import { providerService } from "../services/providerService";
-import { prestadorSchema, type PrestadorForm } from "../types";
+import { prestadorSchema, type PrestadorForm, type Prestador } from "../types";
 
 export const useProviderMutations = (reload: () => void) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingPrestador, setEditingPrestador] = useState<any>(null);
+  const [editingPrestador, setEditingPrestador] = useState<Prestador | null>(null);
   const { handleError } = useErrorHandler();
 
   const form = useForm<PrestadorForm>({
@@ -38,7 +38,7 @@ export const useProviderMutations = (reload: () => void) => {
     }
   };
 
-  const handleEdit = (prestador: any) => {
+  const handleEdit = (prestador: Prestador) => {
     setEditingPrestador(prestador);
     form.reset({
       nome: prestador.nome || "", email: prestador.email || "",

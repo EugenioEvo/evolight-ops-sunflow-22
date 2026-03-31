@@ -2,14 +2,46 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
 import { rmeService } from '../services/rmeService';
-import type { RMEForm, Material, MAX_FILE_SIZE, MAX_FILES, ALLOWED_TYPES } from '../types';
+import type { Material } from '../types';
+
+/** Minimal RME row shape for export/email actions */
+export interface RMERow {
+  id: string;
+  ordem_servico_id: string;
+  tecnico_id: string;
+  data_execucao: string;
+  servicos_executados: string;
+  condicoes_encontradas: string;
+  fotos_antes?: string[] | null;
+  fotos_depois?: string[] | null;
+  materiais_utilizados?: Array<{ nome?: string; descricao?: string; quantidade?: number; tinha_estoque?: boolean }> | null;
+  site_name?: string | null;
+  weekday?: string | null;
+  shift?: string | null;
+  start_time?: string | null;
+  end_time?: string | null;
+  service_type?: string[] | null;
+  collaboration?: string[] | null;
+  images_posted?: boolean | null;
+  modules_cleaned_qty?: number | null;
+  string_box_qty?: number | null;
+  signatures?: Record<string, string> | null;
+  status_aprovacao?: string;
+  tickets?: {
+    titulo?: string;
+    numero_ticket?: string;
+    endereco_servico?: string;
+    clientes?: { empresa?: string; endereco?: string; ufv_solarz?: string | null };
+  } | null;
+  tecnicos?: { profiles?: { nome?: string } } | null;
+}
 
 export const useRMEActions = () => {
   const [fotosBefore, setFotosBefore] = useState<File[]>([]);
   const [fotosAfter, setFotosAfter] = useState<File[]>([]);
   const [tecnicoSignature, setTecnicoSignature] = useState('');
   const [clienteSignature, setClienteSignature] = useState('');
-  const [scannedEquipment, setScannedEquipment] = useState<any>(null);
+  const [scannedEquipment, setScannedEquipment] = useState<Record<string, string> | null>(null);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [materiais, setMateriais] = useState<Material[]>([]);
   const [exportingRMEId, setExportingRMEId] = useState<string | null>(null);
@@ -46,13 +78,13 @@ export const useRMEActions = () => {
 
   const addMaterial = () => setMateriais([...materiais, { insumo_id: '', nome: '', quantidade: 1 }]);
   const removeMaterial = (index: number) => setMateriais(materiais.filter((_, i) => i !== index));
-  const updateMaterial = (index: number, field: string, value: any) => {
+  const updateMaterial = (index: number, field: keyof Material, value: string | number) => {
     const updated = [...materiais];
     updated[index] = { ...updated[index], [field]: value };
     setMateriais(updated);
   };
 
-  const handleExportRMEPDF = async (rme: any) => {
+  const handleExportRMEPDF = async (rme: RMERow) => {
     setExportingRMEId(rme.id);
     try {
       await rmeService.exportRMEPDF(rme);
@@ -64,7 +96,7 @@ export const useRMEActions = () => {
     }
   };
 
-  const handleSendRMEEmail = async (rme: any) => {
+  const handleSendRMEEmail = async (rme: RMERow) => {
     setSendingEmailId(rme.id);
     try {
       await rmeService.sendRMEEmail(rme.id);
