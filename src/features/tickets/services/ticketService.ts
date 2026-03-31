@@ -1,7 +1,9 @@
 import { supabase } from '@/integrations/supabase/client';
+import type { TicketWithRelations, TicketCliente, TicketPrestador, LinkedOS } from '../types';
+import type { TablesInsert, TablesUpdate } from '@/integrations/supabase/types';
 
 export const ticketService = {
-  async loadAll() {
+  async loadAll(): Promise<TicketWithRelations[]> {
     const { data, error } = await supabase
       .from('tickets')
       .select(`
@@ -26,10 +28,10 @@ export const ticketService = {
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return data || [];
+    return (data || []) as unknown as TicketWithRelations[];
   },
 
-  async loadClientes() {
+  async loadClientes(): Promise<TicketCliente[]> {
     const { data, error } = await supabase
       .from('clientes')
       .select(`
@@ -45,27 +47,27 @@ export const ticketService = {
         profiles(nome, email, telefone)
       `);
     if (error) throw error;
-    return data || [];
+    return (data || []) as unknown as TicketCliente[];
   },
 
-  async loadPrestadores() {
+  async loadPrestadores(): Promise<TicketPrestador[]> {
     const { data, error } = await supabase
       .from('prestadores')
       .select('*')
       .eq('categoria', 'tecnico')
       .eq('ativo', true);
     if (error) throw error;
-    return data || [];
+    return (data || []) as TicketPrestador[];
   },
 
-  async create(ticketData: any) {
+  async create(ticketData: TablesInsert<'tickets'>) {
     const { error } = await supabase
       .from('tickets')
       .insert([ticketData]);
     if (error) throw error;
   },
 
-  async update(id: string, ticketData: any) {
+  async update(id: string, ticketData: TablesUpdate<'tickets'>) {
     const { error } = await supabase
       .from('tickets')
       .update(ticketData)
@@ -125,12 +127,12 @@ export const ticketService = {
     if (error) throw error;
   },
 
-  async getLinkedOS(ticketId: string) {
+  async getLinkedOS(ticketId: string): Promise<LinkedOS[]> {
     const { data } = await supabase
       .from('ordens_servico')
       .select('id, numero_os, tecnico_id')
       .eq('ticket_id', ticketId);
-    return data || [];
+    return (data || []) as LinkedOS[];
   },
 
   async resetOSAceite(osId: string) {
@@ -140,7 +142,7 @@ export const ticketService = {
         aceite_tecnico: 'pendente',
         aceite_at: null,
         motivo_recusa: null,
-      } as any)
+      })
       .eq('id', osId);
   },
 
@@ -152,7 +154,7 @@ export const ticketService = {
         aceite_tecnico: 'pendente',
         aceite_at: null,
         motivo_recusa: null,
-      } as any)
+      })
       .eq('id', osId);
   },
 
@@ -162,19 +164,19 @@ export const ticketService = {
       .select('profiles!inner(user_id)')
       .eq('id', tecnicoId)
       .single();
-    return (data as any)?.profiles?.user_id || null;
+    return (data as Record<string, Record<string, string>> | null)?.profiles?.user_id || null;
   },
 
-  async findTecnicoByEmail(email: string) {
+  async findTecnicoByEmail(email: string): Promise<{ id: string; profiles: { email: string; user_id: string } } | null> {
     const { data } = await supabase
       .from('tecnicos')
       .select('id, profiles!inner(email, user_id)')
       .ilike('profiles.email', email)
       .maybeSingle();
-    return data;
+    return data as { id: string; profiles: { email: string; user_id: string } } | null;
   },
 
-  async getPrestador(id: string) {
+  async getPrestador(id: string): Promise<{ email: string; nome: string } | null> {
     const { data } = await supabase
       .from('prestadores')
       .select('email, nome')
@@ -183,17 +185,15 @@ export const ticketService = {
     return data;
   },
 
-  // sendNotification and sendCalendarInvite moved to shared/services/notificationService.ts
-
   async generateOS(ticketId: string) {
     const { data, error } = await supabase.functions.invoke('gerar-ordem-servico', {
       body: { ticketId },
     });
     if (error) throw error;
-    return data;
+    return data as { message?: string; pdfUrl?: string } | null;
   },
 
-  async getLinkedRME(ticketId: string) {
+  async getLinkedRME(ticketId: string): Promise<Array<{ id: string }>> {
     const { data } = await supabase
       .from('rme_relatorios')
       .select('id')
@@ -201,7 +201,7 @@ export const ticketService = {
     return data || [];
   },
 
-  async getSignedPdfUrl(pdfPath: string) {
+  async getSignedPdfUrl(pdfPath: string): Promise<string | null> {
     const filePath = pdfPath.replace('ordens-servico/', '');
     const { data, error } = await supabase.storage
       .from('ordens-servico')

@@ -4,14 +4,29 @@ import { useAuth } from '@/hooks/useAuth';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
 import { useGlobalRealtime } from '@/hooks/useRealtimeProvider';
 import { rmeService } from '../services/rmeService';
+import type { RMERow } from './useRMEActions';
+
+/** OS data returned by rmeService.fetchOSById */
+export interface RMESelectedOS {
+  id: string;
+  numero_os: string;
+  ticket_id: string;
+  tecnico_id: string | null;
+  tickets: {
+    id: string;
+    titulo: string;
+    endereco_servico: string;
+    clientes: { empresa: string | null } | null;
+  } | null;
+}
 
 export const useRMEData = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const osIdFromUrl = searchParams.get('os');
 
-  const [rmes, setRmes] = useState<any[]>([]);
-  const [selectedOS, setSelectedOS] = useState<any>(null);
+  const [rmes, setRmes] = useState<RMERow[]>([]);
+  const [selectedOS, setSelectedOS] = useState<RMESelectedOS | null>(null);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const { user, profile, loading: authLoading } = useAuth();
@@ -39,7 +54,7 @@ export const useRMEData = () => {
         setSelectedOS(null);
         return;
       }
-      setSelectedOS(osData);
+      setSelectedOS(osData as RMESelectedOS);
     } catch (error) {
       handleError(error, { fallbackMessage: 'Erro ao carregar OS' });
       setSelectedOS(null);
@@ -49,7 +64,7 @@ export const useRMEData = () => {
   const loadData = async () => {
     setLoading(true);
     await handleAsyncError(
-      async () => { const data = await rmeService.fetchRMEs(); setRmes(data); },
+      async () => { const data = await rmeService.fetchRMEs(); setRmes(data as unknown as RMERow[]); },
       { fallbackMessage: 'Erro ao carregar dados' }
     );
     setLoading(false);

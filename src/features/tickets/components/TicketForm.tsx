@@ -7,21 +7,20 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
 import { FileUpload } from '@/components/FileUpload';
-import { AlertTriangle, Clock } from 'lucide-react';
-import { ticketSchema, type TicketFormData } from '../types';
+import { Clock } from 'lucide-react';
+import { ticketSchema, type TicketFormData, type TicketWithRelations, type TicketCliente, type TicketPrestador } from '../types';
 
 interface TicketFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  editingTicket: any;
-  clientes: any[];
-  prestadores: any[];
+  editingTicket: TicketWithRelations | null;
+  clientes: TicketCliente[];
+  prestadores: TicketPrestador[];
   ufvSolarzListForForm: string[];
   loading: boolean;
   onSubmit: (data: TicketFormData, technicianId: string | null, attachments: string[]) => Promise<void>;
-  getScoresForTicket?: (ticket?: any) => any[];
+  getScoresForTicket?: (ticket?: TicketWithRelations) => Array<{ id: string; score: number }>;
 }
 
 export const TicketForm = ({
@@ -45,8 +44,8 @@ export const TicketForm = ({
       titulo: editingTicket.titulo,
       descricao: editingTicket.descricao,
       cliente_id: editingTicket.cliente_id,
-      equipamento_tipo: editingTicket.equipamento_tipo,
-      prioridade: editingTicket.prioridade,
+      equipamento_tipo: editingTicket.equipamento_tipo as TicketFormData['equipamento_tipo'],
+      prioridade: editingTicket.prioridade as TicketFormData['prioridade'],
       endereco_servico: editingTicket.endereco_servico,
       data_servico: editingTicket.data_servico || '',
       data_vencimento: editingTicket.data_vencimento ? new Date(editingTicket.data_vencimento).toISOString().split('T')[0] : '',
@@ -109,7 +108,7 @@ export const TicketForm = ({
                   value={selectedUfvSolarzForm}
                   onValueChange={(value) => {
                     setSelectedUfvSolarzForm(value);
-                    const clienteAssociado = clientes.find((c: any) => c.ufv_solarz === value);
+                    const clienteAssociado = clientes.find(c => c.ufv_solarz === value);
                     if (clienteAssociado) {
                       form.setValue('cliente_id', clienteAssociado.id);
                       const endereco = `${clienteAssociado.endereco || ''}, ${clienteAssociado.cidade || ''}, ${clienteAssociado.estado || ''} - ${clienteAssociado.cep || ''}`.trim().replace(/^,\s*|,\s*$/, '');
@@ -140,7 +139,7 @@ export const TicketForm = ({
                     <FormLabel>Cliente</FormLabel>
                     <Select onValueChange={(value) => {
                       field.onChange(value);
-                      const clienteSelecionado = clientes.find((c: any) => c.id === value);
+                      const clienteSelecionado = clientes.find(c => c.id === value);
                       if (clienteSelecionado) {
                         const endereco = `${clienteSelecionado.endereco || ''}, ${clienteSelecionado.cidade || ''}, ${clienteSelecionado.estado || ''} - ${clienteSelecionado.cep || ''}`.trim().replace(/^,\s*|,\s*$/, '');
                         if (endereco && endereco !== ' -  - ') {
@@ -157,7 +156,7 @@ export const TicketForm = ({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {clientes.map((cliente: any) => (
+                        {clientes.map((cliente) => (
                           <SelectItem key={cliente.id} value={cliente.id}>
                             {cliente.empresa || cliente.profiles?.nome}
                           </SelectItem>

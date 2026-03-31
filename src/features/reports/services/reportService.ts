@@ -1,7 +1,16 @@
 import { supabase } from '@/integrations/supabase/client';
+import type { ReportTicket, ReportRME, ReportOS, ReportTecnico, ReportCliente } from '../types';
+
+export interface ReportFetchResult {
+  tickets: ReportTicket[];
+  rmes: ReportRME[];
+  ordensServico: ReportOS[];
+  tecnicos: ReportTecnico[];
+  clientes: ReportCliente[];
+}
 
 export const reportService = {
-  async fetchAll(dateRange: { start: string; end: string }) {
+  async fetchAll(dateRange: { start: string; end: string }): Promise<ReportFetchResult> {
     const [ticketsRes, rmesRes, osRes, tecnicosRes, clientesRes] = await Promise.all([
       supabase
         .from('tickets')
@@ -26,11 +35,11 @@ export const reportService = {
     ]);
 
     return {
-      tickets: ticketsRes.data || [],
-      rmes: rmesRes.data || [],
-      ordensServico: osRes.data || [],
-      tecnicos: tecnicosRes.data || [],
-      clientes: clientesRes.data || [],
+      tickets: (ticketsRes.data || []) as unknown as ReportTicket[],
+      rmes: (rmesRes.data || []) as unknown as ReportRME[],
+      ordensServico: (osRes.data || []) as unknown as ReportOS[],
+      tecnicos: (tecnicosRes.data || []) as unknown as ReportTecnico[],
+      clientes: (clientesRes.data || []) as unknown as ReportCliente[],
     };
   },
 };

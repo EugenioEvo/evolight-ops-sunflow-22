@@ -1,5 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { downloadRMEPDF, RMEPDFData } from '@/utils/generateRMEPDF';
+import type { RMERow } from '../hooks/useRMEActions';
+import type { TablesInsert } from '@/integrations/supabase/types';
 
 export const rmeService = {
   async fetchRMEs() {
@@ -56,7 +58,7 @@ export const rmeService = {
     return urls;
   },
 
-  async getTecnicoId(profileId: string) {
+  async getTecnicoId(profileId: string): Promise<string | undefined> {
     const { data } = await supabase
       .from('tecnicos')
       .select('id')
@@ -65,8 +67,8 @@ export const rmeService = {
     return data?.id;
   },
 
-  async createRME(rmeData: any) {
-    const { error } = await supabase.from('rme_relatorios').insert([rmeData as any]);
+  async createRME(rmeData: TablesInsert<'rme_relatorios'>) {
+    const { error } = await supabase.from('rme_relatorios').insert([rmeData]);
     if (error) throw error;
   },
 
@@ -78,9 +80,9 @@ export const rmeService = {
     if (error) throw error;
   },
 
-  async searchEquipmentByQR(qrData: any) {
+  async searchEquipmentByQR(qrData: Record<string, string>) {
     let query = supabase.from('equipamentos').select('*');
-    const searchCriteria = [];
+    const searchCriteria: string[] = [];
     if (qrData.id) searchCriteria.push(`id.eq.${qrData.id}`);
     if (qrData.numero_serie) searchCriteria.push(`numero_serie.eq.${qrData.numero_serie}`);
     if (qrData.codigo) {
@@ -95,7 +97,7 @@ export const rmeService = {
     return data;
   },
 
-  async exportRMEPDF(rme: any) {
+  async exportRMEPDF(rme: RMERow) {
     const { data: checklistItems } = await supabase
       .from('rme_checklist_items')
       .select('*')
@@ -109,7 +111,7 @@ export const rmeService = {
       .single();
 
     const checklistMap: Record<string, { label: string; checked: boolean }[]> = {};
-    (checklistItems || []).forEach((item: any) => {
+    (checklistItems || []).forEach((item) => {
       if (!checklistMap[item.category]) checklistMap[item.category] = [];
       checklistMap[item.category].push({ label: item.label, checked: !!item.checked });
     });
@@ -138,7 +140,7 @@ export const rmeService = {
       fotos_antes_count: rme.fotos_antes?.length || 0,
       fotos_depois_count: rme.fotos_depois?.length || 0,
       materiais_utilizados: Array.isArray(rme.materiais_utilizados)
-        ? rme.materiais_utilizados.map((m: any) => ({
+        ? rme.materiais_utilizados.map((m) => ({
             descricao: m.nome || m.descricao || '-',
             quantidade: m.quantidade || 0,
             tinha_estoque: !!m.tinha_estoque,

@@ -1,13 +1,13 @@
 import { useState, useEffect, useMemo } from 'react';
-import { toast } from 'sonner';
 import { useGlobalRealtime } from '@/hooks/useRealtimeProvider';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
 import { ticketService } from '../services/ticketService';
+import type { TicketWithRelations, TicketCliente, TicketPrestador } from '../types';
 
 export const useTicketData = () => {
-  const [tickets, setTickets] = useState<any[]>([]);
-  const [clientes, setClientes] = useState<any[]>([]);
-  const [prestadores, setPrestadores] = useState<any[]>([]);
+  const [tickets, setTickets] = useState<TicketWithRelations[]>([]);
+  const [clientes, setClientes] = useState<TicketCliente[]>([]);
+  const [prestadores, setPrestadores] = useState<TicketPrestador[]>([]);
   const [loading, setLoading] = useState(false);
   const { handleAsyncError } = useErrorHandler();
 
@@ -39,10 +39,10 @@ export const useTicketData = () => {
 
   const ufvSolarzListForForm = useMemo(() => {
     return clientes
-      .map((c: any) => c.ufv_solarz)
-      .filter((ufv: string | null): ufv is string => ufv !== null && ufv.trim() !== '')
-      .filter((ufv: string, index: number, arr: string[]) => arr.indexOf(ufv) === index)
-      .sort((a: string, b: string) => a.localeCompare(b));
+      .map(c => c.ufv_solarz)
+      .filter((ufv): ufv is string => ufv !== null && ufv !== undefined && ufv.trim() !== '')
+      .filter((ufv, index, arr) => arr.indexOf(ufv) === index)
+      .sort((a, b) => a.localeCompare(b));
   }, [clientes]);
 
   return { tickets, clientes, prestadores, loading, setLoading, loadData, ufvSolarzOptions, ufvSolarzListForForm };

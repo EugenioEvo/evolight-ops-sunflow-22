@@ -176,7 +176,7 @@ const Tickets = () => {
                     onApprove={(id) => { mutations.approveTicket(id); filters.setActiveTab('aprovado'); }}
                     onReject={(id) => { mutations.rejectTicket(id); filters.setActiveTab('todos'); }}
                     onEdit={handleEdit}
-                    onDelete={(id) => { mutations.deleteTicket(id, tickets); filters.setActiveTab('todos'); }}
+                    onDelete={(id) => { mutations.deleteTicket(id); filters.setActiveTab('todos'); }}
                     onAssignTechnician={(ticketId, techId) => mutations.assignTechnician(ticketId, techId, tickets, prestadores)}
                     onGenerateOS={(ticket) => setMultiOSDialogTicket(ticket)}
                     onReprocessGeocode={handleReprocessGeocode}

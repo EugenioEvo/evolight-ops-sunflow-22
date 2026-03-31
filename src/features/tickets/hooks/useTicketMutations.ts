@@ -4,7 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
 import { ticketService } from '../services/ticketService';
 import { notificationService } from '@/shared/services/notificationService';
-import type { TicketFormData } from '../types';
+import type { TicketFormData, TicketWithRelations, TicketPrestador } from '../types';
 
 export const useTicketMutations = (loadData: () => Promise<void>) => {
   const [loading, setLoading] = useState(false);
@@ -25,11 +25,19 @@ export const useTicketMutations = (loadData: () => Promise<void>) => {
       }
 
       await ticketService.create({
-        ...data,
+        titulo: data.titulo,
+        descricao: data.descricao,
+        cliente_id: data.cliente_id,
+        equipamento_tipo: data.equipamento_tipo,
+        prioridade: data.prioridade,
+        endereco_servico: data.endereco_servico,
+        numero_ticket: '',
         tempo_estimado: data.tempo_estimado || null,
         data_servico: data.data_servico || null,
         data_vencimento: data.data_vencimento ? new Date(data.data_vencimento).toISOString() : null,
-        created_by: user?.id,
+        horario_previsto_inicio: data.horario_previsto_inicio || null,
+        observacoes: data.observacoes || null,
+        created_by: user?.id || '',
         tecnico_responsavel_id: technicianId || null,
         anexos: attachments,
         status: 'aberto',
@@ -41,7 +49,7 @@ export const useTicketMutations = (loadData: () => Promise<void>) => {
     }
   };
 
-  const updateTicket = async (editingTicket: any, data: TicketFormData, technicianId: string | null, attachments: string[]) => {
+  const updateTicket = async (editingTicket: TicketWithRelations, data: TicketFormData, technicianId: string | null, attachments: string[]) => {
     setLoading(true);
     try {
       const ticketData = {
@@ -49,10 +57,9 @@ export const useTicketMutations = (loadData: () => Promise<void>) => {
         tempo_estimado: data.tempo_estimado || null,
         data_servico: data.data_servico || null,
         data_vencimento: data.data_vencimento ? new Date(data.data_vencimento).toISOString() : null,
-        created_by: user?.id,
         tecnico_responsavel_id: technicianId || null,
         anexos: attachments,
-        status: 'aberto',
+        status: 'aberto' as const,
       };
 
       const criticalChanged =
@@ -112,7 +119,7 @@ export const useTicketMutations = (loadData: () => Promise<void>) => {
     }
   };
 
-  const deleteTicket = async (ticketId: string, tickets: any[]) => {
+  const deleteTicket = async (ticketId: string) => {
     setLoading(true);
     try {
       const [osData, rmeData] = await Promise.all([
@@ -121,7 +128,7 @@ export const useTicketMutations = (loadData: () => Promise<void>) => {
       ]);
 
       if (osData.length > 0 || rmeData.length > 0) {
-        const parts = [];
+        const parts: string[] = [];
         if (osData.length > 0) parts.push(`${osData.length} OS`);
         if (rmeData.length > 0) parts.push(`${rmeData.length} RME`);
 
@@ -152,14 +159,14 @@ export const useTicketMutations = (loadData: () => Promise<void>) => {
     }
   };
 
-  const assignTechnician = async (ticketId: string, technicianId: string, tickets: any[], prestadores: any[]) => {
+  const assignTechnician = async (ticketId: string, technicianId: string, tickets: TicketWithRelations[], prestadores: TicketPrestador[]) => {
     try {
       if (!technicianId) {
         toast.error('Selecione um técnico');
         return;
       }
 
-      const ticket = tickets.find((t: any) => t.id === ticketId);
+      const ticket = tickets.find(t => t.id === ticketId);
       const oldPrestadorId = ticket?.tecnico_responsavel_id;
       const isReassignment = oldPrestadorId && oldPrestadorId !== technicianId;
 
@@ -174,7 +181,7 @@ export const useTicketMutations = (loadData: () => Promise<void>) => {
             const oldTecnicoId = os.tecnico_id;
 
             if (isReassignment && oldTecnicoId && oldTecnicoId !== tecnico.id) {
-              try { await notificationService.sendCalendarInvite(os.id, 'reassign_removed'); } catch {}
+              try { await notificationService.sendCalendarInvite(os.id, 'reassign_removed'); } catch { /* silent */ }
 
               const oldTecUserId = await notificationService.getTecnicoUserId(oldTecnicoId);
               if (oldTecUserId) {
@@ -188,9 +195,9 @@ export const useTicketMutations = (loadData: () => Promise<void>) => {
             await ticketService.updateOSTecnico(os.id, tecnico.id);
 
             if (isReassignment) {
-              try { await notificationService.sendCalendarInvite(os.id, 'create'); } catch {}
+              try { await notificationService.sendCalendarInvite(os.id, 'create'); } catch { /* silent */ }
 
-              const newTecUserId = (tecnico as any)?.profiles?.user_id;
+              const newTecUserId = tecnico.profiles?.user_id;
               if (newTecUserId) {
                 await notificationService.sendInApp(
                   newTecUserId, 'os_atribuida', 'Nova OS Atribuída',
@@ -204,7 +211,7 @@ export const useTicketMutations = (loadData: () => Promise<void>) => {
 
       toast.success(isReassignment ? 'Técnico reatribuído. Ambos foram notificados.' : 'Técnico atribuído com sucesso.');
 
-      const prestadorAssigned = prestadores.find((p: any) => p.id === technicianId);
+      const prestadorAssigned = prestadores.find(p => p.id === technicianId);
       if (prestadorAssigned && (!prestadorAssigned.email || prestadorAssigned.email.trim() === '')) {
         toast.warning('Este técnico não possui email cadastrado. Atualize o cadastro antes de gerar a OS.');
       }
@@ -215,12 +222,12 @@ export const useTicketMutations = (loadData: () => Promise<void>) => {
     }
   };
 
-  const generateOS = async (ticketId: string, tickets: any[], prestadores: any[]) => {
+  const generateOS = async (ticketId: string, tickets: TicketWithRelations[], prestadores: TicketPrestador[]) => {
     setGeneratingOsId(ticketId);
     try {
-      const ticket = tickets.find((t: any) => t.id === ticketId);
+      const ticket = tickets.find(t => t.id === ticketId);
       if (ticket?.tecnico_responsavel_id) {
-        const prestador = prestadores.find((p: any) => p.id === ticket.tecnico_responsavel_id);
+        const prestador = prestadores.find(p => p.id === ticket.tecnico_responsavel_id);
         if (prestador && (!prestador.email || prestador.email.trim() === '')) {
           toast.error('Não é possível gerar a OS. Atualize o email do técnico na página de Prestadores.');
           return null;
