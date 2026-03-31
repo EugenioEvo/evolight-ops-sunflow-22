@@ -1,12 +1,13 @@
 import { useState } from "react";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
+import { useErrorHandler } from "@/hooks/useErrorHandler";
 import { technicianService } from "../services/technicianService";
 import type { Tecnico } from "../types";
 
 export const useTechnicianMutations = (reload: () => void) => {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedTecnico, setSelectedTecnico] = useState<Tecnico | null>(null);
-  const { toast } = useToast();
+  const { handleError } = useErrorHandler();
 
   const handleEdit = (tecnico: Tecnico) => {
     setSelectedTecnico(tecnico);
@@ -32,33 +33,22 @@ export const useTechnicianMutations = (reload: () => void) => {
         registro_profissional: formData.get("registro_profissional")?.toString(),
       });
 
-      toast({ title: "Sucesso", description: "Técnico atualizado com sucesso" });
+      toast.success("Técnico atualizado com sucesso");
       setEditDialogOpen(false);
       setSelectedTecnico(null);
       reload();
-    } catch (error: any) {
-      toast({
-        title: "Erro ao atualizar técnico",
-        description: error.message,
-        variant: "destructive",
-      });
+    } catch (error) {
+      handleError(error, { fallbackMessage: 'Erro ao atualizar técnico' });
     }
   };
 
   const handleToggleActive = async (tecnico: Tecnico) => {
     try {
       await technicianService.toggleActive(tecnico.profile_id, tecnico.profiles.ativo);
-      toast({
-        title: "Sucesso",
-        description: `Técnico ${tecnico.profiles.ativo ? "desativado" : "ativado"} com sucesso`,
-      });
+      toast.success(`Técnico ${tecnico.profiles.ativo ? "desativado" : "ativado"} com sucesso`);
       reload();
-    } catch (error: any) {
-      toast({
-        title: "Erro ao atualizar status",
-        description: error.message,
-        variant: "destructive",
-      });
+    } catch (error) {
+      handleError(error, { fallbackMessage: 'Erro ao atualizar status' });
     }
   };
 

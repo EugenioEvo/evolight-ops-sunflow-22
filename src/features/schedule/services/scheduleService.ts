@@ -33,9 +33,9 @@ export const scheduleService = {
       .select('id, profiles!inner(nome)')
       .order('profiles(nome)');
 
-    return (data || []).map((t: any) => ({
+    return (data || []).map((t) => ({
       id: t.id,
-      nome: t.profiles?.nome || 'Sem nome',
+      nome: (t.profiles as unknown as { nome: string })?.nome || 'Sem nome',
     }));
   },
 

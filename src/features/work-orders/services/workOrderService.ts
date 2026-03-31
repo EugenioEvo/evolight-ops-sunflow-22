@@ -1,7 +1,8 @@
 import { supabase } from '@/integrations/supabase/client';
+import type { WorkOrder } from '../types';
 
 export const workOrderService = {
-  async loadAll() {
+  async loadAll(): Promise<WorkOrder[]> {
     const { data, error } = await supabase
       .from("ordens_servico")
       .select(`
@@ -15,19 +16,19 @@ export const workOrderService = {
       .order("data_emissao", { ascending: false });
 
     if (error) throw error;
-    return (data || []).map((os: any) => ({
+    return (data || []).map((os) => ({
       ...os,
-      work_type: os.work_type || [],
-      rme_relatorios: os.rme_relatorios || [],
-    }));
+      work_type: Array.isArray(os.work_type) ? os.work_type as string[] : [],
+      rme_relatorios: Array.isArray(os.rme_relatorios) ? os.rme_relatorios : os.rme_relatorios ? [os.rme_relatorios] : [],
+    })) as WorkOrder[];
   },
 
-  async loadClientes() {
+  async loadClientes(): Promise<Array<{ id: string; empresa: string }>> {
     const { data } = await supabase
       .from("clientes")
       .select("id, empresa")
       .order("empresa");
-    return data || [];
+    return (data || []).map(c => ({ id: c.id, empresa: c.empresa ?? '' }));
   },
 
   async deleteOS(osId: string) {
@@ -63,6 +64,4 @@ export const workOrderService = {
     if (error) throw error;
     return data;
   },
-
-  // sendCalendarInvite and sendNotification moved to shared/services/notificationService.ts
 };

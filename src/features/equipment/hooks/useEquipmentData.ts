@@ -3,9 +3,16 @@ import { useErrorHandler } from "@/hooks/useErrorHandler";
 import { equipmentService } from "../services/equipmentService";
 import type { Equipamento } from "../types";
 
+/** Client option for equipment forms */
+export interface EquipmentClienteOption {
+  id: string;
+  empresa: string | null;
+  profiles: { nome: string } | null;
+}
+
 export function useEquipmentData() {
   const [equipamentos, setEquipamentos] = useState<Equipamento[]>([]);
-  const [clientes, setClientes] = useState<any[]>([]);
+  const [clientes, setClientes] = useState<EquipmentClienteOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("todos");
@@ -16,13 +23,13 @@ export function useEquipmentData() {
       () => equipmentService.fetchAll(),
       { fallbackMessage: 'Erro ao carregar equipamentos' }
     );
-    if (data) setEquipamentos(data as any);
+    if (data) setEquipamentos(data as Equipamento[]);
     setLoading(false);
   };
 
   const fetchClientes = async () => {
     await handleAsyncError(
-      async () => { const data = await equipmentService.fetchClientes(); setClientes(data); },
+      async () => { const data = await equipmentService.fetchClientes(); setClientes(data as EquipmentClienteOption[]); },
       { showToast: false }
     );
   };

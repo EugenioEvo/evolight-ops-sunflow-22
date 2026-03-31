@@ -16,6 +16,7 @@ export interface RMESelectedOS {
     id: string;
     titulo: string;
     endereco_servico: string;
+    status: string;
     clientes: { empresa: string | null } | null;
   } | null;
 }

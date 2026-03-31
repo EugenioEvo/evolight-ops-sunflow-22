@@ -34,7 +34,7 @@ const getPrioridadeColor = (prioridade: string) => {
 };
 
 const getStatusBadge = (status: string) => {
-  const labels: Record<string, { label: string; variant: any }> = {
+  const labels: Record<string, { label: string; variant: "default" | "outline" | "secondary" | "destructive" }> = {
     'ordem_servico_gerada': { label: 'Pendente', variant: 'outline' },
     'em_execucao': { label: 'Em Execução', variant: 'default' },
     'concluido': { label: 'Concluído', variant: 'secondary' },
