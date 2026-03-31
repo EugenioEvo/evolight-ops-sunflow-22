@@ -10,7 +10,7 @@ export const clientService = {
 
     if (error) throw error;
 
-    return (data || []).map((cliente: any) => ({
+    return (data || []).map((cliente) => ({
       id: cliente.id,
       empresa: cliente.empresa || '',
       cnpj_cpf: cliente.cnpj_cpf || '',

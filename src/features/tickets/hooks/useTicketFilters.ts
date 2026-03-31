@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useDebounce } from '@/hooks/useDebounce';
-import { ITEMS_PER_PAGE } from '../types';
+import { ITEMS_PER_PAGE, type TicketWithRelations } from '../types';
 
-export const useTicketFilters = (tickets: any[]) => {
+export const useTicketFilters = (tickets: TicketWithRelations[]) => {
   const [searchTerm, setSearchTerm] = useState(localStorage.getItem('tickets_search') || '');
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
   const [activeTab, setActiveTab] = useState(localStorage.getItem('tickets_tab') || 'todos');
