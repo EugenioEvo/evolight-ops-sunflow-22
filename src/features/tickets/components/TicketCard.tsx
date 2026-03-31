@@ -1,31 +1,32 @@
-import React, { useRef } from 'react';
+import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Calendar, Clock, MapPin, Settings, FileText, CheckCircle, XCircle, Download, Eye, Loader2, RefreshCw, Star, AlertTriangle } from 'lucide-react';
+import { Calendar, Clock, MapPin, Settings, FileText, CheckCircle, XCircle, Download, Eye, Loader2, RefreshCw, Star, AlertTriangle, type LucideIcon } from 'lucide-react';
 import { STATUS_COLORS, PRIORIDADE_COLORS } from '../types';
+import type { TicketWithRelations, TicketPrestador } from '../types';
 import { ticketService } from '../services/ticketService';
 import { useToast } from '@/hooks/use-toast';
 
 interface TicketCardProps {
-  ticket: any;
-  profile: any;
-  prestadores: any[];
+  ticket: TicketWithRelations;
+  profile: { role?: string } | null;
+  prestadores: TicketPrestador[];
   loading: boolean;
   generatingOsId: string | null;
   reprocessingTicketId: string | null;
   geocoding: boolean;
   onApprove: (id: string) => void;
   onReject: (id: string) => void;
-  onEdit: (ticket: any) => void;
+  onEdit: (ticket: TicketWithRelations) => void;
   onDelete: (id: string) => void;
   onAssignTechnician: (ticketId: string, technicianId: string) => void;
-  onGenerateOS: (ticket: any) => void;
+  onGenerateOS: (ticket: TicketWithRelations) => void;
   onReprocessGeocode: (id: string, address: string) => void;
-  getSortedPrestadores: (ticket?: any) => any[];
-  renderPrestadorOption: (prestador: any, index: number) => React.ReactNode;
+  getSortedPrestadores: (ticket?: TicketWithRelations) => TicketPrestador[];
+  renderPrestadorOption: (prestador: TicketPrestador, index: number) => React.ReactNode;
 }
 
 export const TicketCard = ({
@@ -66,14 +67,15 @@ export const TicketCard = ({
       } else {
         toast({ title: 'Aviso', description: 'PDF ainda não gerado' });
       }
-    } catch (error: any) {
-      toast({ title: 'Erro', description: 'Erro ao abrir OS: ' + error.message, variant: 'destructive' });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Erro desconhecido';
+      toast({ title: 'Erro', description: 'Erro ao abrir OS: ' + message, variant: 'destructive' });
     }
   };
 
   const getGeocodingStatusBadge = (status: string | null | undefined) => {
     if (!status) return null;
-    const config: Record<string, { variant: 'secondary' | 'destructive'; className: string; icon: any; label: string; iconClass?: string }> = {
+    const config: Record<string, { variant: 'secondary' | 'destructive'; className: string; icon: LucideIcon; label: string; iconClass?: string }> = {
       'pending': { variant: 'secondary', className: 'bg-yellow-100 text-yellow-800 border-yellow-300', icon: Clock, label: 'Pendente' },
       'processing': { variant: 'secondary', className: 'bg-blue-100 text-blue-800 border-blue-300', icon: Loader2, label: 'Processando', iconClass: 'animate-spin' },
       'geocoded': { variant: 'secondary', className: 'bg-green-100 text-green-800 border-green-300', icon: MapPin, label: 'Geocodificado' },
@@ -228,7 +230,6 @@ export const TicketCard = ({
             </div>
           )}
 
-          {/* Action buttons */}
           {isStaff && (
             <div className="flex flex-wrap gap-2 pt-2 border-t">
               {ticket.status === 'aberto' && (

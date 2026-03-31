@@ -17,6 +17,95 @@ export const ticketSchema = z.object({
 
 export type TicketFormData = z.infer<typeof ticketSchema>;
 
+/** Ticket row with all related data as returned by ticketService.loadAll() */
+export interface TicketWithRelations {
+  id: string;
+  numero_ticket: string;
+  titulo: string;
+  descricao: string;
+  status: string;
+  prioridade: string;
+  equipamento_tipo: string;
+  endereco_servico: string;
+  data_abertura: string;
+  data_servico: string | null;
+  data_vencimento: string | null;
+  data_conclusao: string | null;
+  data_inicio_execucao: string | null;
+  horario_previsto_inicio: string | null;
+  tempo_estimado: number | null;
+  observacoes: string | null;
+  anexos: string[] | null;
+  cliente_id: string;
+  tecnico_responsavel_id: string | null;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+  latitude: number | null;
+  longitude: number | null;
+  geocoding_status: string | null;
+  geocoded_at: string | null;
+  can_create_rme: boolean | null;
+  clientes: {
+    empresa: string | null;
+    endereco: string | null;
+    cidade: string | null;
+    estado: string | null;
+    cep: string | null;
+    ufv_solarz: string | null;
+    prioridade: number | null;
+    profiles: { nome: string; email: string } | null;
+  } | null;
+  ordens_servico: Array<{
+    numero_os: string;
+    id: string;
+    pdf_url: string | null;
+    aceite_tecnico: string;
+    motivo_recusa: string | null;
+    tecnico_id?: string | null;
+  }> | null;
+  prestadores: {
+    id: string;
+    nome: string;
+    email: string;
+  } | null;
+}
+
+/** Cliente row as returned by ticketService.loadClientes() */
+export interface TicketCliente {
+  id: string;
+  empresa: string | null;
+  endereco: string | null;
+  cidade: string | null;
+  estado: string | null;
+  cep: string | null;
+  cnpj_cpf: string | null;
+  ufv_solarz: string | null;
+  prioridade: number | null;
+  profiles: { nome: string; email: string; telefone: string | null } | null;
+}
+
+/** Prestador (technician provider) row */
+export interface TicketPrestador {
+  id: string;
+  nome: string;
+  email: string;
+  telefone: string | null;
+  categoria: string;
+  ativo: boolean;
+  especialidades: string[] | null;
+  certificacoes: string[] | null;
+  cidade: string | null;
+  estado: string | null;
+}
+
+/** Linked OS summary */
+export interface LinkedOS {
+  id: string;
+  numero_os: string;
+  tecnico_id: string | null;
+}
+
 export const STATUS_COLORS: Record<string, string> = {
   'aberto': 'bg-blue-100 text-blue-800',
   'aguardando_aprovacao': 'bg-yellow-100 text-yellow-800',
