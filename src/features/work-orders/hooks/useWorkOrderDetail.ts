@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
 import { notificationService } from '@/shared/services/notificationService';
+import { workOrderService as defaultService } from '../services/workOrderService';
 import { generateOSPDF } from '@/utils/generateOSPDF';
 
 export interface WorkOrderDetailData {
@@ -41,7 +41,7 @@ export interface WorkOrderDetailData {
   rme_relatorios: Array<{ id: string; status: string; created_at: string }>;
 }
 
-export const useWorkOrderDetail = () => {
+export const useWorkOrderDetail = (service = defaultService) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { profile } = useAuth();
@@ -58,20 +58,9 @@ export const useWorkOrderDetail = () => {
   const loadWorkOrder = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('ordens_servico')
-        .select(`*, tickets!inner(id, titulo, descricao, status, prioridade, endereco_servico, clientes(empresa, endereco, cidade, estado, ufv_solarz, prioridade)), rme_relatorios(id, status, created_at)`)
-        .eq('id', id)
-        .maybeSingle();
-
-      if (error) throw error;
+      const data = await service.loadDetail(id!);
       if (!data) { toast.error('OS não encontrada'); navigate('/work-orders'); return; }
-
-      setWorkOrder({
-        ...data,
-        work_type: Array.isArray(data.work_type) ? data.work_type as string[] : [],
-        rme_relatorios: Array.isArray(data.rme_relatorios) ? data.rme_relatorios : data.rme_relatorios ? [data.rme_relatorios] : [],
-      } as WorkOrderDetailData);
+      setWorkOrder(data);
     } catch (error) {
       handleError(error, { fallbackMessage: 'Erro ao carregar OS' });
     } finally {
@@ -97,8 +86,7 @@ export const useWorkOrderDetail = () => {
     if (!workOrder) return;
     setActionLoading(true);
     try {
-      const { error } = await supabase.from('tickets').update({ status: 'em_execucao', data_inicio_execucao: new Date().toISOString() }).eq('id', workOrder.tickets.id);
-      if (error) throw error;
+      await service.startExecution(workOrder.tickets.id);
       toast.success('Execução iniciada!');
       loadWorkOrder();
     } catch (error) {
@@ -115,8 +103,7 @@ export const useWorkOrderDetail = () => {
     }
     setActionLoading(true);
     try {
-      const { error } = await supabase.from('tickets').update({ status: 'concluido', data_conclusao: new Date().toISOString() }).eq('id', workOrder.tickets.id);
-      if (error) throw error;
+      await service.completeOS(workOrder.tickets.id);
       toast.success('OS concluída!');
       loadWorkOrder();
     } catch (error) {
