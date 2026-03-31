@@ -107,7 +107,6 @@ const WorkOrders = () => {
     try {
       await notificationService.sendCalendarInvite(osId, "create");
       toast({ title: "Email enviado!", description: "Convite enviado com sucesso." });
-      toast({ title: "Email enviado!", description: `Convite enviado para: ${data.recipients?.join(", ")}` });
     } catch (error: any) {
       toast({ title: "Erro ao enviar email", description: error.message, variant: "destructive" });
     } finally {
