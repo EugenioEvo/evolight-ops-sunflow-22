@@ -1,579 +1,37 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
-import { useGlobalRealtime } from "@/hooks/useRealtimeProvider";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useToast } from "@/hooks/use-toast";
-import { Loader2, FileText, Eye, Calendar, MapPin, User, Play, Edit, Phone, Navigation, ClipboardList, AlertCircle, CheckCircle2, Info, Filter, ThumbsUp, ThumbsDown, Clock, Hourglass } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { FileText, Calendar, Play, ClipboardList, Filter } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 import { LoadingState } from "@/components/LoadingState";
 import { TechnicianBreadcrumb } from "@/components/TechnicianBreadcrumb";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { RecusaOSDialog } from "@/components/RecusaOSDialog";
-import { useAceiteOS } from "@/hooks/useAceiteOS";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import { useNavigate } from "react-router-dom";
-import { useTechnicianStore } from "@/hooks/useTechnicianStore";
-import { generateOSPDF } from "@/utils/generateOSPDF";
-
-interface OrdemServico {
-  id: string;
-  numero_os: string;
-  data_emissao: string;
-  data_programada: string | null;
-  pdf_url: string | null;
-  ticket_id: string;
-  hora_inicio?: string;
-  hora_fim?: string;
-  equipe?: string[];
-  servico_solicitado?: string;
-  inspetor_responsavel?: string;
-  tipo_trabalho?: string[];
-  aceite_tecnico?: string;
-  aceite_at?: string;
-  motivo_recusa?: string;
-  tickets: {
-    id: string;
-    numero_ticket: string;
-    titulo: string;
-    descricao?: string;
-    endereco_servico: string;
-    prioridade: string;
-    status: string;
-    data_inicio_execucao: string | null;
-    clientes: {
-      empresa: string;
-      endereco?: string;
-      cidade?: string;
-      estado?: string;
-      profiles?: {
-        telefone?: string;
-      };
-    };
-  };
-}
+import { useMyOrdersData } from "@/features/my-orders/hooks/useMyOrdersData";
+import { useMyOrdersActions } from "@/features/my-orders/hooks/useMyOrdersActions";
+import { OSCard } from "@/features/my-orders/components/OSCard";
 
 const MinhasOS = () => {
-  const [ordensServico, setOrdensServico] = useState<OrdemServico[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [prioridadeFiltro, setPrioridadeFiltro] = useState<string>('todas');
-  const [periodoFiltro, setPeriodoFiltro] = useState<string>('todos');
-  const [activeTab, setActiveTab] = useState<string>('pendentes');
-  const [startingId, setStartingId] = useState<string | null>(null);
-  const [navigating, setNavigating] = useState<string | null>(null);
-  const [recusaDialogOS, setRecusaDialogOS] = useState<OrdemServico | null>(null);
-  const { profile } = useAuth();
-  const { toast } = useToast();
-  const navigate = useNavigate();
-  const { tecnicoId, setTecnicoId, shouldRefetch, setOrdensServico: setCachedOS } = useTechnicianStore();
-  const { aceitarOS, recusarOS, loading: aceiteLoading } = useAceiteOS();
+  const {
+    ordensServico, loading, prioridadeFiltro, setPrioridadeFiltro,
+    activeTab, setActiveTab, isTecnico, canViewOS, loadOrdensServico,
+    pendentes, aguardandoGestaoCount, emExecucao, concluidas,
+  } = useMyOrdersData();
 
-  const isTecnico = profile?.role === "tecnico_campo";
-  const isAreaTecnica = profile?.role === "engenharia" || profile?.role === "supervisao" || profile?.role === "admin";
-  const canViewOS = isTecnico || isAreaTecnica;
-
-  const realtimeCallback = useCallback(() => {
-    if (canViewOS) loadOrdensServico();
-  }, [canViewOS]);
-  useGlobalRealtime(realtimeCallback);
-
-  useEffect(() => {
-    if (canViewOS) {
-      loadOrdensServico();
-    }
-  }, [canViewOS]);
-
-  const loadOrdensServico = async () => {
-    try {
-      setLoading(true);
-
-      let query = supabase
-        .from("ordens_servico")
-        .select(`
-          *,
-          data_programada,
-          hora_inicio,
-          hora_fim,
-          equipe,
-          servico_solicitado,
-          inspetor_responsavel,
-          tipo_trabalho,
-          tickets!inner (
-            id,
-            numero_ticket,
-            titulo,
-            descricao,
-            endereco_servico,
-            prioridade,
-            status,
-            data_inicio_execucao,
-            clientes (
-              empresa,
-              endereco,
-              cidade,
-              estado,
-              profiles!clientes_profile_id_fkey(telefone)
-            )
-          )
-        `)
-        .order("data_emissao", { ascending: false });
-
-      // Se for técnico de campo, filtrar apenas suas OSs
-      if (isTecnico) {
-        const { data: tecnicoData, error: tecnicoError } = await supabase
-          .from("tecnicos")
-          .select("id")
-          .eq("profile_id", profile?.id)
-          .single();
-
-        if (tecnicoError) {
-          toast({
-            title: "Erro ao carregar perfil",
-            description: "Seu usuário não está vinculado a um perfil de técnico. Solicite à área técnica o cadastro do seu usuário como técnico ou ajuste o e-mail.",
-            variant: "destructive",
-          });
-          throw tecnicoError;
-        }
-        
-        query = query.eq("tecnico_id", tecnicoData.id);
-      }
-      // Área técnica e admin veem todas as OSs
-
-      const { data: osData, error: osError } = await query;
-
-      if (osError) throw osError;
-
-      setOrdensServico(osData || []);
-    } catch (error: any) {
-      toast({
-        title: "Erro ao carregar ordens de serviço",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleIniciarExecucao = async (os: OrdemServico) => {
-    setStartingId(os.id);
-    try {
-      const { error } = await supabase
-        .from("tickets")
-        .update({ 
-          status: "em_execucao",
-          data_inicio_execucao: new Date().toISOString()
-        })
-        .eq("id", os.ticket_id);
-
-      if (error) {
-        // Mensagem de erro específica para permissão negada
-        if (error.code === '42501' || error.message?.includes('permission') || error.message?.includes('policy')) {
-          toast({
-            title: "Sem permissão para iniciar execução",
-            description: "Você não tem permissão para alterar o status deste ticket. Fale com o administrador.",
-            variant: "destructive",
-          });
-        } else {
-          throw error;
-        }
-        return;
-      }
-
-      // Recarregar IMEDIATAMENTE após a atualização
-      await loadOrdensServico();
-
-      toast({
-        title: "Execução iniciada!",
-        description: "A OS foi movida para a aba 'Em Execução'. Agora você pode preencher o RME.",
-      });
-
-      // Mudar para a aba "Em Execução" APÓS recarregar
-      setActiveTab('execucao');
-    } catch (error: any) {
-      toast({
-        title: "Erro ao iniciar execução",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setStartingId(null);
-    }
-  };
-
-  const handlePreencherRME = async (os: OrdemServico) => {
-    setNavigating(os.id);
-    // Pequeno delay para garantir que o banco está sincronizado
-    await new Promise(resolve => setTimeout(resolve, 300));
-    navigate(`/rme?os=${os.id}`);
-  };
-
-  const handleVerOS = async (os: OrdemServico) => {
-    try {
-      // Gerar PDF formatado usando a função de geração
-      const pdfData = {
-        numero_os: os.numero_os,
-        data_programada: os.data_programada || new Date().toISOString(),
-        equipe: os.equipe || ['Não informado'],
-        cliente: os.tickets.clientes?.empresa || 'Não informado',
-        endereco: `${os.tickets.clientes?.endereco || os.tickets.endereco_servico}, ${os.tickets.clientes?.cidade || ''} - ${os.tickets.clientes?.estado || ''}`,
-        servico_solicitado: os.servico_solicitado || 'MANUTENÇÃO',
-        hora_marcada: os.hora_inicio || '00:00',
-        descricao: os.tickets.descricao || os.tickets.titulo || '',
-        inspetor_responsavel: os.inspetor_responsavel || 'TODOS',
-        tipo_trabalho: os.tipo_trabalho || []
-      };
-
-      const pdfBlob = await generateOSPDF(pdfData);
-
-      // Criar link de download direto
-      const url = URL.createObjectURL(pdfBlob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `OS_${os.numero_os}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      
-      // Limpar URL após download
-      setTimeout(() => URL.revokeObjectURL(url), 100);
-
-      toast({
-        title: "PDF baixado",
-        description: `Ordem de serviço ${os.numero_os} baixada com sucesso.`,
-      });
-    } catch (error: any) {
-      console.error('Erro ao gerar PDF:', error);
-      toast({
-        title: "Erro ao abrir PDF",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleLigarCliente = (telefone?: string) => {
-    if (!telefone) {
-      toast({
-        title: "Telefone não disponível",
-        description: "Este cliente não possui telefone cadastrado.",
-        variant: "destructive",
-      });
-      return;
-    }
-    window.location.href = `tel:${telefone}`;
-  };
-
-  const handleAbrirMapa = (endereco: string) => {
-    const encodedAddress = encodeURIComponent(endereco);
-    window.open(`https://www.google.com/maps/search/?api=1&query=${encodedAddress}`, "_blank");
-  };
-
-  const handleAceitarOS = async (os: OrdemServico) => {
-    const success = await aceitarOS(os.id);
-    if (success) await loadOrdensServico();
-  };
-
-  const handleRecusarOS = async (motivo: string) => {
-    if (!recusaDialogOS) return;
-    const success = await recusarOS(recusaDialogOS.id, motivo);
-    if (success) {
-      setRecusaDialogOS(null);
-      await loadOrdensServico();
-    }
-  };
-
-  const getPrioridadeColor = (prioridade: string) => {
-    switch (prioridade) {
-      case "critica":
-        return "destructive";
-      case "alta":
-        return "default";
-      case "media":
-        return "secondary";
-      case "baixa":
-        return "outline";
-      default:
-        return "outline";
-    }
-  };
-
-  const getStatusBadge = (status: string) => {
-    const labels: Record<string, { label: string; variant: any }> = {
-      'ordem_servico_gerada': { label: 'Pendente', variant: 'outline' },
-      'em_execucao': { label: 'Em Execução', variant: 'default' },
-      'concluido': { label: 'Concluído', variant: 'secondary' },
-    };
-    return labels[status] || { label: status, variant: 'outline' };
-  };
-
-  const renderOSCard = (os: OrdemServico) => {
-    const statusBadge = getStatusBadge(os.tickets.status);
-    const isPendente = os.tickets.status === 'ordem_servico_gerada';
-    const emExecucao = os.tickets.status === 'em_execucao';
-    const concluido = os.tickets.status === 'concluido';
-    const aceite = (os as any).aceite_tecnico || 'pendente';
-    const aguardandoAceite = isPendente && aceite === 'pendente';
-    const aceito = aceite === 'aceito';
-    const recusado = aceite === 'recusado';
-
-    return (
-      <Card key={os.id} className={`hover:shadow-lg transition-shadow ${recusado && isPendente ? 'border-amber-300 bg-amber-50/50' : ''}`}>
-        <CardHeader className="pb-3">
-          <div className="flex items-start justify-between gap-2">
-            <div className="space-y-1 min-w-0 flex-1">
-              <CardTitle className="text-base sm:text-lg flex items-center gap-2 truncate">
-                <FileText className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
-                <span className="truncate">{os.numero_os}</span>
-              </CardTitle>
-              <div className="flex flex-wrap gap-1">
-                <Badge variant="outline" className="text-xs">
-                  {os.tickets.numero_ticket}
-                </Badge>
-                {aguardandoAceite && (
-                  <Badge className="text-xs bg-amber-100 text-amber-800 border-amber-200">
-                    Aguardando Aceite
-                  </Badge>
-                )}
-                {aceito && isPendente && (
-                  <Badge className="text-xs bg-green-100 text-green-800 border-green-200">
-                    <CheckCircle2 className="h-3 w-3 mr-1" />
-                    Aceita
-                  </Badge>
-                )}
-                {recusado && isPendente && (
-                  <Badge className="text-xs bg-amber-100 text-amber-800 border-amber-300">
-                    <Hourglass className="h-3 w-3 mr-1" />
-                    Aguardando Resposta da Gestão
-                  </Badge>
-                )}
-              </div>
-            </div>
-            {!(recusado && isPendente) && (
-              <div className="flex flex-col gap-1 items-end flex-shrink-0">
-                <Badge variant={getPrioridadeColor(os.tickets.prioridade)} className="text-xs">
-                  {os.tickets.prioridade}
-                </Badge>
-                <Badge variant={statusBadge.variant as any} className="text-xs">
-                  {statusBadge.label}
-                </Badge>
-              </div>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Alert de recusa no topo do conteúdo */}
-          {recusado && isPendente && (
-            <Alert className="border-amber-300 bg-amber-100/60">
-              <Hourglass className="h-4 w-4 text-amber-700" />
-              <AlertDescription className="text-amber-900 text-xs space-y-1">
-                <p className="font-semibold text-sm">OS Recusada — Aguardando Resposta da Gestão</p>
-                {(os as any).motivo_recusa && (
-                  <p className="italic">Motivo: {(os as any).motivo_recusa}</p>
-                )}
-              </AlertDescription>
-            </Alert>
-          )}
-          <div>
-            <h4 className="font-medium text-sm mb-2">{os.tickets.titulo}</h4>
-            <div className="space-y-2 text-sm text-muted-foreground">
-              <div className="flex items-start gap-2">
-                <User className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                <span className="line-clamp-1">{os.tickets.clientes?.empresa || 'Cliente não definido'}</span>
-              </div>
-              <div className="flex items-start gap-2">
-                <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                <span className="line-clamp-2">{os.tickets.endereco_servico}</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-2 text-sm">
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Calendar className="h-4 w-4" />
-              <span>
-                Emitida: {format(new Date(os.data_emissao), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-              </span>
-            </div>
-            {os.data_programada && (
-              <div className="flex items-center gap-2 text-primary font-medium">
-                <Calendar className="h-4 w-4" />
-                <span>
-                  Agendada: {format(new Date(os.data_programada), "dd/MM/yyyy", { locale: ptBR })}
-                  {/* @ts-ignore */}
-                  {os.hora_inicio && os.hora_fim && ` às ${os.hora_inicio} - ${os.hora_fim}`}
-                </span>
-                {new Date(os.data_programada).toDateString() === new Date().toDateString() && (
-                  <Badge variant="default" className="ml-2">HOJE</Badge>
-                )}
-              </div>
-            )}
-            {os.tickets.data_inicio_execucao && (
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Calendar className="h-4 w-4" />
-                <span>
-                  Iniciada: {format(new Date(os.tickets.data_inicio_execucao), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                </span>
-              </div>
-            )}
-          </div>
-
-          {/* Ações Rápidas */}
-          <div className="flex gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => handleLigarCliente(os.tickets.clientes?.profiles?.telefone)}
-              disabled={!os.tickets.clientes?.profiles?.telefone}
-              className="flex-1"
-            >
-              <Phone className="h-4 w-4 mr-1" />
-              Ligar
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => handleAbrirMapa(os.tickets.endereco_servico)}
-              className="flex-1"
-            >
-              <Navigation className="h-4 w-4 mr-1" />
-              Mapa
-            </Button>
-          </div>
-
-          {/* Botões de Aceite (para técnicos com OS pendente de aceite) */}
-          {aguardandoAceite && isTecnico && (
-            <div className="space-y-2">
-              <Alert className="border-amber-200 bg-amber-50">
-                <AlertCircle className="h-4 w-4 text-amber-600" />
-                <AlertDescription className="text-amber-800 text-xs">
-                  Você precisa aceitar ou recusar esta OS antes de iniciar a execução.
-                </AlertDescription>
-              </Alert>
-              <div className="flex gap-2">
-                <Button
-                  onClick={() => handleAceitarOS(os)}
-                  className="flex-1"
-                  disabled={aceiteLoading}
-                >
-                  {aceiteLoading ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <ThumbsUp className="h-4 w-4 mr-2" />
-                  )}
-                  Aceitar
-                </Button>
-                <Button
-                  onClick={() => setRecusaDialogOS(os)}
-                  variant="destructive"
-                  className="flex-1"
-                  disabled={aceiteLoading}
-                >
-                  <ThumbsDown className="h-4 w-4 mr-2" />
-                  Recusar
-                </Button>
-              </div>
-            </div>
-          )}
-
-
-
-
-          {/* Botões de Ação Principal (só aparecem se aceito ou se não é técnico) */}
-          <div className="space-y-2">
-            {isPendente && (aceito || !isTecnico) && !recusado && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      onClick={() => handleIniciarExecucao(os)}
-                      className="w-full"
-                      disabled={startingId === os.id}
-                    >
-                      {startingId === os.id ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Iniciando...
-                        </>
-                      ) : (
-                        <>
-                          <Play className="h-4 w-4 mr-2" />
-                          Iniciar Execução
-                        </>
-                      )}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Inicie a execução para depois preencher o RME</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
-
-            {emExecucao && (
-              <Button
-                onClick={() => handlePreencherRME(os)}
-                className="w-full"
-                disabled={navigating === os.id}
-              >
-                {navigating === os.id ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Carregando RME...
-                  </>
-                ) : (
-                  <>
-                    <Edit className="h-4 w-4 mr-2" />
-                    Preencher RME
-                  </>
-                )}
-              </Button>
-            )}
-
-            {isPendente && aceito && (
-              <Badge variant="outline" className="w-full justify-center py-2 bg-green-50 text-green-700 border-green-200">
-                <CheckCircle2 className="h-3 w-3 mr-1" />
-                Aceita — Próximo: Iniciar Execução
-              </Badge>
-            )}
-
-            {emExecucao && (
-              <Badge variant="default" className="w-full justify-center py-2">
-                <Edit className="h-3 w-3 mr-1" />
-                Próximo: Preencher RME
-              </Badge>
-            )}
-
-            <Button
-              onClick={() => handleVerOS(os)}
-              variant="outline"
-              className="w-full"
-            >
-              <Eye className="h-4 w-4 mr-2" />
-              Ver OS em PDF
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  };
+  const {
+    startingId, navigating, recusaDialogOS, setRecusaDialogOS, aceiteLoading,
+    handleIniciarExecucao, handlePreencherRME, handleVerOS,
+    handleLigarCliente, handleAbrirMapa, handleAceitarOS, handleRecusarOS,
+  } = useMyOrdersActions(loadOrdensServico, setActiveTab);
 
   if (!canViewOS) {
     return (
       <div className="p-6">
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-muted-foreground">
-              Esta página é exclusiva para técnicos de campo e área técnica.
-            </p>
-          </CardContent>
-        </Card>
+        <Card><CardContent className="pt-6">
+          <p className="text-muted-foreground">Esta página é exclusiva para técnicos de campo e área técnica.</p>
+        </CardContent></Card>
       </div>
     );
   }
@@ -587,164 +45,94 @@ const MinhasOS = () => {
     );
   }
 
-  // Aplicar filtros
-  let osFiltradas = ordensServico;
-  
-  if (prioridadeFiltro !== 'todas') {
-    osFiltradas = osFiltradas.filter(os => os.tickets.prioridade === prioridadeFiltro);
-  }
-
-  const pendentes = osFiltradas.filter(os => os.tickets.status === 'ordem_servico_gerada');
-  const aguardandoAceiteCount = pendentes.filter(os => (os as any).aceite_tecnico === 'pendente' || !(os as any).aceite_tecnico).length;
-  const aguardandoGestaoCount = pendentes.filter(os => (os as any).aceite_tecnico === 'recusado').length;
-  const emExecucao = osFiltradas.filter(os => os.tickets.status === 'em_execucao');
-  const concluidas = osFiltradas.filter(os => os.tickets.status === 'concluido');
-
   return (
     <TooltipProvider>
       <div className="p-4 sm:p-6 space-y-6">
         <TechnicianBreadcrumb current="minhas-os" />
-        
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
-            <ClipboardList className="h-6 w-6 sm:h-8 sm:w-8" />
-            Minhas Ordens de Serviço
+            <ClipboardList className="h-6 w-6 sm:h-8 sm:w-8" />Minhas Ordens de Serviço
           </h1>
-          <p className="text-sm sm:text-base text-muted-foreground mt-1">
-            Gerencie suas ordens de serviço por status
-          </p>
+          <p className="text-sm sm:text-base text-muted-foreground mt-1">Gerencie suas ordens de serviço por status</p>
         </div>
 
-        {/* Filtros */}
         {ordensServico.length > 0 && (
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex flex-col sm:flex-row gap-3">
-                <div className="flex-1">
-                  <label className="text-sm font-medium mb-2 flex items-center gap-2">
-                    <Filter className="h-4 w-4" />
-                    Prioridade
-                  </label>
-                  <Select value={prioridadeFiltro} onValueChange={setPrioridadeFiltro}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Todas as prioridades" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="todas">Todas</SelectItem>
-                      <SelectItem value="critica">Crítica</SelectItem>
-                      <SelectItem value="alta">Alta</SelectItem>
-                      <SelectItem value="media">Média</SelectItem>
-                      <SelectItem value="baixa">Baixa</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                {(prioridadeFiltro !== 'todas') && (
-                  <div className="flex items-end">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => {
-                        setPrioridadeFiltro('todas');
-                        setPeriodoFiltro('todos');
-                      }}
-                    >
-                      Limpar Filtros
-                    </Button>
-                  </div>
-                )}
+          <Card><CardContent className="pt-6">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex-1">
+                <label className="text-sm font-medium mb-2 flex items-center gap-2"><Filter className="h-4 w-4" />Prioridade</label>
+                <Select value={prioridadeFiltro} onValueChange={setPrioridadeFiltro}>
+                  <SelectTrigger><SelectValue placeholder="Todas as prioridades" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todas">Todas</SelectItem>
+                    <SelectItem value="critica">Crítica</SelectItem>
+                    <SelectItem value="alta">Alta</SelectItem>
+                    <SelectItem value="media">Média</SelectItem>
+                    <SelectItem value="baixa">Baixa</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-            </CardContent>
-          </Card>
+              {prioridadeFiltro !== 'todas' && (
+                <div className="flex items-end">
+                  <Button variant="outline" size="sm" onClick={() => setPrioridadeFiltro('todas')}>Limpar Filtros</Button>
+                </div>
+              )}
+            </div>
+          </CardContent></Card>
         )}
 
         {ordensServico.length === 0 ? (
-          <EmptyState
-            icon={FileText}
-            title="Nenhuma OS atribuída"
-            description="Você ainda não possui ordens de serviço atribuídas. Aguarde a atribuição de uma OS pela equipe técnica."
-          />
+          <EmptyState icon={FileText} title="Nenhuma OS atribuída" description="Você ainda não possui ordens de serviço atribuídas." />
         ) : (
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="pendentes" className="relative">
-              Pendentes
-              {pendentes.length > 0 && (
-                <span className="ml-2 inline-flex items-center gap-1">
-                  <Badge className="h-5 w-5 rounded-full p-0 flex items-center justify-center">
-                    {pendentes.length}
-                  </Badge>
-                  {aguardandoGestaoCount > 0 && (
-                    <Badge variant="outline" className="h-5 rounded-full px-1.5 text-[10px] bg-muted text-muted-foreground">
-                      {aguardandoGestaoCount} gestão
-                    </Badge>
-                  )}
-                </span>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="execucao" className="relative">
-              Em Execução
-              {emExecucao.length > 0 && (
-                <Badge className="ml-2 h-5 w-5 rounded-full p-0 flex items-center justify-center">
-                  {emExecucao.length}
-                </Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="concluidas">
-              Concluídas
-              {concluidas.length > 0 && (
-                <Badge variant="secondary" className="ml-2 h-5 w-5 rounded-full p-0 flex items-center justify-center">
-                  {concluidas.length}
-                </Badge>
-              )}
-            </TabsTrigger>
-          </TabsList>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="pendentes" className="relative">
+                Pendentes
+                {pendentes.length > 0 && (
+                  <span className="ml-2 inline-flex items-center gap-1">
+                    <Badge className="h-5 w-5 rounded-full p-0 flex items-center justify-center">{pendentes.length}</Badge>
+                    {aguardandoGestaoCount > 0 && (
+                      <Badge variant="outline" className="h-5 rounded-full px-1.5 text-[10px] bg-muted text-muted-foreground">{aguardandoGestaoCount} gestão</Badge>
+                    )}
+                  </span>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="execucao" className="relative">
+                Em Execução
+                {emExecucao.length > 0 && <Badge className="ml-2 h-5 w-5 rounded-full p-0 flex items-center justify-center">{emExecucao.length}</Badge>}
+              </TabsTrigger>
+              <TabsTrigger value="concluidas">
+                Concluídas
+                {concluidas.length > 0 && <Badge variant="secondary" className="ml-2 h-5 w-5 rounded-full p-0 flex items-center justify-center">{concluidas.length}</Badge>}
+              </TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="pendentes" className="mt-6">
-            {pendentes.length === 0 ? (
-              <EmptyState
-                icon={Calendar}
-                title="Nenhuma OS pendente"
-                description="Todas as suas ordens de serviço já foram iniciadas ou concluídas."
-              />
-            ) : (
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {pendentes.map(renderOSCard)}
-              </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="execucao" className="mt-6">
-            {emExecucao.length === 0 ? (
-              <EmptyState
-                icon={Play}
-                title="Nenhuma OS em execução"
-                description="Inicie a execução de uma OS pendente para que ela apareça aqui."
-              />
-            ) : (
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {emExecucao.map(renderOSCard)}
-              </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="concluidas" className="mt-6">
-            {concluidas.length === 0 ? (
-              <EmptyState
-                icon={FileText}
-                title="Nenhuma OS concluída"
-                description="As ordens de serviço concluídas aparecerão aqui após o preenchimento do RME."
-              />
-            ) : (
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {concluidas.map(renderOSCard)}
-              </div>
-            )}
-          </TabsContent>
-        </Tabs>
-      )}
+            {[
+              { key: 'pendentes', data: pendentes, emptyIcon: Calendar, emptyTitle: 'Nenhuma OS pendente', emptyDesc: 'Todas as suas ordens de serviço já foram iniciadas ou concluídas.' },
+              { key: 'execucao', data: emExecucao, emptyIcon: Play, emptyTitle: 'Nenhuma OS em execução', emptyDesc: 'Inicie a execução de uma OS pendente para que ela apareça aqui.' },
+              { key: 'concluidas', data: concluidas, emptyIcon: FileText, emptyTitle: 'Nenhuma OS concluída', emptyDesc: 'As ordens de serviço concluídas aparecerão aqui após o preenchimento do RME.' },
+            ].map(tab => (
+              <TabsContent key={tab.key} value={tab.key} className="mt-6">
+                {tab.data.length === 0 ? (
+                  <EmptyState icon={tab.emptyIcon} title={tab.emptyTitle} description={tab.emptyDesc} />
+                ) : (
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    {tab.data.map(os => (
+                      <OSCard key={os.id} os={os} isTecnico={isTecnico}
+                        startingId={startingId} navigating={navigating} aceiteLoading={aceiteLoading}
+                        onIniciarExecucao={handleIniciarExecucao} onPreencherRME={handlePreencherRME}
+                        onVerOS={handleVerOS} onLigarCliente={handleLigarCliente} onAbrirMapa={handleAbrirMapa}
+                        onAceitarOS={handleAceitarOS} onRecusarOS={(os) => setRecusaDialogOS(os)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </TabsContent>
+            ))}
+          </Tabs>
+        )}
       </div>
 
-      {/* Dialog de Recusa */}
       <RecusaOSDialog
         open={!!recusaDialogOS}
         onOpenChange={(open) => !open && setRecusaDialogOS(null)}
