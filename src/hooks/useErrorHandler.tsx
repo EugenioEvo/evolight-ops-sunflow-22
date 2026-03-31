@@ -1,4 +1,4 @@
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { useCallback } from 'react';
 
 interface ErrorHandlerOptions {
@@ -16,21 +16,18 @@ interface AppError {
 const DEFAULT_ERROR_MESSAGE = 'Ocorreu um erro inesperado. Tente novamente.';
 
 export const useErrorHandler = () => {
-  const { toast } = useToast();
-
   const handleError = useCallback((
     error: unknown,
     options: ErrorHandlerOptions = {}
   ): AppError => {
     const {
       showToast = true,
-      logError = process.env.NODE_ENV === 'development',
+      logError = import.meta.env.DEV,
       fallbackMessage = DEFAULT_ERROR_MESSAGE
     } = options;
 
     let appError: AppError;
 
-    // Parse error to consistent format
     if (error instanceof Error) {
       appError = {
         message: error.message || fallbackMessage,
@@ -49,22 +46,16 @@ export const useErrorHandler = () => {
       appError = { message: fallbackMessage };
     }
 
-    // Log in development only
     if (logError) {
       console.error('[Error]', appError);
     }
 
-    // Show toast notification
     if (showToast) {
-      toast({
-        title: 'Erro',
-        description: appError.message,
-        variant: 'destructive'
-      });
+      toast.error(appError.message);
     }
 
     return appError;
-  }, [toast]);
+  }, []);
 
   const handleAsyncError = useCallback(async <T,>(
     asyncFn: () => Promise<T>,
