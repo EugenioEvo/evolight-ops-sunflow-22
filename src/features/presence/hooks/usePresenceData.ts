@@ -62,7 +62,6 @@ export const usePresenceData = () => {
       previousOSRef.current = currentOSMap;
       setOrdensServico(data);
     } catch (error) {
-      console.error('Erro ao carregar ordens de serviço:', error);
       toast.error('Erro ao carregar ordens de serviço');
     } finally {
       setLoading(false);
@@ -70,7 +69,7 @@ export const usePresenceData = () => {
   };
 
   useEffect(() => {
-    presenceService.fetchTecnicos().then(setTecnicos).catch(console.error);
+    presenceService.fetchTecnicos().then(setTecnicos).catch(() => {});
     loadOrdensServico();
 
     const channel = supabase
@@ -108,9 +107,7 @@ export const usePresenceData = () => {
   const temFiltrosAtivos = filtroTecnico !== 'todos' || filtroStatus !== 'todos' || filtroHorario !== 'todos';
 
   const limparFiltros = () => {
-    setFiltroTecnico('todos');
-    setFiltroStatus('todos');
-    setFiltroHorario('todos');
+    setFiltroTecnico('todos'); setFiltroStatus('todos'); setFiltroHorario('todos');
   };
 
   return {

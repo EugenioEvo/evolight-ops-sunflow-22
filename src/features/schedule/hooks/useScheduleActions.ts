@@ -1,21 +1,22 @@
 import { useState } from "react";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
+import { useErrorHandler } from "@/hooks/useErrorHandler";
 import { useCancelOS } from "@/hooks/useCancelOS";
 import { scheduleService } from "../services/scheduleService";
 
 export function useScheduleActions(loadOrdensServico: () => Promise<void>) {
   const [resendingInvite, setResendingInvite] = useState<string | null>(null);
   const { cancelOS, loading: cancelLoading } = useCancelOS();
-  const { toast } = useToast();
+  const { handleError } = useErrorHandler();
 
   const resendCalendarInvite = async (osId: string, numeroOS: string) => {
     setResendingInvite(osId);
     try {
       await scheduleService.resendCalendarInvite(osId);
-      toast({ title: 'Convite reenviado', description: `Convite de calendário reenviado para OS ${numeroOS}` });
+      toast.success(`Convite de calendário reenviado para OS ${numeroOS}`);
       loadOrdensServico();
-    } catch (error: any) {
-      toast({ title: 'Erro ao reenviar', description: error.message || 'Não foi possível reenviar o convite', variant: 'destructive' });
+    } catch (error) {
+      handleError(error, { fallbackMessage: 'Não foi possível reenviar o convite' });
     } finally {
       setResendingInvite(null);
     }
@@ -24,10 +25,10 @@ export function useScheduleActions(loadOrdensServico: () => Promise<void>) {
   const generatePresenceQR = async (osId: string) => {
     try {
       await scheduleService.generatePresenceQR(osId);
-      toast({ title: 'QR Code gerado', description: 'Token de confirmação de presença criado com sucesso' });
+      toast.success('Token de confirmação de presença criado com sucesso');
       loadOrdensServico();
-    } catch (error: any) {
-      toast({ title: 'Erro ao gerar QR Code', description: error.message, variant: 'destructive' });
+    } catch (error) {
+      handleError(error, { fallbackMessage: 'Erro ao gerar QR Code' });
     }
   };
 

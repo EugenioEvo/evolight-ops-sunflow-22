@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
+import { useErrorHandler } from '@/hooks/useErrorHandler';
 import { reportService } from '../services/reportService';
 
 export const useReportData = () => {
@@ -13,22 +14,22 @@ export const useReportData = () => {
     start: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
     end: new Date().toISOString().split('T')[0],
   });
-  const { toast } = useToast();
+  const { handleAsyncError } = useErrorHandler();
 
   const loadData = async () => {
-    try {
-      setLoading(true);
-      const data = await reportService.fetchAll(dateRange);
+    setLoading(true);
+    const data = await handleAsyncError(
+      () => reportService.fetchAll(dateRange),
+      { fallbackMessage: 'Erro ao carregar dados dos relatórios' }
+    );
+    if (data) {
       setTickets(data.tickets);
       setRmes(data.rmes);
       setOrdensServico(data.ordensServico);
       setTecnicos(data.tecnicos);
       setClientes(data.clientes);
-    } catch (error) {
-      toast({ title: 'Erro', description: 'Erro ao carregar dados dos relatórios', variant: 'destructive' });
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
   };
 
   useEffect(() => { loadData(); }, [dateRange]);
@@ -51,9 +52,7 @@ export const useReportData = () => {
     }, {});
     const colors: Record<string, string> = { baixa: '#10B981', media: '#F59E0B', alta: '#F97316', critica: '#EF4444' };
     return Object.entries(counts).map(([p, count]) => ({
-      name: p.toUpperCase(),
-      value: count as number,
-      color: colors[p] || '#6B7280',
+      name: p.toUpperCase(), value: count as number, color: colors[p] || '#6B7280',
     }));
   };
 
