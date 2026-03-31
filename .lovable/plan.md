@@ -1,98 +1,187 @@
 
 
-# Fase 3 — Refatoracao modular: MinhasOS, Equipamentos, Clientes, Agenda
+# Fase 4 — Refatoracao modular: todas as paginas restantes acima de 300 linhas
 
-## Resumo
+## Inventario
 
-Aplicar o mesmo pattern de `src/features/` usado em tickets e work-orders para as 4 paginas restantes, reduzindo cada uma de 580-759 linhas para ~80-150 linhas.
+| Pagina | Linhas | Feature module |
+|--------|--------|----------------|
+| RME.tsx | 1460 | `src/features/rme/` |
+| Insumos.tsx | 1080 | `src/features/supplies/` |
+| Prestadores.tsx | 831 | `src/features/providers/` |
+| DashboardPresenca.tsx | 691 | `src/features/presence/` |
+| WorkOrderDetail.tsx | 650 | `src/features/work-orders/` (extend) |
+| RMEWizard.tsx | 582 | `src/features/rme/` (shared) |
+| WorkOrderCreate.tsx | 570 | `src/features/work-orders/` (extend) |
+| Relatorios.tsx | 554 | `src/features/reports/` |
+| ClientDashboard.tsx | 515 | `src/features/client-dashboard/` |
+| CargaTrabalho.tsx | 482 | `src/features/workload/` |
+| GerenciarRME.tsx | 377 | `src/features/rme/` (shared) |
+| Tecnicos.tsx | 347 | `src/features/technicians/` |
 
-## Estrutura de arquivos a criar
+## Estrutura de arquivos
 
 ```text
 src/features/
-├── my-orders/
-│   ├── services/myOrdersService.ts    # queries supabase (load OS, iniciar execucao)
-│   ├── hooks/useMyOrdersData.ts       # state, filtros, realtime, loadOrdensServico
-│   ├── hooks/useMyOrdersActions.ts    # aceitar, recusar, iniciar, ver PDF, ligar, mapa
-│   ├── components/OSCard.tsx          # renderOSCard extraido (~250 linhas)
-│   ├── components/OSFilters.tsx       # filtro de prioridade
-│   ├── components/OSTabList.tsx       # tabs pendentes/execucao/concluidas
-│   ├── types.ts
+├── rme/
+│   ├── types.ts                    # rmeSchema, RMEForm, RME interfaces
+│   ├── services/rmeService.ts      # CRUD RME, upload fotos, assinaturas, email
+│   ├── hooks/useRMEData.ts         # state, fetch, search, realtime
+│   ├── hooks/useRMEActions.ts      # submit, upload, signatures, PDF
+│   ├── hooks/useRMEWizardData.ts   # wizard state, auto-save, step navigation
+│   ├── components/RMECard.tsx      # card de RME na listagem
+│   ├── components/RMEForm.tsx      # formulario legado (RME.tsx)
+│   ├── components/RMEListFilters.tsx
 │   └── index.ts
-├── clients/
-│   ├── services/clientService.ts      # fetchClientes, createCliente, updateCliente, deleteCliente
-│   ├── hooks/useClientData.ts         # state + fetch + search
-│   ├── hooks/useClientMutations.ts    # submit, edit, delete, import
-│   ├── components/ClientForm.tsx      # formulario com schema zod
-│   ├── components/ClientCard.tsx      # card individual
-│   ├── types.ts
+├── supplies/
+│   ├── types.ts                    # insumoSchema, movimentacaoSchema, responsavelSchema
+│   ├── services/supplyService.ts   # CRUD insumos, movimentacoes, responsaveis
+│   ├── hooks/useSupplyData.ts      # state, fetch, search, tabs
+│   ├── hooks/useSupplyActions.ts   # movimentacao, CRUD mutations
+│   ├── components/SupplyForm.tsx
+│   ├── components/SupplyCard.tsx
+│   ├── components/MovementDialog.tsx
+│   ├── components/ResponsibleDialog.tsx
 │   └── index.ts
-├── equipment/
-│   ├── services/equipmentService.ts   # CRUD equipamentos
-│   ├── hooks/useEquipmentData.ts      # state + fetch + search + tabs
-│   ├── hooks/useEquipmentMutations.ts # submit, edit, delete
-│   ├── components/EquipmentForm.tsx   # formulario
-│   ├── components/EquipmentCard.tsx   # card com icones por tipo
-│   ├── types.ts
+├── providers/
+│   ├── types.ts                    # prestadorSchema, especialidades, certificacoes
+│   ├── services/providerService.ts # CRUD prestadores
+│   ├── hooks/useProviderData.ts
+│   ├── hooks/useProviderMutations.ts
+│   ├── components/ProviderForm.tsx
+│   ├── components/ProviderCard.tsx
 │   └── index.ts
-├── schedule/
-│   ├── services/scheduleService.ts    # loadOrdensServico, loadTecnicos, resendInvite, generateQR
-│   ├── hooks/useScheduleData.ts       # state, filtros, realtime
-│   ├── hooks/useScheduleActions.ts    # resend, generateQR, cancel
-│   ├── components/AgendaCalendar.tsx  # calendario + filtro tecnico
-│   ├── components/AgendaOSCard.tsx    # card da OS na agenda
-│   ├── types.ts
+├── presence/
+│   ├── types.ts                    # OrdemServicoPresenca
+│   ├── services/presenceService.ts # fetch OS com presenca, export PDF/Excel
+│   ├── hooks/usePresenceData.ts    # state, filtros, fetch
+│   ├── components/PresenceFilters.tsx
+│   ├── components/PresenceTable.tsx
 │   └── index.ts
+├── reports/
+│   ├── types.ts
+│   ├── services/reportService.ts   # queries agregadas por periodo
+│   ├── hooks/useReportData.ts      # state, filtros, fetch
+│   ├── components/ReportCharts.tsx  # graficos recharts
+│   ├── components/ReportFilters.tsx
+│   └── index.ts
+├── client-dashboard/
+│   ├── services/clientDashService.ts
+│   ├── hooks/useClientDashData.ts
+│   ├── components/ClientTicketList.tsx
+│   ├── components/ClientStatsCards.tsx
+│   └── index.ts
+├── workload/
+│   ├── types.ts                    # WorkloadData, TecnicoStats
+│   ├── services/workloadService.ts # fetch carga por tecnico/periodo
+│   ├── hooks/useWorkloadData.ts
+│   ├── components/WorkloadChart.tsx
+│   ├── components/WorkloadFilters.tsx
+│   └── index.ts
+├── technicians/
+│   ├── types.ts                    # Tecnico interface
+│   ├── services/technicianService.ts
+│   ├── hooks/useTechnicianData.ts
+│   ├── hooks/useTechnicianMutations.ts
+│   ├── components/TechnicianCard.tsx
+│   ├── components/TechnicianEditDialog.tsx
+│   └── index.ts
+├── work-orders/  (estender modulo existente)
+│   ├── hooks/useWorkOrderDetail.ts   # novo: state + fetch do detalhe
+│   ├── hooks/useWorkOrderCreate.ts   # novo: form + submit
+│   ├── components/WorkOrderDetailView.tsx
+│   ├── components/WorkOrderCreateForm.tsx
+│   └── (manter arquivos existentes)
 ```
 
 ## Decomposicao por pagina
 
-### 1. MinhasOS.tsx (759 → ~80 linhas)
-- **types.ts**: Interface `OrdemServico` (linhas 25-60)
-- **myOrdersService.ts**: `loadOrdensServico(profileId, isTecnico)`, query com join
-- **useMyOrdersData.ts**: useState para loading, filtros, activeTab + loadOrdensServico + realtime + filtros derivados (pendentes/execucao/concluidas)
-- **useMyOrdersActions.ts**: `handleIniciarExecucao`, `handleVerOS` (gerar PDF), `handleLigarCliente`, `handleAbrirMapa`, `handleAceitarOS`, `handleRecusarOS`
-- **OSCard.tsx**: Extrair `renderOSCard` inteiro (linhas 316-564) como componente com props
-- **OSFilters.tsx**: Filtro de prioridade (linhas 618-658)
-- **OSTabList.tsx**: Tabs com contadores (linhas 667-743)
-- **MinhasOS.tsx**: Composicao: breadcrumb + filtros + tabs + dialog recusa
+### 1. RME.tsx (1460 → ~100 linhas)
+- **types.ts**: `rmeSchema`, `RMEForm`, interfaces de RME com fotos/assinaturas
+- **rmeService.ts**: `fetchRMEs`, `createRME`, `updateRME`, `uploadPhoto`, `submitSignature`, `sendEmail`
+- **useRMEData.ts**: state de lista, search, selectedOS, realtime
+- **useRMEActions.ts**: submit form, upload fotos, capturar assinatura, gerar PDF
+- **RMEForm.tsx**: formulario completo com campos eletricos, assinaturas, fotos
+- **RMECard.tsx**: card na listagem
+- **RME.tsx**: composicao: lista ou formulario baseado em selectedOS
 
-### 2. Clientes.tsx (651 → ~60 linhas)
-- **types.ts**: Schema zod `clienteSchema`, interface `Cliente`, `ESTADOS_BR`
-- **clientService.ts**: `fetchAll`, `create`, `update`, `delete`
-- **useClientData.ts**: State de clientes + loading + search + fetch
-- **useClientMutations.ts**: `onSubmit`, `handleEdit`, `handleDelete` + form react-hook-form
-- **ClientForm.tsx**: Dialog com formulario completo (linhas ~250-500)
-- **ClientCard.tsx**: Card de cliente (linhas ~500-651)
-- **Clientes.tsx**: Layout + search + botoes + lista + dialogs
+### 2. Insumos.tsx (1080 → ~80 linhas)
+- **types.ts**: 3 schemas (insumo, movimentacao, responsavel)
+- **supplyService.ts**: CRUD insumos + movimentacoes + responsaveis
+- **useSupplyData.ts**: state, fetch, search, tabs (estoque/movimentacoes/responsaveis)
+- **useSupplyActions.ts**: mutations, movimentacao entrada/saida
+- **SupplyForm.tsx**, **MovementDialog.tsx**, **ResponsibleDialog.tsx**: dialogs separados
+- **SupplyCard.tsx**: card com badge de estoque
 
-### 3. Equipamentos.tsx (678 → ~60 linhas)
-- **types.ts**: Schema `equipamentoSchema`, interface `Equipamento`
-- **equipmentService.ts**: `fetchAll`, `fetchClientes`, `create`, `update`, `delete`
-- **useEquipmentData.ts**: State + fetch + search + tab filtering
-- **useEquipmentMutations.ts**: `onSubmit`, `handleEdit`, `handleDelete`
-- **EquipmentForm.tsx**: Dialog com formulario
-- **EquipmentCard.tsx**: Card com icone por tipo
-- **Equipamentos.tsx**: Layout + composicao
+### 3. Prestadores.tsx (831 → ~80 linhas)
+- **types.ts**: `prestadorSchema`, arrays de especialidades/certificacoes/experiencia
+- **providerService.ts**: CRUD com filtro por categoria/ativo
+- **useProviderData.ts**: state, fetch, search, tabs
+- **useProviderMutations.ts**: submit, edit, delete, toggle ativo
+- **ProviderForm.tsx**: dialog com multi-select especialidades
+- **ProviderCard.tsx**: card com badges
 
-### 4. Agenda.tsx (586 → ~80 linhas)
-- **types.ts**: Interfaces `OrdemServico` (agenda), `Tecnico`
-- **scheduleService.ts**: `loadOrdensServico(date, tecnicoId)`, `loadTecnicos`, `resendCalendarInvite`, `generatePresenceQR`
-- **useScheduleData.ts**: State + fetch + realtime (useGlobalRealtime + useAgendaRealtime)
-- **useScheduleActions.ts**: `resendCalendarInvite`, `generatePresenceQR`, `cancelOS`
-- **AgendaCalendar.tsx**: Calendario + filtro de tecnico (linhas 260-330)
-- **AgendaOSCard.tsx**: Card da OS com email status, badges, botoes (linhas 330-540)
-- **Agenda.tsx**: Grid layout + calendario + lista + modais
+### 4. DashboardPresenca.tsx (691 → ~60 linhas)
+- **presenceService.ts**: fetch OS com join presenca, export PDF/Excel
+- **usePresenceData.ts**: filtros por data/tecnico, fetch
+- **PresenceFilters.tsx**: select tecnico + mes
+- **PresenceTable.tsx**: tabela com status confirmacao
 
-## Regras de implementacao
+### 5. WorkOrderDetail.tsx (650 → ~60 linhas)
+- **useWorkOrderDetail.ts**: fetch OS por id, state, acoes (PDF, status)
+- **WorkOrderDetailView.tsx**: renderizacao do detalhe completo
 
-1. Manter exports default nas pages para nao quebrar rotas
-2. Services recebem parametros puros e retornam dados — sem useState
-3. Hooks encapsulam state + effects + callbacks
-4. Components recebem props tipadas — sem queries diretas
-5. Cada feature tem `index.ts` com re-exports
+### 6. RMEWizard.tsx (582 → ~80 linhas)
+- **useRMEWizardData.ts**: step navigation, auto-save, load/save formData, submit final
+- Componentes de step ja existem em `rme-wizard/` — manter
+- **RMEWizard.tsx**: composicao: progress bar + step router + footer buttons
+
+### 7. WorkOrderCreate.tsx (570 → ~60 linhas)
+- **useWorkOrderCreate.ts**: form state, fetch clientes/tecnicos, submit
+- **WorkOrderCreateForm.tsx**: formulario com date picker, multi-select
+
+### 8. Relatorios.tsx (554 → ~60 linhas)
+- **reportService.ts**: queries agregadas (tickets por status, por periodo, por tecnico)
+- **useReportData.ts**: filtros, fetch, dados derivados para graficos
+- **ReportCharts.tsx**: graficos recharts (bar, pie, line)
+- **ReportFilters.tsx**: periodo + tipo
+
+### 9. ClientDashboard.tsx (515 → ~60 linhas)
+- **clientDashService.ts**: fetch tickets/OS do cliente logado
+- **useClientDashData.ts**: state, fetch
+- **ClientTicketList.tsx**: lista de tickets do cliente
+- **ClientStatsCards.tsx**: cards de resumo
+
+### 10. CargaTrabalho.tsx (482 → ~60 linhas)
+- **workloadService.ts**: fetch carga por tecnico, export PDF
+- **useWorkloadData.ts**: filtros por mes/tecnico
+- **WorkloadChart.tsx**: grafico de carga
+- **WorkloadFilters.tsx**: select tecnico + periodo
+
+### 11. GerenciarRME.tsx (377 → ~60 linhas)
+- Usa hooks existentes (`useRMEQuery`), pouca logica para extrair
+- Extrair **RMEManagementList.tsx** (renderizacao de cards) e **RMEManagementFilters.tsx**
+- Manter no modulo `src/features/rme/`
+
+### 12. Tecnicos.tsx (347 → ~60 linhas)
+- **technicianService.ts**: fetch, update, toggle ativo
+- **useTechnicianData.ts**: state, fetch
+- **TechnicianCard.tsx**: card com badges
+- **TechnicianEditDialog.tsx**: dialog de edicao
+
+## Regras (padrao para todas as implementacoes futuras)
+
+1. **Services**: funcoes puras, recebem parametros, retornam dados. Sem useState/useEffect
+2. **Hooks**: encapsulam state + effects + callbacks. Retornam objeto tipado
+3. **Components**: recebem props tipadas. Sem queries diretas ao banco
+4. **Types**: schemas zod + interfaces TypeScript. Compartilhados via `types.ts`
+5. **Index**: barrel exports. Pages importam apenas do index
+6. **Pages**: composicao pura, max ~80-150 linhas. Export default mantido para rotas
+7. **Threshold**: qualquer pagina acima de 200 linhas deve ser decomposta neste padrao
 
 ## Ordem de execucao
 
-MinhasOS primeiro (maior e mais critica), depois Clientes, Equipamentos, e Agenda.
+Prioridade por tamanho: RME → Insumos → Prestadores → DashboardPresenca → WorkOrderDetail → RMEWizard → WorkOrderCreate → Relatorios → ClientDashboard → CargaTrabalho → GerenciarRME → Tecnicos
+
+Cada pagina e independente — o app continua funcionando apos cada refatoracao.
 
