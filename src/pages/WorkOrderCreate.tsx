@@ -97,9 +97,12 @@ const WorkOrderCreate = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField control={form.control} name="site_name" render={({ field }) => (
                   <FormItem><FormLabel>UFV/SolarZ *</FormLabel>
-                    <Select onValueChange={(v) => { field.onChange(v); handleUfvSolarzChange(v); }} value={field.value}>
+                    <Select onValueChange={(v) => { field.onChange(v); handleUfvSolarzChange(v); }} value={field.value || undefined}>
                       <FormControl><SelectTrigger className="h-12"><SelectValue placeholder="Selecione a UFV/SolarZ" /></SelectTrigger></FormControl>
-                      <SelectContent>{ufvSolarzList.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}</SelectContent>
+                      <SelectContent>
+                        {ufvSolarzList.length === 0 && <SelectItem value="__loading" disabled>Carregando...</SelectItem>}
+                        {ufvSolarzList.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
+                      </SelectContent>
                     </Select><FormMessage /></FormItem>
                 )} />
                 <FormField control={form.control} name="cliente_id" render={({ field }) => (
