@@ -2,12 +2,14 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
+import { useErrorHandler } from "@/hooks/useErrorHandler";
 import { providerService } from "../services/providerService";
 import { prestadorSchema, type PrestadorForm } from "../types";
 
 export const useProviderMutations = (reload: () => void) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingPrestador, setEditingPrestador] = useState<any>(null);
+  const { handleError } = useErrorHandler();
 
   const form = useForm<PrestadorForm>({
     resolver: zodResolver(prestadorSchema),
@@ -31,8 +33,8 @@ export const useProviderMutations = (reload: () => void) => {
       setIsDialogOpen(false);
       setEditingPrestador(null);
       reload();
-    } catch {
-      toast.error('Erro ao salvar prestador');
+    } catch (error) {
+      handleError(error, { fallbackMessage: 'Erro ao salvar prestador' });
     }
   };
 
@@ -55,8 +57,8 @@ export const useProviderMutations = (reload: () => void) => {
       await providerService.remove(id);
       toast.success("Prestador removido com sucesso!");
       reload();
-    } catch {
-      toast.error('Erro ao remover prestador');
+    } catch (error) {
+      handleError(error, { fallbackMessage: 'Erro ao remover prestador' });
     }
   };
 
@@ -65,8 +67,8 @@ export const useProviderMutations = (reload: () => void) => {
       await providerService.approve(id);
       toast.success("Prestador aprovado com sucesso!");
       reload();
-    } catch {
-      toast.error('Erro ao aprovar prestador');
+    } catch (error) {
+      handleError(error, { fallbackMessage: 'Erro ao aprovar prestador' });
     }
   };
 
@@ -75,8 +77,8 @@ export const useProviderMutations = (reload: () => void) => {
       await providerService.remove(id);
       toast.success("Prestador rejeitado e removido.");
       reload();
-    } catch {
-      toast.error('Erro ao rejeitar prestador');
+    } catch (error) {
+      handleError(error, { fallbackMessage: 'Erro ao rejeitar prestador' });
     }
   };
 

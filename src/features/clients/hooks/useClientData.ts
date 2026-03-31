@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import { useErrorHandler } from "@/hooks/useErrorHandler";
 import { clientService } from "../services/clientService";
 import type { Cliente } from "../types";
 
@@ -7,23 +8,19 @@ export function useClientData() {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const { handleAsyncError } = useErrorHandler();
 
   const fetchClientes = async () => {
-    try {
-      setLoading(true);
-      const data = await clientService.fetchAll();
-      setClientes(data);
-    } catch (error) {
-      console.error('Erro ao carregar clientes:', error);
-      toast.error('Erro ao carregar clientes');
-    } finally {
-      setLoading(false);
-    }
+    setLoading(true);
+    const data = await handleAsyncError(
+      () => clientService.fetchAll(),
+      { fallbackMessage: 'Erro ao carregar clientes' }
+    );
+    if (data) setClientes(data);
+    setLoading(false);
   };
 
-  useEffect(() => {
-    fetchClientes();
-  }, []);
+  useEffect(() => { fetchClientes(); }, []);
 
   const filteredClientes = clientes.filter(cliente =>
     cliente.empresa.toLowerCase().includes(searchTerm.toLowerCase()) ||

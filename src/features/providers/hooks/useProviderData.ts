@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import { useErrorHandler } from "@/hooks/useErrorHandler";
 import { providerService } from "../services/providerService";
 import type { Prestador } from "../types";
 
@@ -8,16 +9,15 @@ export const useProviderData = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("todos");
+  const { handleAsyncError } = useErrorHandler();
 
   const fetchPrestadores = async () => {
-    try {
-      const data = await providerService.fetchAll();
-      setPrestadores(data as Prestador[]);
-    } catch {
-      toast.error('Erro ao carregar prestadores');
-    } finally {
-      setLoading(false);
-    }
+    const data = await handleAsyncError(
+      () => providerService.fetchAll(),
+      { fallbackMessage: 'Erro ao carregar prestadores' }
+    );
+    if (data) setPrestadores(data as Prestador[]);
+    setLoading(false);
   };
 
   useEffect(() => { fetchPrestadores(); }, []);

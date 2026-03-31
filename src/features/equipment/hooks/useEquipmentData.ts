@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { toast } from "sonner";
+import { useErrorHandler } from "@/hooks/useErrorHandler";
 import { equipmentService } from "../services/equipmentService";
 import type { Equipamento } from "../types";
 
@@ -9,32 +9,25 @@ export function useEquipmentData() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("todos");
+  const { handleAsyncError } = useErrorHandler();
 
   const fetchEquipamentos = async () => {
-    try {
-      const data = await equipmentService.fetchAll();
-      setEquipamentos(data as any);
-    } catch (error) {
-      toast.error('Erro ao carregar equipamentos');
-      console.error('Error:', error);
-    } finally {
-      setLoading(false);
-    }
+    const data = await handleAsyncError(
+      () => equipmentService.fetchAll(),
+      { fallbackMessage: 'Erro ao carregar equipamentos' }
+    );
+    if (data) setEquipamentos(data as any);
+    setLoading(false);
   };
 
   const fetchClientes = async () => {
-    try {
-      const data = await equipmentService.fetchClientes();
-      setClientes(data);
-    } catch (error) {
-      console.error('Error:', error);
-    }
+    await handleAsyncError(
+      async () => { const data = await equipmentService.fetchClientes(); setClientes(data); },
+      { showToast: false }
+    );
   };
 
-  useEffect(() => {
-    fetchEquipamentos();
-    fetchClientes();
-  }, []);
+  useEffect(() => { fetchEquipamentos(); fetchClientes(); }, []);
 
   const filteredEquipamentos = equipamentos.filter(eq => {
     const matchesSearch = eq.nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
