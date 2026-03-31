@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
 import { ticketService } from '../services/ticketService';
-import { notificationService } from '@/shared/services/notificationService';
+import { notifyReassignRemoved, notifyNewAssignment, notifyTicketAltered, notifyTicketDeleted } from '@/shared/services/notificationStrategies';
 import type { TicketFormData, TicketWithRelations, TicketPrestador } from '../types';
 
 export const useTicketMutations = (loadData: () => Promise<void>) => {
@@ -71,19 +71,13 @@ export const useTicketMutations = (loadData: () => Promise<void>) => {
 
       if (criticalChanged) {
         const linkedOS = await ticketService.getLinkedOS(editingTicket.id);
-        for (const os of linkedOS) {
-          await ticketService.resetOSAceite(os.id);
-          if (os.tecnico_id) {
-            const tecUserId = await notificationService.getTecnicoUserId(os.tecnico_id);
-            if (tecUserId) {
-              await notificationService.sendInApp(
-                tecUserId, 'os_alterada', 'Ticket Alterado — Aceite Necessário',
-                `O ticket vinculado à OS ${os.numero_os} foi alterado (data, horário ou tipo de serviço). Você precisa aceitar novamente.`,
-                '/minhas-os'
-              );
-            }
-          }
-        }
+        // Parallelize: reset aceite + notify for all linked OS
+        await Promise.all(
+          linkedOS.map(async (os) => {
+            await ticketService.resetOSAceite(os.id);
+            await notifyTicketAltered(os);
+          })
+        );
       }
 
       toast.success('Ticket atualizado com sucesso!');
@@ -132,18 +126,8 @@ export const useTicketMutations = (loadData: () => Promise<void>) => {
         if (osData.length > 0) parts.push(`${osData.length} OS`);
         if (rmeData.length > 0) parts.push(`${rmeData.length} RME`);
 
-        for (const os of osData) {
-          if (os.tecnico_id) {
-            const tecUserId = await notificationService.getTecnicoUserId(os.tecnico_id);
-            if (tecUserId) {
-              await notificationService.sendInApp(
-                tecUserId, 'ticket_excluido', 'Ticket Excluído',
-                `O ticket vinculado à OS ${os.numero_os} foi excluído pelo gestor. A OS será removida.`,
-                '/minhas-os'
-              );
-            }
-          }
-        }
+        // Parallelize all deletion notifications
+        await Promise.all(osData.map(os => notifyTicketDeleted(os)));
 
         toast.error(`Este ticket possui ${parts.join(' e ')} vinculado(s). Remova-os antes de excluir o ticket.`);
         return;
@@ -177,35 +161,23 @@ export const useTicketMutations = (loadData: () => Promise<void>) => {
         const tecnico = await ticketService.findTecnicoByEmail(prestador.email);
         if (tecnico) {
           const linkedOS = await ticketService.getLinkedOS(ticketId);
-          for (const os of linkedOS) {
-            const oldTecnicoId = os.tecnico_id;
 
-            if (isReassignment && oldTecnicoId && oldTecnicoId !== tecnico.id) {
-              try { await notificationService.sendCalendarInvite(os.id, 'reassign_removed'); } catch { /* silent */ }
+          // Parallelize all OS updates + notifications
+          await Promise.all(
+            linkedOS.map(async (os) => {
+              const oldTecnicoId = os.tecnico_id;
 
-              const oldTecUserId = await notificationService.getTecnicoUserId(oldTecnicoId);
-              if (oldTecUserId) {
-                await notificationService.sendInApp(
-                  oldTecUserId, 'os_reatribuida', 'OS Reatribuída',
-                  `A OS ${os.numero_os} foi reatribuída a outro técnico.`, '/minhas-os'
-                );
+              if (isReassignment && oldTecnicoId && oldTecnicoId !== tecnico.id) {
+                await notifyReassignRemoved(os, oldTecnicoId);
               }
-            }
 
-            await ticketService.updateOSTecnico(os.id, tecnico.id);
+              await ticketService.updateOSTecnico(os.id, tecnico.id);
 
-            if (isReassignment) {
-              try { await notificationService.sendCalendarInvite(os.id, 'create'); } catch { /* silent */ }
-
-              const newTecUserId = tecnico.profiles?.user_id;
-              if (newTecUserId) {
-                await notificationService.sendInApp(
-                  newTecUserId, 'os_atribuida', 'Nova OS Atribuída',
-                  `A OS ${os.numero_os} foi atribuída a você.`, '/minhas-os'
-                );
+              if (isReassignment) {
+                await notifyNewAssignment(os, tecnico.profiles?.user_id);
               }
-            }
-          }
+            })
+          );
         }
       }
 
