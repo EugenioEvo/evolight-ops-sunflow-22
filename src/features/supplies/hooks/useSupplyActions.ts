@@ -52,7 +52,7 @@ export const useSupplyActions = (reload: () => void) => {
         toast({ title: "Erro", description: "Quantidade de saída maior que estoque disponível.", variant: "destructive" });
         return;
       }
-      await supplyService.createMovimentacao({ ...data, insumo_id: selectedInsumo.id });
+      await supplyService.createMovimentacao({ tipo: data.tipo, quantidade: data.quantidade, responsavel_id: data.responsavel_id, motivo: data.motivo, observacoes: data.observacoes, insumo_id: selectedInsumo.id });
       toast({ title: "Sucesso", description: `${data.tipo === "entrada" ? "Entrada" : "Saída"} registrada com sucesso!` });
       reload(); setIsMovimentacaoDialogOpen(false); setSelectedInsumo(null); movimentacaoForm.reset();
     } catch {
