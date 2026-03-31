@@ -12,6 +12,8 @@ export interface RMERow {
   data_execucao: string;
   servicos_executados: string;
   condicoes_encontradas: string;
+  created_at?: string;
+  pdf_url?: string | null;
   fotos_antes?: string[] | null;
   fotos_depois?: string[] | null;
   materiais_utilizados?: Array<{ nome?: string; descricao?: string; quantidade?: number; tinha_estoque?: boolean }> | null;
@@ -27,6 +29,10 @@ export interface RMERow {
   string_box_qty?: number | null;
   signatures?: Record<string, string> | null;
   status_aprovacao?: string;
+  status?: string | null;
+  observacoes_aprovacao?: string | null;
+  aprovado_por?: string | null;
+  data_aprovacao?: string | null;
   tickets?: {
     titulo?: string;
     numero_ticket?: string;
