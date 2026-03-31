@@ -75,7 +75,7 @@ const WorkOrders = () => {
       const tecnicoUserId = (osData.tecnicos as any)?.profile?.user_id;
       if (tecnicoUserId) {
         try {
-          await workOrderService.sendCalendarInvite(osId, "cancel");
+          await notificationService.sendCalendarInvite(osId, "cancel");
         } catch (e) {
           console.error("Erro ao enviar email de cancelamento:", e);
         }
