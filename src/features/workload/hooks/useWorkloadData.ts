@@ -7,7 +7,7 @@ import { ptBR } from 'date-fns/locale';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
-interface Tecnico { id: string; nome: string; }
+interface WorkloadTecnico { id: string; nome: string; }
 
 export interface WorkloadData {
   data: string;
@@ -28,7 +28,7 @@ export interface TecnicoStats {
 
 export const useWorkloadData = () => {
   const [selectedMonth, setSelectedMonth] = useState<Date>(new Date());
-  const [tecnicos, setTecnicos] = useState<Tecnico[]>([]);
+  const [tecnicos, setTecnicos] = useState<WorkloadTecnico[]>([]);
   const [selectedTecnico, setSelectedTecnico] = useState<string>('');
   const [stats, setStats] = useState<TecnicoStats | null>(null);
   const [loading, setLoading] = useState(false);
@@ -41,7 +41,10 @@ export const useWorkloadData = () => {
   const loadTecnicos = async () => {
     const { data } = await supabase.from('tecnicos').select('id, profiles!inner(nome)').order('profiles(nome)');
     if (data) {
-      const formatted = data.map(t => ({ id: t.id, nome: (t.profiles as any).nome }));
+      const formatted: WorkloadTecnico[] = data.map(t => ({
+        id: t.id,
+        nome: (t.profiles as unknown as { nome: string }).nome,
+      }));
       setTecnicos(formatted);
       if (formatted.length > 0) setSelectedTecnico(formatted[0].id);
     }
@@ -69,13 +72,13 @@ export const useWorkloadData = () => {
         setStats({
           totalOS, totalHoras: Math.round(totalMinutos / 60 * 10) / 10,
           osPendentes, osConcluidas, disponibilidade: Math.round(disponibilidade),
-          workloadByDay: workloadData,
+          workloadByDay: workloadData as WorkloadData[],
         });
       } else {
         setStats({ totalOS: 0, totalHoras: 0, osPendentes: 0, osConcluidas: 0, disponibilidade: 0, workloadByDay: [] });
       }
     } catch (error) {
-      handleError(error, { fallbackMessage: 'Erro ao carregar carga de trabalho', showToast: false });
+      handleError(error, { fallbackMessage: 'Erro ao carregar carga de trabalho' });
     } finally {
       setLoading(false);
     }
@@ -144,7 +147,7 @@ export const useWorkloadData = () => {
           day.total_os.toString(), `${Math.round(day.total_minutos / 60 * 10) / 10}h`,
           day.os_pendentes.toString(), day.os_concluidas.toString(),
         ]);
-        (doc as any).autoTable({
+        (doc as unknown as Record<string, Function>).autoTable({
           startY: yPos, head: [['Data', 'OS', 'Horas', 'Pendentes', 'Concluídas']], body: tableData,
           theme: 'grid', headStyles: { fillColor: [245, 158, 11], textColor: 255 },
           styles: { fontSize: 9, cellPadding: 3 },
@@ -152,7 +155,7 @@ export const useWorkloadData = () => {
         });
       }
 
-      const pageCount = (doc as any).internal.getNumberOfPages();
+      const pageCount = (doc as unknown as Record<string, Record<string, Function>>).internal.getNumberOfPages();
       for (let i = 1; i <= pageCount; i++) {
         doc.setPage(i);
         doc.setFontSize(9);

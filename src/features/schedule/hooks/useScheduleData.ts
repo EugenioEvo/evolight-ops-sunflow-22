@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { format } from "date-fns";
+import { useErrorHandler } from "@/hooks/useErrorHandler";
 import { useGlobalRealtime } from "@/hooks/useRealtimeProvider";
 import { useAgendaRealtime } from "@/hooks/useAgendaRealtime";
 import { scheduleService } from "../services/scheduleService";
@@ -11,6 +12,7 @@ export function useScheduleData() {
   const [ordensServico, setOrdensServico] = useState<AgendaOrdemServico[]>([]);
   const [tecnicos, setTecnicos] = useState<Tecnico[]>([]);
   const [loading, setLoading] = useState(true);
+  const { handleAsyncError } = useErrorHandler();
 
   const getDateKey = (value: string | Date | null | undefined) => {
     if (!value) return '';
@@ -20,14 +22,14 @@ export function useScheduleData() {
 
   const loadOrdensServico = useCallback(async () => {
     setLoading(true);
-    try {
-      const data = await scheduleService.loadOrdensServico(selectedDate, selectedTecnico);
-      setOrdensServico(data as any);
-    } catch (error) {
-      console.error('Erro ao carregar agenda:', error);
-    } finally {
-      setLoading(false);
-    }
+    await handleAsyncError(
+      async () => {
+        const data = await scheduleService.loadOrdensServico(selectedDate, selectedTecnico);
+        setOrdensServico(data as AgendaOrdemServico[]);
+      },
+      { fallbackMessage: 'Erro ao carregar agenda', showToast: false }
+    );
+    setLoading(false);
   }, [selectedDate, selectedTecnico]);
 
   useGlobalRealtime(loadOrdensServico);

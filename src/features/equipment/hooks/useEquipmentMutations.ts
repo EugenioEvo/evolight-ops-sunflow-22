@@ -4,11 +4,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { useErrorHandler } from "@/hooks/useErrorHandler";
 import { equipmentService } from "../services/equipmentService";
-import { equipamentoSchema, type EquipamentoForm } from "../types";
+import { equipamentoSchema, type EquipamentoForm, type Equipamento } from "../types";
 
 export function useEquipmentMutations(fetchEquipamentos: () => Promise<void>) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingEquipamento, setEditingEquipamento] = useState<any>(null);
+  const [editingEquipamento, setEditingEquipamento] = useState<Equipamento | null>(null);
   const { handleError } = useErrorHandler();
 
   const form = useForm<EquipamentoForm>({
@@ -38,7 +38,7 @@ export function useEquipmentMutations(fetchEquipamentos: () => Promise<void>) {
     }
   };
 
-  const handleEdit = (equipamento: any) => {
+  const handleEdit = (equipamento: Equipamento) => {
     setEditingEquipamento(equipamento);
     form.reset(equipamento);
     setIsDialogOpen(true);

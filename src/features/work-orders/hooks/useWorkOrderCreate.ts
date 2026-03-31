@@ -3,11 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
+import type { WorkOrderCreateData, WOClienteOption, WOTecnicoOption } from '../types';
 
 export const useWorkOrderCreate = () => {
   const [loading, setLoading] = useState(false);
-  const [clientes, setClientes] = useState<Array<{ id: string; empresa: string; ufv_solarz: string | null }>>([]);
-  const [tecnicos, setTecnicos] = useState<Array<{ id: string; nome: string }>>([]);
+  const [clientes, setClientes] = useState<WOClienteOption[]>([]);
+  const [tecnicos, setTecnicos] = useState<WOTecnicoOption[]>([]);
   const [selectedWorkTypes, setSelectedWorkTypes] = useState<string[]>([]);
   const [teamMembers, setTeamMembers] = useState<string[]>([]);
   const [newMember, setNewMember] = useState('');
@@ -19,14 +20,15 @@ export const useWorkOrderCreate = () => {
 
   const loadClientes = async () => {
     const { data } = await supabase.from('clientes').select('id, empresa, ufv_solarz').order('empresa');
-    setClientes(data || []);
-    const ufvList = (data || []).map(c => c.ufv_solarz).filter((u): u is string => u !== null && u.trim() !== '').filter((u, i, a) => a.indexOf(u) === i).sort();
+    const items: WOClienteOption[] = (data || []).map(c => ({ id: c.id, empresa: c.empresa ?? '', ufv_solarz: c.ufv_solarz }));
+    setClientes(items);
+    const ufvList = items.map(c => c.ufv_solarz).filter((u): u is string => u !== null && u.trim() !== '').filter((u, i, a) => a.indexOf(u) === i).sort();
     setUfvSolarzList(ufvList);
   };
 
   const loadTecnicos = async () => {
     const { data } = await supabase.from('prestadores').select('id, nome').eq('categoria', 'tecnico').eq('ativo', true).order('nome');
-    setTecnicos(data || []);
+    setTecnicos((data || []) as WOTecnicoOption[]);
   };
 
   const addTeamMember = () => {
@@ -39,7 +41,7 @@ export const useWorkOrderCreate = () => {
   const removeTeamMember = (m: string) => setTeamMembers(teamMembers.filter(t => t !== m));
   const toggleWorkType = (v: string) => setSelectedWorkTypes(prev => prev.includes(v) ? prev.filter(t => t !== v) : [...prev, v]);
 
-  const submitWorkOrder = async (data: any) => {
+  const submitWorkOrder = async (data: WorkOrderCreateData) => {
     if (selectedWorkTypes.length === 0) {
       toast.error('Selecione pelo menos um tipo de trabalho');
       return;

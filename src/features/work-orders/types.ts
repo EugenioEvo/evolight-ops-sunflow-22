@@ -13,6 +13,8 @@ export interface WorkOrder {
   notes: string | null;
   aceite_tecnico: string;
   motivo_recusa: string | null;
+  tecnico_id: string | null;
+  pdf_url: string | null;
   tickets: {
     id: string;
     titulo: string;
@@ -29,6 +31,32 @@ export interface WorkOrder {
     id: string;
     status: string;
   }>;
+}
+
+/** Work order create form data */
+export interface WorkOrderCreateData {
+  cliente_id: string;
+  site_name: string;
+  servico_solicitado: string;
+  descricao: string;
+  data_programada: Date;
+  hora_inicio?: string;
+  hora_fim?: string;
+  inspetor_responsavel?: string;
+  notes?: string;
+}
+
+/** Client option for work order create */
+export interface WOClienteOption {
+  id: string;
+  empresa: string;
+  ufv_solarz: string | null;
+}
+
+/** Tecnico option for work order create */
+export interface WOTecnicoOption {
+  id: string;
+  nome: string;
 }
 
 export const STATUS_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
