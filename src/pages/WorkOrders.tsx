@@ -105,8 +105,8 @@ const WorkOrders = () => {
     e.stopPropagation();
     setSendingEmailId(osId);
     try {
-      const data = await workOrderService.sendCalendarInvite(osId, "create");
-      if (!data?.success) throw new Error(data?.error || "Erro ao enviar email");
+      await notificationService.sendCalendarInvite(osId, "create");
+      toast({ title: "Email enviado!", description: "Convite enviado com sucesso." });
       toast({ title: "Email enviado!", description: `Convite enviado para: ${data.recipients?.join(", ")}` });
     } catch (error: any) {
       toast({ title: "Erro ao enviar email", description: error.message, variant: "destructive" });
