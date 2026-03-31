@@ -107,9 +107,12 @@ const WorkOrderCreate = () => {
                 )} />
                 <FormField control={form.control} name="cliente_id" render={({ field }) => (
                   <FormItem><FormLabel>Cliente *</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value || undefined}>
                       <FormControl><SelectTrigger className="h-12"><SelectValue placeholder="Selecione o cliente" /></SelectTrigger></FormControl>
-                      <SelectContent>{clientes.map(c => <SelectItem key={c.id} value={c.id}>{c.empresa}</SelectItem>)}</SelectContent>
+                      <SelectContent>
+                        {clientes.length === 0 && <SelectItem value="__loading" disabled>Carregando...</SelectItem>}
+                        {clientes.map(c => <SelectItem key={c.id} value={c.id}>{c.empresa}</SelectItem>)}
+                      </SelectContent>
                     </Select><FormMessage /></FormItem>
                 )} />
               </div>
