@@ -25,11 +25,18 @@ export const useTicketMutations = (loadData: () => Promise<void>) => {
       }
 
       await ticketService.create({
-        ...data,
+        titulo: data.titulo,
+        descricao: data.descricao,
+        cliente_id: data.cliente_id,
+        equipamento_tipo: data.equipamento_tipo,
+        prioridade: data.prioridade,
+        endereco_servico: data.endereco_servico,
         numero_ticket: '',
         tempo_estimado: data.tempo_estimado || null,
         data_servico: data.data_servico || null,
         data_vencimento: data.data_vencimento ? new Date(data.data_vencimento).toISOString() : null,
+        horario_previsto_inicio: data.horario_previsto_inicio || null,
+        observacoes: data.observacoes || null,
         created_by: user?.id || '',
         tecnico_responsavel_id: technicianId || null,
         anexos: attachments,
