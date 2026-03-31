@@ -2,12 +2,14 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
+import { useErrorHandler } from "@/hooks/useErrorHandler";
 import { clientService } from "../services/clientService";
 import { clienteSchema, type ClienteForm, type Cliente } from "../types";
 
 export function useClientMutations(fetchClientes: () => Promise<void>) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Cliente | null>(null);
+  const { handleError } = useErrorHandler();
 
   const form = useForm<ClienteForm>({
     resolver: zodResolver(clienteSchema),
@@ -30,10 +32,8 @@ export function useClientMutations(fetchClientes: () => Promise<void>) {
       setEditingClient(null);
       form.reset();
       fetchClientes();
-    } catch (error: any) {
-      const errorMessage = error?.message || 'Erro desconhecido';
-      const errorCode = error?.code || '';
-      toast.error(`Erro ao salvar cliente: ${errorMessage} ${errorCode ? `(${errorCode})` : ''}`);
+    } catch (error) {
+      handleError(error, { fallbackMessage: 'Erro ao salvar cliente' });
     }
   };
 
@@ -55,8 +55,7 @@ export function useClientMutations(fetchClientes: () => Promise<void>) {
       toast.success('Cliente removido com sucesso!');
       fetchClientes();
     } catch (error) {
-      console.error('Erro ao remover cliente:', error);
-      toast.error('Erro ao remover cliente');
+      handleError(error, { fallbackMessage: 'Erro ao remover cliente' });
     }
   };
 

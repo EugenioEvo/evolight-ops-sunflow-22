@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
+import { useErrorHandler } from '@/hooks/useErrorHandler';
 import { rmeService } from '../services/rmeService';
 import type { RMEForm, Material, MAX_FILE_SIZE, MAX_FILES, ALLOWED_TYPES } from '../types';
 
@@ -13,7 +14,7 @@ export const useRMEActions = () => {
   const [materiais, setMateriais] = useState<Material[]>([]);
   const [exportingRMEId, setExportingRMEId] = useState<string | null>(null);
   const [sendingEmailId, setSendingEmailId] = useState<string | null>(null);
-  const { toast } = useToast();
+  const { handleError } = useErrorHandler();
 
   const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>, type: 'before' | 'after') => {
     const files = Array.from(event.target.files || []);
@@ -24,29 +25,23 @@ export const useRMEActions = () => {
     const currentCount = type === 'before' ? fotosBefore.length : fotosAfter.length;
 
     if (currentCount + files.length > MAX_COUNT) {
-      toast({ title: 'Limite excedido', description: `Máximo de ${MAX_COUNT} fotos por tipo.`, variant: 'destructive' });
+      toast.error(`Máximo de ${MAX_COUNT} fotos por tipo.`);
       return;
     }
 
     const invalidFiles = files.filter(f => !ALLOWED.includes(f.type) || f.size > MAX_SIZE);
     if (invalidFiles.length > 0) {
-      toast({ title: 'Arquivos inválidos', description: 'Use apenas JPG/PNG/WEBP até 5MB.', variant: 'destructive' });
+      toast.error('Use apenas JPG/PNG/WEBP até 5MB.');
       return;
     }
 
-    if (type === 'before') {
-      setFotosBefore(prev => [...prev, ...files]);
-    } else {
-      setFotosAfter(prev => [...prev, ...files]);
-    }
+    if (type === 'before') setFotosBefore(prev => [...prev, ...files]);
+    else setFotosAfter(prev => [...prev, ...files]);
   };
 
   const removePhoto = (index: number, type: 'before' | 'after') => {
-    if (type === 'before') {
-      setFotosBefore(prev => prev.filter((_, i) => i !== index));
-    } else {
-      setFotosAfter(prev => prev.filter((_, i) => i !== index));
-    }
+    if (type === 'before') setFotosBefore(prev => prev.filter((_, i) => i !== index));
+    else setFotosAfter(prev => prev.filter((_, i) => i !== index));
   };
 
   const addMaterial = () => setMateriais([...materiais, { insumo_id: '', nome: '', quantidade: 1 }]);
@@ -58,36 +53,33 @@ export const useRMEActions = () => {
   };
 
   const handleExportRMEPDF = async (rme: any) => {
+    setExportingRMEId(rme.id);
     try {
-      setExportingRMEId(rme.id);
       await rmeService.exportRMEPDF(rme);
-      toast({ title: 'PDF Exportado', description: 'O relatório foi exportado com sucesso!' });
-    } catch (error: any) {
-      toast({ title: 'Erro ao exportar', description: error.message, variant: 'destructive' });
+      toast.success('O relatório foi exportado com sucesso!');
+    } catch (error) {
+      handleError(error, { fallbackMessage: 'Erro ao exportar PDF' });
     } finally {
       setExportingRMEId(null);
     }
   };
 
   const handleSendRMEEmail = async (rme: any) => {
+    setSendingEmailId(rme.id);
     try {
-      setSendingEmailId(rme.id);
       await rmeService.sendRMEEmail(rme.id);
-      toast({ title: 'Email enviado!', description: 'Resumo do RME enviado para o técnico.' });
-    } catch (error: any) {
-      toast({ title: 'Erro ao enviar email', description: error.message, variant: 'destructive' });
+      toast.success('Resumo do RME enviado para o técnico.');
+    } catch (error) {
+      handleError(error, { fallbackMessage: 'Erro ao enviar email' });
     } finally {
       setSendingEmailId(null);
     }
   };
 
   const resetForm = () => {
-    setFotosBefore([]);
-    setFotosAfter([]);
-    setTecnicoSignature('');
-    setClienteSignature('');
-    setScannedEquipment(null);
-    setMateriais([]);
+    setFotosBefore([]); setFotosAfter([]);
+    setTecnicoSignature(''); setClienteSignature('');
+    setScannedEquipment(null); setMateriais([]);
   };
 
   return {

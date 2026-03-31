@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
+import { useErrorHandler } from '@/hooks/useErrorHandler';
 import { startOfMonth, endOfMonth, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import jsPDF from 'jspdf';
@@ -32,7 +33,7 @@ export const useWorkloadData = () => {
   const [stats, setStats] = useState<TecnicoStats | null>(null);
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const { toast } = useToast();
+  const { handleError } = useErrorHandler();
 
   useEffect(() => { loadTecnicos(); }, []);
   useEffect(() => { if (selectedTecnico) loadWorkloadData(); }, [selectedTecnico, selectedMonth]);
@@ -74,7 +75,7 @@ export const useWorkloadData = () => {
         setStats({ totalOS: 0, totalHoras: 0, osPendentes: 0, osConcluidas: 0, disponibilidade: 0, workloadByDay: [] });
       }
     } catch (error) {
-      console.error('Erro ao carregar carga de trabalho:', error);
+      handleError(error, { fallbackMessage: 'Erro ao carregar carga de trabalho', showToast: false });
     } finally {
       setLoading(false);
     }
@@ -160,9 +161,9 @@ export const useWorkloadData = () => {
       }
 
       doc.save(`carga_trabalho_${tecnico?.nome.replace(/\s+/g, '_')}_${format(selectedMonth, 'yyyy_MM')}.pdf`);
-      toast({ title: 'PDF exportado', description: 'Relatório salvo com sucesso' });
-    } catch (error: any) {
-      toast({ title: 'Erro ao exportar', description: 'Não foi possível gerar o PDF', variant: 'destructive' });
+      toast.success('Relatório exportado com sucesso');
+    } catch (error) {
+      handleError(error, { fallbackMessage: 'Não foi possível gerar o PDF' });
     } finally {
       setExporting(false);
     }

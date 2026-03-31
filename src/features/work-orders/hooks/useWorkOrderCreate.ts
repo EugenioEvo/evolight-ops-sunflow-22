@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
+import { useErrorHandler } from '@/hooks/useErrorHandler';
 
 export const useWorkOrderCreate = () => {
   const [loading, setLoading] = useState(false);
@@ -11,8 +12,8 @@ export const useWorkOrderCreate = () => {
   const [teamMembers, setTeamMembers] = useState<string[]>([]);
   const [newMember, setNewMember] = useState('');
   const [ufvSolarzList, setUfvSolarzList] = useState<string[]>([]);
-  const { toast } = useToast();
   const navigate = useNavigate();
+  const { handleError } = useErrorHandler();
 
   useEffect(() => { loadClientes(); loadTecnicos(); }, []);
 
@@ -40,7 +41,7 @@ export const useWorkOrderCreate = () => {
 
   const submitWorkOrder = async (data: any) => {
     if (selectedWorkTypes.length === 0) {
-      toast({ title: 'Tipo de trabalho obrigatório', description: 'Selecione pelo menos um tipo', variant: 'destructive' });
+      toast.error('Selecione pelo menos um tipo de trabalho');
       return;
     }
     setLoading(true);
@@ -73,10 +74,10 @@ export const useWorkOrderCreate = () => {
       }]).select().single();
       if (osError) throw osError;
 
-      toast({ title: 'OS criada!', description: `OS ${osData.numero_os} criada.` });
+      toast.success(`OS ${osData.numero_os} criada com sucesso!`);
       navigate(`/work-orders/${osData.id}`);
-    } catch (error: any) {
-      toast({ title: 'Erro ao criar OS', description: error.message, variant: 'destructive' });
+    } catch (error) {
+      handleError(error, { fallbackMessage: 'Erro ao criar OS' });
     } finally {
       setLoading(false);
     }

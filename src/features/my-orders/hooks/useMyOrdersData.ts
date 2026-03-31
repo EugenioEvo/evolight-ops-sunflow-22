@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useGlobalRealtime } from "@/hooks/useRealtimeProvider";
-import { useToast } from "@/hooks/use-toast";
+import { useErrorHandler } from "@/hooks/useErrorHandler";
 import { myOrdersService } from "../services/myOrdersService";
 import type { OrdemServico } from "../types";
 
@@ -11,27 +11,21 @@ export function useMyOrdersData() {
   const [prioridadeFiltro, setPrioridadeFiltro] = useState<string>('todas');
   const [activeTab, setActiveTab] = useState<string>('pendentes');
   const { profile } = useAuth();
-  const { toast } = useToast();
+  const { handleAsyncError } = useErrorHandler();
 
   const isTecnico = profile?.role === "tecnico_campo";
   const isAreaTecnica = profile?.role === "engenharia" || profile?.role === "supervisao" || profile?.role === "admin";
   const canViewOS = isTecnico || isAreaTecnica;
 
   const loadOrdensServico = useCallback(async () => {
-    try {
-      setLoading(true);
-      const data = await myOrdersService.loadOrdensServico(profile?.id, isTecnico);
-      setOrdensServico(data as any);
-    } catch (error: any) {
-      toast({
-        title: "Erro ao carregar ordens de serviço",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [profile?.id, isTecnico, toast]);
+    setLoading(true);
+    const data = await handleAsyncError(
+      () => myOrdersService.loadOrdensServico(profile?.id, isTecnico),
+      { fallbackMessage: 'Erro ao carregar ordens de serviço' }
+    );
+    if (data) setOrdensServico(data as any);
+    setLoading(false);
+  }, [profile?.id, isTecnico]);
 
   const realtimeCallback = useCallback(() => {
     if (canViewOS) loadOrdensServico();
@@ -42,7 +36,6 @@ export function useMyOrdersData() {
     if (canViewOS) loadOrdensServico();
   }, [canViewOS, loadOrdensServico]);
 
-  // Derived filtered data
   let osFiltradas = ordensServico;
   if (prioridadeFiltro !== 'todas') {
     osFiltradas = osFiltradas.filter(os => os.tickets.prioridade === prioridadeFiltro);
@@ -54,18 +47,8 @@ export function useMyOrdersData() {
   const concluidas = osFiltradas.filter(os => os.tickets.status === 'concluido');
 
   return {
-    ordensServico,
-    loading,
-    prioridadeFiltro,
-    setPrioridadeFiltro,
-    activeTab,
-    setActiveTab,
-    isTecnico,
-    canViewOS,
-    loadOrdensServico,
-    pendentes,
-    aguardandoGestaoCount,
-    emExecucao,
-    concluidas,
+    ordensServico, loading, prioridadeFiltro, setPrioridadeFiltro,
+    activeTab, setActiveTab, isTecnico, canViewOS, loadOrdensServico,
+    pendentes, aguardandoGestaoCount, emExecucao, concluidas,
   };
 }

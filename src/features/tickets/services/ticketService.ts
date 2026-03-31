@@ -183,21 +183,7 @@ export const ticketService = {
     return data;
   },
 
-  async sendNotification(userId: string, tipo: string, titulo: string, mensagem: string, link: string) {
-    await supabase.from('notificacoes').insert({
-      user_id: userId,
-      tipo,
-      titulo,
-      mensagem,
-      link,
-    });
-  },
-
-  async sendCalendarInvite(osId: string, action: string) {
-    await supabase.functions.invoke('send-calendar-invite', {
-      body: { os_id: osId, action },
-    });
-  },
+  // sendNotification and sendCalendarInvite moved to shared/services/notificationService.ts
 
   async generateOS(ticketId: string) {
     const { data, error } = await supabase.functions.invoke('gerar-ordem-servico', {

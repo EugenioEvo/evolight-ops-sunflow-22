@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
+import { useErrorHandler } from '@/hooks/useErrorHandler';
 import { ticketService } from '../services/ticketService';
+import { notificationService } from '@/shared/services/notificationService';
 import type { TicketFormData } from '../types';
 
 export const useTicketMutations = (loadData: () => Promise<void>) => {
@@ -9,7 +11,7 @@ export const useTicketMutations = (loadData: () => Promise<void>) => {
   const [generatingOsId, setGeneratingOsId] = useState<string | null>(null);
   const [reprocessingTicketId, setReprocessingTicketId] = useState<string | null>(null);
   const { user, profile } = useAuth();
-  const { toast } = useToast();
+  const { handleError } = useErrorHandler();
 
   const createTicket = async (data: TicketFormData, technicianId: string | null, attachments: string[]) => {
     setLoading(true);
@@ -18,15 +20,11 @@ export const useTicketMutations = (loadData: () => Promise<void>) => {
         const servico = new Date(data.data_servico);
         const vencimento = new Date(data.data_vencimento);
         if (servico > vencimento) {
-          toast({
-            title: '⚠️ Atenção: Data de serviço após o vencimento',
-            description: `A data de serviço (${servico.toLocaleDateString('pt-BR')}) é posterior à data de vencimento limite (${vencimento.toLocaleDateString('pt-BR')}).`,
-            variant: 'destructive',
-          });
+          toast.warning(`A data de serviço (${servico.toLocaleDateString('pt-BR')}) é posterior à data de vencimento limite (${vencimento.toLocaleDateString('pt-BR')}).`);
         }
       }
 
-      const ticketData = {
+      await ticketService.create({
         ...data,
         tempo_estimado: data.tempo_estimado || null,
         data_servico: data.data_servico || null,
@@ -35,10 +33,8 @@ export const useTicketMutations = (loadData: () => Promise<void>) => {
         tecnico_responsavel_id: technicianId || null,
         anexos: attachments,
         status: 'aberto',
-      };
-
-      await ticketService.create(ticketData);
-      toast({ title: 'Sucesso', description: 'Ticket criado aguardando aprovação!' });
+      });
+      toast.success('Ticket criado aguardando aprovação!');
       await loadData();
     } finally {
       setLoading(false);
@@ -71,12 +67,10 @@ export const useTicketMutations = (loadData: () => Promise<void>) => {
         for (const os of linkedOS) {
           await ticketService.resetOSAceite(os.id);
           if (os.tecnico_id) {
-            const tecUserId = await ticketService.getTecnicoUserId(os.tecnico_id);
+            const tecUserId = await notificationService.getTecnicoUserId(os.tecnico_id);
             if (tecUserId) {
-              await ticketService.sendNotification(
-                tecUserId,
-                'os_alterada',
-                'Ticket Alterado — Aceite Necessário',
+              await notificationService.sendInApp(
+                tecUserId, 'os_alterada', 'Ticket Alterado — Aceite Necessário',
                 `O ticket vinculado à OS ${os.numero_os} foi alterado (data, horário ou tipo de serviço). Você precisa aceitar novamente.`,
                 '/minhas-os'
               );
@@ -85,7 +79,7 @@ export const useTicketMutations = (loadData: () => Promise<void>) => {
         }
       }
 
-      toast({ title: 'Sucesso', description: 'Ticket atualizado com sucesso!' });
+      toast.success('Ticket atualizado com sucesso!');
       await loadData();
     } finally {
       setLoading(false);
@@ -96,10 +90,10 @@ export const useTicketMutations = (loadData: () => Promise<void>) => {
     setLoading(true);
     try {
       await ticketService.approve(ticketId, profile?.id || '');
-      toast({ title: 'Sucesso', description: 'Ticket aprovado. Agora pode atribuir um técnico.' });
+      toast.success('Ticket aprovado. Agora pode atribuir um técnico.');
       await loadData();
-    } catch (error: any) {
-      toast({ title: 'Erro', description: error.message || 'Erro ao aprovar ticket', variant: 'destructive' });
+    } catch (error) {
+      handleError(error, { fallbackMessage: 'Erro ao aprovar ticket' });
     } finally {
       setLoading(false);
     }
@@ -109,10 +103,10 @@ export const useTicketMutations = (loadData: () => Promise<void>) => {
     setLoading(true);
     try {
       await ticketService.reject(ticketId, profile?.id || '');
-      toast({ title: 'Sucesso', description: 'Ticket rejeitado' });
+      toast.success('Ticket rejeitado');
       await loadData();
-    } catch (error: any) {
-      toast({ title: 'Erro', description: error.message || 'Erro ao rejeitar ticket', variant: 'destructive' });
+    } catch (error) {
+      handleError(error, { fallbackMessage: 'Erro ao rejeitar ticket' });
     } finally {
       setLoading(false);
     }
@@ -133,9 +127,9 @@ export const useTicketMutations = (loadData: () => Promise<void>) => {
 
         for (const os of osData) {
           if (os.tecnico_id) {
-            const tecUserId = await ticketService.getTecnicoUserId(os.tecnico_id);
+            const tecUserId = await notificationService.getTecnicoUserId(os.tecnico_id);
             if (tecUserId) {
-              await ticketService.sendNotification(
+              await notificationService.sendInApp(
                 tecUserId, 'ticket_excluido', 'Ticket Excluído',
                 `O ticket vinculado à OS ${os.numero_os} foi excluído pelo gestor. A OS será removida.`,
                 '/minhas-os'
@@ -144,19 +138,15 @@ export const useTicketMutations = (loadData: () => Promise<void>) => {
           }
         }
 
-        toast({
-          title: 'Não é possível excluir',
-          description: `Este ticket possui ${parts.join(' e ')} vinculado(s). Remova-os antes de excluir o ticket.`,
-          variant: 'destructive',
-        });
+        toast.error(`Este ticket possui ${parts.join(' e ')} vinculado(s). Remova-os antes de excluir o ticket.`);
         return;
       }
 
       await ticketService.delete(ticketId);
-      toast({ title: 'Sucesso', description: 'Ticket excluído com sucesso' });
+      toast.success('Ticket excluído com sucesso');
       await loadData();
-    } catch (error: any) {
-      toast({ title: 'Erro ao excluir ticket', description: error.message, variant: 'destructive' });
+    } catch (error) {
+      handleError(error, { fallbackMessage: 'Erro ao excluir ticket' });
     } finally {
       setLoading(false);
     }
@@ -165,7 +155,7 @@ export const useTicketMutations = (loadData: () => Promise<void>) => {
   const assignTechnician = async (ticketId: string, technicianId: string, tickets: any[], prestadores: any[]) => {
     try {
       if (!technicianId) {
-        toast({ title: 'Erro', description: 'Selecione um técnico', variant: 'destructive' });
+        toast.error('Selecione um técnico');
         return;
       }
 
@@ -184,18 +174,13 @@ export const useTicketMutations = (loadData: () => Promise<void>) => {
             const oldTecnicoId = os.tecnico_id;
 
             if (isReassignment && oldTecnicoId && oldTecnicoId !== tecnico.id) {
-              try {
-                await ticketService.sendCalendarInvite(os.id, 'reassign_removed');
-              } catch (e) {
-                console.error('Erro ao enviar email de reatribuição:', e);
-              }
+              try { await notificationService.sendCalendarInvite(os.id, 'reassign_removed'); } catch {}
 
-              const oldTecUserId = await ticketService.getTecnicoUserId(oldTecnicoId);
+              const oldTecUserId = await notificationService.getTecnicoUserId(oldTecnicoId);
               if (oldTecUserId) {
-                await ticketService.sendNotification(
+                await notificationService.sendInApp(
                   oldTecUserId, 'os_reatribuida', 'OS Reatribuída',
-                  `A OS ${os.numero_os} foi reatribuída a outro técnico.`,
-                  '/minhas-os'
+                  `A OS ${os.numero_os} foi reatribuída a outro técnico.`, '/minhas-os'
                 );
               }
             }
@@ -203,18 +188,13 @@ export const useTicketMutations = (loadData: () => Promise<void>) => {
             await ticketService.updateOSTecnico(os.id, tecnico.id);
 
             if (isReassignment) {
-              try {
-                await ticketService.sendCalendarInvite(os.id, 'create');
-              } catch (e) {
-                console.error('Erro ao enviar email ao novo técnico:', e);
-              }
+              try { await notificationService.sendCalendarInvite(os.id, 'create'); } catch {}
 
               const newTecUserId = (tecnico as any)?.profiles?.user_id;
               if (newTecUserId) {
-                await ticketService.sendNotification(
+                await notificationService.sendInApp(
                   newTecUserId, 'os_atribuida', 'Nova OS Atribuída',
-                  `A OS ${os.numero_os} foi atribuída a você.`,
-                  '/minhas-os'
+                  `A OS ${os.numero_os} foi atribuída a você.`, '/minhas-os'
                 );
               }
             }
@@ -222,25 +202,16 @@ export const useTicketMutations = (loadData: () => Promise<void>) => {
         }
       }
 
-      toast({
-        title: 'Sucesso',
-        description: isReassignment
-          ? 'Técnico reatribuído. Ambos os técnicos foram notificados.'
-          : 'Técnico atribuído com sucesso.',
-      });
+      toast.success(isReassignment ? 'Técnico reatribuído. Ambos foram notificados.' : 'Técnico atribuído com sucesso.');
 
       const prestadorAssigned = prestadores.find((p: any) => p.id === technicianId);
       if (prestadorAssigned && (!prestadorAssigned.email || prestadorAssigned.email.trim() === '')) {
-        toast({
-          title: '⚠️ Atenção: Técnico sem email',
-          description: 'Este técnico não possui email cadastrado. Atualize o cadastro do prestador antes de gerar a OS.',
-          variant: 'destructive',
-        });
+        toast.warning('Este técnico não possui email cadastrado. Atualize o cadastro antes de gerar a OS.');
       }
 
       await loadData();
-    } catch (error: any) {
-      toast({ title: 'Erro', description: 'Erro ao atribuir técnico', variant: 'destructive' });
+    } catch (error) {
+      handleError(error, { fallbackMessage: 'Erro ao atribuir técnico' });
     }
   };
 
@@ -251,33 +222,20 @@ export const useTicketMutations = (loadData: () => Promise<void>) => {
       if (ticket?.tecnico_responsavel_id) {
         const prestador = prestadores.find((p: any) => p.id === ticket.tecnico_responsavel_id);
         if (prestador && (!prestador.email || prestador.email.trim() === '')) {
-          toast({
-            title: '❌ Técnico sem email cadastrado',
-            description: 'Não é possível gerar a OS. Atualize o email do técnico na página de Prestadores antes de continuar.',
-            variant: 'destructive',
-          });
+          toast.error('Não é possível gerar a OS. Atualize o email do técnico na página de Prestadores.');
           return null;
         }
       }
 
       const data = await ticketService.generateOS(ticketId);
       const isExisting = data?.message === 'Ordem de serviço já existente';
+      toast.success(isExisting ? 'Ordem de serviço já foi gerada anteriormente!' : 'Ordem de serviço gerada com sucesso!');
 
-      toast({
-        title: 'Sucesso',
-        description: isExisting
-          ? 'Ordem de serviço já foi gerada anteriormente!'
-          : 'Ordem de serviço gerada com sucesso!',
-      });
-
-      if (data?.pdfUrl) {
-        window.open(data.pdfUrl, '_blank');
-      }
-
+      if (data?.pdfUrl) window.open(data.pdfUrl, '_blank');
       await loadData();
       return data;
-    } catch (error: any) {
-      toast({ title: 'Erro', description: error.message || 'Erro ao gerar ordem de serviço', variant: 'destructive' });
+    } catch (error) {
+      handleError(error, { fallbackMessage: 'Erro ao gerar ordem de serviço' });
       return null;
     } finally {
       setGeneratingOsId(null);
@@ -285,17 +243,7 @@ export const useTicketMutations = (loadData: () => Promise<void>) => {
   };
 
   return {
-    loading,
-    setLoading,
-    generatingOsId,
-    reprocessingTicketId,
-    setReprocessingTicketId,
-    createTicket,
-    updateTicket,
-    approveTicket,
-    rejectTicket,
-    deleteTicket,
-    assignTechnician,
-    generateOS,
+    loading, setLoading, generatingOsId, reprocessingTicketId, setReprocessingTicketId,
+    createTicket, updateTicket, approveTicket, rejectTicket, deleteTicket, assignTechnician, generateOS,
   };
 };

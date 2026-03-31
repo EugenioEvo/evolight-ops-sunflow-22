@@ -2,12 +2,14 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
+import { useErrorHandler } from "@/hooks/useErrorHandler";
 import { equipmentService } from "../services/equipmentService";
 import { equipamentoSchema, type EquipamentoForm } from "../types";
 
 export function useEquipmentMutations(fetchEquipamentos: () => Promise<void>) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingEquipamento, setEditingEquipamento] = useState<any>(null);
+  const { handleError } = useErrorHandler();
 
   const form = useForm<EquipamentoForm>({
     resolver: zodResolver(equipamentoSchema),
@@ -32,8 +34,7 @@ export function useEquipmentMutations(fetchEquipamentos: () => Promise<void>) {
       setEditingEquipamento(null);
       fetchEquipamentos();
     } catch (error) {
-      toast.error('Erro ao salvar equipamento');
-      console.error('Error:', error);
+      handleError(error, { fallbackMessage: 'Erro ao salvar equipamento' });
     }
   };
 
@@ -49,8 +50,7 @@ export function useEquipmentMutations(fetchEquipamentos: () => Promise<void>) {
       toast.success("Equipamento removido com sucesso!");
       fetchEquipamentos();
     } catch (error) {
-      toast.error('Erro ao remover equipamento');
-      console.error('Error:', error);
+      handleError(error, { fallbackMessage: 'Erro ao remover equipamento' });
     }
   };
 

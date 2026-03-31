@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { notificationService } from "@/shared/services/notificationService";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -74,7 +75,7 @@ const WorkOrders = () => {
       const tecnicoUserId = (osData.tecnicos as any)?.profile?.user_id;
       if (tecnicoUserId) {
         try {
-          await workOrderService.sendCalendarInvite(osId, "cancel");
+          await notificationService.sendCalendarInvite(osId, "cancel");
         } catch (e) {
           console.error("Erro ao enviar email de cancelamento:", e);
         }
@@ -84,7 +85,7 @@ const WorkOrders = () => {
       await workOrderService.revertTicketToApproved(ticketId);
 
       if (tecnicoUserId) {
-        await workOrderService.sendNotification(
+        await notificationService.sendInApp(
           tecnicoUserId, "os_cancelada", "Ordem de Serviço Cancelada",
           `A OS ${(osData as any).numero_os} foi cancelada pelo administrador.`,
           "/minhas-os"
@@ -104,9 +105,8 @@ const WorkOrders = () => {
     e.stopPropagation();
     setSendingEmailId(osId);
     try {
-      const data = await workOrderService.sendCalendarInvite(osId, "create");
-      if (!data?.success) throw new Error(data?.error || "Erro ao enviar email");
-      toast({ title: "Email enviado!", description: `Convite enviado para: ${data.recipients?.join(", ")}` });
+      await notificationService.sendCalendarInvite(osId, "create");
+      toast({ title: "Email enviado!", description: "Convite enviado com sucesso." });
     } catch (error: any) {
       toast({ title: "Erro ao enviar email", description: error.message, variant: "destructive" });
     } finally {

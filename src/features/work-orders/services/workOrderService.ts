@@ -64,21 +64,5 @@ export const workOrderService = {
     return data;
   },
 
-  async sendCalendarInvite(osId: string, action: string) {
-    const { data, error } = await supabase.functions.invoke("send-calendar-invite", {
-      body: { os_id: osId, action },
-    });
-    if (error) throw error;
-    return data;
-  },
-
-  async sendNotification(userId: string, tipo: string, titulo: string, mensagem: string, link: string) {
-    await supabase.from("notificacoes").insert({
-      user_id: userId,
-      tipo,
-      titulo,
-      mensagem,
-      link,
-    });
-  },
+  // sendCalendarInvite and sendNotification moved to shared/services/notificationService.ts
 };
