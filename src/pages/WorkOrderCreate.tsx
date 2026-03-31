@@ -47,6 +47,8 @@ const WorkOrderCreate = () => {
     loading, clientes, selectedWorkTypes, teamMembers, newMember, setNewMember,
     ufvSolarzList, addTeamMember, removeTeamMember, toggleWorkType, submitWorkOrder, navigate,
   } = useWorkOrderCreate();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
 
   const form = useForm<WorkOrderFormData>({
     resolver: zodResolver(workOrderSchema),
