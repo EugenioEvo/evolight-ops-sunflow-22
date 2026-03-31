@@ -3,7 +3,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { presenceService } from '../services/presenceService';
+import { presenceService as defaultService } from '../services/presenceService';
 import type { OrdemServicoPresenca, PresenceTecnico } from '../types';
 
 const playNotificationSound = () => {
@@ -32,7 +32,7 @@ const playNotificationSound = () => {
   }, 150);
 };
 
-export const usePresenceData = () => {
+export const usePresenceData = (service = defaultService) => {
   const [ordensServico, setOrdensServico] = useState<OrdemServicoPresenca[]>([]);
   const [tecnicos, setTecnicos] = useState<PresenceTecnico[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,7 +44,7 @@ export const usePresenceData = () => {
 
   const loadOrdensServico = async () => {
     try {
-      const data = await presenceService.fetchOrdensServico();
+      const data = await service.fetchOrdensServico();
       const currentOSMap = new Map(data.map(os => [os.id, !!os.presence_confirmed_at]));
 
       data.forEach(os => {
@@ -69,9 +69,10 @@ export const usePresenceData = () => {
   };
 
   useEffect(() => {
-    presenceService.fetchTecnicos().then(setTecnicos).catch(() => {});
+    service.fetchTecnicos().then(setTecnicos).catch(() => {});
     loadOrdensServico();
 
+    // Realtime subscription still uses the global client (not injectable for now)
     const channel = supabase
       .channel('presenca-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'ordens_servico' }, () => loadOrdensServico())

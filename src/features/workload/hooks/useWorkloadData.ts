@@ -26,7 +26,28 @@ export interface TecnicoStats {
   workloadByDay: WorkloadData[];
 }
 
-export const useWorkloadData = () => {
+/** Minimal interface for workload service DI */
+export interface WorkloadServicePort {
+  loadTecnicos(): Promise<WorkloadTecnico[]>;
+  loadWorkload(tecnicoId: string, startDate: string, endDate: string): Promise<WorkloadData[]>;
+}
+
+const defaultWorkloadService: WorkloadServicePort = {
+  async loadTecnicos() {
+    const { data } = await supabase.from('tecnicos').select('id, profiles!inner(nome)').order('profiles(nome)');
+    if (!data) return [];
+    return data.map(t => ({ id: t.id, nome: (t.profiles as unknown as { nome: string }).nome }));
+  },
+  async loadWorkload(tecnicoId, startDate, endDate) {
+    const { data, error } = await supabase.rpc('get_technician_workload', {
+      p_tecnico_id: tecnicoId, p_start_date: startDate, p_end_date: endDate,
+    });
+    if (error) throw error;
+    return (data || []) as WorkloadData[];
+  },
+};
+
+export const useWorkloadData = (service: WorkloadServicePort = defaultWorkloadService) => {
   const [selectedMonth, setSelectedMonth] = useState<Date>(new Date());
   const [tecnicos, setTecnicos] = useState<WorkloadTecnico[]>([]);
   const [selectedTecnico, setSelectedTecnico] = useState<string>('');
@@ -35,44 +56,33 @@ export const useWorkloadData = () => {
   const [exporting, setExporting] = useState(false);
   const { handleError } = useErrorHandler();
 
-  useEffect(() => { loadTecnicos(); }, []);
-  useEffect(() => { if (selectedTecnico) loadWorkloadData(); }, [selectedTecnico, selectedMonth]);
-
-  const loadTecnicos = async () => {
-    const { data } = await supabase.from('tecnicos').select('id, profiles!inner(nome)').order('profiles(nome)');
-    if (data) {
-      const formatted: WorkloadTecnico[] = data.map(t => ({
-        id: t.id,
-        nome: (t.profiles as unknown as { nome: string }).nome,
-      }));
+  useEffect(() => {
+    service.loadTecnicos().then(formatted => {
       setTecnicos(formatted);
       if (formatted.length > 0) setSelectedTecnico(formatted[0].id);
-    }
-  };
+    });
+  }, []);
+
+  useEffect(() => { if (selectedTecnico) loadWorkloadData(); }, [selectedTecnico, selectedMonth]);
 
   const loadWorkloadData = async () => {
     setLoading(true);
     try {
       const start = startOfMonth(selectedMonth);
       const end = endOfMonth(selectedMonth);
-      const { data: workloadData, error } = await supabase.rpc('get_technician_workload', {
-        p_tecnico_id: selectedTecnico,
-        p_start_date: format(start, 'yyyy-MM-dd'),
-        p_end_date: format(end, 'yyyy-MM-dd'),
-      });
-      if (error) throw error;
+      const workloadData = await service.loadWorkload(selectedTecnico, format(start, 'yyyy-MM-dd'), format(end, 'yyyy-MM-dd'));
 
-      if (workloadData && workloadData.length > 0) {
-        const totalOS = workloadData.reduce((s: number, d: WorkloadData) => s + d.total_os, 0);
-        const totalMinutos = workloadData.reduce((s: number, d: WorkloadData) => s + d.total_minutos, 0);
-        const osPendentes = workloadData.reduce((s: number, d: WorkloadData) => s + d.os_pendentes, 0);
-        const osConcluidas = workloadData.reduce((s: number, d: WorkloadData) => s + d.os_concluidas, 0);
+      if (workloadData.length > 0) {
+        const totalOS = workloadData.reduce((s, d) => s + d.total_os, 0);
+        const totalMinutos = workloadData.reduce((s, d) => s + d.total_minutos, 0);
+        const osPendentes = workloadData.reduce((s, d) => s + d.os_pendentes, 0);
+        const osConcluidas = workloadData.reduce((s, d) => s + d.os_concluidas, 0);
         const horasDisponiveis = 22 * 8 * 60;
         const disponibilidade = Math.max(0, Math.min(100, (totalMinutos / horasDisponiveis) * 100));
         setStats({
           totalOS, totalHoras: Math.round(totalMinutos / 60 * 10) / 10,
           osPendentes, osConcluidas, disponibilidade: Math.round(disponibilidade),
-          workloadByDay: workloadData as WorkloadData[],
+          workloadByDay: workloadData,
         });
       } else {
         setStats({ totalOS: 0, totalHoras: 0, osPendentes: 0, osConcluidas: 0, disponibilidade: 0, workloadByDay: [] });
