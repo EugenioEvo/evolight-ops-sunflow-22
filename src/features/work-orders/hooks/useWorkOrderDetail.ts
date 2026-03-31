@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { useToast } from '@/hooks/use-toast';
+import { useErrorHandler } from '@/hooks/useErrorHandler';
+import { notificationService } from '@/shared/services/notificationService';
 import { generateOSPDF } from '@/utils/generateOSPDF';
 
 export interface WorkOrderDetailData {
@@ -43,7 +45,7 @@ export const useWorkOrderDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { profile } = useAuth();
-  const { toast } = useToast();
+  const { handleError } = useErrorHandler();
 
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -63,15 +65,15 @@ export const useWorkOrderDetail = () => {
         .maybeSingle();
 
       if (error) throw error;
-      if (!data) { toast({ title: 'OS não encontrada', variant: 'destructive' }); navigate('/work-orders'); return; }
+      if (!data) { toast.error('OS não encontrada'); navigate('/work-orders'); return; }
 
       setWorkOrder({
         ...data,
         work_type: Array.isArray(data.work_type) ? data.work_type as string[] : [],
         rme_relatorios: Array.isArray(data.rme_relatorios) ? data.rme_relatorios : data.rme_relatorios ? [data.rme_relatorios] : [],
       } as WorkOrderDetailData);
-    } catch (error: any) {
-      toast({ title: 'Erro ao carregar OS', description: error.message, variant: 'destructive' });
+    } catch (error) {
+      handleError(error, { fallbackMessage: 'Erro ao carregar OS' });
     } finally {
       setLoading(false);
     }
@@ -97,10 +99,10 @@ export const useWorkOrderDetail = () => {
     try {
       const { error } = await supabase.from('tickets').update({ status: 'em_execucao', data_inicio_execucao: new Date().toISOString() }).eq('id', workOrder.tickets.id);
       if (error) throw error;
-      toast({ title: 'Execução iniciada!' });
+      toast.success('Execução iniciada!');
       loadWorkOrder();
-    } catch (error: any) {
-      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+    } catch (error) {
+      handleError(error);
     } finally {
       setActionLoading(false);
     }
@@ -108,17 +110,17 @@ export const useWorkOrderDetail = () => {
 
   const handleCompleteOS = async () => {
     if (!workOrder || !isRMECompleted) {
-      toast({ title: 'Não é possível concluir', description: 'RME concluído necessário.', variant: 'destructive' });
+      toast.error('RME concluído necessário para finalizar a OS.');
       return;
     }
     setActionLoading(true);
     try {
       const { error } = await supabase.from('tickets').update({ status: 'concluido', data_conclusao: new Date().toISOString() }).eq('id', workOrder.tickets.id);
       if (error) throw error;
-      toast({ title: 'OS concluída!' });
+      toast.success('OS concluída!');
       loadWorkOrder();
-    } catch (error: any) {
-      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+    } catch (error) {
+      handleError(error);
     } finally {
       setActionLoading(false);
     }
@@ -128,12 +130,10 @@ export const useWorkOrderDetail = () => {
     if (!workOrder) return;
     setSendingEmail(true);
     try {
-      const { data, error } = await supabase.functions.invoke('send-calendar-invite', { body: { os_id: workOrder.id, action: 'create' } });
-      if (error) throw error;
-      if (!data?.success) throw new Error(data?.error || 'Erro ao enviar email');
-      toast({ title: 'Email enviado!', description: `Convite enviado para: ${data.recipients?.join(', ')}` });
-    } catch (error: any) {
-      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+      await notificationService.sendCalendarInvite(workOrder.id, 'create');
+      toast.success('Email enviado com sucesso!');
+    } catch (error) {
+      handleError(error, { fallbackMessage: 'Erro ao enviar email' });
     } finally {
       setSendingEmail(false);
     }
@@ -157,13 +157,11 @@ export const useWorkOrderDetail = () => {
       });
       const url = URL.createObjectURL(pdfBlob);
       const a = document.createElement('a');
-      a.href = url;
-      a.download = `OS_${workOrder.numero_os}.pdf`;
-      a.click();
+      a.href = url; a.download = `OS_${workOrder.numero_os}.pdf`; a.click();
       URL.revokeObjectURL(url);
-      toast({ title: 'PDF baixado!' });
-    } catch (error: any) {
-      toast({ title: 'Erro ao gerar PDF', description: error.message, variant: 'destructive' });
+      toast.success('PDF baixado!');
+    } catch (error) {
+      handleError(error, { fallbackMessage: 'Erro ao gerar PDF' });
     }
   };
 

@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { useGlobalRealtime } from '@/hooks/useRealtimeProvider';
+import { useErrorHandler } from '@/hooks/useErrorHandler';
 import { ticketService } from '../services/ticketService';
 
 export const useTicketData = () => {
@@ -8,11 +9,11 @@ export const useTicketData = () => {
   const [clientes, setClientes] = useState<any[]>([]);
   const [prestadores, setPrestadores] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const { toast } = useToast();
+  const { handleAsyncError } = useErrorHandler();
 
   const loadData = async () => {
-    try {
-      setLoading(true);
+    setLoading(true);
+    await handleAsyncError(async () => {
       const [clientesData, prestadoresData, ticketsData] = await Promise.all([
         ticketService.loadClientes(),
         ticketService.loadPrestadores(),
@@ -21,30 +22,17 @@ export const useTicketData = () => {
       setClientes(clientesData);
       setPrestadores(prestadoresData);
       setTickets(ticketsData);
-    } catch (error) {
-      console.error('Erro ao carregar dados:', error);
-      toast({
-        title: 'Erro',
-        description: 'Erro ao carregar dados',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
-    }
+    }, { fallbackMessage: 'Erro ao carregar dados' });
+    setLoading(false);
   };
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
+  useEffect(() => { loadData(); }, []);
   useGlobalRealtime(loadData);
 
   const ufvSolarzOptions = useMemo(() => {
     const ufvSet = new Set<string>();
     tickets.forEach(ticket => {
-      if (ticket.clientes?.ufv_solarz) {
-        ufvSet.add(ticket.clientes.ufv_solarz);
-      }
+      if (ticket.clientes?.ufv_solarz) ufvSet.add(ticket.clientes.ufv_solarz);
     });
     return Array.from(ufvSet).sort();
   }, [tickets]);
@@ -57,14 +45,5 @@ export const useTicketData = () => {
       .sort((a: string, b: string) => a.localeCompare(b));
   }, [clientes]);
 
-  return {
-    tickets,
-    clientes,
-    prestadores,
-    loading,
-    setLoading,
-    loadData,
-    ufvSolarzOptions,
-    ufvSolarzListForForm,
-  };
+  return { tickets, clientes, prestadores, loading, setLoading, loadData, ufvSolarzOptions, ufvSolarzListForForm };
 };

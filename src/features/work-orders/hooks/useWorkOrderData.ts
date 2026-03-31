@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useToast } from '@/hooks/use-toast';
+import { useErrorHandler } from '@/hooks/useErrorHandler';
 import { workOrderService } from '../services/workOrderService';
 import type { WorkOrder } from '../types';
 import { ITEMS_PER_PAGE } from '../types';
@@ -8,18 +8,16 @@ export const useWorkOrderData = () => {
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
   const [clientes, setClientes] = useState<{ id: string; empresa: string }[]>([]);
   const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
+  const { handleAsyncError } = useErrorHandler();
 
   const loadWorkOrders = async () => {
-    try {
-      setLoading(true);
-      const data = await workOrderService.loadAll();
-      setWorkOrders(data);
-    } catch (error: any) {
-      toast({ title: "Erro ao carregar ordens de serviço", description: error.message, variant: "destructive" });
-    } finally {
-      setLoading(false);
-    }
+    setLoading(true);
+    const data = await handleAsyncError(
+      () => workOrderService.loadAll(),
+      { fallbackMessage: 'Erro ao carregar ordens de serviço' }
+    );
+    if (data) setWorkOrders(data);
+    setLoading(false);
   };
 
   const loadClientes = async () => {
@@ -27,17 +25,12 @@ export const useWorkOrderData = () => {
     setClientes(data);
   };
 
-  useEffect(() => {
-    loadWorkOrders();
-    loadClientes();
-  }, []);
+  useEffect(() => { loadWorkOrders(); loadClientes(); }, []);
 
   const ufvSolarzOptions = useMemo(() => {
     const ufvSet = new Set<string>();
     workOrders.forEach(os => {
-      if (os.tickets.clientes?.ufv_solarz) {
-        ufvSet.add(os.tickets.clientes.ufv_solarz);
-      }
+      if (os.tickets.clientes?.ufv_solarz) ufvSet.add(os.tickets.clientes.ufv_solarz);
     });
     return Array.from(ufvSet).sort();
   }, [workOrders]);
@@ -55,15 +48,7 @@ export const useWorkOrderData = () => {
     return { total, abertas, emExecucao, atrasadas, concluidas, recusadas };
   }, [workOrders]);
 
-  return {
-    workOrders,
-    clientes,
-    loading,
-    setLoading,
-    loadWorkOrders,
-    ufvSolarzOptions,
-    stats,
-  };
+  return { workOrders, clientes, loading, setLoading, loadWorkOrders, ufvSolarzOptions, stats };
 };
 
 export const useWorkOrderFilters = (workOrders: WorkOrder[]) => {
@@ -104,26 +89,15 @@ export const useWorkOrderFilters = (workOrders: WorkOrder[]) => {
 
   const totalPages = Math.ceil(filteredOrders.length / ITEMS_PER_PAGE);
   const paginatedOrders = useMemo(() => {
-    return filteredOrders.slice(
-      (currentPage - 1) * ITEMS_PER_PAGE,
-      currentPage * ITEMS_PER_PAGE
-    );
+    return filteredOrders.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
   }, [filteredOrders, currentPage]);
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, statusFilter, aceiteFilter, clienteFilter, ufvSolarzFilter, dateRange]);
+  useEffect(() => { setCurrentPage(1); }, [searchTerm, statusFilter, aceiteFilter, clienteFilter, ufvSolarzFilter, dateRange]);
 
   return {
-    searchTerm, setSearchTerm,
-    statusFilter, setStatusFilter,
-    aceiteFilter, setAceiteFilter,
-    clienteFilter, setClienteFilter,
-    ufvSolarzFilter, setUfvSolarzFilter,
-    dateRange, setDateRange,
-    currentPage, setCurrentPage,
-    filteredOrders,
-    paginatedOrders,
-    totalPages,
+    searchTerm, setSearchTerm, statusFilter, setStatusFilter,
+    aceiteFilter, setAceiteFilter, clienteFilter, setClienteFilter,
+    ufvSolarzFilter, setUfvSolarzFilter, dateRange, setDateRange,
+    currentPage, setCurrentPage, filteredOrders, paginatedOrders, totalPages,
   };
 };
