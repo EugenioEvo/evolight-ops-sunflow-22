@@ -85,7 +85,7 @@ const WorkOrders = () => {
       await workOrderService.revertTicketToApproved(ticketId);
 
       if (tecnicoUserId) {
-        await workOrderService.sendNotification(
+        await notificationService.sendInApp(
           tecnicoUserId, "os_cancelada", "Ordem de Serviço Cancelada",
           `A OS ${(osData as any).numero_os} foi cancelada pelo administrador.`,
           "/minhas-os"
