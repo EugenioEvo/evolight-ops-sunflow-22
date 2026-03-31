@@ -1,47 +1,111 @@
 
 
-# Sugestoes e detalhes adicionais para o plano de multi-tecnico e conflito
+# Refatoracao modular do projeto para eficiencia de desenvolvimento por IA
 
-## Pontos que o plano atual ja cobre bem
-- Troca de tecnico com notificacoes (email + in-app)
-- Multi-selecao de tecnicos gerando N OS
-- Bloqueio por conflito via `check_schedule_conflict` RPC
+## Diagnostico
 
-## Detalhes esquecidos / Sugestoes
+O projeto tem varios arquivos-pagina que ultrapassam 500+ linhas, misturando logica de negocio, estado, queries, e renderizacao no mesmo componente. Isso causa problemas para a IA:
 
-### 1. Edge function `gerar-ordem-servico` bloqueia multiplas OS (linha 44)
-A edge function atual faz `maybeSingle()` e retorna a OS existente se ja houver uma para o ticket. Para multi-tecnico funcionar, essa checagem precisa ser removida ou ajustada para verificar por `tecnico_id` especifico, nao apenas por `ticket_id`. **Ja esta no plano, mas e critico.**
+- **Contexto grande**: Tickets.tsx tem 1760 linhas, WorkOrders.tsx 788, MinhasOS.tsx 759, Equipamentos.tsx 678, Clientes.tsx 651, Agenda.tsx 586
+- **Acoplamento**: Logica de fetch, mutacao, e UI vivem juntas — alterar uma parte exige ler o arquivo inteiro
+- **Duplicacao**: Patterns de fetch/filter/paginate se repetem em cada pagina
+- **Sem camada de servico**: Queries Supabase estao espalhadas diretamente nos componentes
 
-### 2. Validacao de status `aprovado` na edge function (linha 139)
-Ao gerar a 2a OS para o mesmo ticket, o status ja sera `ordem_servico_gerada` (setado na 1a chamada, linha 277). A edge function precisa aceitar tanto `aprovado` quanto `ordem_servico_gerada` quando `tecnico_override_id` for fornecido, senao a 2a OS falhara.
+## Estrategia: Feature-based modules
 
-### 3. Pagina WorkOrders.tsx — visualizacao de multiplas OS por ticket
-Hoje o layout mostra OS agrupadas por ticket implicitamente. Com multiplas OS por ticket, seria bom agrupar visualmente ou ao menos mostrar um indicador "1 de 3 OS para este ticket".
+Reorganizar por dominio, cada um com separacao clara de responsabilidades.
 
-### 4. WorkOrderDetail.tsx — Troca de tecnico diretamente da OS
-Alem de trocar pelo Tickets.tsx, faz sentido permitir trocar tecnico diretamente na pagina de detalhe da OS (WorkOrderDetail), ja que o gestor pode estar visualizando a OS quando decide trocar.
+```text
+src/
+├── features/
+│   ├── tickets/
+│   │   ├── components/       # TicketCard, TicketForm, TicketList
+│   │   ├── hooks/            # useTickets, useTicketMutations
+│   │   ├── services/         # ticketService.ts (queries supabase)
+│   │   ├── types.ts
+│   │   └── index.ts
+│   ├── work-orders/
+│   │   ├── components/       # WorkOrderCard, WorkOrderFilters
+│   │   ├── hooks/            # useWorkOrders, useWorkOrderActions
+│   │   ├── services/
+│   │   ├── types.ts
+│   │   └── index.ts
+│   ├── technicians/
+│   │   ├── components/
+│   │   ├── hooks/
+│   │   ├── services/
+│   │   └── index.ts
+│   ├── clients/
+│   │   ├── components/
+│   │   ├── hooks/
+│   │   ├── services/
+│   │   └── index.ts
+│   ├── equipment/
+│   │   └── ...
+│   ├── rme/
+│   │   └── ...  (ja parcialmente feito em rme-wizard/)
+│   ├── schedule/
+│   │   └── ...
+│   ├── routes/
+│   │   └── ...  (ja feito em components/routes/)
+│   └── auth/
+│       └── ...
+├── shared/
+│   ├── components/   # EmptyState, LoadingState, Pagination, FileUpload
+│   ├── hooks/        # useDebounce, useVirtualization, useErrorHandler
+│   ├── services/     # supabaseHelpers.ts
+│   └── types/        # common types
+├── pages/            # Ficam finos — apenas composicao de feature components
+└── components/ui/    # Mantido como esta (shadcn)
+```
 
-### 5. Historico de atribuicoes
-Quando um tecnico e trocado, registrar no `audit_logs` ou criar um campo `historico_tecnicos` na OS para rastreabilidade. O trigger `audit_trigger` ja existe, entao isso ja pode ser coberto automaticamente se estiver ativo na tabela `ordens_servico`.
+## Prioridade de refatoracao (por tamanho e impacto)
 
-### 6. MinhasOS.tsx — Tecnico ver que foi desatribuido
-Se o tecnico esta na tela MinhasOS e a OS e reatribuida, o realtime precisa capturar o UPDATE e remover a OS da lista. Verificar se o listener atual faz refetch completo ou apenas append.
+### Fase 1 — Tickets (1760 linhas — maior ganho)
+1. **`features/tickets/types.ts`** — Interfaces Ticket, TicketForm schema
+2. **`features/tickets/services/ticketService.ts`** — Todas as queries (fetchTickets, createTicket, updateTicket, deleteTicket, assignTechnician)
+3. **`features/tickets/hooks/useTickets.ts`** — State management com React Query
+4. **`features/tickets/hooks/useTicketMutations.ts`** — Mutacoes (criar, editar, deletar, atribuir tecnico)
+5. **`features/tickets/components/TicketForm.tsx`** — Formulario de criacao/edicao
+6. **`features/tickets/components/TicketCard.tsx`** — Card individual
+7. **`features/tickets/components/TicketList.tsx`** — Lista com filtros e paginacao
+8. **`pages/Tickets.tsx`** — Reduzido para ~50 linhas: composicao dos componentes acima
 
-### 7. Notificacao ao tecnico antigo — conteudo do email
-No cancelamento por troca, o email deveria dizer "Voce foi reatribuido" e nao "OS cancelada", para evitar confusao. Pode precisar de um novo action type `reassign_removed` no `send-calendar-invite`.
+### Fase 2 — Work Orders (788 linhas)
+Mesmo pattern: services + hooks + components separados
 
-### 8. GerarOSDialog.tsx — Substituir por MultiTechnicianOSDialog
-O dialog atual (`GerarOSDialog`) e usado em Tickets.tsx. Para multi-tecnico, substituir ou estender para incluir selecao de multiplos tecnicos com checkboxes + indicador de disponibilidade.
+### Fase 3 — MinhasOS, Clientes, Equipamentos, Agenda
+Cada pagina segue o mesmo template de refatoracao
 
-## Resumo de ajustes ao plano aprovado
+### Fase 4 — Shared components
+Mover EmptyState, LoadingState, Pagination, FileUpload, ErrorBoundary para `shared/components/`
 
-| Item | Impacto | Prioridade |
-|------|---------|------------|
-| Ajustar validacao de status na edge function (aceitar `ordem_servico_gerada`) | Bloqueante para multi-OS | Alta |
-| Novo action `reassign_removed` no email | Clareza para tecnico | Media |
-| Agrupar OS por ticket no WorkOrders | UX | Media |
-| Troca de tecnico direto do WorkOrderDetail | Conveniencia | Baixa |
-| Verificar realtime em MinhasOS para reatribuicao | Consistencia | Alta |
+## Camada de servicos — Pattern
 
-Se concordar, posso seguir com a implementacao incluindo esses ajustes.
+```typescript
+// features/tickets/services/ticketService.ts
+export const ticketService = {
+  async list(filters: TicketFilters) {
+    let query = supabase.from('tickets').select('*, clientes(empresa)');
+    if (filters.status) query = query.eq('status', filters.status);
+    // ...
+    return query;
+  },
+  async create(data: CreateTicketDTO) { /* ... */ },
+  async assignTechnician(ticketId: string, tecnicoId: string) { /* ... */ },
+};
+```
+
+## Beneficios para a IA
+
+| Problema atual | Solucao |
+|---|---|
+| Editar 1 campo exige ler 1760 linhas | Arquivo de 80-150 linhas, focado |
+| Risco de efeito colateral em edits | Separacao clara de responsabilidades |
+| Duplicacao de patterns de fetch | Camada de servicos reutilizavel |
+| Dificil adicionar features | Modulo novo = copiar template de feature |
+
+## Abordagem de implementacao
+
+Refatorar uma feature por vez, comecando por Tickets (maior e mais complexa). Cada fase e independente — o app continua funcionando apos cada fase. As pages continuam exportando o mesmo componente default, entao o roteamento nao muda.
 
