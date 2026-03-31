@@ -48,8 +48,9 @@ const CargaTrabalho = () => {
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
               {Array.from({ length: 12 }, (_, i) => {
-                const d = new Date(); d.setMonth(d.getMonth() - 6 + i);
-                return <SelectItem key={i} value={format(d, 'yyyy-MM')}>{format(d, "MMMM 'de' yyyy", { locale: ptBR })}</SelectItem>;
+                const d = new Date(new Date().getFullYear(), new Date().getMonth() - 6 + i, 1);
+                const val = format(d, 'yyyy-MM');
+                return <SelectItem key={val} value={val}>{format(d, "MMMM 'de' yyyy", { locale: ptBR })}</SelectItem>;
               })}
             </SelectContent>
           </Select>

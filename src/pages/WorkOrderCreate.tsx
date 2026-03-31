@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -47,6 +48,8 @@ const WorkOrderCreate = () => {
     loading, clientes, selectedWorkTypes, teamMembers, newMember, setNewMember,
     ufvSolarzList, addTeamMember, removeTeamMember, toggleWorkType, submitWorkOrder, navigate,
   } = useWorkOrderCreate();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
 
   const form = useForm<WorkOrderFormData>({
     resolver: zodResolver(workOrderSchema),
@@ -61,6 +64,8 @@ const WorkOrderCreate = () => {
     const cliente = clientes.find(c => c.ufv_solarz === ufvSolarz);
     if (cliente) form.setValue("cliente_id", cliente.id);
   };
+
+  if (!mounted) return <div className="p-6 text-center text-muted-foreground">Carregando formulário...</div>;
 
   return (
     <div className="p-4 sm:p-6 max-w-4xl mx-auto space-y-6 animate-fade-in pb-24">
@@ -97,16 +102,22 @@ const WorkOrderCreate = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField control={form.control} name="site_name" render={({ field }) => (
                   <FormItem><FormLabel>UFV/SolarZ *</FormLabel>
-                    <Select onValueChange={(v) => { field.onChange(v); handleUfvSolarzChange(v); }} value={field.value}>
+                    <Select onValueChange={(v) => { field.onChange(v); handleUfvSolarzChange(v); }} value={field.value || undefined}>
                       <FormControl><SelectTrigger className="h-12"><SelectValue placeholder="Selecione a UFV/SolarZ" /></SelectTrigger></FormControl>
-                      <SelectContent>{ufvSolarzList.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}</SelectContent>
+                      <SelectContent>
+                        {ufvSolarzList.length === 0 && <SelectItem value="__loading" disabled>Carregando...</SelectItem>}
+                        {ufvSolarzList.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
+                      </SelectContent>
                     </Select><FormMessage /></FormItem>
                 )} />
                 <FormField control={form.control} name="cliente_id" render={({ field }) => (
                   <FormItem><FormLabel>Cliente *</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value || undefined}>
                       <FormControl><SelectTrigger className="h-12"><SelectValue placeholder="Selecione o cliente" /></SelectTrigger></FormControl>
-                      <SelectContent>{clientes.map(c => <SelectItem key={c.id} value={c.id}>{c.empresa}</SelectItem>)}</SelectContent>
+                      <SelectContent>
+                        {clientes.length === 0 && <SelectItem value="__loading" disabled>Carregando...</SelectItem>}
+                        {clientes.map(c => <SelectItem key={c.id} value={c.id}>{c.empresa}</SelectItem>)}
+                      </SelectContent>
                     </Select><FormMessage /></FormItem>
                 )} />
               </div>
@@ -118,7 +129,7 @@ const WorkOrderCreate = () => {
             <CardContent className="space-y-4">
               <FormField control={form.control} name="servico_solicitado" render={({ field }) => (
                 <FormItem><FormLabel>Serviço Solicitado *</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value || undefined}>
                     <FormControl><SelectTrigger className="h-12"><SelectValue placeholder="Selecione o tipo" /></SelectTrigger></FormControl>
                     <SelectContent>{serviceTypes.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
                   </Select><FormMessage /></FormItem>
