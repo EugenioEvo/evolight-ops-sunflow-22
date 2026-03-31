@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useToast } from "@/hooks/use-toast";
+import { useErrorHandler } from "@/hooks/useErrorHandler";
 import { supplyService } from "../services/supplyService";
 import type { Insumo, Movimentacao, Responsavel } from "../types";
 import { getEstoqueStatus } from "../types";
@@ -11,21 +11,20 @@ export const useSupplyData = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("todos");
-  const { toast } = useToast();
+  const { handleAsyncError } = useErrorHandler();
 
   const loadData = async () => {
-    try {
-      setLoading(true);
-      const data = await supplyService.loadAll();
+    setLoading(true);
+    const data = await handleAsyncError(
+      () => supplyService.loadAll(),
+      { fallbackMessage: 'Erro ao carregar dados.' }
+    );
+    if (data) {
       setInsumos(data.insumos as Insumo[]);
       setResponsaveis(data.responsaveis as Responsavel[]);
       setMovimentacoes(data.movimentacoes as Movimentacao[]);
-    } catch (error) {
-      console.error('Error loading data:', error);
-      toast({ title: "Erro", description: "Erro ao carregar dados.", variant: "destructive" });
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
   };
 
   useEffect(() => { loadData(); }, []);

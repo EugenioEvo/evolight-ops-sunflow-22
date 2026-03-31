@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { useToast } from '@/hooks/use-toast';
+import { useErrorHandler } from '@/hooks/useErrorHandler';
 import { useGlobalRealtime } from '@/hooks/useRealtimeProvider';
 import { rmeService } from '../services/rmeService';
 
@@ -15,7 +15,7 @@ export const useRMEData = () => {
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const { user, profile, loading: authLoading } = useAuth();
-  const { toast } = useToast();
+  const { handleError, handleAsyncError } = useErrorHandler();
 
   useGlobalRealtime(() => {
     if (osIdFromUrl) loadOSFromUrl(osIdFromUrl);
@@ -28,36 +28,31 @@ export const useRMEData = () => {
   }, [profile]);
 
   useEffect(() => {
-    if (osIdFromUrl && !selectedOS) {
-      loadOSFromUrl(osIdFromUrl);
-    }
+    if (osIdFromUrl && !selectedOS) loadOSFromUrl(osIdFromUrl);
   }, [osIdFromUrl]);
 
   const loadOSFromUrl = async (osId: string) => {
     try {
       const osData = await rmeService.fetchOSById(osId);
       if (!osData) {
-        toast({ title: 'OS não encontrada', description: 'A ordem de serviço não foi encontrada.', variant: 'destructive' });
+        handleError('A ordem de serviço não foi encontrada.');
         setSelectedOS(null);
         return;
       }
       setSelectedOS(osData);
-    } catch (error: any) {
-      toast({ title: 'Erro ao carregar OS', description: error.message, variant: 'destructive' });
+    } catch (error) {
+      handleError(error, { fallbackMessage: 'Erro ao carregar OS' });
       setSelectedOS(null);
     }
   };
 
   const loadData = async () => {
-    try {
-      setLoading(true);
-      const data = await rmeService.fetchRMEs();
-      setRmes(data);
-    } catch (error) {
-      toast({ title: 'Erro', description: 'Erro ao carregar dados', variant: 'destructive' });
-    } finally {
-      setLoading(false);
-    }
+    setLoading(true);
+    await handleAsyncError(
+      async () => { const data = await rmeService.fetchRMEs(); setRmes(data); },
+      { fallbackMessage: 'Erro ao carregar dados' }
+    );
+    setLoading(false);
   };
 
   const filteredRMEs = rmes.filter(rme =>
@@ -67,9 +62,7 @@ export const useRMEData = () => {
   );
 
   const canAccessRME = profile?.role === 'tecnico_campo' ||
-    profile?.role === 'admin' ||
-    profile?.role === 'engenharia' ||
-    profile?.role === 'supervisao';
+    profile?.role === 'admin' || profile?.role === 'engenharia' || profile?.role === 'supervisao';
 
   const osLoading = !!osIdFromUrl && !selectedOS;
 
