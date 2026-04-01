@@ -13,9 +13,9 @@ const corsHeaders = {
 
 const CONFIG = {
   teamEmail: "oem@grupoevolight.onmicrosoft.com",
-  senderEmail: "agendamento@grupoevolight.com.br",
+  senderEmail: "oem@grupoevolight.com.br",
   companyName: "SunFlow",
-  organizerEmail: "agendamento@grupoevolight.com.br",
+  organizerEmail: "oem@grupoevolight.com.br",
 };
 
 interface CalendarInviteRequest {
