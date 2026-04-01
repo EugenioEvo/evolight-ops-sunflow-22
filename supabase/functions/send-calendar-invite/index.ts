@@ -13,9 +13,9 @@ const corsHeaders = {
 
 const CONFIG = {
   teamEmail: "oem@grupoevolight.onmicrosoft.com",
-  senderEmail: "agendamento@grupoevolight.com.br",
+  senderEmail: "oem@grupoevolight.com.br",
   companyName: "SunFlow",
-  organizerEmail: "agendamento@grupoevolight.com.br",
+  organizerEmail: "oem@grupoevolight.com.br",
 };
 
 interface CalendarInviteRequest {
@@ -163,12 +163,11 @@ const handler = async (req: Request): Promise<Response> => {
         `STATUS:${action === "cancel" ? "CANCELLED" : "CONFIRMED"}`,
         `SEQUENCE:${sequence}`,
         `ORGANIZER;CN=${CONFIG.companyName}:mailto:${CONFIG.organizerEmail}`,
-        `ATTENDEE;CN=${tecnicoNome};RSVP=TRUE:mailto:${tecnicoEmail}`,
-        `ATTENDEE;CN=Equipe O&M;RSVP=TRUE:mailto:${CONFIG.teamEmail}`,
+      `ATTENDEE;CN=${tecnicoNome};RSVP=TRUE:mailto:${tecnicoEmail}`,
         "BEGIN:VALARM",
-        "TRIGGER:-PT30M",
+        "TRIGGER:-PT60M",
         "ACTION:DISPLAY",
-        "DESCRIPTION:Lembrete: OS em 30 minutos",
+        "DESCRIPTION:Lembrete: OS em 60 minutos",
         "END:VALARM",
         "END:VEVENT",
         "END:VCALENDAR",
@@ -312,8 +311,12 @@ const handler = async (req: Request): Promise<Response> => {
         {
           filename: "convite.ics",
           content: icsContent,
+          content_type: 'text/calendar; charset="UTF-8"; method=REQUEST',
         },
       ];
+      emailPayload.headers = {
+        "Content-Class": "urn:content-classes:calendarmessage",
+      };
     }
 
     const emailResponse = await resend.emails.send(emailPayload);

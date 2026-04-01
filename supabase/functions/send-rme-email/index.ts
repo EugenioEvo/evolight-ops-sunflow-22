@@ -146,7 +146,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'Evolight <agendamento@grupoevolight.com.br>',
+        from: 'SunFlow <oem@grupoevolight.com.br>',
         to: [tecnicoEmail],
         subject: `RME - ${numeroOs} | ${cliente} | ${statusLabel}`,
         html: htmlBody,

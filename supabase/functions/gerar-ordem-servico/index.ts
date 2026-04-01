@@ -298,7 +298,7 @@ QR Code: ${ordemServico.qr_code}
           method: 'POST',
           headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            from: 'agendamento@grupoevolight.com.br',
+            from: 'SunFlow <oem@grupoevolight.com.br>',
             to: [prestador.email],
             subject: `Nova OS Atribuída: ${numeroOS} - ${ticket.clientes.empresa || 'Cliente'}`,
             html: emailHtml,
