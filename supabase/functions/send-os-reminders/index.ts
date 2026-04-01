@@ -13,7 +13,7 @@ const corsHeaders = {
 
 const CONFIG = {
   teamEmail: "oem@grupoevolight.com.br",
-  senderEmail: "agendamento@grupoevolight.com.br",
+  senderEmail: "oem@grupoevolight.com.br",
   companyName: "SunFlow",
 };
 
