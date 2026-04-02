@@ -6,6 +6,59 @@ export const useAceiteOS = () => {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
+  const aceitarTicket = async (ticketId: string): Promise<boolean> => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('tickets')
+        .update({ aceite_tecnico: 'aceito' } as any)
+        .eq('id', ticketId)
+        .select();
+
+      if (error) throw error;
+      if (!data || data.length === 0) throw new Error('Não foi possível atualizar. Verifique suas permissões.');
+
+      // Notify staff
+      const { data: staffUsers } = await supabase
+        .from('user_roles')
+        .select('user_id')
+        .in('role', ['admin', 'engenharia', 'supervisao']);
+
+      const { data: ticket } = await supabase
+        .from('tickets')
+        .select('numero_ticket')
+        .eq('id', ticketId)
+        .single();
+
+      if (staffUsers && ticket) {
+        const notifications = staffUsers.map((u) => ({
+          user_id: u.user_id,
+          tipo: 'ticket_aceito',
+          titulo: 'Ticket Aceito pelo Técnico',
+          mensagem: `O técnico aceitou o ticket ${ticket.numero_ticket}. Agora a OS aguarda aceite.`,
+          link: `/tickets`,
+        }));
+        await supabase.from('notificacoes').insert(notifications);
+      }
+
+      toast({
+        title: 'Ticket aceito!',
+        description: 'Agora aceite a Ordem de Serviço vinculada para iniciar a execução.',
+      });
+
+      return true;
+    } catch (error: any) {
+      toast({
+        title: 'Erro ao aceitar ticket',
+        description: error.message,
+        variant: 'destructive',
+      });
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const aceitarOS = async (osId: string): Promise<boolean> => {
     setLoading(true);
     try {
@@ -21,7 +74,6 @@ export const useAceiteOS = () => {
       if (error) throw error;
       if (!data || data.length === 0) throw new Error('Não foi possível atualizar. Verifique suas permissões.');
 
-      // Notificar gestores
       const { data: staffUsers } = await supabase
         .from('user_roles')
         .select('user_id')
@@ -41,7 +93,6 @@ export const useAceiteOS = () => {
           mensagem: `O técnico aceitou a OS ${os.numero_os}.`,
           link: `/work-orders/${osId}`,
         }));
-
         await supabase.from('notificacoes').insert(notifications);
       }
 
@@ -79,16 +130,14 @@ export const useAceiteOS = () => {
       if (error) throw error;
       if (!data || data.length === 0) throw new Error('Não foi possível atualizar. Verifique suas permissões.');
 
-      // Buscar ticket_id da OS para reverter status
       const osData = data[0] as any;
       if (osData?.ticket_id) {
         await supabase
           .from('tickets')
-          .update({ status: 'aprovado' as any })
+          .update({ status: 'aprovado' as any, aceite_tecnico: 'nao_aplicavel' as any })
           .eq('id', osData.ticket_id);
       }
 
-      // Notificar gestores
       const { data: staffUsers } = await supabase
         .from('user_roles')
         .select('user_id')
@@ -108,7 +157,6 @@ export const useAceiteOS = () => {
           mensagem: `O técnico recusou a OS ${os.numero_os}. Motivo: ${motivo}`,
           link: `/work-orders/${osId}`,
         }));
-
         await supabase.from('notificacoes').insert(notifications);
       }
 
@@ -130,5 +178,5 @@ export const useAceiteOS = () => {
     }
   };
 
-  return { aceitarOS, recusarOS, loading };
+  return { aceitarTicket, aceitarOS, recusarOS, loading };
 };

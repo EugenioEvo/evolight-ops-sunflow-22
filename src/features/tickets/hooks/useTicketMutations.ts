@@ -154,7 +154,15 @@ export const useTicketMutations = (loadData: () => Promise<void>) => {
       const oldPrestadorId = ticket?.tecnico_responsavel_id;
       const isReassignment = oldPrestadorId && oldPrestadorId !== technicianId;
 
-      await ticketService.assignTechnician(ticketId, technicianId);
+      // On reassignment, reset ticket acceptance to 'pendente' so new tech must accept
+      if (isReassignment) {
+        await ticketService.update(ticketId, {
+          tecnico_responsavel_id: technicianId,
+          aceite_tecnico: 'pendente',
+        } as any);
+      } else {
+        await ticketService.assignTechnician(ticketId, technicianId);
+      }
 
       const prestador = await ticketService.getPrestador(technicianId);
       if (prestador?.email) {
@@ -162,7 +170,6 @@ export const useTicketMutations = (loadData: () => Promise<void>) => {
         if (tecnico) {
           const linkedOS = await ticketService.getLinkedOS(ticketId);
 
-          // Parallelize all OS updates + notifications
           await Promise.all(
             linkedOS.map(async (os) => {
               const oldTecnicoId = os.tecnico_id;
@@ -172,15 +179,13 @@ export const useTicketMutations = (loadData: () => Promise<void>) => {
               }
 
               await ticketService.updateOSTecnico(os.id, tecnico.id);
-
-              // Notify new technician on both first assignment and reassignment
               await notifyNewAssignment(os, tecnico.profiles?.user_id);
             })
           );
         }
       }
 
-      toast.success(isReassignment ? 'Técnico reatribuído. Ambos foram notificados.' : 'Técnico atribuído com sucesso.');
+      toast.success(isReassignment ? 'Técnico reatribuído. O novo técnico precisa aceitar o ticket e a OS.' : 'Técnico atribuído com sucesso.');
 
       const prestadorAssigned = prestadores.find(p => p.id === technicianId);
       if (prestadorAssigned && (!prestadorAssigned.email || prestadorAssigned.email.trim() === '')) {
