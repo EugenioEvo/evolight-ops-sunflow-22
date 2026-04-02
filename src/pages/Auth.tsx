@@ -277,6 +277,7 @@ const Auth = () => {
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading ? 'Entrando...' : 'Entrar'}
                 </Button>
+                <ForgotPasswordLink />
               </form>
             </TabsContent>
             
