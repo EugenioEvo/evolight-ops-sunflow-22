@@ -173,9 +173,8 @@ export const useTicketMutations = (loadData: () => Promise<void>) => {
 
               await ticketService.updateOSTecnico(os.id, tecnico.id);
 
-              if (isReassignment) {
-                await notifyNewAssignment(os, tecnico.profiles?.user_id);
-              }
+              // Notify new technician on both first assignment and reassignment
+              await notifyNewAssignment(os, tecnico.profiles?.user_id);
             })
           );
         }
