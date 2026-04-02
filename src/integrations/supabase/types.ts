@@ -1136,6 +1136,7 @@ export type Database = {
       }
       tickets: {
         Row: {
+          aceite_tecnico: string
           anexos: string[] | null
           can_create_rme: boolean | null
           cliente_id: string
@@ -1165,6 +1166,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          aceite_tecnico?: string
           anexos?: string[] | null
           can_create_rme?: boolean | null
           cliente_id: string
@@ -1194,6 +1196,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          aceite_tecnico?: string
           anexos?: string[] | null
           can_create_rme?: boolean | null
           cliente_id?: string

@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, FileText, Eye, Calendar, MapPin, User, Play, Edit, Phone, Navigation, AlertCircle, CheckCircle2, ThumbsUp, ThumbsDown, Hourglass } from "lucide-react";
+import { Loader2, FileText, Eye, Calendar, MapPin, User, Play, Edit, Phone, Navigation, AlertCircle, CheckCircle2, ThumbsUp, ThumbsDown, Hourglass, ClipboardCheck } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import type { OrdemServico } from "../types";
@@ -19,6 +19,7 @@ interface OSCardProps {
   onVerOS: (os: OrdemServico) => void;
   onLigarCliente: (telefone?: string) => void;
   onAbrirMapa: (endereco: string) => void;
+  onAceitarTicket: (os: OrdemServico) => void;
   onAceitarOS: (os: OrdemServico) => void;
   onRecusarOS: (os: OrdemServico) => void;
 }
@@ -44,18 +45,24 @@ const getStatusBadge = (status: string) => {
 
 export function OSCard({
   os, isTecnico, startingId, navigating, aceiteLoading,
-  onIniciarExecucao, onPreencherRME, onVerOS, onLigarCliente, onAbrirMapa, onAceitarOS, onRecusarOS,
+  onIniciarExecucao, onPreencherRME, onVerOS, onLigarCliente, onAbrirMapa, onAceitarTicket, onAceitarOS, onRecusarOS,
 }: OSCardProps) {
   const statusBadge = getStatusBadge(os.tickets.status);
-  const isPendente = os.tickets.status === 'ordem_servico_gerada';
+  const isPendente = os.tickets.status === 'ordem_servico_gerada' ||
+    (os.tickets.status === 'aprovado' && os.aceite_tecnico === 'pendente');
   const emExecucao = os.tickets.status === 'em_execucao';
-  const aceite = os.aceite_tecnico || 'pendente';
-  const aguardandoAceite = isPendente && aceite === 'pendente';
-  const aceito = aceite === 'aceito';
-  const recusado = aceite === 'recusado';
+  const osAceite = os.aceite_tecnico || 'pendente';
+  const ticketAceite = (os.tickets as any).aceite_tecnico || 'nao_aplicavel';
+
+  // Two-step acceptance: ticket first, then OS
+  const aguardandoAceiteTicket = ticketAceite === 'pendente' && isTecnico;
+  const ticketAceito = ticketAceite === 'aceito' || ticketAceite === 'nao_aplicavel';
+  const aguardandoAceiteOS = isPendente && osAceite === 'pendente' && ticketAceito;
+  const osAceito = osAceite === 'aceito';
+  const recusado = osAceite === 'recusado';
 
   return (
-    <Card className={`hover:shadow-lg transition-shadow ${recusado && isPendente ? 'border-amber-300 bg-amber-50/50' : ''}`}>
+    <Card className={`hover:shadow-lg transition-shadow ${recusado && isPendente ? 'border-amber-300 bg-amber-50/50' : ''} ${aguardandoAceiteTicket ? 'border-blue-300 bg-blue-50/30' : ''}`}>
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-2">
           <div className="space-y-1 min-w-0 flex-1">
@@ -65,10 +72,15 @@ export function OSCard({
             </CardTitle>
             <div className="flex flex-wrap gap-1">
               <Badge variant="outline" className="text-xs">{os.tickets.numero_ticket}</Badge>
-              {aguardandoAceite && (
-                <Badge className="text-xs bg-amber-100 text-amber-800 border-amber-200">Aguardando Aceite</Badge>
+              {aguardandoAceiteTicket && (
+                <Badge className="text-xs bg-blue-100 text-blue-800 border-blue-200">
+                  <ClipboardCheck className="h-3 w-3 mr-1" />Aceitar Atribuição
+                </Badge>
               )}
-              {aceito && isPendente && (
+              {ticketAceito && aguardandoAceiteOS && (
+                <Badge className="text-xs bg-amber-100 text-amber-800 border-amber-200">Aguardando Aceite OS</Badge>
+              )}
+              {osAceito && isPendente && (
                 <Badge className="text-xs bg-green-100 text-green-800 border-green-200">
                   <CheckCircle2 className="h-3 w-3 mr-1" />Aceita
                 </Badge>
@@ -147,19 +159,42 @@ export function OSCard({
           </Button>
         </div>
 
-        {/* Accept/reject buttons */}
-        {aguardandoAceite && isTecnico && (
+        {/* Step 1: Accept ticket assignment (only on reassignment) */}
+        {aguardandoAceiteTicket && (
+          <div className="space-y-2">
+            <Alert className="border-blue-200 bg-blue-50">
+              <ClipboardCheck className="h-4 w-4 text-blue-600" />
+              <AlertDescription className="text-blue-800 text-xs">
+                <p className="font-semibold">Etapa 1: Aceitar Atribuição do Ticket</p>
+                <p>Você foi atribuído a este ticket. Aceite para prosseguir com o aceite da OS.</p>
+              </AlertDescription>
+            </Alert>
+            <div className="flex gap-2">
+              <Button onClick={() => onAceitarTicket(os)} className="flex-1 bg-blue-600 hover:bg-blue-700" disabled={aceiteLoading}>
+                {aceiteLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <ClipboardCheck className="h-4 w-4 mr-2" />}
+                Aceitar Atribuição
+              </Button>
+              <Button onClick={() => onRecusarOS(os)} variant="destructive" className="flex-1" disabled={aceiteLoading}>
+                <ThumbsDown className="h-4 w-4 mr-2" />Recusar
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 2: Accept OS (after ticket accepted) */}
+        {aguardandoAceiteOS && isTecnico && !aguardandoAceiteTicket && (
           <div className="space-y-2">
             <Alert className="border-amber-200 bg-amber-50">
               <AlertCircle className="h-4 w-4 text-amber-600" />
               <AlertDescription className="text-amber-800 text-xs">
-                Você precisa aceitar ou recusar esta OS antes de iniciar a execução.
+                <p className="font-semibold">Etapa 2: Aceitar Ordem de Serviço</p>
+                <p>Aceite a OS para poder iniciar a execução.</p>
               </AlertDescription>
             </Alert>
             <div className="flex gap-2">
               <Button onClick={() => onAceitarOS(os)} className="flex-1" disabled={aceiteLoading}>
                 {aceiteLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <ThumbsUp className="h-4 w-4 mr-2" />}
-                Aceitar
+                Aceitar OS
               </Button>
               <Button onClick={() => onRecusarOS(os)} variant="destructive" className="flex-1" disabled={aceiteLoading}>
                 <ThumbsDown className="h-4 w-4 mr-2" />Recusar
@@ -170,7 +205,7 @@ export function OSCard({
 
         {/* Main action buttons */}
         <div className="space-y-2">
-          {isPendente && (aceito || !isTecnico) && !recusado && (
+          {isPendente && (osAceito || !isTecnico) && !recusado && ticketAceito && (
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button onClick={() => onIniciarExecucao(os)} className="w-full" disabled={startingId === os.id}>
@@ -195,7 +230,7 @@ export function OSCard({
             </Button>
           )}
 
-          {isPendente && aceito && (
+          {isPendente && osAceito && ticketAceito && (
             <Badge variant="outline" className="w-full justify-center py-2 bg-green-50 text-green-700 border-green-200">
               <CheckCircle2 className="h-3 w-3 mr-1" />Aceita — Próximo: Iniciar Execução
             </Badge>

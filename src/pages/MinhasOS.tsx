@@ -23,7 +23,7 @@ const MinhasOS = () => {
   const {
     startingId, navigating, recusaDialogOS, setRecusaDialogOS, aceiteLoading,
     handleIniciarExecucao, handlePreencherRME, handleVerOS,
-    handleLigarCliente, handleAbrirMapa, handleAceitarOS, handleRecusarOS,
+    handleLigarCliente, handleAbrirMapa, handleAceitarTicket, handleAceitarOS, handleRecusarOS,
   } = useMyOrdersActions(loadOrdensServico, setActiveTab);
 
   if (!canViewOS) {
@@ -122,7 +122,7 @@ const MinhasOS = () => {
                         startingId={startingId} navigating={navigating} aceiteLoading={aceiteLoading}
                         onIniciarExecucao={handleIniciarExecucao} onPreencherRME={handlePreencherRME}
                         onVerOS={handleVerOS} onLigarCliente={handleLigarCliente} onAbrirMapa={handleAbrirMapa}
-                        onAceitarOS={handleAceitarOS} onRecusarOS={(os) => setRecusaDialogOS(os)}
+                        onAceitarTicket={handleAceitarTicket} onAceitarOS={handleAceitarOS} onRecusarOS={(os) => setRecusaDialogOS(os)}
                       />
                     ))}
                   </div>
