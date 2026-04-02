@@ -23,7 +23,7 @@ const MinhasOS = () => {
   const {
     startingId, navigating, recusaDialogOS, setRecusaDialogOS, aceiteLoading,
     handleIniciarExecucao, handlePreencherRME, handleVerOS,
-    handleLigarCliente, handleAbrirMapa, handleAceitarOS, handleRecusarOS,
+    handleLigarCliente, handleAbrirMapa, handleAceitarTicket, handleAceitarOS, handleRecusarOS,
   } = useMyOrdersActions(loadOrdensServico, setActiveTab);
 
   if (!canViewOS) {
