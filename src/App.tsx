@@ -35,6 +35,7 @@ import WorkOrders from "./pages/WorkOrders";
 import WorkOrderCreate from "./pages/WorkOrderCreate";
 import WorkOrderDetail from "./pages/WorkOrderDetail";
 import RMEWizard from "./pages/RMEWizard";
+import ResetPassword from "./pages/ResetPassword";
 
 const queryClient = new QueryClient({
   defaultOptions: {
