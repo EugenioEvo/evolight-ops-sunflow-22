@@ -41,7 +41,10 @@ export function useMyOrdersData() {
     osFiltradas = osFiltradas.filter(os => os.tickets.prioridade === prioridadeFiltro);
   }
 
-  const pendentes = osFiltradas.filter(os => os.tickets.status === 'ordem_servico_gerada');
+  const pendentes = osFiltradas.filter(os =>
+    os.tickets.status === 'ordem_servico_gerada' ||
+    (os.tickets.status === 'aprovado' && (os as any).aceite_tecnico === 'pendente')
+  );
   const aguardandoGestaoCount = pendentes.filter(os => (os as any).aceite_tecnico === 'recusado').length;
   const emExecucao = osFiltradas.filter(os => os.tickets.status === 'em_execucao');
   const concluidas = osFiltradas.filter(os => os.tickets.status === 'concluido');
