@@ -35,8 +35,9 @@ export const createRmeService = (client?: AppSupabaseClient) => {
         const fileName = `${userId}/${folder}/${Date.now()}_${file.name}`;
         const { error } = await db.storage.from('rme-fotos').upload(fileName, file);
         if (error) throw error;
-        const { data } = db.storage.from('rme-fotos').getPublicUrl(fileName);
-        urls.push(data.publicUrl);
+        // Use signed URL since bucket is not public
+        const { data } = await db.storage.from('rme-fotos').createSignedUrl(fileName, 60 * 60 * 24 * 365);
+        if (data?.signedUrl) urls.push(data.signedUrl);
       }
       return urls;
     },
