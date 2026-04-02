@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Eye, EyeOff, Zap } from 'lucide-react';
 import { z } from 'zod';
+import { ForgotPasswordLink } from '@/components/ForgotPasswordLink';
 
 const signupSchema = z.object({
   nome: z.string()
@@ -277,6 +278,7 @@ const Auth = () => {
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading ? 'Entrando...' : 'Entrar'}
                 </Button>
+                <ForgotPasswordLink />
               </form>
             </TabsContent>
             
