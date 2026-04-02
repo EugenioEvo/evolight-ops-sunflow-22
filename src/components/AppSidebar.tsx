@@ -39,8 +39,8 @@ import {
 const mainItems = [
   { title: "Dashboard", url: "/", icon: Home },
   { title: "Meu Painel", url: "/meu-painel", icon: User, clientOnly: true },
-  { title: "Ordens de Serviço", url: "/work-orders", icon: ClipboardList },
   { title: "Tickets", url: "/tickets", icon: Package },
+  { title: "Ordens de Serviço", url: "/work-orders", icon: ClipboardList },
   { title: "RME", url: "/rme", icon: BarChart3 },
   { title: "Rotas", url: "/routes", icon: Route },
   { title: "Agenda", url: "/agenda", icon: Calendar, adminOnly: true },
