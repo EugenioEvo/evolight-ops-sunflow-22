@@ -122,7 +122,7 @@ const MinhasOS = () => {
                         startingId={startingId} navigating={navigating} aceiteLoading={aceiteLoading}
                         onIniciarExecucao={handleIniciarExecucao} onPreencherRME={handlePreencherRME}
                         onVerOS={handleVerOS} onLigarCliente={handleLigarCliente} onAbrirMapa={handleAbrirMapa}
-                        onAceitarOS={handleAceitarOS} onRecusarOS={(os) => setRecusaDialogOS(os)}
+                        onAceitarTicket={handleAceitarTicket} onAceitarOS={handleAceitarOS} onRecusarOS={(os) => setRecusaDialogOS(os)}
                       />
                     ))}
                   </div>
