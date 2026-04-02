@@ -1,4 +1,4 @@
-import { Bell, Check, Trash2, CheckCheck } from 'lucide-react';
+import { Bell, Check, Trash2, CheckCheck, BellRing } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useNotifications } from '@/hooks/useNotifications';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -17,7 +18,7 @@ import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
 export const NotificationBell = () => {
-  const { notificacoes, naoLidas, marcarComoLida, marcarTodasComoLidas, deletarNotificacao } = useNotifications();
+  const { notificacoes, naoLidas, permissionGranted, marcarComoLida, marcarTodasComoLidas, deletarNotificacao, solicitarPermissao } = useNotifications();
   const navigate = useNavigate();
 
   const handleNotificationClick = (notificacao: any) => {
@@ -31,16 +32,14 @@ export const NotificationBell = () => {
 
   const getNotificationIcon = (tipo: string) => {
     switch (tipo) {
-      case 'rme_aprovado':
-        return '✅';
-      case 'rme_rejeitado':
-        return '❌';
-      case 'os_atribuida':
-        return '📋';
-      case 'ticket_atribuido':
-        return '🎫';
-      default:
-        return '🔔';
+      case 'rme_aprovado': return '✅';
+      case 'rme_rejeitado': return '❌';
+      case 'os_atribuida': return '📋';
+      case 'os_aceita': return '👍';
+      case 'os_recusada': return '👎';
+      case 'ticket_aceito': return '🎫';
+      case 'ticket_atribuido': return '🎫';
+      default: return '🔔';
     }
   };
 
@@ -63,19 +62,29 @@ export const NotificationBell = () => {
         <DropdownMenuLabel className="flex items-center justify-between">
           <span>Notificações</span>
           {naoLidas > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={marcarTodasComoLidas}
-              className="h-8 text-xs"
-            >
+            <Button variant="ghost" size="sm" onClick={marcarTodasComoLidas} className="h-8 text-xs">
               <CheckCheck className="h-3 w-3 mr-1" />
               Marcar todas como lidas
             </Button>
           )}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        
+
+        {/* Permission request banner */}
+        {!permissionGranted && 'Notification' in window && Notification.permission !== 'denied' && (
+          <div className="px-3 py-2">
+            <Alert className="border-primary/30 bg-primary/5">
+              <BellRing className="h-4 w-4" />
+              <AlertDescription className="flex items-center justify-between">
+                <span className="text-xs">Ative notificações na área de trabalho</span>
+                <Button variant="outline" size="sm" className="h-7 text-xs ml-2" onClick={solicitarPermissao}>
+                  Ativar
+                </Button>
+              </AlertDescription>
+            </Alert>
+          </div>
+        )}
+
         {notificacoes.length === 0 ? (
           <div className="py-8 text-center text-sm text-muted-foreground">
             Nenhuma notificação
@@ -97,49 +106,26 @@ export const NotificationBell = () => {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
-                        <p className="font-medium text-sm truncate">
-                          {notificacao.titulo}
-                        </p>
+                        <p className="font-medium text-sm truncate">{notificacao.titulo}</p>
                         {!notificacao.lida && (
                           <div className="h-2 w-2 rounded-full bg-primary flex-shrink-0" />
                         )}
                       </div>
-                      <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
-                        {notificacao.mensagem}
-                      </p>
+                      <p className="text-xs text-muted-foreground line-clamp-2 mt-1">{notificacao.mensagem}</p>
                       <p className="text-xs text-muted-foreground mt-1">
-                        {formatDistanceToNow(new Date(notificacao.created_at), {
-                          addSuffix: true,
-                          locale: ptBR,
-                        })}
+                        {formatDistanceToNow(new Date(notificacao.created_at), { addSuffix: true, locale: ptBR })}
                       </p>
                     </div>
                   </div>
                 </DropdownMenuItem>
-                
+
                 <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
                   {!notificacao.lida && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        marcarComoLida(notificacao.id);
-                      }}
-                    >
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); marcarComoLida(notificacao.id); }}>
                       <Check className="h-3 w-3" />
                     </Button>
                   )}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 text-destructive hover:text-destructive"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      deletarNotificacao(notificacao.id);
-                    }}
-                  >
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={(e) => { e.stopPropagation(); deletarNotificacao(notificacao.id); }}>
                     <Trash2 className="h-3 w-3" />
                   </Button>
                 </div>
