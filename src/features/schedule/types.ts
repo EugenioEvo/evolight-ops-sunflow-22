@@ -6,6 +6,8 @@ export interface AgendaOrdemServico {
   hora_fim: string | null;
   duracao_estimada_min: number | null;
   tecnico_id: string;
+  aceite_tecnico: string;
+  motivo_recusa: string | null;
   calendar_invite_sent_at: string | null;
   calendar_invite_recipients: string[] | null;
   presence_confirmed_at: string | null;
@@ -29,7 +31,7 @@ export interface AgendaOrdemServico {
     clientes: {
       empresa: string;
     };
-  };
+  } | null;
 }
 
 export interface Tecnico {

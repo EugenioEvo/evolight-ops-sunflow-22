@@ -9,6 +9,7 @@ import type { AgendaOrdemServico, Tecnico } from "../types";
 export function useScheduleData() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedTecnico, setSelectedTecnico] = useState<string>('todos');
+  const [selectedAceite, setSelectedAceite] = useState<string>('todos');
   const [ordensServico, setOrdensServico] = useState<AgendaOrdemServico[]>([]);
   const [tecnicos, setTecnicos] = useState<Tecnico[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,7 +44,9 @@ export function useScheduleData() {
     loadOrdensServico();
   }, [loadOrdensServico]);
 
-  const osDoDia = ordensServico.filter(os => getDateKey(os.data_programada) === getDateKey(selectedDate));
+  const osDoDia = ordensServico
+    .filter(os => getDateKey(os.data_programada) === getDateKey(selectedDate))
+    .filter(os => selectedAceite === 'todos' || os.aceite_tecnico === selectedAceite);
 
   const diasComOS = ordensServico.reduce((acc, os) => {
     const dateStr = getDateKey(os.data_programada);
@@ -57,6 +60,7 @@ export function useScheduleData() {
   return {
     selectedDate, setSelectedDate,
     selectedTecnico, setSelectedTecnico,
+    selectedAceite, setSelectedAceite,
     ordensServico, tecnicos, loading,
     osDoDia, diasComOS, loadOrdensServico,
   };

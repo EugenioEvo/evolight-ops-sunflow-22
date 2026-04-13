@@ -25,6 +25,20 @@ const getPrioridadeColor = (p: string) => {
   return colors[p] || 'bg-gray-100 text-gray-800';
 };
 
+const getAceiteColor = (aceite: string) => {
+  const colors: Record<string, string> = {
+    pendente: 'bg-yellow-100 text-yellow-800 border-yellow-300',
+    aceito: 'bg-green-100 text-green-800 border-green-300',
+    recusado: 'bg-red-100 text-red-800 border-red-300',
+  };
+  return colors[aceite] || 'bg-gray-100 text-gray-800';
+};
+
+const getAceiteLabel = (aceite: string) => {
+  const labels: Record<string, string> = { pendente: 'Aguardando Aceite', aceito: 'Aceito', recusado: 'Recusado' };
+  return labels[aceite] || aceite;
+};
+
 const getEmailStatus = (os: AgendaOrdemServico) => {
   const hasErrors = os.email_error_log && os.email_error_log.length > 0;
   const hasSentInvite = os.calendar_invite_sent_at;
@@ -36,7 +50,7 @@ const getEmailStatus = (os: AgendaOrdemServico) => {
 };
 
 const Agenda = () => {
-  const { selectedDate, setSelectedDate, selectedTecnico, setSelectedTecnico, tecnicos, loading, osDoDia, diasComOS, loadOrdensServico } = useScheduleData();
+  const { selectedDate, setSelectedDate, selectedTecnico, setSelectedTecnico, selectedAceite, setSelectedAceite, tecnicos, loading, osDoDia, diasComOS, loadOrdensServico } = useScheduleData();
   const { resendingInvite, cancelOS, cancelLoading, resendCalendarInvite, generatePresenceQR } = useScheduleActions(loadOrdensServico);
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
   const [selectedOS, setSelectedOS] = useState<AgendaOrdemServico | null>(null);
@@ -63,6 +77,18 @@ const Agenda = () => {
                   <SelectContent>
                     <SelectItem value="todos">Todos os Técnicos</SelectItem>
                     {tecnicos.map(tec => <SelectItem key={tec.id} value={tec.id}>{tec.nome}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="mt-4 space-y-2">
+                <label className="text-sm font-medium">Filtrar por Aceite</label>
+                <Select value={selectedAceite} onValueChange={setSelectedAceite}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos</SelectItem>
+                    <SelectItem value="pendente">Aguardando Aceite</SelectItem>
+                    <SelectItem value="aceito">Aceito</SelectItem>
+                    <SelectItem value="recusado">Recusado</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -93,6 +119,12 @@ const Agenda = () => {
                             <div className="flex-1">
                               <div className="flex items-center gap-2 mb-1 flex-wrap">
                                 <h3 className="font-semibold">{os.numero_os}</h3>
+                                <Badge className={getAceiteColor(os.aceite_tecnico)}>{getAceiteLabel(os.aceite_tecnico)}</Badge>
+                                {os.aceite_tecnico === 'recusado' && os.motivo_recusa && (
+                                  <TooltipProvider><Tooltip><TooltipTrigger>
+                                    <Badge variant="outline" className="text-destructive border-destructive text-xs">Motivo</Badge>
+                                  </TooltipTrigger><TooltipContent className="max-w-xs"><p className="text-sm">{os.motivo_recusa}</p></TooltipContent></Tooltip></TooltipProvider>
+                                )}
                                 <TooltipProvider><Tooltip><TooltipTrigger>
                                   <Badge variant={emailStatus.variant} className={`flex items-center gap-1 ${emailStatus.color}`}><StatusIcon className="h-3 w-3" />{emailStatus.text}</Badge>
                                 </TooltipTrigger><TooltipContent className="max-w-xs">
@@ -109,11 +141,11 @@ const Agenda = () => {
                                 {os.presence_confirmed_at && <Badge variant="default" className="flex items-center gap-1"><CheckCircle className="h-3 w-3" />Presença Confirmada</Badge>}
                                 <PresenceConfirmationStatus ordemServico={os} onGenerateQR={() => generatePresenceQR(os.id)} />
                               </div>
-                              <p className="text-sm text-muted-foreground">{os.tickets.titulo}</p>
+                              <p className="text-sm text-muted-foreground">{os.tickets?.titulo || 'Ticket não encontrado'}</p>
                             </div>
                             <div className="flex gap-2">
-                              <Badge className={getPrioridadeColor(os.tickets.prioridade)}>{os.tickets.prioridade}</Badge>
-                              <Badge className={getStatusColor(os.tickets.status)}>{os.tickets.status.replace('_', ' ')}</Badge>
+                              <Badge className={getPrioridadeColor(os.tickets?.prioridade || '')}>{os.tickets?.prioridade || '-'}</Badge>
+                              <Badge className={getStatusColor(os.tickets?.status || '')}>{(os.tickets?.status || '-').replace('_', ' ')}</Badge>
                             </div>
                           </div>
                           <div className="grid grid-cols-2 gap-3 text-sm">
@@ -128,10 +160,10 @@ const Agenda = () => {
                                 </TooltipTrigger><TooltipContent>Editar email do técnico</TooltipContent></Tooltip></TooltipProvider>
                               )}
                             </div>
-                            <div className="flex items-center gap-2 text-muted-foreground col-span-2"><MapPin className="h-4 w-4" />{os.tickets.endereco_servico}</div>
+                            <div className="flex items-center gap-2 text-muted-foreground col-span-2"><MapPin className="h-4 w-4" />{os.tickets?.endereco_servico || 'Endereço não disponível'}</div>
                           </div>
                           <div className="mt-3 pt-3 border-t flex justify-between items-center">
-                            <span className="text-sm font-medium">{os.tickets.clientes?.empresa || 'Cliente não definido'}</span>
+                            <span className="text-sm font-medium">{os.tickets?.clientes?.empresa || 'Cliente não definido'}</span>
                             <div className="flex gap-2">
                               {os.tecnicos?.profiles?.email && (
                                 <TooltipProvider><Tooltip><TooltipTrigger asChild>

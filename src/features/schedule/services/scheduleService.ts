@@ -13,6 +13,7 @@ export const createScheduleService = (client?: AppSupabaseClient) => {
       let query = db
         .from('ordens_servico')
         .select(`*, tecnicos(id, profile_id, profiles(nome, email)), tickets(numero_ticket, titulo, endereco_servico, status, prioridade, clientes(empresa))`)
+        .not('tecnico_id', 'is', null)
         .gte('data_programada', `${format(start, 'yyyy-MM-dd')}T00:00:00+00:00`)
         .lt('data_programada', `${format(nextMonthStart, 'yyyy-MM-dd')}T00:00:00+00:00`)
         .order('data_programada', { ascending: true })
