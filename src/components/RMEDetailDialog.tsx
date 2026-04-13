@@ -303,30 +303,60 @@ export const RMEDetailDialog: React.FC<RMEDetailDialogProps> = ({
               <CardTitle className="text-sm">Assinaturas</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 gap-4">
-                {rme.assinatura_tecnico && (
-                  <div>
-                    <h4 className="font-medium text-sm mb-2">Técnico:</h4>
-                    <img
-                      src={rme.assinatura_tecnico}
-                      alt="Assinatura Técnico"
-                      className="border rounded p-2 bg-white"
-                    />
+              {(() => {
+                const sigs = rme.signatures as Record<string, any> | null;
+                const roleLabels: Record<string, string> = {
+                  responsavel: 'Responsável Técnico',
+                  gerente_manutencao: 'Gerente de Manutenção',
+                  gerente_projeto: 'Gerente de Projeto',
+                };
+                const hasJsonSigs = sigs && Object.keys(roleLabels).some(k => sigs[k]?.nome);
+                const hasLegacy = rme.assinatura_tecnico || rme.assinatura_cliente;
+
+                if (!hasJsonSigs && !hasLegacy) {
+                  return <p className="text-sm text-muted-foreground">Nenhuma assinatura registrada.</p>;
+                }
+
+                return (
+                  <div className="space-y-4">
+                    {hasJsonSigs && (
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {Object.entries(roleLabels).map(([key, label]) => {
+                          const sig = sigs?.[key];
+                          if (!sig?.nome) return null;
+                          return (
+                            <div key={key} className="border rounded p-3 space-y-1">
+                              <h4 className="font-medium text-sm">{label}</h4>
+                              <p className="text-sm">{sig.nome}</p>
+                              {sig.at && (
+                                <p className="text-xs text-muted-foreground">
+                                  {format(new Date(sig.at), 'dd/MM/yyyy HH:mm')}
+                                </p>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                    {hasLegacy && (
+                      <div className="grid grid-cols-2 gap-4">
+                        {rme.assinatura_tecnico && (
+                          <div>
+                            <h4 className="font-medium text-sm mb-2">Técnico:</h4>
+                            <img src={rme.assinatura_tecnico} alt="Assinatura Técnico" className="border rounded p-2 bg-white" />
+                          </div>
+                        )}
+                        {rme.assinatura_cliente && (
+                          <div>
+                            <h4 className="font-medium text-sm mb-2">Cliente ({rme.nome_cliente_assinatura}):</h4>
+                            <img src={rme.assinatura_cliente} alt="Assinatura Cliente" className="border rounded p-2 bg-white" />
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
-                )}
-                {rme.assinatura_cliente && (
-                  <div>
-                    <h4 className="font-medium text-sm mb-2">
-                      Cliente ({rme.nome_cliente_assinatura}):
-                    </h4>
-                    <img
-                      src={rme.assinatura_cliente}
-                      alt="Assinatura Cliente"
-                      className="border rounded p-2 bg-white"
-                    />
-                  </div>
-                )}
-              </div>
+                );
+              })()}
             </CardContent>
           </Card>
 
