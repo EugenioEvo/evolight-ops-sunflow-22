@@ -1,53 +1,62 @@
 
 
-## Problem Analysis
+## Problem
 
-After inspecting the Agenda page code and database, I found these issues:
+Diego has two separate accounts:
 
-### 1. Orphaned OS cluttering the agenda
-When a ticket is reassigned to a new technician, the old OS gets its `tecnico_id` set to NULL but remains in the database with `aceite_tecnico = 'pendente'`. These orphaned records appear in the agenda alongside the new OS, creating confusion — e.g., OS000010 (no technician) and OS000011 (WEBERSON) both appear for the same ticket on April 2nd.
+| Account | Email | Role | Technician record | Prestador |
+|---|---|---|---|---|
+| Old (active) | diego14borges@gmail.com | tecnico_campo | Yes (871da72f) | No |
+| New (broken) | servicosdiego6@gmail.com | **none** | No | Yes (777d1943) |
 
-### 2. No aceite (acceptance) status shown on agenda cards
-The agenda cards show email status, presence status, priority, and ticket status — but NOT whether the technician has accepted the OS. This is critical information for supervisors.
+The old account (`diego14borges`) has actual work orders assigned (OS000003, OS000005) and a working technician setup. The new account (`servicosdiego6`) was created later but is incomplete — no role, no technician record.
 
-### 3. Potential crash if ticket is deleted
-The `AgendaOrdemServico` type defines `tickets` as non-nullable, and the UI accesses `os.tickets.titulo` without optional chaining. If a ticket were deleted while an OS still references it, the page would crash.
-
-### 4. No aceite status filter
-Supervisors cannot filter the agenda by aceite status (pendente/aceito/recusado).
-
----
+The user wants **servicosdiego6@gmail.com** to be the active account going forward.
 
 ## Plan
 
-### 1. Filter orphaned OS from the agenda query
-In `scheduleService.ts`, add `.not('tecnico_id', 'is', null)` to the query to exclude OS records that lost their technician during reassignment. Alternatively, only show OS where `tecnico_id IS NOT NULL`.
+### 1. Fix the new account (servicosdiego6)
 
-### 2. Add aceite status badge to agenda cards
-In `Agenda.tsx`, display a badge showing the aceite status (Pendente / Aceito / Recusado) on each OS card, with appropriate colors (yellow/green/red).
+Via database inserts:
 
-### 3. Add null safety for tickets join
-In `Agenda.tsx`, add optional chaining for `os.tickets?.titulo`, `os.tickets?.endereco_servico`, etc. Update the `AgendaOrdemServico` type to make `tickets` nullable.
+- **Insert `user_roles`**: Add `role = 'tecnico_campo'` for user `a840c3ff-669d-4b0a-864f-fba112f11b58`
+- **Insert `tecnicos`**: Create technician record linked to profile `b2145eb8-f5f9-4225-af5f-21fddc3e6ca3`
 
-### 4. Add aceite filter to the agenda sidebar
-Add a "Filtrar por Aceite" select dropdown alongside the existing technician filter, allowing supervisors to filter by pendente/aceito/recusado/todos.
+### 2. Migrate work orders to the new technician
+
+After creating the new technician record, update `ordens_servico` rows currently pointing to the old technician ID (`871da72f`) to point to the new one.
+
+### 3. Deactivate the old account (diego14borges)
+
+- Update the old profile (`3a05967f`) to `ativo = false` so it no longer appears active
+- Optionally remove the old `user_roles` entry to prevent login confusion
+
+### 4. No code changes needed
+
+The application logic is correct — this is purely a data correction.
 
 ---
 
 ### Technical Details
 
-**File: `src/features/schedule/services/scheduleService.ts`**
-- Add `.not('tecnico_id', 'is', null)` to the ordens_servico query to hide orphaned OS
+**Step 1** — Insert role and technician for servicosdiego6:
+```sql
+INSERT INTO user_roles (user_id, role)
+VALUES ('a840c3ff-669d-4b0a-864f-fba112f11b58', 'tecnico_campo')
+ON CONFLICT (user_id, role) DO NOTHING;
 
-**File: `src/features/schedule/types.ts`**
-- Add `aceite_tecnico` field to `AgendaOrdemServico`
-- Make `tickets` nullable for safety
+INSERT INTO tecnicos (profile_id, especialidades, regiao_atuacao)
+VALUES ('b2145eb8-f5f9-4225-af5f-21fddc3e6ca3', '{}', '');
+```
 
-**File: `src/pages/Agenda.tsx`**
-- Add aceite badge (getAceiteColor helper)
-- Add aceite filter state + Select dropdown
-- Add null safety for `os.tickets`
+**Step 2** — Reassign work orders (after getting new tecnico ID):
+```sql
+UPDATE ordens_servico SET tecnico_id = '<new_tecnico_id>'
+WHERE tecnico_id = '871da72f-37d0-41d4-810c-e15daf2e030d';
+```
 
-**File: `src/features/schedule/hooks/useScheduleData.ts`**
-- Add aceite filter to `osDoDia` filtering logic
+**Step 3** — Deactivate old account:
+```sql
+UPDATE profiles SET ativo = false WHERE id = '3a05967f-66ee-4acb-8cd2-76861f52eb56';
+```
 
