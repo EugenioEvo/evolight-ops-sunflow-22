@@ -147,7 +147,13 @@ const RMEWizard = () => {
         images_posted: data.images_posted || false, modules_cleaned_qty: data.modules_cleaned_qty || 0, string_box_qty: data.string_box_qty || 0,
         condicoes_encontradas: data.condicoes_encontradas || "", servicos_executados: data.servicos_executados || "",
         materiais_utilizados: Array.isArray(data.materiais_utilizados) ? (data.materiais_utilizados as any[]) : [],
-        signatures: (data.signatures as any) || {}, status: data.status || "rascunho",
+        signatures: (data.signatures as any) || {},
+        fotos_antes: Array.isArray(data.fotos_antes) ? data.fotos_antes : [],
+        fotos_depois: Array.isArray(data.fotos_depois) ? data.fotos_depois : [],
+        assinatura_tecnico: data.assinatura_tecnico || "",
+        assinatura_cliente: data.assinatura_cliente || "",
+        nome_cliente_assinatura: data.nome_cliente_assinatura || "",
+        status: data.status || "rascunho",
         client_name: os?.tickets?.clientes?.empresa || "", address: os?.tickets?.endereco_servico || "", ufv_solarz: os?.tickets?.clientes?.ufv_solarz || "",
       });
       const { data: items } = await supabase.from("rme_checklist_items").select("*").eq("rme_id", rmeId).order("category").order("item_key");
@@ -172,6 +178,11 @@ const RMEWizard = () => {
         images_posted: formData.images_posted, modules_cleaned_qty: formData.modules_cleaned_qty, string_box_qty: formData.string_box_qty,
         condicoes_encontradas: formData.condicoes_encontradas || "A preencher", servicos_executados: formData.servicos_executados || "A preencher",
         materiais_utilizados: formData.materiais_utilizados, signatures: formData.signatures,
+        fotos_antes: formData.fotos_antes,
+        fotos_depois: formData.fotos_depois,
+        assinatura_tecnico: formData.assinatura_tecnico || null,
+        assinatura_cliente: formData.assinatura_cliente || null,
+        nome_cliente_assinatura: formData.nome_cliente_assinatura || null,
         status: finalize ? "concluido" : "rascunho",
       };
       let rmeId = formData.id;
