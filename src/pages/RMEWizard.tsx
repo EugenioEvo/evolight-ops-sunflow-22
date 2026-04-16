@@ -37,6 +37,13 @@ export interface RMEFormData {
     gerente_manutencao?: { nome: string; at: string };
     gerente_projeto?: { nome: string; at: string };
   };
+  // Photo URLs persisted to rme_relatorios.fotos_antes / fotos_depois
+  fotos_antes: string[];
+  fotos_depois: string[];
+  // Canvas signatures (DataURL) for technician & client
+  assinatura_tecnico: string;
+  assinatura_cliente: string;
+  nome_cliente_assinatura: string;
   status: string;
   client_name: string;
   address: string;
@@ -69,7 +76,10 @@ const defaultFormData: RMEFormData = {
   service_type: [], shift: "manha", start_time: "08:00", end_time: "17:00",
   images_posted: false, modules_cleaned_qty: 0, string_box_qty: 0,
   condicoes_encontradas: "", servicos_executados: "", materiais_utilizados: [],
-  signatures: {}, status: "rascunho", client_name: "", address: "", ufv_solarz: "",
+  signatures: {},
+  fotos_antes: [], fotos_depois: [],
+  assinatura_tecnico: "", assinatura_cliente: "", nome_cliente_assinatura: "",
+  status: "rascunho", client_name: "", address: "", ufv_solarz: "",
 };
 
 const RMEWizard = () => {
