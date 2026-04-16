@@ -37,6 +37,16 @@ export interface RMEPDFData {
   tecnico_nome: string;
   status_aprovacao: string;
   ufv_solarz?: string;
+  /** Image URLs (signed) for "before" pictures — embedded as image previews. */
+  fotos_antes_urls?: string[];
+  /** Image URLs (signed) for "after" pictures — embedded as image previews. */
+  fotos_depois_urls?: string[];
+  /** PNG DataURL of the on-screen technician signature. */
+  assinatura_tecnico?: string;
+  /** PNG DataURL of the on-screen client signature. */
+  assinatura_cliente?: string;
+  /** Printed name of the client signing on-screen. */
+  nome_cliente_assinatura?: string;
 }
 
 const categoryLabels: Record<string, string> = {
@@ -337,13 +347,108 @@ export const generateRMEPDF = async (data: RMEPDFData): Promise<Blob> => {
   doc.text(servicosLines, margin, yPos);
   yPos += servicosLines.length * 5 + 10;
 
-  // Section: Signatures
+  // Helper: load an image (URL or DataURL) into the PDF, skipping silently on failure.
+  const loadImage = (src: string): Promise<HTMLImageElement | null> => new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
+
+  const renderPhotoGrid = async (title: string, urls: string[]) => {
+    if (!urls || urls.length === 0) return;
+    checkNewPage(60);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(63, 81, 181);
+    doc.text(title, margin, yPos);
+    yPos += 8;
+
+    const cols = 3;
+    const gap = 4;
+    const cellWidth = (pageWidth - 2 * margin - gap * (cols - 1)) / cols;
+    const cellHeight = cellWidth * 0.75;
+
+    for (let i = 0; i < urls.length; i++) {
+      const col = i % cols;
+      if (col === 0 && i > 0) yPos += cellHeight + gap;
+      checkNewPage(cellHeight + 10);
+      const img = await loadImage(urls[i]);
+      const x = margin + col * (cellWidth + gap);
+      if (img) {
+        try {
+          // Convert via canvas to ensure jsPDF can embed it
+          const canvas = document.createElement('canvas');
+          canvas.width = img.naturalWidth || 800;
+          canvas.height = img.naturalHeight || 600;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0);
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+            doc.addImage(dataUrl, 'JPEG', x, yPos, cellWidth, cellHeight);
+          }
+        } catch {
+          doc.setDrawColor(200, 200, 200);
+          doc.rect(x, yPos, cellWidth, cellHeight);
+          doc.setFontSize(7);
+          doc.setTextColor(150, 150, 150);
+          doc.text('Imagem indisponível', x + 2, yPos + cellHeight / 2);
+        }
+      } else {
+        doc.setDrawColor(200, 200, 200);
+        doc.rect(x, yPos, cellWidth, cellHeight);
+        doc.setFontSize(7);
+        doc.setTextColor(150, 150, 150);
+        doc.text('Imagem indisponível', x + 2, yPos + cellHeight / 2);
+      }
+    }
+    yPos += cellHeight + 10;
+  };
+
+  await renderPhotoGrid('FOTOS — ANTES', data.fotos_antes_urls || []);
+  await renderPhotoGrid('FOTOS — DEPOIS', data.fotos_depois_urls || []);
+
+  // Section: On-screen Canvas Signatures (Technician + Client)
+  if (data.assinatura_tecnico || data.assinatura_cliente) {
+    checkNewPage(80);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(63, 81, 181);
+    doc.text('ASSINATURAS — TÉCNICO E CLIENTE', margin, yPos);
+    yPos += 8;
+
+    const sigBoxWidth = (pageWidth - 2 * margin - 10) / 2;
+    const sigBoxHeight = 40;
+    const placeSig = (label: string, dataUrl: string | undefined, name: string | undefined, xOffset: number) => {
+      const x = margin + xOffset;
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(0, 0, 0);
+      doc.text(label, x, yPos);
+      doc.setDrawColor(0, 0, 0);
+      doc.rect(x, yPos + 2, sigBoxWidth, sigBoxHeight);
+      if (dataUrl) {
+        try { doc.addImage(dataUrl, 'PNG', x + 2, yPos + 4, sigBoxWidth - 4, sigBoxHeight - 4); } catch { /* ignore */ }
+      }
+      if (name) {
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'normal');
+        doc.text(name, x, yPos + sigBoxHeight + 8);
+      }
+    };
+    placeSig('Técnico', data.assinatura_tecnico, data.tecnico_nome, 0);
+    placeSig('Cliente', data.assinatura_cliente, data.nome_cliente_assinatura, sigBoxWidth + 10);
+    yPos += sigBoxHeight + 18;
+  }
+
+  // Section: Internal Approval Signatures (text-based)
   checkNewPage(60);
 
   doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(63, 81, 181);
-  doc.text('ASSINATURAS', margin, yPos);
+  doc.text('APROVAÇÕES INTERNAS', margin, yPos);
   yPos += 10;
 
   const signatureLabels: Record<string, string> = {

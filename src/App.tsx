@@ -23,7 +23,7 @@ import Tecnicos from "./pages/Tecnicos";
 import MinhasOS from "./pages/MinhasOS";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
-import RME from "./pages/RME";
+import { Navigate, useSearchParams } from "react-router-dom";
 import Relatorios from "./pages/Relatorios";
 import GerenciarRME from "./pages/GerenciarRME";
 import DashboardPresenca from "./pages/DashboardPresenca";
@@ -36,6 +36,13 @@ import WorkOrderCreate from "./pages/WorkOrderCreate";
 import WorkOrderDetail from "./pages/WorkOrderDetail";
 import RMEWizard from "./pages/RMEWizard";
 import ResetPassword from "./pages/ResetPassword";
+
+// Legacy /rme route → redirects to the unified Wizard, preserving ?os=
+const LegacyRMERedirect = () => {
+  const [params] = useSearchParams();
+  const os = params.get("os");
+  return <Navigate to={os ? `/rme-wizard/new?os=${os}` : "/minhas-os"} replace />;
+};
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -119,7 +126,7 @@ const App = () => (
                                 <Insumos />
                               </ProtectedRoute>
                             } />
-                            <Route path="/rme" element={<RME />} />
+                            <Route path="/rme" element={<LegacyRMERedirect />} />
                             <Route path="/gerenciar-rme" element={
                               <ProtectedRoute roles={['admin', 'engenharia', 'supervisao']}>
                                 <GerenciarRME />

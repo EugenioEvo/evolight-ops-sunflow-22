@@ -32,7 +32,7 @@ export function useMyOrdersActions(loadOrdensServico: () => Promise<void>, setAc
   const handlePreencherRME = async (os: OrdemServico) => {
     setNavigating(os.id);
     await new Promise(resolve => setTimeout(resolve, 300));
-    navigate(`/rme?os=${os.id}`);
+    navigate(`/rme-wizard/new?os=${os.id}`);
   };
 
   const handleVerOS = async (os: OrdemServico) => {

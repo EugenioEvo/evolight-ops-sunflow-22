@@ -37,6 +37,13 @@ export interface RMEFormData {
     gerente_manutencao?: { nome: string; at: string };
     gerente_projeto?: { nome: string; at: string };
   };
+  // Photo URLs persisted to rme_relatorios.fotos_antes / fotos_depois
+  fotos_antes: string[];
+  fotos_depois: string[];
+  // Canvas signatures (DataURL) for technician & client
+  assinatura_tecnico: string;
+  assinatura_cliente: string;
+  nome_cliente_assinatura: string;
   status: string;
   client_name: string;
   address: string;
@@ -69,7 +76,10 @@ const defaultFormData: RMEFormData = {
   service_type: [], shift: "manha", start_time: "08:00", end_time: "17:00",
   images_posted: false, modules_cleaned_qty: 0, string_box_qty: 0,
   condicoes_encontradas: "", servicos_executados: "", materiais_utilizados: [],
-  signatures: {}, status: "rascunho", client_name: "", address: "", ufv_solarz: "",
+  signatures: {},
+  fotos_antes: [], fotos_depois: [],
+  assinatura_tecnico: "", assinatura_cliente: "", nome_cliente_assinatura: "",
+  status: "rascunho", client_name: "", address: "", ufv_solarz: "",
 };
 
 const RMEWizard = () => {
@@ -137,7 +147,13 @@ const RMEWizard = () => {
         images_posted: data.images_posted || false, modules_cleaned_qty: data.modules_cleaned_qty || 0, string_box_qty: data.string_box_qty || 0,
         condicoes_encontradas: data.condicoes_encontradas || "", servicos_executados: data.servicos_executados || "",
         materiais_utilizados: Array.isArray(data.materiais_utilizados) ? (data.materiais_utilizados as any[]) : [],
-        signatures: (data.signatures as any) || {}, status: data.status || "rascunho",
+        signatures: (data.signatures as any) || {},
+        fotos_antes: Array.isArray(data.fotos_antes) ? data.fotos_antes : [],
+        fotos_depois: Array.isArray(data.fotos_depois) ? data.fotos_depois : [],
+        assinatura_tecnico: data.assinatura_tecnico || "",
+        assinatura_cliente: data.assinatura_cliente || "",
+        nome_cliente_assinatura: data.nome_cliente_assinatura || "",
+        status: data.status || "rascunho",
         client_name: os?.tickets?.clientes?.empresa || "", address: os?.tickets?.endereco_servico || "", ufv_solarz: os?.tickets?.clientes?.ufv_solarz || "",
       });
       const { data: items } = await supabase.from("rme_checklist_items").select("*").eq("rme_id", rmeId).order("category").order("item_key");
@@ -162,6 +178,11 @@ const RMEWizard = () => {
         images_posted: formData.images_posted, modules_cleaned_qty: formData.modules_cleaned_qty, string_box_qty: formData.string_box_qty,
         condicoes_encontradas: formData.condicoes_encontradas || "A preencher", servicos_executados: formData.servicos_executados || "A preencher",
         materiais_utilizados: formData.materiais_utilizados, signatures: formData.signatures,
+        fotos_antes: formData.fotos_antes,
+        fotos_depois: formData.fotos_depois,
+        assinatura_tecnico: formData.assinatura_tecnico || null,
+        assinatura_cliente: formData.assinatura_cliente || null,
+        nome_cliente_assinatura: formData.nome_cliente_assinatura || null,
         status: finalize ? "concluido" : "rascunho",
       };
       let rmeId = formData.id;
@@ -218,7 +239,12 @@ const RMEWizard = () => {
         shift: formData.shift, start_time: formData.start_time, end_time: formData.end_time,
         service_type: formData.service_type, collaboration: formData.collaboration, checklists,
         images_posted: formData.images_posted, modules_cleaned_qty: formData.modules_cleaned_qty,
-        string_box_qty: formData.string_box_qty, fotos_antes_count: 0, fotos_depois_count: 0,
+        string_box_qty: formData.string_box_qty,
+        fotos_antes_count: formData.fotos_antes.length, fotos_depois_count: formData.fotos_depois.length,
+        fotos_antes_urls: formData.fotos_antes, fotos_depois_urls: formData.fotos_depois,
+        assinatura_tecnico: formData.assinatura_tecnico || undefined,
+        assinatura_cliente: formData.assinatura_cliente || undefined,
+        nome_cliente_assinatura: formData.nome_cliente_assinatura || undefined,
         materiais_utilizados: formData.materiais_utilizados, servicos_executados: formData.servicos_executados,
         condicoes_encontradas: formData.condicoes_encontradas, signatures: formData.signatures,
         tecnico_nome: tecnicoNome || profile?.nome || "Técnico", status_aprovacao: formData.status,
