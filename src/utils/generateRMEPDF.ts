@@ -37,6 +37,16 @@ export interface RMEPDFData {
   tecnico_nome: string;
   status_aprovacao: string;
   ufv_solarz?: string;
+  /** Image URLs (signed) for "before" pictures — embedded as image previews. */
+  fotos_antes_urls?: string[];
+  /** Image URLs (signed) for "after" pictures — embedded as image previews. */
+  fotos_depois_urls?: string[];
+  /** PNG DataURL of the on-screen technician signature. */
+  assinatura_tecnico?: string;
+  /** PNG DataURL of the on-screen client signature. */
+  assinatura_cliente?: string;
+  /** Printed name of the client signing on-screen. */
+  nome_cliente_assinatura?: string;
 }
 
 const categoryLabels: Record<string, string> = {
