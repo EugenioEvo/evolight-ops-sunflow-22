@@ -37,6 +37,13 @@ import WorkOrderDetail from "./pages/WorkOrderDetail";
 import RMEWizard from "./pages/RMEWizard";
 import ResetPassword from "./pages/ResetPassword";
 
+// Legacy /rme route → redirects to the unified Wizard, preserving ?os=
+const LegacyRMERedirect = () => {
+  const [params] = useSearchParams();
+  const os = params.get("os");
+  return <Navigate to={os ? `/rme-wizard/new?os=${os}` : "/minhas-os"} replace />;
+};
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
