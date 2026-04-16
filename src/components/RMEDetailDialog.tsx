@@ -84,6 +84,11 @@ export const RMEDetailDialog: React.FC<RMEDetailDialogProps> = ({
         tecnico_nome: rme.tecnicos?.profiles?.nome || '-',
         status_aprovacao: rme.status_aprovacao || 'pendente',
         ufv_solarz: rme.tickets?.clientes?.ufv_solarz || undefined,
+        fotos_antes_urls: Array.isArray(rme.fotos_antes) ? rme.fotos_antes : [],
+        fotos_depois_urls: Array.isArray(rme.fotos_depois) ? rme.fotos_depois : [],
+        assinatura_tecnico: rme.assinatura_tecnico || undefined,
+        assinatura_cliente: rme.assinatura_cliente || undefined,
+        nome_cliente_assinatura: rme.nome_cliente_assinatura || undefined,
       };
 
       await downloadRMEPDF(pdfData, `RME_${osData?.numero_os || rme.id}.pdf`);
