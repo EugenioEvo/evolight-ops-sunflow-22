@@ -136,8 +136,9 @@ const RMEWizard = () => {
    * Loads technicians with approved OS for the same ticket (for collaboration dropdown)
    * and checks whether the current user is the responsible technician.
    * Responsible = ordens_servico.tecnico_responsavel_id (prestador) matched against current profile email.
+   * Note: independent of tecnicoId resolution — relies on profile.email to avoid race condition on mount.
    */
-  const loadGroupContext = async (ticketId: string, currentTecnicoId: string | null) => {
+  const loadGroupContext = async (ticketId: string) => {
     const { data: osList } = await supabase
       .from("ordens_servico")
       .select("id, tecnico_id, tecnico_responsavel_id, aceite_tecnico, tecnicos:tecnico_id(id, profiles(nome, email))")
@@ -159,7 +160,7 @@ const RMEWizard = () => {
     }
     setAvailableTechnicians(techs);
 
-    if (currentTecnicoId && respPrestadorId && profile?.email) {
+    if (respPrestadorId && profile?.email) {
       const { data: prestador } = await supabase
         .from("prestadores")
         .select("email")
