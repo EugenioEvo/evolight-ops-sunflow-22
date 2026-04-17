@@ -260,6 +260,14 @@ const RMEWizard = () => {
   const handlePrevious = () => { if (currentStep > 1) setCurrentStep(currentStep - 1); };
 
   const handleFinalize = async () => {
+    if (!isResponsavel) {
+      toast({
+        title: "Ação restrita ao Técnico Responsável",
+        description: "Somente o técnico responsável do grupo de OS/Ticket pode concluir o RME.",
+        variant: "destructive",
+      });
+      return;
+    }
     if (!formData.servicos_executados || formData.servicos_executados.length < 10) {
       toast({ title: "Campo obrigatório", description: "Preencha a descrição do serviço realizado", variant: "destructive" });
       return;
