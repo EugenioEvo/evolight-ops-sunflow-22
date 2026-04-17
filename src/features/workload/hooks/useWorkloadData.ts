@@ -66,6 +66,9 @@ export const useWorkloadData = (service: WorkloadServicePort = defaultWorkloadSe
 
   useEffect(() => { if (selectedTecnico) loadWorkloadData(); }, [selectedTecnico, selectedMonth]);
 
+  // Realtime: refresh workload when OS/tickets change
+  useGlobalRealtime(() => { if (selectedTecnico) loadWorkloadData(); });
+
   const loadWorkloadData = async () => {
     setLoading(true);
     try {
