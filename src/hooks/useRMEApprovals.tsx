@@ -15,6 +15,7 @@ export const useRMEApprovals = () => {
       const { error } = await supabase
         .from('rme_relatorios')
         .update({
+          status: 'concluido',
           status_aprovacao: 'aprovado',
           aprovado_por: userData.user?.id,
           data_aprovacao: new Date().toISOString(),
