@@ -61,11 +61,12 @@ serve(async (req) => {
     const endereco = rme.tickets?.endereco_servico || '-'
     const dataExecucao = new Date(rme.data_execucao).toLocaleDateString('pt-BR')
     const statusMap: Record<string, string> = {
-      pendente: '⏳ Pendente',
+      rascunho: '📝 Rascunho',
+      pendente: '⏳ Aguardando aprovação',
       aprovado: '✅ Aprovado',
       rejeitado: '❌ Rejeitado',
     }
-    const statusLabel = statusMap[rme.status_aprovacao] || rme.status_aprovacao
+    const statusLabel = statusMap[rme.status] || rme.status
 
     const appUrl = Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '') || ''
     const projectRef = Deno.env.get('SUPABASE_URL')?.split('//')[1]?.split('.')[0] || ''

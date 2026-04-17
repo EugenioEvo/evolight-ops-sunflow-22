@@ -20,7 +20,7 @@ const ALLOWED_TABLES: Record<string, string[]> = {
   ],
   rme_relatorios: [
     "id", "ticket_id", "ordem_servico_id", "data_execucao", "data_preenchimento",
-    "status", "status_aprovacao", "site_name", "shift", "start_time", "end_time",
+    "status", "site_name", "shift", "start_time", "end_time",
     "servicos_executados", "condicoes_encontradas", "modules_cleaned_qty",
     "string_box_qty", "created_at", "updated_at"
   ],
