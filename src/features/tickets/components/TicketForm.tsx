@@ -8,8 +8,9 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FileUpload } from '@/components/FileUpload';
-import { Clock } from 'lucide-react';
+import { Clock, AlertTriangle } from 'lucide-react';
 import { ticketSchema, type TicketFormData, type TicketWithRelations, type TicketCliente, type TicketPrestador } from '../types';
+import { useSimilarTickets } from '../hooks/useSimilarTickets';
 
 interface TicketFormProps {
   open: boolean;
