@@ -63,6 +63,13 @@ export interface TicketWithRelations {
     aceite_tecnico: string;
     motivo_recusa: string | null;
     tecnico_id?: string | null;
+    data_programada?: string | null;
+    tecnicos?: { profiles: { nome: string } | null } | null;
+    rme_relatorios?: Array<{
+      id: string;
+      status: string | null;
+      status_aprovacao: string;
+    }> | null;
   }> | null;
   prestadores: {
     id: string;

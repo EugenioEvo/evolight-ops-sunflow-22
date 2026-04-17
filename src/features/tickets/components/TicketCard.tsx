@@ -1,12 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Calendar, Clock, MapPin, Settings, FileText, CheckCircle, XCircle, Eye, Loader2, RefreshCw, Star, AlertTriangle, type LucideIcon } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { Calendar, Clock, MapPin, Settings, FileText, CheckCircle, XCircle, Loader2, RefreshCw, Star, AlertTriangle, ChevronDown, ClipboardCheck, type LucideIcon } from 'lucide-react';
 import { STATUS_COLORS, PRIORIDADE_COLORS } from '../types';
 import type { TicketWithRelations, TicketPrestador } from '../types';
-import { ticketService } from '../services/ticketService';
+import { supabase } from '@/integrations/supabase/client';
+import { RMEDetailDialog } from '@/components/RMEDetailDialog';
 import { useToast } from '@/hooks/use-toast';
 
 interface TicketCardProps {
@@ -49,28 +52,67 @@ export const TicketCard = ({
   const { toast } = useToast();
   const isStaff = profile?.role === 'admin' || profile?.role === 'engenharia' || profile?.role === 'supervisao';
 
-  const handleViewOS = async () => {
+  const navigate = useNavigate();
+  const [rmeDialog, setRmeDialog] = useState<{ open: boolean; rme: any | null; loading: boolean }>({ open: false, rme: null, loading: false });
+
+  const handleOpenOS = (osId: string) => {
+    navigate(`/work-orders/${osId}`);
+  };
+
+  const handleOpenRME = async (rmeId: string) => {
     try {
-      const os = ticket.ordens_servico?.[0];
-      if (!os) {
-        toast({ title: 'Aviso', description: 'OS não encontrada' });
-        return;
+      setRmeDialog({ open: true, rme: null, loading: true });
+      const { data, error } = await supabase
+        .from('rme_relatorios')
+        .select(`*, tickets!inner(titulo, numero_ticket, clientes!inner(empresa, prioridade)), tecnicos!inner(profiles!inner(nome))`)
+        .eq('id', rmeId)
+        .single();
+      if (error) throw error;
+      let aprovador = null;
+      if ((data as any).aprovado_por) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('nome')
+          .eq('user_id', (data as any).aprovado_por)
+          .maybeSingle();
+        aprovador = profile ? { nome: profile.nome } : { nome: 'Desconhecido' };
       }
-      if (os.pdf_url) {
-        const signedUrl = await ticketService.getSignedPdfUrl(os.pdf_url);
-        if (signedUrl) {
-          window.open(signedUrl, '_blank');
-        } else {
-          toast({ title: 'Aviso', description: 'PDF ainda não disponível' });
-        }
-      } else {
-        toast({ title: 'Aviso', description: 'PDF ainda não gerado' });
-      }
+      setRmeDialog({ open: true, rme: { ...data, aprovador }, loading: false });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Erro desconhecido';
-      toast({ title: 'Erro', description: 'Erro ao abrir OS: ' + message, variant: 'destructive' });
+      toast({ title: 'Erro', description: 'Erro ao carregar RME: ' + message, variant: 'destructive' });
+      setRmeDialog({ open: false, rme: null, loading: false });
     }
   };
+
+  const getOSStatusLabel = (os: NonNullable<TicketWithRelations['ordens_servico']>[number]) => {
+    if (ticket.status === 'concluido') return 'Concluída';
+    if (ticket.status === 'em_execucao') return 'Em execução';
+    if (os.aceite_tecnico === 'aceito') return 'Aceita';
+    if (os.aceite_tecnico === 'recusado') return 'Recusada';
+    return 'Aberta';
+  };
+
+  const getAceiteLabel = (aceite: string) => {
+    const labels: Record<string, string> = { pendente: 'Aguardando aceite', aceito: 'Aceito', recusado: 'Recusado', nao_aplicavel: '—' };
+    return labels[aceite] || aceite;
+  };
+
+  const getRMEStatusLabel = (rme: { status: string | null; status_aprovacao: string }) => {
+    if (rme.status_aprovacao === 'aprovado') return 'Aprovado';
+    if (rme.status_aprovacao === 'rejeitado') return 'Rejeitado';
+    if (rme.status === 'concluido') return 'Aguardando aprovação';
+    return 'Rascunho';
+  };
+
+  // Build RME entries: each one tied to its OS
+  const rmeEntries = (ticket.ordens_servico || []).flatMap((os) =>
+    (os.rme_relatorios || []).map((rme) => ({
+      rme,
+      os,
+      tecnicoNome: os.tecnicos?.profiles?.nome || 'Técnico não atribuído',
+    }))
+  );
 
   const getGeocodingStatusBadge = (status: string | null | undefined) => {
     if (!status) return null;
@@ -256,9 +298,69 @@ export const TicketCard = ({
 
               {(ticket.status === 'ordem_servico_gerada' || ticket.status === 'em_execucao' || ticket.status === 'concluido') && (
                 <>
-                  <Button size="sm" variant="default" onClick={handleViewOS}>
-                    <Eye className="h-4 w-4 mr-1" />Ver OS {ticket.ordens_servico?.[0]?.numero_os}
-                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button size="sm" variant="default" disabled={!ticket.ordens_servico?.length}>
+                        <FileText className="h-4 w-4 mr-1" />OS
+                        {ticket.ordens_servico?.length ? ` (${ticket.ordens_servico.length})` : ''}
+                        <ChevronDown className="h-3 w-3 ml-1" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="w-80">
+                      <DropdownMenuLabel>Ordens de Serviço</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      {(ticket.ordens_servico || []).map((os) => (
+                        <DropdownMenuItem
+                          key={os.id}
+                          onClick={() => handleOpenOS(os.id)}
+                          className="flex flex-col items-start gap-1 py-2 cursor-pointer"
+                        >
+                          <div className="flex items-center gap-2 w-full">
+                            <span className="font-semibold">{os.numero_os}</span>
+                            <Badge variant="outline" className="text-[10px] ml-auto">{getOSStatusLabel(os)}</Badge>
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            Técnico: {os.tecnicos?.profiles?.nome || 'Não atribuído'}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            Aceite: {getAceiteLabel(os.aceite_tecnico)}
+                          </div>
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button size="sm" variant="outline" disabled={rmeEntries.length === 0}>
+                        <ClipboardCheck className="h-4 w-4 mr-1" />RME
+                        {rmeEntries.length > 0 ? ` (${rmeEntries.length})` : ''}
+                        <ChevronDown className="h-3 w-3 ml-1" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="w-80">
+                      <DropdownMenuLabel>Relatórios de Manutenção</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      {rmeEntries.length === 0 ? (
+                        <div className="px-2 py-2 text-xs text-muted-foreground">Nenhum RME criado ainda.</div>
+                      ) : (
+                        rmeEntries.map(({ rme, os, tecnicoNome }) => (
+                          <DropdownMenuItem
+                            key={rme.id}
+                            onClick={() => handleOpenRME(rme.id)}
+                            className="flex flex-col items-start gap-1 py-2 cursor-pointer"
+                          >
+                            <div className="flex items-center gap-2 w-full">
+                              <span className="font-semibold">RME · {os.numero_os}</span>
+                              <Badge variant="outline" className="text-[10px] ml-auto">{getRMEStatusLabel(rme)}</Badge>
+                            </div>
+                            <div className="text-xs text-muted-foreground">Técnico: {tecnicoNome}</div>
+                          </DropdownMenuItem>
+                        ))
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+
                   <Button size="sm" variant="outline" onClick={() => onEdit(ticket)}>Editar</Button>
                   <DeleteButton />
                 </>
@@ -277,6 +379,12 @@ export const TicketCard = ({
           )}
         </div>
       </CardContent>
+
+      <RMEDetailDialog
+        open={rmeDialog.open}
+        onClose={() => setRmeDialog({ open: false, rme: null, loading: false })}
+        rme={rmeDialog.rme}
+      />
     </Card>
   );
 };
