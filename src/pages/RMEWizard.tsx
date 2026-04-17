@@ -323,21 +323,44 @@ const RMEWizard = () => {
       }, {});
       const checklists = Object.entries(checklistsByCategory).map(([category, items]) => ({ category, items: items as { label: string; checked: boolean }[] }));
       const pdfData: RMEPDFData = {
-        numero_os: workOrder?.numero_os || "", cliente: formData.client_name, endereco: formData.address,
-        site_name: formData.site_name, data_execucao: formData.data_execucao, weekday: formData.weekday,
-        shift: formData.shift, start_time: formData.start_time, end_time: formData.end_time,
-        service_type: formData.service_type, collaboration: formData.collaboration, checklists,
-        images_posted: formData.images_posted, modules_cleaned_qty: formData.modules_cleaned_qty,
+        numero_os: workOrder?.numero_os || "",
+        cliente: formData.client_name,
+        endereco: formData.address,
+        site_name: formData.site_name,
+        ufv_solarz: formData.ufv_solarz || undefined,
+        micro_number: formData.micro_number || undefined,
+        inverter_number: formData.inverter_number || undefined,
+        tecnico_nome: tecnicoNome || profile?.nome || "Técnico",
+        collaboration: formData.collaboration,
+
+        data_execucao: formData.data_execucao,
+        data_fim_execucao: formData.data_fim_execucao,
+        weekday: formData.weekday,
+        shift: formData.shift,
+        start_time: formData.start_time,
+        end_time: formData.end_time,
+        service_type: formData.service_type,
+
+        checklists,
+
+        images_posted: formData.images_posted,
+        modules_cleaned_qty: formData.modules_cleaned_qty,
         string_box_qty: formData.string_box_qty,
-        fotos_antes_count: formData.fotos_antes.length, fotos_depois_count: formData.fotos_depois.length,
-        fotos_antes_urls: formData.fotos_antes, fotos_depois_urls: formData.fotos_depois,
+        fotos_antes_count: formData.fotos_antes.length,
+        fotos_depois_count: formData.fotos_depois.length,
+        fotos_antes_urls: formData.fotos_antes,
+        fotos_depois_urls: formData.fotos_depois,
+
+        materiais_utilizados: formData.materiais_utilizados,
+        servicos_executados: formData.servicos_executados,
+        condicoes_encontradas: formData.condicoes_encontradas,
+
         assinatura_tecnico: formData.assinatura_tecnico || undefined,
         assinatura_cliente: formData.assinatura_cliente || undefined,
         nome_cliente_assinatura: formData.nome_cliente_assinatura || undefined,
-        materiais_utilizados: formData.materiais_utilizados, servicos_executados: formData.servicos_executados,
-        condicoes_encontradas: formData.condicoes_encontradas, signatures: formData.signatures,
-        tecnico_nome: tecnicoNome || profile?.nome || "Técnico", status_aprovacao: formData.status,
-        ufv_solarz: formData.ufv_solarz || undefined,
+        signatures: formData.signatures,
+
+        status_aprovacao: formData.status,
       };
       await downloadRMEPDF(pdfData, `RME_${workOrder?.numero_os || "draft"}.pdf`);
       toast({ title: "PDF exportado com sucesso!" });
