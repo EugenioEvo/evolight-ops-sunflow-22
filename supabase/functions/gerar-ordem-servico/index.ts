@@ -136,6 +136,14 @@ serve(async (req) => {
         .maybeSingle()
 
       if (existingOS) {
+        // Garantir consistência: ticket deve refletir 'ordem_servico_gerada' mesmo
+        // quando a OS já existia (clique duplicado, retomada de fluxo, etc.)
+        if (ticket.status === 'aprovado') {
+          await supabaseClient
+            .from('tickets')
+            .update({ status: 'ordem_servico_gerada' })
+            .eq('id', ticketId)
+        }
         return new Response(JSON.stringify({ 
           success: true, 
           ordemServico: existingOS,
