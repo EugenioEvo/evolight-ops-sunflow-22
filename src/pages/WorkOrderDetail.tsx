@@ -35,7 +35,16 @@ const WorkOrderDetail = () => {
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/work-orders")}><ArrowLeft className="h-5 w-5" /></Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => {
+              if (window.history.length > 1) navigate(-1);
+              else navigate("/work-orders");
+            }}
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
           <div>
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-bold">{workOrder.numero_os}</h1>
