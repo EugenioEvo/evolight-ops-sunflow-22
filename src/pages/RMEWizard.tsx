@@ -168,6 +168,17 @@ const RMEWizard = () => {
   const loadWorkOrder = async (workOrderId: string) => {
     try {
       setLoading(true);
+      // If an RME already exists for this OS, redirect to edit it (avoid unique-constraint conflict)
+      const { data: existingRme } = await supabase
+        .from("rme_relatorios")
+        .select("id")
+        .eq("ordem_servico_id", workOrderId)
+        .maybeSingle();
+      if (existingRme?.id) {
+        navigate(`/rme-wizard/${existingRme.id}`, { replace: true });
+        return;
+      }
+
       const { data, error } = await supabase.from("ordens_servico").select("id, numero_os, site_name, ticket_id, tickets(id, endereco_servico, clientes(empresa, ufv_solarz))").eq("id", workOrderId).single();
       if (error) throw error;
       setWorkOrder(data as unknown as WorkOrderInfo);
