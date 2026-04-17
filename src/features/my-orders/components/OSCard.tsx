@@ -283,6 +283,21 @@ export function OSCard({
           <Button onClick={() => onVerOS(os)} variant="outline" className="w-full">
             <Eye className="h-4 w-4 mr-2" />Ver OS em PDF
           </Button>
+
+          {os.rme_relatorios?.[0] && os.rme_relatorios[0].status !== 'rascunho' && onVerRMEPDF && (
+            <Button
+              onClick={() => onVerRMEPDF(os)}
+              variant="outline"
+              className="w-full"
+              disabled={exportingRMEId === os.id}
+            >
+              {exportingRMEId === os.id ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Gerando RME...</>
+              ) : (
+                <><FileText className="h-4 w-4 mr-2" />Ver RME em PDF</>
+              )}
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>
