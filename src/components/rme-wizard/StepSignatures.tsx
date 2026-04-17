@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Plus, X, Check, Eraser } from "lucide-react";
 import SignatureCanvas from "react-signature-canvas";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,7 @@ import type { RMEFormData } from "@/pages/RMEWizard";
 interface Props {
   formData: RMEFormData;
   updateFormData: (updates: Partial<RMEFormData>) => void;
+  tecnicoNome?: string;
 }
 
 interface Material {
@@ -19,10 +20,31 @@ interface Material {
   tinha_estoque: boolean;
 }
 
-export const StepSignatures = ({ formData, updateFormData }: Props) => {
+export const StepSignatures = ({ formData, updateFormData, tecnicoNome = "" }: Props) => {
   const [newMaterial, setNewMaterial] = useState<Material>({ descricao: "", quantidade: 1, tinha_estoque: true });
   const tecnicoCanvasRef = useRef<SignatureCanvas | null>(null);
   const clienteCanvasRef = useRef<SignatureCanvas | null>(null);
+
+  // Default client signature name from OS/Ticket client when empty
+  useEffect(() => {
+    if (!formData.nome_cliente_assinatura && formData.client_name) {
+      updateFormData({ nome_cliente_assinatura: formData.client_name });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.client_name]);
+
+  // Auto-fill Responsável Técnico with the technician filling the RME
+  useEffect(() => {
+    if (tecnicoNome && !formData.signatures?.responsavel?.nome) {
+      updateFormData({
+        signatures: {
+          ...formData.signatures,
+          responsavel: { nome: tecnicoNome, at: new Date().toISOString() },
+        },
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tecnicoNome]);
 
   const addMaterial = () => {
     if (newMaterial.descricao.trim()) {
@@ -33,17 +55,6 @@ export const StepSignatures = ({ formData, updateFormData }: Props) => {
 
   const removeMaterial = (index: number) => {
     updateFormData({ materiais_utilizados: formData.materiais_utilizados.filter((_, i) => i !== index) });
-  };
-
-  const addSignature = (role: "responsavel" | "gerente_manutencao" | "gerente_projeto", nome: string) => {
-    if (!nome.trim()) return;
-    updateFormData({ signatures: { ...formData.signatures, [role]: { nome, at: new Date().toISOString() } } });
-  };
-
-  const removeSignature = (role: "responsavel" | "gerente_manutencao" | "gerente_projeto") => {
-    const updated = { ...formData.signatures };
-    delete updated[role];
-    updateFormData({ signatures: updated });
   };
 
   const saveCanvasSignature = (kind: "tecnico" | "cliente") => {
@@ -60,12 +71,6 @@ export const StepSignatures = ({ formData, updateFormData }: Props) => {
     if (kind === "tecnico") updateFormData({ assinatura_tecnico: "" });
     else updateFormData({ assinatura_cliente: "" });
   };
-
-  const signatureFields = [
-    { key: "responsavel" as const, label: "Responsável Técnico" },
-    { key: "gerente_manutencao" as const, label: "Gerente de Manutenção" },
-    { key: "gerente_projeto" as const, label: "Gerente de Projeto" },
-  ];
 
   return (
     <div className="space-y-6">
