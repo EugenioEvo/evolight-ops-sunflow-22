@@ -12,7 +12,7 @@ export function useMyOrdersActions(loadOrdensServico: () => Promise<void>, setAc
   const [navigating, setNavigating] = useState<string | null>(null);
   const [recusaDialogOS, setRecusaDialogOS] = useState<OrdemServico | null>(null);
   const navigate = useNavigate();
-  const { aceitarTicket, aceitarOS, recusarOS, loading: aceiteLoading } = useAceiteOS();
+  const { acceptOS, rejectOS, loading: aceiteLoading } = useAceiteOS();
   const { handleError } = useErrorHandler();
 
   const handleIniciarExecucao = async (os: OrdemServico) => {
@@ -73,19 +73,20 @@ export function useMyOrdersActions(loadOrdensServico: () => Promise<void>, setAc
     window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(endereco)}`, "_blank");
   };
 
+  // Aceite agora é direto na OS (1-step). aceitarTicket mantido como passthrough p/ acceptOS.
   const handleAceitarTicket = async (os: OrdemServico) => {
-    const success = await aceitarTicket(os.ticket_id);
+    const success = await acceptOS(os.id);
     if (success) await loadOrdensServico();
   };
 
   const handleAceitarOS = async (os: OrdemServico) => {
-    const success = await aceitarOS(os.id);
+    const success = await acceptOS(os.id);
     if (success) await loadOrdensServico();
   };
 
   const handleRecusarOS = async (motivo: string) => {
     if (!recusaDialogOS) return;
-    const success = await recusarOS(recusaDialogOS.id, motivo);
+    const success = await rejectOS(recusaDialogOS.id, motivo);
     if (success) { setRecusaDialogOS(null); await loadOrdensServico(); }
   };
 

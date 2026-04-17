@@ -99,7 +99,9 @@ const WorkOrderDetail = () => {
       {(workOrder as any).aceite_tecnico === 'recusado' && (
         <Alert variant="destructive">
           <XCircle className="h-4 w-4" /><AlertTitle>OS Recusada pelo Técnico</AlertTitle>
-          <AlertDescription>Motivo: {(workOrder as any).motivo_recusa || 'Não informado'}. Você pode reagendar ou reatribuir esta OS a outro técnico.</AlertDescription>
+          <AlertDescription>
+            Motivo: {(workOrder as any).motivo_recusa || 'Não informado'}. Reatribua esta OS a outro técnico — um novo email com botões Aceitar/Recusar será enviado automaticamente.
+          </AlertDescription>
         </Alert>
       )}
       {currentStatus === "em_execucao" && !isRMECompleted && (
