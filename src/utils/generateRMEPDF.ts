@@ -421,26 +421,15 @@ export const generateRMEPDF = async (data: RMEPDFData): Promise<Blob> => {
     yPos = (doc as any).lastAutoTable.finalY + 8;
   }
 
-  // 6.4 Responsável Técnico (printed name) + on-screen signatures
-  checkNewPage(72);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10);
-  doc.setTextColor(TEXT[0], TEXT[1], TEXT[2]);
-  doc.text('Responsável Técnico', margin, yPos);
-  yPos += 5;
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
-  const respNome = data.signatures?.responsavel?.nome || data.tecnico_nome || '-';
-  doc.text(respNome, margin, yPos);
-  yPos += 8;
-
-  // Side-by-side signature boxes
+  // 6.4 On-screen signatures (Técnico Responsável + Cliente)
+  checkNewPage(60);
   const sigBoxWidth = (contentWidth - 10) / 2;
   const sigBoxHeight = 36;
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(9);
-  doc.text('Assinatura do Técnico', margin, yPos);
+  doc.setTextColor(TEXT[0], TEXT[1], TEXT[2]);
+  doc.text('Assinatura do Técnico Responsável', margin, yPos);
   doc.text('Assinatura do Cliente', margin + sigBoxWidth + 10, yPos);
   yPos += 3;
 
@@ -460,11 +449,12 @@ export const generateRMEPDF = async (data: RMEPDFData): Promise<Blob> => {
   }
   yPos += sigBoxHeight + 6;
 
-  // Names below the boxes
+  // Names below the boxes — full name of responsible technician under his signature
+  const respNomeCompleto = data.signatures?.responsavel?.nome || data.tecnico_nome || '-';
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
   doc.setTextColor(MUTED[0], MUTED[1], MUTED[2]);
-  doc.text(data.tecnico_nome || '-', margin + sigBoxWidth / 2, yPos, { align: 'center' });
+  doc.text(respNomeCompleto, margin + sigBoxWidth / 2, yPos, { align: 'center' });
   doc.text(
     data.nome_cliente_assinatura || data.cliente || '-',
     margin + sigBoxWidth + 10 + sigBoxWidth / 2,
