@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -36,8 +37,12 @@ const GerenciarRME = () => {
   const approveMutation = useApproveRMEMutation();
   const rejectMutation = useRejectRMEMutation();
 
-  // Realtime updates
-  useGlobalRealtime(() => refetch());
+  // Realtime updates - refresh listing AND stats badges
+  const queryClient = useQueryClient();
+  useGlobalRealtime(() => {
+    refetch();
+    queryClient.invalidateQueries({ queryKey: ['rme-stats'] });
+  });
 
   const handleViewDetails = (rme: any) => {
     setSelectedRME(rme);

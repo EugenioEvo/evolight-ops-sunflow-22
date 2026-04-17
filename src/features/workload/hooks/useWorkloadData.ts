@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
+import { useGlobalRealtime } from '@/hooks/useRealtimeProvider';
 import { startOfMonth, endOfMonth, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import jsPDF from 'jspdf';
@@ -64,6 +65,9 @@ export const useWorkloadData = (service: WorkloadServicePort = defaultWorkloadSe
   }, []);
 
   useEffect(() => { if (selectedTecnico) loadWorkloadData(); }, [selectedTecnico, selectedMonth]);
+
+  // Realtime: refresh workload when OS/tickets change
+  useGlobalRealtime(() => { if (selectedTecnico) loadWorkloadData(); });
 
   const loadWorkloadData = async () => {
     setLoading(true);

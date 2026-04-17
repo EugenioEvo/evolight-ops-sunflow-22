@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
+import { useGlobalRealtime } from '@/hooks/useRealtimeProvider';
 import { clientService as defaultClientService } from '../../clients/services/clientService';
 
 interface ClientDashStats {
@@ -21,6 +22,9 @@ export const useClientDashData = (service = defaultClientService) => {
   const { handleAsyncError } = useErrorHandler();
 
   useEffect(() => { loadClientData(); }, [user]);
+
+  // Realtime: refresh when tickets/OS/RME change
+  useGlobalRealtime(() => { loadClientData(); });
 
   const loadClientData = async () => {
     if (!user || !profile?.id) return;
