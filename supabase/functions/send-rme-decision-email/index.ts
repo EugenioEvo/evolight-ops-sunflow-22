@@ -41,10 +41,14 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'RME not found' }), { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
-    // Author email
+    // Dedupe por e-mail normalizado (lower+trim)
     const recipients = new Set<string>()
-    const authorEmail = (rme as any).tecnicos?.profiles?.email
-    if (authorEmail) recipients.add(authorEmail)
+    const addEmail = (e?: string | null) => {
+      const norm = (e || '').trim().toLowerCase()
+      if (norm) recipients.add(norm)
+    }
+
+    addEmail((rme as any).tecnicos?.profiles?.email)
 
     // Technicians of linked accepted OSs
     const { data: linkedOS } = await supabase
@@ -54,8 +58,7 @@ serve(async (req) => {
       .neq('aceite_tecnico', 'recusado')
 
     for (const os of linkedOS || []) {
-      const email = (os as any).tecnicos?.profiles?.email
-      if (email) recipients.add(email)
+      addEmail((os as any).tecnicos?.profiles?.email)
     }
 
     if (recipients.size === 0) {
