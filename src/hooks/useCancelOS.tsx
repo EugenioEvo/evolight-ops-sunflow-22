@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { notifyOSCancelled } from '@/shared/services/notificationStrategies';
 
 export const useCancelOS = () => {
   const [loading, setLoading] = useState(false);
@@ -85,9 +86,14 @@ export const useCancelOS = () => {
 
       if (updateError) throw updateError;
 
+      // Notificar criador da OS (in-app + email) — fire-and-forget
+      notifyOSCancelled(osId, motivo).catch((e) =>
+        console.warn('notifyOSCancelled failed (non-blocking):', e)
+      );
+
       toast({
         title: 'OS cancelada',
-        description: `OS ${os.numero_os} foi cancelada. O técnico foi notificado.`
+        description: `OS ${os.numero_os} foi cancelada. O técnico e o criador foram notificados.`
       });
 
       return true;
