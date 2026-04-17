@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
+import { useGlobalRealtime } from '@/hooks/useRealtimeProvider';
 import { workOrderService } from '../services/workOrderService';
 import type { WorkOrder } from '../types';
 import { ITEMS_PER_PAGE } from '../types';
