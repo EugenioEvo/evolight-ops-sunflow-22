@@ -73,7 +73,32 @@ export function useMyOrdersActions(loadOrdensServico: () => Promise<void>, setAc
     }
   };
 
-  const handleLigarCliente = (telefone?: string) => {
+  const handleVerRMEPDF = async (os: OrdemServico) => {
+    const rmeId = os.rme_relatorios?.[0]?.id;
+    if (!rmeId) {
+      toast.error('Esta OS não possui RME para exportar.');
+      return;
+    }
+    setExportingRMEId(os.id);
+    try {
+      const { data, error } = await supabase
+        .from('rme_relatorios')
+        .select(`*,
+          tickets ( titulo, numero_ticket, endereco_servico, clientes ( empresa, endereco, ufv_solarz ) ),
+          tecnicos ( profiles ( nome ) )
+        `)
+        .eq('id', rmeId)
+        .single();
+      if (error || !data) throw error || new Error('RME não encontrado');
+      await rmeService.exportRMEPDF(data as any);
+      toast.success('Relatório RME baixado com sucesso.');
+    } catch (error) {
+      handleError(error, { fallbackMessage: 'Erro ao gerar PDF do RME' });
+    } finally {
+      setExportingRMEId(null);
+    }
+  };
+
     if (!telefone) {
       toast.error("Este cliente não possui telefone cadastrado.");
       return;
