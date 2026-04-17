@@ -1,137 +1,130 @@
 
 
-## Contexto
+## Plano Consolidado v3 — Ticket > OS > RME
 
-O usuário solicitou o registro de **Instruções Globais de Comportamento** no CORE da memória do projeto. Essas instruções definem padrões rigorosos para:
+### Decisões incorporadas (acumuladas)
+1. Lógica unificada in-app + email (mesma função `acceptOS/rejectOS`).
+2. Auth: Supabase + RLS no app; JWT curto apenas via email.
+3. App dispara emails (agendamento no aceite; recusa para criador).
+4. `motivo_recusa` obrigatório em ambos canais.
+5. `tecnico_responsavel_id` = técnico marcado como "Técnico Responsável" no modal.
+6. **NOVO**: Toda OS herda e exibe `tecnico_responsavel_id` (mesmo as OS secundárias do mesmo serviço).
+7. **NOVO**: Se o responsável recusa, o **próximo técnico que aceitar** vira responsável automaticamente — propagando para Ticket + todas OS linkadas.
+8. **NOVO**: Títulos de email de agendamento e recusa terminam com nome do técnico (ex: `"Agendamento: OS000025 - JJC Alimentos - João Silva"`).
 
-1. **Consistência de Padrões** — Registrar decisões, inspecionar padrões existentes, nunca divergir sem justificar
-2. **Segurança Operacional** — Nunca executar comandos destrutivos sem autorização explícita
-3. **Qualidade de Código** — Verificar tipos, tratar erros, funções puras, evitar duplicação
-4. **Comunicação** — Distinguir fatos de hipóteses, investigar causas raiz
-5. **Arquitetura Incremental** — Fase 0 (análise), Passo 1 (TDD/tipagem/fail-fast), Passo 2 (SOLID/DI), Passo 3 (padrões de projeto), Passo 4 (performance)
-
-## Análise
-
-O arquivo `mem://index.md` atual possui:
-- **Core** (linhas 3-7): 4 regras essenciais (Design, Architecture, Security, Flow/Rules)
-- **Memories** (linhas 9-95): 86 memórias detalhadas categorizadas
-
-As novas instruções devem ser incorporadas ao **Core** para que sejam aplicadas universalmente em todas as interações futuras, independentemente do contexto específico.
-
-## Plano de Implementação
-
-### 1. Criar arquivo de memória detalhado
-**Arquivo:** `mem://processo/global-behavior-guidelines`
-
-Conteúdo:
-```markdown
----
-name: Global Behavior Guidelines
-description: Core AI behavior rules for pattern consistency, operational safety, code quality, communication, and incremental development
-type: preference
 ---
 
-## Consistência de Padrões
+### Fase 0 — Memória CORE
+Adicionar 2 itens ao `mem://index.md` + arquivo `mem://processo/api-quality-and-recommendations` (rótulos `[VERIFICADO]/[DOCUMENTAÇÃO]/[PADRÃO GERAL]`; calibrar recomendações pelo perfil técnico do usuário).
 
-- **Inspecionar antes de implementar**: Sempre verificar como o padrão já estabelecido no projeto resolve problemas similares (rotas, stores, componentes, funções)
-- **Nunca divergir sem justificar**: Não adotar padrão diferente do existente sem explicar explicitamente e aguardar aprovação
-- **Sinalizar inconsistências**: Se detectar inconsistência no código existente, alertar antes de replicá-la
-- **Registrar decisões**: Ao tomar decisão de padrão, registrar imediatamente na memória em local adequado com data e motivo
-- **Consultar definições**: Sempre ler definições de Stack, API, Banco e Decisões Registradas antes de implementar
+---
 
-## Segurança Operacional
+### Fase 1 — UI (a, b, c, f)
 
-**NUNCA executar comandos irreversíveis ou destrutivos sem descrever o que fazem e aguardar autorização explícita.**
+**1a `TicketCard.tsx`**: remover dropdowns de seleção de técnico.
+**1b `FileUpload.tsx`**: galeria aceita `*/*`; preview com ícone genérico para não-imagens.
+**1c `MultiTechnicianOSDialog.tsx`**: remover "Equipe"; mover "Tipo de Trabalho" abaixo dos Técnicos; "Descrição Serviços Solicitados" como Textarea 3 linhas; "Técnico Responsável" como Select obrigatório populado pelos técnicos selecionados.
+**1f "+ Nova OS" standalone**: `WorkOrders.tsx` abre `MultiTechnicianOSDialog` em modo standalone (sem ticket). Cliente cria ticket implícito (`status='aprovado'`, `tecnico_responsavel_id` = responsável escolhido, `created_by=auth.uid()`) → invoca `gerar-ordem-servico`. Deprecar `/work-orders/new`.
 
-Comandos que SEMPRE requerem aprovação:
-- Drops de banco de dados
-- Resets de qualquer natureza
-- Force push em Git
-- `rm -rf` ou equivalentes
-- Migrations destrutivas (DROP TABLE, DROP COLUMN, ALTER com perda de dados)
-- Sobrescrita de dados em produção
-- Qualquer operação que não possa ser desfeita
+**Validação**: `tsc --noEmit` + teste E2E manual.
 
-**Regra**: Em caso de dúvida se um comando é destrutivo, perguntar antes de executar. Preferir sempre o comando mais conservador disponível.
+**CHECKPOINT 1** antes da Fase 2.
 
-## Qualidade de Código
+---
 
-- **Verificar tipos**: Executar `tsc --noEmit` ou equivalente após cada mudança significativa
-- **Nunca assumir sucesso**: Não retornar sucesso sem verificar o resultado real da operação
-- **Tratar erros individualmente**: Nunca permitir falhas silenciosas em `Promise.all` ou `try/catch` vazios
-- **Funções puras para cálculos**: Funções de cálculo devem ser puras — sem efeitos colaterais
-- **Evitar duplicação**: Antes de criar arquivo novo, verificar se já existe algo equivalente no projeto
+### Fase 2 — Aceite unificado, propagação de responsável, emails
 
-## Comunicação
+**2.1 Edge function `gerar-ordem-servico`**:
+- Receber `tecnico_responsavel_id` no payload.
+- Fazer UPDATE no ticket setando `tecnico_responsavel_id` (se ainda for null).
+- Criar uma OS por técnico selecionado; **todas** carregam `tecnico_responsavel_id` em campo dedicado (ver 2.2).
+- Email "Nova OS Atribuída" agora inclui botões **Aceitar** e **Recusar** (URLs apontam para `os-acceptance-action` com JWT curto).
 
-- **Distinguir fato de hipótese**: Comunicar claramente entre o que é observado (fato) e o que é suposição (hipótese)
-- **Admitir desconhecimento**: Quando não souber a causa de um erro, dizer explicitamente em vez de assumir e agir
-- **Investigar causa raiz**: Se uma correção não resolver o problema, investigar a causa raiz antes de propor outra solução
-- **Não assumir ambiente**: Não executar ações com base em suposições sobre servidor, hospedagem ou configuração sem evidência concreta
+**2.2 Schema — adicionar coluna `tecnico_responsavel_id` em `ordens_servico`** (migração):
+- `tecnico_responsavel_id uuid` (referência lógica a `tecnicos.id`).
+- Permite que cada OS carregue a identidade do responsável atual do serviço, não apenas o técnico individual da OS.
+- UI de listagem/detalhe passa a exibir badge "Responsável: {nome}" em todas as OS do mesmo ticket.
 
-## Arquitetura e Desenvolvimento Incremental
+**2.3 Refatorar `useAceiteOS.tsx`** — função única consolidada:
+- `acceptOS(osId)`:
+  - UPDATE OS (`aceite_tecnico='aceito'`, `aceite_at`).
+  - **Lógica de promoção a responsável**: se o ticket atual tem `tecnico_responsavel_id` apontando para um técnico cuja OS foi recusada (ou nulo), promover este técnico a responsável: UPDATE `tickets.tecnico_responsavel_id` + UPDATE em todas `ordens_servico` do mesmo ticket setando `tecnico_responsavel_id`.
+  - Invocar `send-calendar-invite` (action `create`) — título: `"Agendamento: {numero_os} - {cliente} - {nome_tecnico}"`.
+  - Notificações in-app para staff.
+- `rejectOS(osId, motivo)`:
+  - UPDATE OS (`aceite_tecnico='recusado'`, `motivo_recusa`).
+  - Reverter ticket para `aprovado` apenas se for a única OS ativa.
+  - Invocar `send-rejection-notice` — título: `"OS Recusada: {numero_os} - {cliente} - {nome_tecnico}"`.
+  - Notificações in-app para staff e criador.
+- Remover `aceitarTicket` (1-step direto na OS).
 
-### Fase 0: Análise de Contexto e Tomada de Decisão
-Antes de escrever ou refatorar código:
-1. Analisar histórico da conversa para entender a natureza do projeto
-2. Se faltar contexto para decidir abordagem ou padrão, **PARAR** e fazer perguntas claras
-3. Só prosseguir após definir a melhor solução junto ao usuário
+**2.4 Nova edge function `os-acceptance-action`** (`verify_jwt = false`):
+- Valida JWT HS256 (payload `{os_id, tecnico_id, exp:7d}`, assinado com `SUPABASE_JWT_SECRET`).
+- `?action=aceitar` → executa mesma lógica de `acceptOS` (incluindo promoção a responsável).
+- `?action=recusar` → renderiza HTML leve com textarea obrigatória; POST executa `rejectOS`.
+- Retorna HTML de confirmação.
 
-### Sequência Incremental (revisar a cada passo se os ajustes não criaram efeitos negativos)
+**2.5 Nova edge function `send-rejection-notice`** (`verify_jwt = true`):
+- Recebe `os_id`. JOIN `ordens_servico → tickets → profiles.email` (do `created_by`).
+- Envia via Resend para o criador, assunto `"OS Recusada: {numero_os} - {cliente} - {nome_tecnico}"`, link `/work-orders/{id}`.
 
-**Passo 1: Fundações, Testes e Defesa**
-- **TDD Simulado**: Pensar primeiro nos casos extremos. Definir interfaces/contratos e estrutura dos testes antes de implementar a lógica principal
-- **Tipagem Estrita**: Adicionar tipagem explícita para todos os parâmetros, retornos e variáveis importantes
-- **Fail-Fast**: Validar os dados logo no início das funções e lançar erros claros imediatamente
+**2.6 Nova edge function `resend-os-acceptance-email`** (`verify_jwt = true`):
+- Reenvia email com botões aceite/recusa para um técnico ao reatribuir uma OS recusada.
 
-**Passo 2: Arquitetura e Modularização**
-- **SOLID**: Garantir que classes e funções tenham responsabilidade única (SRP) e respeitem os demais princípios SOLID
-- **Injeção de Dependência**: Estruturar o código para receber suas dependências de fora, mantendo tudo desacoplado e testável
+**2.7 `WorkOrderDetail.tsx`** — Reatribuição quando `aceite_tecnico='recusado'`:
+- Dropdown "Reatribuir técnico".
+- Ao trocar: UPDATE `tecnico_id` + reset `aceite_tecnico='pendente'` + `motivo_recusa=null` → invoca `resend-os-acceptance-email`.
 
-**Passo 3: Padrões de Projeto**
-- Avaliar e aplicar os Padrões Criacionais, Estruturais ou Comportamentais que melhor resolverem o problema de forma escalável
-- Se houver mais de uma opção, explicar brevemente o motivo da escolha baseado no contexto
+**2.8 `send-calendar-invite`**: remover botão "Confirmar Presença" do template base (lógica de aceite migrou); ajustar assunto para incluir nome do técnico; manter actions `cancel`/`reassign_removed`/`update`.
 
-**Passo 4: Performance e Execução**
-- **Async/Concorrência**: Otimizar chamadas de I/O, rede ou banco utilizando programação assíncrona
-- **Lazy Evaluation**: Usar generators ou streams para processamento de listas ou arquivos grandes
-- **Memoization/Caching**: Otimizar cálculos pesados ou consultas repetitivas armazenando resultados em cache
+**Validação Fase 2**: deploy de todas funções; teste E2E completo (aprovar → gerar OS → email com botões → recusa via email → criador notificado → reatribuir → novo aceite → calendário enviado → responsável propagado para Ticket+OS linkadas).
 
-**Regra de Execução**: Se o código resultante for muito grande, não entregar tudo de uma vez. Explicar o planejamento, entregar as fundações (Passos 1 e 2) e aguardar confirmação para avançar para otimização final.
+---
 
-## Aplicação
+### Fase 3 — Limpeza
+- Remover `WorkOrderCreate.tsx` e rota antiga.
+- Atualizar memórias: `os-generation/technician-acceptance-flow`, novas `email-delivery/os-acceptance-email-buttons`, `os-generation/standalone-os-creation`, `os-generation/responsible-technician-promotion`.
 
-Estas regras devem ser aplicadas universalmente em todas as interações, independentemente do contexto específico. São princípios fundamentais que norteiam todas as decisões técnicas e comunicacionais no projeto.
+---
+
+### Detalhes técnicos críticos
+
+**Promoção automática a responsável** (in-app e email — lógica idêntica):
+```text
+ON acceptOS(osId):
+  current_responsavel = tickets.tecnico_responsavel_id
+  IF current_responsavel IS NULL OR
+     EXISTS(OS with tecnico_id=current_responsavel AND aceite_tecnico='recusado'):
+    novo_responsavel = OS.tecnico_id (do que está aceitando)
+    UPDATE tickets SET tecnico_responsavel_id = novo_responsavel
+    UPDATE ordens_servico SET tecnico_responsavel_id = novo_responsavel
+      WHERE ticket_id = OS.ticket_id
 ```
 
-### 2. Atualizar `mem://index.md`
-
-Adicionar nova entrada no **Core** (linha 8, antes da seção Memories):
-
-```markdown
-- **Process:** Inspect existing patterns before implementing. NEVER execute destructive commands without explicit approval. Verify types after changes. Incremental development: analyze context → TDD/typing/fail-fast → SOLID/DI → design patterns → performance. [Details](mem://processo/global-behavior-guidelines)
+**Schema change necessária** (migração):
+```sql
+ALTER TABLE ordens_servico ADD COLUMN tecnico_responsavel_id uuid;
+CREATE INDEX idx_os_tecnico_responsavel ON ordens_servico(tecnico_responsavel_id);
 ```
+Sem FK rígida (consistente com padrão atual da tabela). Validação por trigger opcional ou client-side.
 
-**Justificativa**: Manter o Core conciso (≤150 chars) com link para detalhes completos, conforme estrutura estabelecida.
+**Templates de assunto de email**:
+| Tipo | Formato |
+|---|---|
+| Nova OS Atribuída | `Nova OS Atribuída: {numero_os} - {nome_tecnico}` |
+| Agendamento (aceite) | `Agendamento: {numero_os} - {cliente} - {nome_tecnico}` |
+| OS Recusada | `OS Recusada: {numero_os} - {cliente} - {nome_tecnico}` |
 
-### 3. Validação
+**Risco — promoção em condição de corrida**: dois técnicos aceitam simultaneamente. Mitigação: usar `UPDATE ... WHERE tecnico_responsavel_id IS NULL OR tecnico_responsavel_id = ?` (condicional) — apenas o primeiro update terá efeito; segundo retorna 0 rows e ignora promoção. `[PADRÃO GERAL]` — validar com teste após deploy.
 
-Após implementação, verificar:
-- [ ] Arquivo `mem://processo/global-behavior-guidelines` criado corretamente
-- [ ] `mem://index.md` atualizado com nova entrada no Core
-- [ ] Todas as 86 memórias existentes preservadas
-- [ ] Formatação Markdown consistente
+---
 
-## Impacto
-
-**Positivo:**
-- Estabelece diretrizes claras para todas as futuras interações
-- Previne execuções destrutivas acidentais
-- Garante consistência arquitetural e de padrões
-- Melhora qualidade do código gerado
-- Reduz retrabalho por decisões inconsistentes
-
-**Atenção:**
-- Nenhuma memória existente será alterada ou removida
-- Apenas adição de nova regra no Core e novo arquivo de memória detalhado
+### Ordem de execução
+1. Fase 0 (memória)
+2. Fase 1a, 1b, 1c, 1f
+3. **CHECKPOINT 1**
+4. Migração schema (2.2) + Fase 2.1, 2.3 (refator in-app) — testar promoção localmente
+5. Fase 2.4–2.8 (edge functions + emails) — deploy incremental
+6. **CHECKPOINT 2** — E2E completo
+7. Fase 3 — limpeza e memórias
 
