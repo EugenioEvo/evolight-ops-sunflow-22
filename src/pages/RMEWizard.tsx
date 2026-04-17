@@ -79,7 +79,9 @@ const getWeekday = (date: Date): string => ["Domingo", "Segunda", "Terça", "Qua
 
 const defaultFormData: RMEFormData = {
   ordem_servico_id: "", ticket_id: "", tecnico_id: "",
-  data_execucao: new Date().toISOString().split("T")[0], weekday: getWeekday(new Date()),
+  data_execucao: new Date().toISOString().split("T")[0],
+  data_fim_execucao: new Date().toISOString().split("T")[0],
+  weekday: getWeekday(new Date()),
   site_name: "", collaboration: [], micro_number: "", inverter_number: "",
   service_type: [], shift: "manha", start_time: "08:00", end_time: "17:00",
   images_posted: false, modules_cleaned_qty: 0, string_box_qty: 0,
