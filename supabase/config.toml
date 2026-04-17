@@ -47,3 +47,18 @@ verify_jwt = true
 
 [functions.send-ticket-decision-email]
 verify_jwt = true
+
+[functions.send-os-cancelled-email]
+verify_jwt = true
+
+[functions.send-os-altered-email]
+verify_jwt = true
+
+[functions.send-ticket-deleted-email]
+verify_jwt = true
+
+[functions.send-rme-submitted-email]
+verify_jwt = true
+
+[functions.send-rme-decision-email]
+verify_jwt = true

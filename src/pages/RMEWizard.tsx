@@ -215,7 +215,12 @@ const RMEWizard = () => {
       return;
     }
     const rmeId = await saveRME(true);
-    if (rmeId) navigate(`/work-orders/${formData.ordem_servico_id}`);
+    if (rmeId) {
+      // Notify staff (in-app + email) that an RME is awaiting approval (#14) — fire-and-forget
+      const { notifyRMESubmitted } = await import('@/shared/services/notificationStrategies');
+      notifyRMESubmitted(rmeId).catch((e) => console.warn('notifyRMESubmitted failed:', e));
+      navigate(`/work-orders/${formData.ordem_servico_id}`);
+    }
   };
 
   const updateChecklistItem = async (itemId: string, checked: boolean) => {
