@@ -318,6 +318,10 @@ const RMEWizard = () => {
   };
 
   const updateChecklistItem = async (itemId: string, checked: boolean) => {
+    if (isLocked) {
+      toast({ title: "RME bloqueado para edição", description: "Aguarde a avaliação. Edição só é liberada se o avaliador recusar.", variant: "destructive" });
+      return;
+    }
     const { error } = await supabase.from("rme_checklist_items").update({ checked }).eq("id", itemId);
     if (!error) setChecklistItems(prev => prev.map(item => item.id === itemId ? { ...item, checked } : item));
   };
