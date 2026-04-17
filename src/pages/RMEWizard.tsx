@@ -229,6 +229,7 @@ const RMEWizard = () => {
         assinatura_cliente: data.assinatura_cliente || "",
         nome_cliente_assinatura: data.nome_cliente_assinatura || "",
         status: data.status || "rascunho",
+        status_aprovacao: data.status_aprovacao || "pendente",
         client_name: os?.tickets?.clientes?.empresa || "", address: os?.tickets?.endereco_servico || "", ufv_solarz: os?.tickets?.clientes?.ufv_solarz || "",
       });
       const { data: items } = await supabase.from("rme_checklist_items").select("*").eq("rme_id", rmeId).order("category").order("item_key");
