@@ -55,7 +55,14 @@ interface WorkOrderInfo {
   numero_os: string;
   site_name: string | null;
   ticket_id: string;
+  tecnico_responsavel_id?: string | null;
   tickets: { id: string; endereco_servico: string; clientes: { empresa: string; ufv_solarz: string | null } };
+}
+
+export interface TechnicianOption {
+  id: string; // tecnicos.id
+  nome: string;
+  email: string;
 }
 
 const STEPS = [
@@ -99,6 +106,8 @@ const RMEWizard = () => {
   const [checklistItems, setChecklistItems] = useState<any[]>([]);
   const [tecnicoNome, setTecnicoNome] = useState("");
   const [formData, setFormData] = useState<RMEFormData>(defaultFormData);
+  const [availableTechnicians, setAvailableTechnicians] = useState<TechnicianOption[]>([]);
+  const [isResponsavel, setIsResponsavel] = useState(false);
 
   const isNewRME = id === "new";
 
@@ -114,6 +123,45 @@ const RMEWizard = () => {
     if (data) { setTecnicoId(data.id); setTecnicoNome((data.profiles as any)?.nome || ""); }
   };
 
+  /**
+   * Loads technicians with approved OS for the same ticket (for collaboration dropdown)
+   * and checks whether the current user is the responsible technician.
+   * Responsible = ordens_servico.tecnico_responsavel_id (prestador) matched against current profile email.
+   */
+  const loadGroupContext = async (ticketId: string, currentTecnicoId: string | null) => {
+    const { data: osList } = await supabase
+      .from("ordens_servico")
+      .select("id, tecnico_id, tecnico_responsavel_id, aceite_tecnico, tecnicos:tecnico_id(id, profiles(nome, email))")
+      .eq("ticket_id", ticketId)
+      .eq("aceite_tecnico", "aprovado");
+
+    const techs: TechnicianOption[] = [];
+    const seen = new Set<string>();
+    let respPrestadorId: string | null = null;
+    for (const os of osList || []) {
+      const tec: any = (os as any).tecnicos;
+      if (tec?.id && !seen.has(tec.id)) {
+        seen.add(tec.id);
+        techs.push({ id: tec.id, nome: tec.profiles?.nome || "Sem nome", email: tec.profiles?.email || "" });
+      }
+      if (!respPrestadorId && (os as any).tecnico_responsavel_id) {
+        respPrestadorId = (os as any).tecnico_responsavel_id;
+      }
+    }
+    setAvailableTechnicians(techs);
+
+    if (currentTecnicoId && respPrestadorId && profile?.email) {
+      const { data: prestador } = await supabase
+        .from("prestadores")
+        .select("email")
+        .eq("id", respPrestadorId)
+        .maybeSingle();
+      setIsResponsavel(!!prestador?.email && prestador.email.toLowerCase() === profile.email.toLowerCase());
+    } else {
+      setIsResponsavel(false);
+    }
+  };
+
   const loadWorkOrder = async (workOrderId: string) => {
     try {
       setLoading(true);
@@ -121,6 +169,7 @@ const RMEWizard = () => {
       if (error) throw error;
       setWorkOrder(data as unknown as WorkOrderInfo);
       setFormData(prev => ({ ...prev, ordem_servico_id: data.id, ticket_id: data.ticket_id, site_name: data.site_name || "", client_name: (data.tickets as any)?.clientes?.empresa || "", address: (data.tickets as any)?.endereco_servico || "", ufv_solarz: (data.tickets as any)?.clientes?.ufv_solarz || "" }));
+      await loadGroupContext(data.ticket_id, tecnicoId);
     } catch (error: any) {
       toast({ title: "Erro ao carregar OS", description: error.message, variant: "destructive" });
       navigate("/work-orders");
@@ -158,6 +207,7 @@ const RMEWizard = () => {
       });
       const { data: items } = await supabase.from("rme_checklist_items").select("*").eq("rme_id", rmeId).order("category").order("item_key");
       setChecklistItems(items || []);
+      await loadGroupContext(data.ticket_id, tecnicoId);
     } catch (error: any) {
       toast({ title: "Erro ao carregar RME", description: error.message, variant: "destructive" });
       navigate("/work-orders");
@@ -210,6 +260,14 @@ const RMEWizard = () => {
   const handlePrevious = () => { if (currentStep > 1) setCurrentStep(currentStep - 1); };
 
   const handleFinalize = async () => {
+    if (!isResponsavel) {
+      toast({
+        title: "Ação restrita ao Técnico Responsável",
+        description: "Somente o técnico responsável do grupo de OS/Ticket pode concluir o RME.",
+        variant: "destructive",
+      });
+      return;
+    }
     if (!formData.servicos_executados || formData.servicos_executados.length < 10) {
       toast({ title: "Campo obrigatório", description: "Preencha a descrição do serviço realizado", variant: "destructive" });
       return;
@@ -306,7 +364,7 @@ const RMEWizard = () => {
 
       <div className="p-4 max-w-4xl mx-auto">
         <Card><CardContent className="p-4 sm:p-6">
-          {currentStep === 1 && <StepIdentification formData={formData} updateFormData={updateFormData} />}
+          {currentStep === 1 && <StepIdentification formData={formData} updateFormData={updateFormData} availableTechnicians={availableTechnicians} />}
           {currentStep === 2 && <StepServiceShift formData={formData} updateFormData={updateFormData} />}
           {currentStep === 3 && <StepChecklists checklistItems={checklistItems} updateChecklistItem={updateChecklistItem} categories={["conexoes", "eletrica", "internet"]} />}
           {currentStep === 4 && <StepEvidence formData={formData} updateFormData={updateFormData} rmeId={formData.id} osId={formData.ordem_servico_id} />}
@@ -321,8 +379,14 @@ const RMEWizard = () => {
           {currentStep < STEPS.length ? (
             <Button onClick={handleNext} disabled={saving} className="flex-1 h-12">{saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}Próximo</Button>
           ) : (
-            <Button onClick={handleFinalize} disabled={saving} className="flex-1 h-12 bg-green-600 hover:bg-green-700">
-              {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}Concluir RME
+            <Button
+              onClick={handleFinalize}
+              disabled={saving || !isResponsavel}
+              className="flex-1 h-12 bg-green-600 hover:bg-green-700"
+              title={!isResponsavel ? "Apenas o Técnico Responsável pode concluir o RME" : undefined}
+            >
+              {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
+              {isResponsavel ? "Concluir RME" : "Apenas Técnico Responsável"}
             </Button>
           )}
         </div>
