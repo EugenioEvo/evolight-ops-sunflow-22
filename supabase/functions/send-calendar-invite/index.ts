@@ -43,13 +43,28 @@ const handler = async (req: Request): Promise<Response> => {
     }
     const userId = claimsData.claims.sub;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    const { data: roleData } = await supabase
-      .from('user_roles').select('role').eq('user_id', userId).maybeSingle();
-    if (!roleData || !['admin', 'engenharia', 'supervisao'].includes(roleData.role)) {
-      return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: corsHeaders });
-    }
 
     const { os_id, action }: CalendarInviteRequest = await req.json();
+
+    // Authorization: staff OR the assigned technician of this OS may trigger the invite.
+    const { data: roleData } = await supabase
+      .from('user_roles').select('role').eq('user_id', userId).maybeSingle();
+    const isStaff = roleData && ['admin', 'engenharia', 'supervisao'].includes(roleData.role);
+
+    let isAssignedTechnician = false;
+    if (!isStaff && os_id) {
+      const { data: osTech } = await supabase
+        .from('ordens_servico')
+        .select('tecnico_id, tecnicos!inner(profiles!inner(user_id))')
+        .eq('id', os_id)
+        .maybeSingle();
+      const techUserId = (osTech as any)?.tecnicos?.profiles?.user_id;
+      isAssignedTechnician = techUserId === userId;
+    }
+
+    if (!isStaff && !isAssignedTechnician) {
+      return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: corsHeaders });
+    }
     
     console.log(`[send-calendar-invite] Action: ${action}, OS ID: ${os_id}`);
 
