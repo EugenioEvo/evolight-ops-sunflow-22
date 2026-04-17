@@ -133,7 +133,7 @@ const RMEWizard = () => {
       .from("ordens_servico")
       .select("id, tecnico_id, tecnico_responsavel_id, aceite_tecnico, tecnicos:tecnico_id(id, profiles(nome, email))")
       .eq("ticket_id", ticketId)
-      .eq("aceite_tecnico", "aprovado");
+      .in("aceite_tecnico", ["aprovado", "aceito"]);
 
     const techs: TechnicianOption[] = [];
     const seen = new Set<string>();
