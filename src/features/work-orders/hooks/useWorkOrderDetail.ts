@@ -78,10 +78,11 @@ export const useWorkOrderDetail = (service = defaultService) => {
     const s = workOrder.tickets.status;
     if (s === 'concluido') return 'concluida';
     if (s === 'em_execucao') {
-      // Only treat as "aguardando_rme" while RME is still in draft (technician still owes work).
-      // Pendente / aprovado / rejeitado mean the RME exists and has been submitted at least once.
+      // Qualquer estado do RME que não seja "aprovado" mantém a OS como Aguardando RME.
+      // Só volta para "em_execucao" puro se ainda não houver RME criado.
       const rmeStatus = workOrder.rme_relatorios[0]?.status;
-      return rmeStatus === 'rascunho' ? 'aguardando_rme' : 'em_execucao';
+      if (!rmeStatus) return 'em_execucao';
+      return rmeStatus === 'aprovado' ? 'em_execucao' : 'aguardando_rme';
     }
     if (s === 'cancelado') return 'cancelada';
     return 'aberta';
