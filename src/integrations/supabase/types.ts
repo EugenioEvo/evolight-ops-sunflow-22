@@ -887,8 +887,7 @@ export type Database = {
           signatures: Json | null
           site_name: string | null
           start_time: string | null
-          status: string | null
-          status_aprovacao: string
+          status: string
           string_box_qty: number | null
           tecnico_id: string
           testes_realizados: string | null
@@ -929,8 +928,7 @@ export type Database = {
           signatures?: Json | null
           site_name?: string | null
           start_time?: string | null
-          status?: string | null
-          status_aprovacao?: string
+          status?: string
           string_box_qty?: number | null
           tecnico_id: string
           testes_realizados?: string | null
@@ -971,8 +969,7 @@ export type Database = {
           signatures?: Json | null
           site_name?: string | null
           start_time?: string | null
-          status?: string | null
-          status_aprovacao?: string
+          status?: string
           string_box_qty?: number | null
           tecnico_id?: string
           testes_realizados?: string | null

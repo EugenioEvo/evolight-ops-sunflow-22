@@ -31,9 +31,9 @@ export const useRMEQuery = (params: RMEQueryParams = {}) => {
         `, { count: 'exact' })
         .order('created_at', { ascending: false });
 
-      // Filtro de status
+      // Filtro de status (unified column: rascunho|pendente|aprovado|rejeitado)
       if (status !== 'all') {
-        query = query.eq('status_aprovacao', status);
+        query = query.eq('status', status);
       }
 
       // Busca
@@ -97,7 +97,7 @@ export const useApproveRMEMutation = () => {
       const { error } = await supabase
         .from('rme_relatorios')
         .update({
-          status_aprovacao: 'aprovado',
+          status: 'aprovado',
           aprovado_por: user.id,
           data_aprovacao: new Date().toISOString(),
           observacoes_aprovacao: observacoes,
@@ -137,7 +137,7 @@ export const useRejectRMEMutation = () => {
       const { error } = await supabase
         .from('rme_relatorios')
         .update({
-          status_aprovacao: 'rejeitado',
+          status: 'rejeitado',
           aprovado_por: user.id,
           data_aprovacao: new Date().toISOString(),
           observacoes_aprovacao: motivo,
@@ -170,14 +170,15 @@ export const useRMEStatsQuery = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('rme_relatorios')
-        .select('status_aprovacao');
+        .select('status');
 
       if (error) throw error;
 
       const stats = {
-        pendente: data?.filter(r => r.status_aprovacao === 'pendente').length || 0,
-        aprovado: data?.filter(r => r.status_aprovacao === 'aprovado').length || 0,
-        rejeitado: data?.filter(r => r.status_aprovacao === 'rejeitado').length || 0,
+        rascunho: data?.filter(r => r.status === 'rascunho').length || 0,
+        pendente: data?.filter(r => r.status === 'pendente').length || 0,
+        aprovado: data?.filter(r => r.status === 'aprovado').length || 0,
+        rejeitado: data?.filter(r => r.status === 'rejeitado').length || 0,
         total: data?.length || 0,
       };
 

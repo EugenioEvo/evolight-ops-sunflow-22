@@ -91,7 +91,8 @@ const GerenciarRME = () => {
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, { label: string; variant: any; icon: any }> = {
-      pendente: { label: 'Pendente', variant: 'outline', icon: Clock },
+      rascunho: { label: 'Rascunho', variant: 'outline', icon: FileText },
+      pendente: { label: 'Aguardando aprovação', variant: 'outline', icon: Clock },
       aprovado: { label: 'Aprovado', variant: 'default', icon: CheckCircle },
       rejeitado: { label: 'Rejeitado', variant: 'destructive', icon: XCircle },
     };
@@ -192,7 +193,8 @@ const GerenciarRME = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos</SelectItem>
-                <SelectItem value="pendente">Pendente</SelectItem>
+                <SelectItem value="rascunho">Rascunho</SelectItem>
+                <SelectItem value="pendente">Aguardando aprovação</SelectItem>
                 <SelectItem value="aprovado">Aprovado</SelectItem>
                 <SelectItem value="rejeitado">Rejeitado</SelectItem>
               </SelectContent>
@@ -228,7 +230,7 @@ const GerenciarRME = () => {
                         <CardTitle className="text-lg">
                           {rme.tickets?.numero_ticket} - {rme.tickets?.titulo}
                         </CardTitle>
-                        {getStatusBadge(rme.status_aprovacao)}
+                        {getStatusBadge(rme.status)}
                       </div>
                       <CardDescription>
                         <div className="space-y-1">
@@ -253,7 +255,7 @@ const GerenciarRME = () => {
                           {rme.data_aprovacao && (
                             <div>
                               <strong>
-                                {rme.status_aprovacao === 'aprovado' ? 'Aprovado' : 'Rejeitado'} em:
+                                {rme.status === 'aprovado' ? 'Aprovado' : 'Rejeitado'} em:
                               </strong>{' '}
                               {format(new Date(rme.data_aprovacao), 'dd/MM/yyyy HH:mm')}
                               {rme.aprovador?.nome && (

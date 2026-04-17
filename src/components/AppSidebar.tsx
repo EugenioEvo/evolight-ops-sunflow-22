@@ -83,7 +83,7 @@ export function AppSidebar() {
           event: '*', 
           schema: 'public', 
           table: 'rme_relatorios',
-          filter: 'status_aprovacao=eq.pendente'
+          filter: 'status=eq.pendente'
         }, loadPendingRMEsCount)
         .subscribe();
       
@@ -95,7 +95,7 @@ export function AppSidebar() {
     const { count } = await supabase
       .from('rme_relatorios')
       .select('*', { count: 'exact', head: true })
-      .eq('status_aprovacao', 'pendente');
+      .eq('status', 'pendente');
     
     setPendingRMEsCount(count || 0);
   };

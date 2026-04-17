@@ -45,8 +45,8 @@ export interface RMEFormData {
   assinatura_tecnico: string;
   assinatura_cliente: string;
   nome_cliente_assinatura: string;
+  /** Unified status: rascunho | pendente | aprovado | rejeitado */
   status: string;
-  status_aprovacao?: string;
   client_name: string;
   address: string;
   ufv_solarz?: string;
@@ -90,7 +90,7 @@ const defaultFormData: RMEFormData = {
   signatures: {},
   fotos_antes: [], fotos_depois: [],
   assinatura_tecnico: "", assinatura_cliente: "", nome_cliente_assinatura: "",
-  status: "rascunho", status_aprovacao: "pendente", client_name: "", address: "", ufv_solarz: "",
+  status: "rascunho", client_name: "", address: "", ufv_solarz: "",
 };
 
 const RMEWizard = () => {
@@ -229,7 +229,6 @@ const RMEWizard = () => {
         assinatura_cliente: data.assinatura_cliente || "",
         nome_cliente_assinatura: data.nome_cliente_assinatura || "",
         status: data.status || "rascunho",
-        status_aprovacao: data.status_aprovacao || "pendente",
         client_name: os?.tickets?.clientes?.empresa || "", address: os?.tickets?.endereco_servico || "", ufv_solarz: os?.tickets?.clientes?.ufv_solarz || "",
       });
       const { data: items } = await supabase.from("rme_checklist_items").select("*").eq("rme_id", rmeId).order("category").order("item_key");
@@ -244,9 +243,8 @@ const RMEWizard = () => {
 
   const updateFormData = useCallback((updates: Partial<RMEFormData>) => { setFormData(prev => ({ ...prev, ...updates })); }, []);
 
-  // RME fica bloqueado para edição quando concluído E ainda não rejeitado.
-  // Só volta a ser editável após rejeição pelo avaliador (status_aprovacao === 'rejeitado').
-  const isLocked = formData.status === "concluido" && formData.status_aprovacao !== "rejeitado";
+  // RME locked when not in editable state (rascunho/rejeitado).
+  const isLocked = formData.status !== "rascunho" && formData.status !== "rejeitado";
 
   const saveRME = async (finalize = false) => {
     if (isLocked) {
@@ -269,7 +267,7 @@ const RMEWizard = () => {
         assinatura_tecnico: formData.assinatura_tecnico || null,
         assinatura_cliente: formData.assinatura_cliente || null,
         nome_cliente_assinatura: formData.nome_cliente_assinatura || null,
-        status: finalize ? "concluido" : "rascunho",
+        status: finalize ? "pendente" : (formData.status === "rejeitado" ? "rejeitado" : "rascunho"),
       };
       let rmeId = formData.id;
       if (rmeId) {
@@ -374,7 +372,6 @@ const RMEWizard = () => {
         nome_cliente_assinatura: formData.nome_cliente_assinatura || undefined,
         signatures: formData.signatures,
 
-        status_aprovacao: formData.status_aprovacao || "pendente",
         status: formData.status || "rascunho",
       };
       await downloadRMEPDF(pdfData, `RME_${workOrder?.numero_os || "draft"}.pdf`);
@@ -427,14 +424,19 @@ const RMEWizard = () => {
       </div>
 
       <div className="p-4 max-w-4xl mx-auto">
-        {isLocked && formData.status_aprovacao === "aprovado" && (
+        {formData.status === "aprovado" && (
           <div className="mb-4 rounded-md border border-green-500/40 bg-green-500/10 px-4 py-3 text-sm text-green-900 dark:text-green-200">
-            <strong>RME concluído.</strong> O relatório foi aprovado e está finalizado. Edição bloqueada — apenas visualização e impressão de PDF.
+            <strong>RME aprovado.</strong> O relatório foi aprovado e está finalizado. Edição bloqueada — apenas visualização e impressão de PDF.
           </div>
         )}
-        {isLocked && formData.status_aprovacao !== "aprovado" && (
+        {formData.status === "pendente" && (
           <div className="mb-4 rounded-md border border-yellow-500/40 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-900 dark:text-yellow-200">
-            <strong>RME pendente de aprovação.</strong> A edição está bloqueada — apenas visualização e impressão de PDF. Será liberada apenas se o avaliador recusar o relatório.
+            <strong>RME aguardando aprovação.</strong> A edição está bloqueada — apenas visualização e impressão de PDF. Será liberada apenas se o avaliador rejeitar o relatório.
+          </div>
+        )}
+        {formData.status === "rejeitado" && (
+          <div className="mb-4 rounded-md border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-900 dark:text-red-200">
+            <strong>RME rejeitado.</strong> Revise os pontos apontados pelo avaliador, edite o relatório e re-submeta para nova aprovação.
           </div>
         )}
         <Card><CardContent className="p-4 sm:p-6">
@@ -452,7 +454,7 @@ const RMEWizard = () => {
           <Button variant="outline" onClick={handlePrevious} disabled={currentStep === 1} className="flex-1 h-12">Anterior</Button>
           {isLocked ? (
             <div className="flex-1 h-12 flex items-center justify-center text-sm text-muted-foreground border rounded-md px-4 text-center">
-              {formData.status_aprovacao === "aprovado" ? "RME concluído — somente leitura" : "RME pendente — somente leitura"}
+              {formData.status === "aprovado" ? "RME aprovado — somente leitura" : "RME aguardando aprovação — somente leitura"}
             </div>
           ) : currentStep < STEPS.length ? (
             <Button onClick={handleNext} disabled={saving} className="flex-1 h-12">{saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}Próximo</Button>
@@ -463,7 +465,7 @@ const RMEWizard = () => {
               className="flex-1 h-12 bg-green-600 hover:bg-green-700"
             >
               {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
-              Concluir RME
+              {formData.status === "rejeitado" ? "Re-submeter RME" : "Concluir RME"}
             </Button>
           ) : (
             <div className="flex-1 h-12 flex items-center justify-center text-sm text-muted-foreground border rounded-md px-4 text-center">
