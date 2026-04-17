@@ -4,6 +4,8 @@ import { toast } from "sonner";
 import { useAceiteOS } from "@/hooks/useAceiteOS";
 import { useErrorHandler } from "@/hooks/useErrorHandler";
 import { generateOSPDF } from "@/utils/generateOSPDF";
+import { supabase } from "@/integrations/supabase/client";
+import { rmeService } from "@/features/rme/services/rmeService";
 import { myOrdersService } from "../services/myOrdersService";
 import type { OrdemServico } from "../types";
 
