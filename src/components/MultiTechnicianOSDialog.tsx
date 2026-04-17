@@ -234,18 +234,19 @@ export const MultiTechnicianOSDialog = ({
       const effectiveTicketId = await ensureTicketId();
 
       // For ticket-based mode: ensure ticket carries the chosen Técnico Responsável
-      // (Phase 2 will move this into the edge function; safe to set here too.)
-      if (!isStandalone) {
+      // (skip in add-mode: don't overwrite the existing responsável)
+      if (!isStandalone && !isAddMode) {
         await supabase
           .from('tickets')
           .update({ tecnico_responsavel_id: tecnicoResponsavelId })
           .eq('id', effectiveTicketId);
       }
 
-      for (const prestadorId of selectedPrestadores) {
+      // Em add-mode geramos OS apenas para os técnicos NOVOS
+      const targetPrestadores = isAddMode ? newSelectedPrestadores : selectedPrestadores;
+
+      for (const prestadorId of targetPrestadores) {
         try {
-          // [DOCUMENTAÇÃO] supabase.functions.invoke — Lovable Cloud edge function.
-          // tecnico_responsavel_id is forwarded; edge function will store it on each OS in Phase 2.
           const { data, error } = await supabase.functions.invoke('gerar-ordem-servico', {
             body: {
               ticketId: effectiveTicketId,
@@ -254,7 +255,7 @@ export const MultiTechnicianOSDialog = ({
               inspetor_responsavel: 'TODOS',
               tipo_trabalho: formData.tipo_trabalho,
               tecnico_override_id: prestadorId,
-              tecnico_responsavel_id: tecnicoResponsavelId,
+              tecnico_responsavel_id: isAddMode ? (ticket?.tecnico_responsavel_id || tecnicoResponsavelId) : tecnicoResponsavelId,
             },
           });
           if (error) throw error;
