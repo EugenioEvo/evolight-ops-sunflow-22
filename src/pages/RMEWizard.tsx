@@ -364,7 +364,7 @@ const RMEWizard = () => {
 
       <div className="p-4 max-w-4xl mx-auto">
         <Card><CardContent className="p-4 sm:p-6">
-          {currentStep === 1 && <StepIdentification formData={formData} updateFormData={updateFormData} />}
+          {currentStep === 1 && <StepIdentification formData={formData} updateFormData={updateFormData} availableTechnicians={availableTechnicians} />}
           {currentStep === 2 && <StepServiceShift formData={formData} updateFormData={updateFormData} />}
           {currentStep === 3 && <StepChecklists checklistItems={checklistItems} updateChecklistItem={updateChecklistItem} categories={["conexoes", "eletrica", "internet"]} />}
           {currentStep === 4 && <StepEvidence formData={formData} updateFormData={updateFormData} rmeId={formData.id} osId={formData.ordem_servico_id} />}
@@ -379,8 +379,14 @@ const RMEWizard = () => {
           {currentStep < STEPS.length ? (
             <Button onClick={handleNext} disabled={saving} className="flex-1 h-12">{saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}Próximo</Button>
           ) : (
-            <Button onClick={handleFinalize} disabled={saving} className="flex-1 h-12 bg-green-600 hover:bg-green-700">
-              {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}Concluir RME
+            <Button
+              onClick={handleFinalize}
+              disabled={saving || !isResponsavel}
+              className="flex-1 h-12 bg-green-600 hover:bg-green-700"
+              title={!isResponsavel ? "Apenas o Técnico Responsável pode concluir o RME" : undefined}
+            >
+              {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
+              {isResponsavel ? "Concluir RME" : "Apenas Técnico Responsável"}
             </Button>
           )}
         </div>
