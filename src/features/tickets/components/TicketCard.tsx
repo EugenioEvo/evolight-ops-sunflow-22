@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
-import { Calendar, Clock, MapPin, Settings, FileText, CheckCircle, XCircle, Loader2, RefreshCw, Star, AlertTriangle, ChevronDown, ClipboardCheck, type LucideIcon } from 'lucide-react';
+import { Calendar, Clock, MapPin, Settings, FileText, CheckCircle, XCircle, Loader2, RefreshCw, Star, AlertTriangle, ChevronDown, ClipboardCheck, UserPlus, type LucideIcon } from 'lucide-react';
 import { STATUS_COLORS, PRIORIDADE_COLORS } from '../types';
 import type { TicketWithRelations, TicketPrestador } from '../types';
 import { supabase } from '@/integrations/supabase/client';
@@ -26,6 +26,7 @@ interface TicketCardProps {
   onDelete: (id: string) => void;
   onAssignTechnician: (ticketId: string, technicianId: string) => void;
   onGenerateOS: (ticket: TicketWithRelations) => void;
+  onAddTechnicians?: (ticket: TicketWithRelations) => void;
   onReprocessGeocode: (id: string, address: string) => void;
   getSortedPrestadores: (ticket?: TicketWithRelations) => TicketPrestador[];
   renderPrestadorOption: (prestador: TicketPrestador, index: number) => React.ReactNode;
@@ -45,6 +46,7 @@ export const TicketCard = ({
   onDelete,
   onAssignTechnician,
   onGenerateOS,
+  onAddTechnicians,
   onReprocessGeocode,
   getSortedPrestadores,
   renderPrestadorOption,
@@ -332,6 +334,17 @@ export const TicketCard = ({
                       ))}
                     </DropdownMenuContent>
                   </DropdownMenu>
+
+                  {onAddTechnicians && ticket.status !== 'concluido' && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => onAddTechnicians(ticket)}
+                      title="Adicionar mais técnicos a este ticket"
+                    >
+                      <UserPlus className="h-4 w-4 mr-1" />+ Técnico
+                    </Button>
+                  )}
 
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>

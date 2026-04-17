@@ -38,6 +38,8 @@ interface MultiTechnicianOSDialogProps {
   prestadores: Prestador[];
   /** Required when ticketId is undefined (standalone). */
   clientes?: ClienteOption[];
+  /** IDs de prestadores já alocados (modo "adicionar técnicos"): aparecem marcados e desabilitados. */
+  alreadyAssignedPrestadorIds?: string[];
   onSuccess?: () => void;
 }
 
@@ -48,10 +50,12 @@ export const MultiTechnicianOSDialog = ({
   ticket,
   prestadores,
   clientes = [],
+  alreadyAssignedPrestadorIds = [],
   onSuccess,
 }: MultiTechnicianOSDialogProps) => {
   const { user } = useAuth();
   const isStandalone = !ticketId;
+  const isAddMode = alreadyAssignedPrestadorIds.length > 0;
 
   const [loading, setLoading] = useState(false);
   const [selectedPrestadores, setSelectedPrestadores] = useState<string[]>([]);
@@ -88,13 +92,19 @@ export const MultiTechnicianOSDialog = ({
     }
   }, [open]);
 
-  // Pre-select assigned tech (ticket-based mode)
+  // Pre-select assigned tech (ticket-based mode) — pre-selects the already assigned ones
+  // when in "add mode" so the user clearly sees who is already allocated.
   useEffect(() => {
-    if (open && !isStandalone && ticket?.tecnico_responsavel_id) {
-      setSelectedPrestadores([ticket.tecnico_responsavel_id]);
-      setTecnicoResponsavelId(ticket.tecnico_responsavel_id);
+    if (open && !isStandalone) {
+      if (isAddMode) {
+        setSelectedPrestadores([...alreadyAssignedPrestadorIds]);
+        setTecnicoResponsavelId(ticket?.tecnico_responsavel_id || alreadyAssignedPrestadorIds[0] || "");
+      } else if (ticket?.tecnico_responsavel_id) {
+        setSelectedPrestadores([ticket.tecnico_responsavel_id]);
+        setTecnicoResponsavelId(ticket.tecnico_responsavel_id);
+      }
     }
-  }, [open, ticket, isStandalone]);
+  }, [open, ticket, isStandalone, isAddMode, alreadyAssignedPrestadorIds]);
 
   // Availability check
   useEffect(() => {
@@ -138,6 +148,8 @@ export const MultiTechnicianOSDialog = ({
   );
 
   const handleTogglePrestador = (prestadorId: string, checked: boolean) => {
+    // Em modo "adicionar técnicos", os já alocados são fixos
+    if (isAddMode && alreadyAssignedPrestadorIds.includes(prestadorId)) return;
     const availability = availabilityMap.get(prestadorId);
     if (availability && !availability.available && checked) {
       toast.error("Este técnico possui conflito de agenda no horário selecionado");
@@ -155,11 +167,20 @@ export const MultiTechnicianOSDialog = ({
     }));
   };
 
+  // Técnicos que efetivamente serão alvo de geração: em add-mode, somente os NOVOS
+  const newSelectedPrestadores = isAddMode
+    ? selectedPrestadores.filter(id => !alreadyAssignedPrestadorIds.includes(id))
+    : selectedPrestadores;
+
   const validate = (): string | null => {
-    if (selectedPrestadores.length === 0) return "Selecione ao menos um técnico";
-    if (!tecnicoResponsavelId) return "Selecione o Técnico Responsável";
-    if (formData.tipo_trabalho.length === 0) return "Selecione ao menos um tipo de trabalho";
-    if (!formData.descricao_servicos.trim()) return "Informe a descrição dos serviços solicitados";
+    if (isAddMode) {
+      if (newSelectedPrestadores.length === 0) return "Selecione ao menos um novo técnico para alocar";
+    } else {
+      if (selectedPrestadores.length === 0) return "Selecione ao menos um técnico";
+      if (!tecnicoResponsavelId) return "Selecione o Técnico Responsável";
+      if (formData.tipo_trabalho.length === 0) return "Selecione ao menos um tipo de trabalho";
+      if (!formData.descricao_servicos.trim()) return "Informe a descrição dos serviços solicitados";
+    }
     if (isStandalone) {
       if (!standaloneData.cliente_id) return "Selecione um cliente";
       if (!standaloneData.endereco_servico.trim()) return "Informe o endereço do serviço";
@@ -213,18 +234,19 @@ export const MultiTechnicianOSDialog = ({
       const effectiveTicketId = await ensureTicketId();
 
       // For ticket-based mode: ensure ticket carries the chosen Técnico Responsável
-      // (Phase 2 will move this into the edge function; safe to set here too.)
-      if (!isStandalone) {
+      // (skip in add-mode: don't overwrite the existing responsável)
+      if (!isStandalone && !isAddMode) {
         await supabase
           .from('tickets')
           .update({ tecnico_responsavel_id: tecnicoResponsavelId })
           .eq('id', effectiveTicketId);
       }
 
-      for (const prestadorId of selectedPrestadores) {
+      // Em add-mode geramos OS apenas para os técnicos NOVOS
+      const targetPrestadores = isAddMode ? newSelectedPrestadores : selectedPrestadores;
+
+      for (const prestadorId of targetPrestadores) {
         try {
-          // [DOCUMENTAÇÃO] supabase.functions.invoke — Lovable Cloud edge function.
-          // tecnico_responsavel_id is forwarded; edge function will store it on each OS in Phase 2.
           const { data, error } = await supabase.functions.invoke('gerar-ordem-servico', {
             body: {
               ticketId: effectiveTicketId,
@@ -233,7 +255,7 @@ export const MultiTechnicianOSDialog = ({
               inspetor_responsavel: 'TODOS',
               tipo_trabalho: formData.tipo_trabalho,
               tecnico_override_id: prestadorId,
-              tecnico_responsavel_id: tecnicoResponsavelId,
+              tecnico_responsavel_id: isAddMode ? (ticket?.tecnico_responsavel_id || tecnicoResponsavelId) : tecnicoResponsavelId,
             },
           });
           if (error) throw error;
@@ -268,11 +290,19 @@ export const MultiTechnicianOSDialog = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{isStandalone ? "Nova Ordem de Serviço" : "Gerar Ordem de Serviço"}</DialogTitle>
+          <DialogTitle>
+            {isStandalone
+              ? "Nova Ordem de Serviço"
+              : isAddMode
+                ? "Adicionar Técnicos à OS"
+                : "Gerar Ordem de Serviço"}
+          </DialogTitle>
           <DialogDescription>
             {isStandalone
               ? "Crie uma OS diretamente. Um ticket será criado automaticamente para acompanhamento."
-              : "Selecione um ou mais técnicos para gerar OS individuais para cada um."}
+              : isAddMode
+                ? "Selecione novos técnicos para alocar a este ticket. Será gerada uma nova OS para cada técnico adicionado, mantendo os já existentes."
+                : "Selecione um ou mais técnicos para gerar OS individuais para cada um."}
           </DialogDescription>
         </DialogHeader>
 
@@ -360,7 +390,7 @@ export const MultiTechnicianOSDialog = ({
                       id={`tech-${prestador.id}`}
                       checked={isSelected}
                       onCheckedChange={(checked) => handleTogglePrestador(prestador.id, checked as boolean)}
-                      disabled={!!hasConflict || !hasEmail}
+                      disabled={!!hasConflict || !hasEmail || (isAddMode && alreadyAssignedPrestadorIds.includes(prestador.id))}
                     />
                     <label htmlFor={`tech-${prestador.id}`} className="flex-1 text-sm font-medium cursor-pointer flex items-center gap-2">
                       <span className={!hasEmail ? 'text-destructive' : ''}>{prestador.nome}</span>
@@ -368,6 +398,9 @@ export const MultiTechnicianOSDialog = ({
                         <Badge variant="destructive" className="text-[10px]">
                           <AlertTriangle className="h-3 w-3 mr-1" />Sem email
                         </Badge>
+                      )}
+                      {isAddMode && alreadyAssignedPrestadorIds.includes(prestador.id) && (
+                        <Badge variant="outline" className="text-[10px]">Já alocado</Badge>
                       )}
                     </label>
                     <div className="flex-shrink-0">
@@ -389,10 +422,18 @@ export const MultiTechnicianOSDialog = ({
                 );
               })}
             </div>
-            {selectedPrestadores.length > 0 && (
-              <p className="text-xs text-muted-foreground">
-                {selectedPrestadores.length} técnico(s) selecionado(s) — será gerada 1 OS para cada
-              </p>
+            {isAddMode ? (
+              newSelectedPrestadores.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  {newSelectedPrestadores.length} novo(s) técnico(s) será(ão) adicionado(s) — 1 OS para cada.
+                </p>
+              )
+            ) : (
+              selectedPrestadores.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  {selectedPrestadores.length} técnico(s) selecionado(s) — será gerada 1 OS para cada
+                </p>
+              )
             )}
           </div>
 
@@ -411,58 +452,60 @@ export const MultiTechnicianOSDialog = ({
               );
             })}
 
-          {/* Tipo de Trabalho — moved BELOW Técnicos */}
-          <div className="space-y-2">
-            <Label>Tipo de Trabalho <span className="text-destructive">*</span></Label>
-            <div className="flex gap-6 flex-wrap">
-              {['internet', 'eletrica', 'limpeza'].map(tipo => (
-                <div key={tipo} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={`tipo-${tipo}`}
-                    checked={formData.tipo_trabalho.includes(tipo)}
-                    onCheckedChange={(checked) => handleTipoTrabalhoChange(tipo, checked as boolean)}
-                  />
-                  <label htmlFor={`tipo-${tipo}`} className="text-sm font-medium">
-                    {tipo === 'eletrica' ? 'ELÉTRICA' : tipo.toUpperCase()}
-                  </label>
+          {/* Tipo / Responsável / Descrição — apenas no modo "gerar OS" inicial */}
+          {!isAddMode && (
+            <>
+              <div className="space-y-2">
+                <Label>Tipo de Trabalho <span className="text-destructive">*</span></Label>
+                <div className="flex gap-6 flex-wrap">
+                  {['internet', 'eletrica', 'limpeza'].map(tipo => (
+                    <div key={tipo} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`tipo-${tipo}`}
+                        checked={formData.tipo_trabalho.includes(tipo)}
+                        onCheckedChange={(checked) => handleTipoTrabalhoChange(tipo, checked as boolean)}
+                      />
+                      <label htmlFor={`tipo-${tipo}`} className="text-sm font-medium">
+                        {tipo === 'eletrica' ? 'ELÉTRICA' : tipo.toUpperCase()}
+                      </label>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </div>
+              </div>
 
-          {/* Técnico Responsável (REQUIRED) */}
-          <div className="space-y-2">
-            <Label htmlFor="responsavel">Técnico Responsável <span className="text-destructive">*</span></Label>
-            <Select
-              value={tecnicoResponsavelId}
-              onValueChange={setTecnicoResponsavelId}
-              disabled={responsavelOptions.length === 0}
-            >
-              <SelectTrigger id="responsavel">
-                <SelectValue placeholder={responsavelOptions.length === 0 ? "Selecione técnicos acima" : "Escolha o responsável"} />
-              </SelectTrigger>
-              <SelectContent>
-                {responsavelOptions.map(p => (
-                  <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground">
-              Responsável principal pelo serviço. Se recusar, o próximo a aceitar assume.
-            </p>
-          </div>
+              <div className="space-y-2">
+                <Label htmlFor="responsavel">Técnico Responsável <span className="text-destructive">*</span></Label>
+                <Select
+                  value={tecnicoResponsavelId}
+                  onValueChange={setTecnicoResponsavelId}
+                  disabled={responsavelOptions.length === 0}
+                >
+                  <SelectTrigger id="responsavel">
+                    <SelectValue placeholder={responsavelOptions.length === 0 ? "Selecione técnicos acima" : "Escolha o responsável"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {responsavelOptions.map(p => (
+                      <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Responsável principal pelo serviço. Se recusar, o próximo a aceitar assume.
+                </p>
+              </div>
 
-          {/* Descrição Serviços Solicitados (textarea) */}
-          <div className="space-y-2">
-            <Label htmlFor="descricao_servicos">Descrição Serviços Solicitados <span className="text-destructive">*</span></Label>
-            <Textarea
-              id="descricao_servicos"
-              rows={3}
-              value={formData.descricao_servicos}
-              onChange={(e) => setFormData(prev => ({ ...prev, descricao_servicos: e.target.value }))}
-              placeholder="Descreva os serviços a serem executados"
-            />
-          </div>
+              <div className="space-y-2">
+                <Label htmlFor="descricao_servicos">Descrição Serviços Solicitados <span className="text-destructive">*</span></Label>
+                <Textarea
+                  id="descricao_servicos"
+                  rows={3}
+                  value={formData.descricao_servicos}
+                  onChange={(e) => setFormData(prev => ({ ...prev, descricao_servicos: e.target.value }))}
+                  placeholder="Descreva os serviços a serem executados"
+                />
+              </div>
+            </>
+          )}
 
           <div className="p-4 bg-warning/10 border border-warning/30 rounded-md">
             <p className="text-xs">
@@ -474,10 +517,17 @@ export const MultiTechnicianOSDialog = ({
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>Cancelar</Button>
-          <Button onClick={handleSubmit} disabled={loading || selectedPrestadores.length === 0}>
-            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Gerar {selectedPrestadores.length > 1 ? `${selectedPrestadores.length} OS` : 'OS'}
-          </Button>
+          {isAddMode ? (
+            <Button onClick={handleSubmit} disabled={loading || newSelectedPrestadores.length === 0}>
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Adicionar {newSelectedPrestadores.length > 1 ? `${newSelectedPrestadores.length} técnicos` : 'técnico'}
+            </Button>
+          ) : (
+            <Button onClick={handleSubmit} disabled={loading || selectedPrestadores.length === 0}>
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Gerar {selectedPrestadores.length > 1 ? `${selectedPrestadores.length} OS` : 'OS'}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
