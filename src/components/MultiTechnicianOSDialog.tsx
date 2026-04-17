@@ -290,11 +290,19 @@ export const MultiTechnicianOSDialog = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{isStandalone ? "Nova Ordem de Serviço" : "Gerar Ordem de Serviço"}</DialogTitle>
+          <DialogTitle>
+            {isStandalone
+              ? "Nova Ordem de Serviço"
+              : isAddMode
+                ? "Adicionar Técnicos à OS"
+                : "Gerar Ordem de Serviço"}
+          </DialogTitle>
           <DialogDescription>
             {isStandalone
               ? "Crie uma OS diretamente. Um ticket será criado automaticamente para acompanhamento."
-              : "Selecione um ou mais técnicos para gerar OS individuais para cada um."}
+              : isAddMode
+                ? "Selecione novos técnicos para alocar a este ticket. Será gerada uma nova OS para cada técnico adicionado, mantendo os já existentes."
+                : "Selecione um ou mais técnicos para gerar OS individuais para cada um."}
           </DialogDescription>
         </DialogHeader>
 
