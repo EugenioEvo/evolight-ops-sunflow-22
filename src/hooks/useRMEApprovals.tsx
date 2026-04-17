@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { notifyRMEDecision, notifyRMESubmitted } from '@/shared/services/notificationStrategies';
 
 export const useRMEApprovals = () => {
   const [loading, setLoading] = useState(false);
@@ -10,7 +11,7 @@ export const useRMEApprovals = () => {
     setLoading(true);
     try {
       const { data: userData } = await supabase.auth.getUser();
-      
+
       const { error } = await supabase
         .from('rme_relatorios')
         .update({
@@ -23,9 +24,14 @@ export const useRMEApprovals = () => {
 
       if (error) throw error;
 
+      // Fire-and-forget: notify everyone involved (#12)
+      notifyRMEDecision(rmeId, 'aprovado', observacoes).catch((e) =>
+        console.warn('notifyRMEDecision approved failed:', e)
+      );
+
       toast({
         title: 'RME Aprovado',
-        description: 'O relatório foi aprovado com sucesso!',
+        description: 'O relatório foi aprovado. Técnicos envolvidos foram notificados.',
       });
 
       return true;
@@ -55,11 +61,13 @@ export const useRMEApprovals = () => {
     setLoading(true);
     try {
       const { data: userData } = await supabase.auth.getUser();
-      
+
+      // Reject + revert to draft so technician can edit and resubmit (#13)
       const { error } = await supabase
         .from('rme_relatorios')
         .update({
-          status_aprovacao: 'rejeitado',
+          status_aprovacao: 'pendente',
+          status: 'rascunho',
           aprovado_por: userData.user?.id,
           data_aprovacao: new Date().toISOString(),
           observacoes_aprovacao: motivo,
@@ -68,9 +76,14 @@ export const useRMEApprovals = () => {
 
       if (error) throw error;
 
+      // Fire-and-forget: notify everyone involved (#13)
+      notifyRMEDecision(rmeId, 'rejeitado', motivo).catch((e) =>
+        console.warn('notifyRMEDecision rejected failed:', e)
+      );
+
       toast({
         title: 'RME Rejeitado',
-        description: 'O relatório foi rejeitado.',
+        description: 'O relatório voltou para rascunho. O técnico foi notificado para revisar.',
       });
 
       return true;
@@ -87,5 +100,12 @@ export const useRMEApprovals = () => {
     }
   };
 
-  return { approveRME, rejectRME, loading };
+  /** Trigger staff notifications when an RME is submitted for approval (#14) */
+  const submitRMEForApproval = async (rmeId: string) => {
+    notifyRMESubmitted(rmeId).catch((e) =>
+      console.warn('notifyRMESubmitted failed:', e)
+    );
+  };
+
+  return { approveRME, rejectRME, submitRMEForApproval, loading };
 };
