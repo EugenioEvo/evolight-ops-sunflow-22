@@ -143,8 +143,8 @@ export const FileUpload: React.FC<FileUploadProps> = ({
         </span>
       </div>
 
-      {/* Gallery input (no capture) */}
-      <input id="file-gallery" type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" onChange={handleFileUpload} className="hidden" />
+      {/* Gallery input — accepts any file type */}
+      <input id="file-gallery" type="file" multiple accept="*/*" onChange={handleFileUpload} className="hidden" />
       {/* Camera input */}
       <input id="file-camera" type="file" accept="image/*" capture="environment" onChange={handleFileUpload} className="hidden" />
 

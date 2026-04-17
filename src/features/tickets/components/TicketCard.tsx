@@ -245,48 +245,14 @@ export const TicketCard = ({
                 </>
               )}
 
-              {ticket.status === 'aprovado' && !ticket.tecnico_responsavel_id && (
+              {ticket.status === 'aprovado' && (
                 <>
-                  <Select onValueChange={(value) => onAssignTechnician(ticket.id, value)}>
-                    <SelectTrigger className="h-8 w-[200px]">
-                      <SelectValue placeholder="Atribuir técnico" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {getSortedPrestadores(ticket).map((prestador, index) => renderPrestadorOption(prestador, index))}
-                    </SelectContent>
-                  </Select>
-                  <Button size="sm" variant="outline" onClick={() => onEdit(ticket)}>Editar</Button>
-                  <DeleteButton />
-                </>
-              )}
-
-              {ticket.status === 'aprovado' && ticket.tecnico_responsavel_id && (
-                <>
-                  <Select onValueChange={(value) => onAssignTechnician(ticket.id, value)} defaultValue={ticket.tecnico_responsavel_id}>
-                    <SelectTrigger className="h-8 w-[200px]">
-                      <SelectValue placeholder="Trocar técnico" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {getSortedPrestadores(ticket).map((prestador, index) => renderPrestadorOption(prestador, index))}
-                    </SelectContent>
-                  </Select>
                   <Button size="sm" onClick={() => onGenerateOS(ticket)} className="flex items-center gap-2">
                     <FileText className="h-4 w-4" />Gerar Ordem de Serviço
                   </Button>
                   <Button size="sm" variant="outline" onClick={() => onEdit(ticket)}>Editar</Button>
                   <DeleteButton />
                 </>
-              )}
-
-              {(ticket.status === 'ordem_servico_gerada' || ticket.status === 'em_execucao') && (
-                <Select onValueChange={(value) => onAssignTechnician(ticket.id, value)} defaultValue={ticket.tecnico_responsavel_id || undefined}>
-                  <SelectTrigger className="h-8 w-[200px]">
-                    <SelectValue placeholder="Trocar técnico" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {getSortedPrestadores(ticket).map((prestador, index) => renderPrestadorOption(prestador, index))}
-                  </SelectContent>
-                </Select>
               )}
 
               {(ticket.status === 'ordem_servico_gerada' || ticket.status === 'em_execucao' || ticket.status === 'concluido') && (
