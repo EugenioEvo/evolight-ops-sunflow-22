@@ -10,7 +10,7 @@ export const createTicketService = (client?: AppSupabaseClient) => {
     async loadAll(): Promise<TicketWithRelations[]> {
       const { data, error } = await db
         .from('tickets')
-        .select(`*, ordens_servico(numero_os, id, pdf_url, aceite_tecnico, motivo_recusa, tecnico_id, data_programada, tecnicos:tecnico_id(profiles(nome, email)), rme_relatorios(id, status, status_aprovacao)), clientes(empresa, endereco, cidade, estado, cep, ufv_solarz, prioridade, profiles(nome, email)), prestadores:tecnico_responsavel_id(id, nome, email)`)
+        .select(`*, ordens_servico(numero_os, id, pdf_url, aceite_tecnico, motivo_recusa, tecnico_id, data_programada, tecnicos:tecnico_id(profiles(nome, email)), rme_relatorios(id, status)), clientes(empresa, endereco, cidade, estado, cep, ufv_solarz, prioridade, profiles(nome, email)), prestadores:tecnico_responsavel_id(id, nome, email)`)
         .order('created_at', { ascending: false });
       if (error) throw error;
       return (data || []) as unknown as TicketWithRelations[];

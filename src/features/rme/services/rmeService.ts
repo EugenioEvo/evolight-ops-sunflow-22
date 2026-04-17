@@ -11,7 +11,7 @@ export const createRmeService = (client?: AppSupabaseClient) => {
     async fetchRMEs() {
       const { data, error } = await db
         .from('rme_relatorios')
-        .select(`*, status_aprovacao, aprovado_por, data_aprovacao, observacoes_aprovacao,
+        .select(`*, aprovado_por, data_aprovacao, observacoes_aprovacao,
           tickets!inner(titulo, numero_ticket, endereco_servico, clientes!inner(empresa, endereco, ufv_solarz)),
           tecnicos!inner(profiles!inner(nome))`)
         .order('created_at', { ascending: false });
@@ -115,7 +115,7 @@ export const createRmeService = (client?: AppSupabaseClient) => {
         condicoes_encontradas: rme.condicoes_encontradas || '-',
         signatures: rme.signatures || {},
         tecnico_nome: rme.tecnicos?.profiles?.nome || '-',
-        status_aprovacao: rme.status_aprovacao || 'pendente',
+        status: (rme as any).status || 'rascunho',
         ufv_solarz: rme.tickets?.clientes?.ufv_solarz || undefined,
         fotos_antes_urls: Array.isArray(rme.fotos_antes) ? rme.fotos_antes : [],
         fotos_depois_urls: Array.isArray(rme.fotos_depois) ? rme.fotos_depois : [],

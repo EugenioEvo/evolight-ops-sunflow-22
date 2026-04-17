@@ -17,7 +17,8 @@ export interface ReportTicket {
 export interface ReportRME {
   id: string;
   tecnico_id: string;
-  status_aprovacao: string;
+  /** Unified status: rascunho|pendente|aprovado|rejeitado */
+  status: string;
   data_aprovacao: string | null;
   created_at: string;
   tickets: {

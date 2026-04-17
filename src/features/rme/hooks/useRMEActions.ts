@@ -28,7 +28,7 @@ export interface RMERow {
   modules_cleaned_qty?: number | null;
   string_box_qty?: number | null;
   signatures?: Record<string, string> | null;
-  status_aprovacao?: string;
+  /** Unified status: rascunho|pendente|aprovado|rejeitado */
   status?: string | null;
   observacoes_aprovacao?: string | null;
   aprovado_por?: string | null;

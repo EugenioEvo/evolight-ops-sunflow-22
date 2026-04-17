@@ -217,7 +217,7 @@ const ClientDashboard = () => {
                           {(rme.ordens_servico as any)?.numero_os && <Badge variant="outline" className="text-xs">{(rme.ordens_servico as any).numero_os}</Badge>}
                         </CardDescription>
                       </div>
-                      <Badge className={getRMEStatusColor(rme.status_aprovacao)}>{rme.status_aprovacao}</Badge>
+                      <Badge className={getRMEStatusColor(rme.status)}>{rme.status}</Badge>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-3">
