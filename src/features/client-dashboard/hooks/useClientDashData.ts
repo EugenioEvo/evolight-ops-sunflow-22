@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
+import { useGlobalRealtime } from '@/hooks/useRealtimeProvider';
 import { clientService as defaultClientService } from '../../clients/services/clientService';
 
 interface ClientDashStats {
