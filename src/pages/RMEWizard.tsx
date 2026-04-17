@@ -17,6 +17,7 @@ export interface RMEFormData {
   ticket_id: string;
   tecnico_id: string;
   data_execucao: string;
+  data_fim_execucao: string;
   weekday: string;
   site_name: string;
   collaboration: string[];
