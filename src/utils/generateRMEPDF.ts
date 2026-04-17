@@ -75,10 +75,13 @@ export interface RMEPDFData {
     gerente_projeto?: { nome: string; at: string };
   };
 
-  // Approval status badge
-  status_aprovacao: string;
-  /** Internal RME status: 'rascunho' | 'concluido'. Combined with status_aprovacao to derive the badge label. */
+  /**
+   * Unified RME status: rascunho | pendente | aprovado | rejeitado.
+   * Drives the badge label and color in the PDF header.
+   */
   status?: string;
+  /** @deprecated Kept for backwards compat — ignored after status unification. */
+  status_aprovacao?: string;
 }
 
 // === Wizard-aligned label maps =====================================
@@ -184,24 +187,23 @@ export const generateRMEPDF = async (data: RMEPDFData): Promise<Blob> => {
   doc.setFont('helvetica', 'normal');
   doc.text(`OS: ${data.numero_os || '-'}`, pageWidth / 2, 22, { align: 'center' });
 
-  // Approval status badge — derived from internal status + approval status
-  // Rascunho (status='rascunho')           -> RASCUNHO  (cinza)
-  // Pendente (status='concluido', aprov='pendente')  -> PENDENTE (amarelo)
-  // Concluído (status='concluido', aprov='aprovado') -> CONCLUÍDO (verde)
-  // Rejeitado (aprov='rejeitado')          -> REJEITADO (vermelho) — também volta a rascunho no fluxo
-  const internalStatus = (data.status || 'rascunho').toLowerCase();
-  const approvalStatus = (data.status_aprovacao || 'pendente').toLowerCase();
-  let badgeLabel = 'PENDENTE';
-  let statusColor: [number, number, number] = [234, 179, 8]; // amarelo
-  if (approvalStatus === 'rejeitado') {
+  // Status badge — derived from unified `status` column
+  //   rascunho  -> RASCUNHO  (cinza)
+  //   pendente  -> PENDENTE  (amarelo)
+  //   aprovado  -> APROVADO  (verde)
+  //   rejeitado -> REJEITADO (vermelho)
+  const unifiedStatus = (data.status || data.status_aprovacao || 'rascunho').toLowerCase();
+  let badgeLabel = 'RASCUNHO';
+  let statusColor: [number, number, number] = [148, 163, 184];
+  if (unifiedStatus === 'pendente') {
+    badgeLabel = 'PENDENTE';
+    statusColor = [234, 179, 8];
+  } else if (unifiedStatus === 'aprovado') {
+    badgeLabel = 'APROVADO';
+    statusColor = [34, 197, 94];
+  } else if (unifiedStatus === 'rejeitado') {
     badgeLabel = 'REJEITADO';
     statusColor = [239, 68, 68];
-  } else if (internalStatus === 'rascunho') {
-    badgeLabel = 'RASCUNHO';
-    statusColor = [148, 163, 184];
-  } else if (approvalStatus === 'aprovado') {
-    badgeLabel = 'CONCLUÍDO';
-    statusColor = [34, 197, 94];
   }
   doc.setFillColor(statusColor[0], statusColor[1], statusColor[2]);
   doc.roundedRect(pageWidth - 50, 28, 40, 8, 2, 2, 'F');
