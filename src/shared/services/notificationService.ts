@@ -2,6 +2,13 @@ import { supabase } from '@/integrations/supabase/client';
 import type { AppSupabaseClient } from '@/shared/services/baseService';
 import { getClient } from '@/shared/services/baseService';
 
+/**
+ * Janela de dedupe (ms) — evita inserir notificação in-app idêntica
+ * (mesmo user_id + tipo + mensagem) em rápida sucessão (cliques duplos,
+ * race conditions de mutações, retries de strategies).
+ */
+const DEDUPE_WINDOW_MS = 60_000;
+
 export const createNotificationService = (client?: AppSupabaseClient) => {
   const db = getClient(client);
 
@@ -10,6 +17,24 @@ export const createNotificationService = (client?: AppSupabaseClient) => {
       if (!userId || !tipo || !titulo || !mensagem) {
         throw new Error('notificationService.sendInApp: parâmetros obrigatórios ausentes');
       }
+
+      // Dedupe: verifica se já existe notificação idêntica recente
+      const sinceIso = new Date(Date.now() - DEDUPE_WINDOW_MS).toISOString();
+      const { data: existing } = await db
+        .from('notificacoes')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('tipo', tipo)
+        .eq('mensagem', mensagem)
+        .gte('created_at', sinceIso)
+        .limit(1)
+        .maybeSingle();
+
+      if (existing?.id) {
+        // Já existe uma idêntica recente — ignora silenciosamente
+        return;
+      }
+
       const { error } = await db.from('notificacoes').insert({ user_id: userId, tipo, titulo, mensagem, link });
       if (error) throw error;
     },

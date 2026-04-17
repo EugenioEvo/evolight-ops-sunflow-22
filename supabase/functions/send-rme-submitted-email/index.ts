@@ -50,10 +50,16 @@ serve(async (req) => {
       return new Response(JSON.stringify({ success: true, message: 'No staff to notify' }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
-    const userIds = staffRoles.map((r) => r.user_id)
+    const userIds = Array.from(new Set(staffRoles.map((r) => r.user_id)))
     const { data: profiles } = await supabase
       .from('profiles').select('email').in('user_id', userIds)
-    const recipients = (profiles || []).map((p) => p.email).filter(Boolean) as string[]
+    // Dedupe por e-mail normalizado (lower+trim)
+    const recipientsSet = new Set<string>()
+    for (const p of profiles || []) {
+      const norm = (p.email || '').trim().toLowerCase()
+      if (norm) recipientsSet.add(norm)
+    }
+    const recipients = Array.from(recipientsSet)
 
     if (recipients.length === 0) {
       return new Response(JSON.stringify({ success: true, message: 'No emails found' }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
