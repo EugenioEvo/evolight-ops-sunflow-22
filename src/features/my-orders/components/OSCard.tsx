@@ -220,40 +220,44 @@ export function OSCard({
             </Tooltip>
           )}
 
-          {emExecucao && (
-            <Button onClick={() => onPreencherRME(os)} className="w-full" disabled={navigating === os.id}>
-              {navigating === os.id ? (
-                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Carregando RME...</>
-              ) : (
-                <><Edit className="h-4 w-4 mr-2" />Preencher RME</>
-              )}
-            </Button>
-          )}
-
-          {isPendente && osAceito && ticketAceito && (
-            <>
-              <Badge variant="outline" className="w-full justify-center py-2 bg-green-50 text-green-700 border-green-200">
-                <CheckCircle2 className="h-3 w-3 mr-1" />Aceita — Próximo: Iniciar Execução
-              </Badge>
-              {isTecnico && (
-                <Button
-                  onClick={() => onRecusarOS(os)}
-                  variant="outline"
-                  size="sm"
-                  className="w-full text-destructive hover:text-destructive border-destructive/30 hover:bg-destructive/5"
-                  disabled={aceiteLoading}
-                >
-                  <ThumbsDown className="h-4 w-4 mr-2" />Cancelar aceite (devolver para gestão)
+          {emExecucao && (() => {
+            const rme = os.rme_relatorios?.[0];
+            const rmeStatus = rme?.status;
+            const isViewOnly = !!rme && rmeStatus !== 'rascunho';
+            const buttonLabel = !rme
+              ? 'Preencher RME'
+              : rmeStatus === 'rascunho'
+                ? 'Continuar RME'
+                : rmeStatus === 'pendente'
+                  ? 'Visualizar RME (Aguardando Aprovação)'
+                  : rmeStatus === 'aprovado'
+                    ? 'Visualizar RME (Aprovado)'
+                    : 'Visualizar RME (Rejeitado)';
+            const Icon = isViewOnly ? Eye : Edit;
+            const nextLabel = !rme
+              ? 'Próximo: Preencher RME'
+              : rmeStatus === 'rascunho'
+                ? 'Próximo: Concluir RME'
+                : rmeStatus === 'pendente'
+                  ? 'Aguardando aprovação do RME'
+                  : rmeStatus === 'aprovado'
+                    ? 'RME aprovado — OS em conclusão'
+                    : 'RME rejeitado — revise com a gestão';
+            return (
+              <>
+                <Button onClick={() => onPreencherRME(os)} className="w-full" disabled={navigating === os.id}>
+                  {navigating === os.id ? (
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Carregando RME...</>
+                  ) : (
+                    <><Icon className="h-4 w-4 mr-2" />{buttonLabel}</>
+                  )}
                 </Button>
-              )}
-            </>
-          )}
-
-          {emExecucao && (
-            <Badge variant="default" className="w-full justify-center py-2">
-              <Edit className="h-3 w-3 mr-1" />Próximo: Preencher RME
-            </Badge>
-          )}
+                <Badge variant="default" className="w-full justify-center py-2">
+                  <Edit className="h-3 w-3 mr-1" />{nextLabel}
+                </Badge>
+              </>
+            );
+          })()}
 
           <Button onClick={() => onVerOS(os)} variant="outline" className="w-full">
             <Eye className="h-4 w-4 mr-2" />Ver OS em PDF
