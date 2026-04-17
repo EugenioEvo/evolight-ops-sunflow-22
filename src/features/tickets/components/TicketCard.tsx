@@ -335,6 +335,17 @@ export const TicketCard = ({
                     </DropdownMenuContent>
                   </DropdownMenu>
 
+                  {onAddTechnicians && ticket.status !== 'concluido' && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => onAddTechnicians(ticket)}
+                      title="Adicionar mais técnicos a este ticket"
+                    >
+                      <UserPlus className="h-4 w-4 mr-1" />+ Técnico
+                    </Button>
+                  )}
+
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button size="sm" variant="outline" disabled={rmeEntries.length === 0}>
