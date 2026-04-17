@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -23,6 +23,16 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   const [uploading, setUploading] = useState(false);
   const [files, setFiles] = useState<string[]>(existingFiles);
   const { toast } = useToast();
+
+  // Sync internal state when existingFiles prop changes (e.g. switching between edit/new ticket)
+  const lastExistingRef = useRef<string>(JSON.stringify(existingFiles));
+  useEffect(() => {
+    const serialized = JSON.stringify(existingFiles);
+    if (serialized !== lastExistingRef.current) {
+      lastExistingRef.current = serialized;
+      setFiles(existingFiles);
+    }
+  }, [existingFiles]);
 
   const isImage = (filename: string) => /\.(jpg|jpeg|png|gif|webp)$/i.test(filename);
 
