@@ -444,7 +444,11 @@ const RMEWizard = () => {
       <div className="fixed bottom-0 left-0 right-0 bg-background border-t p-4 z-20">
         <div className="max-w-4xl mx-auto flex gap-3">
           <Button variant="outline" onClick={handlePrevious} disabled={currentStep === 1} className="flex-1 h-12">Anterior</Button>
-          {currentStep < STEPS.length ? (
+          {isLocked ? (
+            <div className="flex-1 h-12 flex items-center justify-center text-sm text-muted-foreground border rounded-md px-4 text-center">
+              RME aguardando avaliação — edição bloqueada
+            </div>
+          ) : currentStep < STEPS.length ? (
             <Button onClick={handleNext} disabled={saving} className="flex-1 h-12">{saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}Próximo</Button>
           ) : isResponsavel ? (
             <Button
