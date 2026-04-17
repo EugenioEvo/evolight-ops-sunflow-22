@@ -452,7 +452,7 @@ const RMEWizard = () => {
           <Button variant="outline" onClick={handlePrevious} disabled={currentStep === 1} className="flex-1 h-12">Anterior</Button>
           {isLocked ? (
             <div className="flex-1 h-12 flex items-center justify-center text-sm text-muted-foreground border rounded-md px-4 text-center">
-              RME aguardando avaliação — edição bloqueada
+              {formData.status_aprovacao === "aprovado" ? "RME concluído — somente leitura" : "RME pendente — somente leitura"}
             </div>
           ) : currentStep < STEPS.length ? (
             <Button onClick={handleNext} disabled={saving} className="flex-1 h-12">{saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}Próximo</Button>
