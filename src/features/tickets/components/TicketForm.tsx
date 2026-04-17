@@ -68,6 +68,46 @@ export const TicketForm = ({
     },
   });
 
+  useEffect(() => {
+    if (!open) return;
+    if (editingTicket) {
+      form.reset({
+        titulo: editingTicket.titulo,
+        descricao: editingTicket.descricao,
+        cliente_id: editingTicket.cliente_id,
+        equipamento_tipo: editingTicket.equipamento_tipo as TicketFormData['equipamento_tipo'],
+        prioridade: editingTicket.prioridade as TicketFormData['prioridade'],
+        endereco_servico: editingTicket.endereco_servico,
+        data_servico: editingTicket.data_servico || '',
+        data_vencimento: editingTicket.data_vencimento ? new Date(editingTicket.data_vencimento).toISOString().split('T')[0] : '',
+        horario_previsto_inicio: editingTicket.horario_previsto_inicio || '',
+        tempo_estimado: editingTicket.tempo_estimado || undefined,
+        observacoes: editingTicket.observacoes || '',
+        anexos: editingTicket.anexos || [],
+      });
+      setSelectedTechnician(editingTicket.tecnico_responsavel_id || '');
+      setAttachments(editingTicket.anexos || []);
+      setSelectedUfvSolarzForm(editingTicket.clientes?.ufv_solarz || '');
+    } else {
+      form.reset({
+        titulo: '',
+        descricao: '',
+        cliente_id: '',
+        equipamento_tipo: 'painel_solar',
+        prioridade: 'media',
+        endereco_servico: '',
+        data_servico: '',
+        data_vencimento: '',
+        horario_previsto_inicio: '',
+        tempo_estimado: undefined,
+        observacoes: '',
+      });
+      setSelectedTechnician('');
+      setAttachments([]);
+      setSelectedUfvSolarzForm('');
+    }
+  }, [editingTicket, open, form]);
+
   const handleSubmit = async (data: TicketFormData) => {
     await onSubmit(data, selectedTechnician || null, attachments);
     onOpenChange(false);
