@@ -12,6 +12,7 @@ import type { OrdemServico } from "../types";
 export function useMyOrdersActions(loadOrdensServico: () => Promise<void>, setActiveTab: (tab: string) => void) {
   const [startingId, setStartingId] = useState<string | null>(null);
   const [navigating, setNavigating] = useState<string | null>(null);
+  const [exportingRMEId, setExportingRMEId] = useState<string | null>(null);
   const [recusaDialogOS, setRecusaDialogOS] = useState<OrdemServico | null>(null);
   const navigate = useNavigate();
   const { acceptOS, rejectOS, loading: aceiteLoading } = useAceiteOS();
