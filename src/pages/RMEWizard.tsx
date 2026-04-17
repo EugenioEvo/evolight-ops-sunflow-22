@@ -232,7 +232,8 @@ const RMEWizard = () => {
       });
       const { data: items } = await supabase.from("rme_checklist_items").select("*").eq("rme_id", rmeId).order("category").order("item_key");
       setChecklistItems(items || []);
-      await loadGroupContext(data.ticket_id, tecnicoId);
+      setCurrentTicketId(data.ticket_id);
+      await loadGroupContext(data.ticket_id);
     } catch (error: any) {
       toast({ title: "Erro ao carregar RME", description: error.message, variant: "destructive" });
       navigate("/work-orders");
