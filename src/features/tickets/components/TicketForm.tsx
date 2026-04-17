@@ -109,6 +109,15 @@ export const TicketForm = ({
     }
   }, [editingTicket, open, form]);
 
+  const watchedClienteId = form.watch('cliente_id');
+  const watchedEquipamentoTipo = form.watch('equipamento_tipo');
+  const { similar: similarTickets } = useSimilarTickets({
+    clienteId: watchedClienteId,
+    equipamentoTipo: watchedEquipamentoTipo,
+    excludeId: editingTicket?.id,
+    enabled: open,
+  });
+
   const handleSubmit = async (data: TicketFormData) => {
     await onSubmit(data, selectedTechnician || null, attachments);
     onOpenChange(false);
