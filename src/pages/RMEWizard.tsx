@@ -244,7 +244,15 @@ const RMEWizard = () => {
 
   const updateFormData = useCallback((updates: Partial<RMEFormData>) => { setFormData(prev => ({ ...prev, ...updates })); }, []);
 
+  // RME fica bloqueado para edição quando concluído E ainda não rejeitado.
+  // Só volta a ser editável após rejeição pelo avaliador (status_aprovacao === 'rejeitado').
+  const isLocked = formData.status === "concluido" && formData.status_aprovacao !== "rejeitado";
+
   const saveRME = async (finalize = false) => {
+    if (isLocked) {
+      toast({ title: "RME bloqueado para edição", description: "Aguarde a avaliação. Edição só é liberada se o avaliador recusar.", variant: "destructive" });
+      return null;
+    }
     if (!tecnicoId && !formData.tecnico_id) { toast({ title: "Erro", description: "Técnico não identificado", variant: "destructive" }); return null; }
     setSaving(true);
     try {
