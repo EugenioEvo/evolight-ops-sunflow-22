@@ -26,6 +26,7 @@ const Tickets = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTicket, setEditingTicket] = useState<any>(null);
   const [multiOSDialogTicket, setMultiOSDialogTicket] = useState<any>(null);
+  const [addTechMode, setAddTechMode] = useState(false);
   const [decisionModal, setDecisionModal] = useState<{ ticketId: string; type: 'approve' | 'reject' } | null>(null);
 
   const { user, profile } = useAuth();
@@ -180,7 +181,8 @@ const Tickets = () => {
                     onEdit={handleEdit}
                     onDelete={(id) => { mutations.deleteTicket(id); filters.setActiveTab('todos'); }}
                     onAssignTechnician={(ticketId, techId) => mutations.assignTechnician(ticketId, techId, tickets, prestadores)}
-                    onGenerateOS={(ticket) => setMultiOSDialogTicket(ticket)}
+                    onGenerateOS={(ticket) => { setAddTechMode(false); setMultiOSDialogTicket(ticket); }}
+                    onAddTechnicians={(ticket) => { setAddTechMode(true); setMultiOSDialogTicket(ticket); }}
                     onReprocessGeocode={handleReprocessGeocode}
                     getSortedPrestadores={getSortedPrestadores}
                     renderPrestadorOption={renderPrestadorOption}
@@ -212,12 +214,27 @@ const Tickets = () => {
 
       <MultiTechnicianOSDialog
         open={!!multiOSDialogTicket}
-        onOpenChange={(open) => { if (!open) setMultiOSDialogTicket(null); }}
+        onOpenChange={(open) => { if (!open) { setMultiOSDialogTicket(null); setAddTechMode(false); } }}
         ticketId={multiOSDialogTicket?.id || ''}
         ticket={multiOSDialogTicket}
         prestadores={prestadores.filter((p: any) => p.email && p.email.trim() !== '')}
+        alreadyAssignedPrestadorIds={
+          addTechMode && multiOSDialogTicket?.ordens_servico
+            ? Array.from(new Set(
+                (multiOSDialogTicket.ordens_servico as any[])
+                  .map((os: any) => {
+                    // Match the prestador (Tickets uses prestador IDs) by tecnico_id->profile->email
+                    const tecEmail = os.tecnicos?.profiles?.email?.toLowerCase();
+                    const match = prestadores.find((p: any) => p.email?.toLowerCase() === tecEmail);
+                    return match?.id;
+                  })
+                  .filter(Boolean) as string[]
+              ))
+            : []
+        }
         onSuccess={() => {
           filters.setActiveTab('ordem_servico_gerada');
+          setAddTechMode(false);
           loadData();
         }}
       />
