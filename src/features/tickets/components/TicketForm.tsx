@@ -296,6 +296,31 @@ export const TicketForm = ({
               />
             </div>
 
+            {similarTickets.length > 0 && (
+              <div className="flex gap-3 p-3 rounded-md border border-amber-500/40 bg-amber-500/10 text-sm">
+                <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-amber-600" />
+                <div className="flex-1 space-y-1">
+                  <p className="font-medium text-amber-700 dark:text-amber-400">
+                    Possível ticket duplicado
+                  </p>
+                  <p className="text-muted-foreground text-xs">
+                    Foram encontrados {similarTickets.length} ticket(s) ativo(s) para este cliente e tipo de equipamento nas últimas 24h:
+                  </p>
+                  <ul className="text-xs space-y-0.5 mt-1">
+                    {similarTickets.map((t) => (
+                      <li key={t.id} className="text-foreground">
+                        <span className="font-mono">{t.numero_ticket}</span> — {t.titulo}
+                        <span className="text-muted-foreground"> ({t.status.replace(/_/g, ' ')})</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="text-xs text-muted-foreground italic mt-1">
+                    Você pode prosseguir se for um chamado distinto.
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-3 gap-4">
               <FormField
                 control={form.control}
