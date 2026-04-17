@@ -33,9 +33,11 @@ export function useMyOrdersActions(loadOrdensServico: () => Promise<void>, setAc
     setNavigating(os.id);
     await new Promise(resolve => setTimeout(resolve, 300));
     const rme = os.rme_relatorios?.[0];
+    // RME já submetido (pendente/aprovado/rejeitado) -> apenas visualização via detalhe da OS
     if (rme && rme.status !== 'rascunho') {
-      navigate(`/rme-wizard/${rme.id}?os=${os.id}&mode=view`);
+      navigate(`/ordens-servico/${os.id}`);
     } else if (rme) {
+      // rascunho -> continuar edição
       navigate(`/rme-wizard/${rme.id}?os=${os.id}`);
     } else {
       navigate(`/rme-wizard/new?os=${os.id}`);
