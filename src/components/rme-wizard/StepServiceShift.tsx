@@ -7,7 +7,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import type { RMEFormData } from "@/pages/RMEWizard";
 
@@ -21,12 +20,6 @@ const serviceTypes = [
   { value: "eletrica", label: "Elétrica" },
   { value: "internet", label: "Internet" },
   { value: "outros", label: "Outros" },
-];
-
-const shifts = [
-  { value: "manha", label: "Manhã (06:00 - 12:00)" },
-  { value: "tarde", label: "Tarde (12:00 - 18:00)" },
-  { value: "noite", label: "Noite (18:00 - 06:00)" },
 ];
 
 const getWeekday = (date: Date): string => {
@@ -43,7 +36,7 @@ export const StepServiceShift = ({ formData, updateFormData }: Props) => {
     updateFormData({ service_type: updated });
   };
 
-  const handleDateChange = (date: Date | undefined) => {
+  const handleStartDateChange = (date: Date | undefined) => {
     if (date) {
       updateFormData({
         data_execucao: date.toISOString().split("T")[0],
@@ -52,14 +45,21 @@ export const StepServiceShift = ({ formData, updateFormData }: Props) => {
     }
   };
 
-  const selectedDate = formData.data_execucao ? new Date(formData.data_execucao + "T12:00:00") : undefined;
+  const handleEndDateChange = (date: Date | undefined) => {
+    if (date) {
+      updateFormData({ data_fim_execucao: date.toISOString().split("T")[0] });
+    }
+  };
+
+  const startDate = formData.data_execucao ? new Date(formData.data_execucao + "T12:00:00") : undefined;
+  const endDate = formData.data_fim_execucao ? new Date(formData.data_fim_execucao + "T12:00:00") : undefined;
 
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-semibold mb-1">Serviço e Turno</h2>
+        <h2 className="text-lg font-semibold mb-1">Serviço e Execução</h2>
         <p className="text-sm text-muted-foreground">
-          Tipo de serviço e horários de execução
+          Tipo de serviço, datas e horários de execução
         </p>
       </div>
 
@@ -87,65 +87,36 @@ export const StepServiceShift = ({ formData, updateFormData }: Props) => {
         </div>
       </div>
 
-      {/* Date and Weekday */}
+      {/* Início da Execução: Data + Hora */}
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
-          <Label>Data de Execução *</Label>
+          <Label>Início da Execução *</Label>
           <Popover>
             <PopoverTrigger asChild>
               <Button
                 variant="outline"
                 className={cn(
                   "w-full justify-start text-left font-normal h-12",
-                  !selectedDate && "text-muted-foreground"
+                  !startDate && "text-muted-foreground"
                 )}
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
-                {selectedDate
-                  ? format(selectedDate, "dd/MM/yyyy", { locale: ptBR })
-                  : "Selecione"}
+                {startDate ? format(startDate, "dd/MM/yyyy", { locale: ptBR }) : "Selecione"}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start">
               <Calendar
                 mode="single"
-                selected={selectedDate}
-                onSelect={handleDateChange}
+                selected={startDate}
+                onSelect={handleStartDateChange}
                 locale={ptBR}
+                className={cn("p-3 pointer-events-auto")}
               />
             </PopoverContent>
           </Popover>
         </div>
         <div className="space-y-2">
-          <Label>Dia da Semana</Label>
-          <Input value={formData.weekday} disabled className="h-12 bg-muted" />
-        </div>
-      </div>
-
-      {/* Shift */}
-      <div className="space-y-2">
-        <Label>Turno *</Label>
-        <Select
-          value={formData.shift}
-          onValueChange={(value) => updateFormData({ shift: value })}
-        >
-          <SelectTrigger className="h-12">
-            <SelectValue placeholder="Selecione o turno" />
-          </SelectTrigger>
-          <SelectContent>
-            {shifts.map((s) => (
-              <SelectItem key={s.value} value={s.value}>
-                {s.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Times */}
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-2">
-          <Label>Hora Início</Label>
+          <Label>Hora Início *</Label>
           <Input
             type="time"
             value={formData.start_time}
@@ -153,8 +124,39 @@ export const StepServiceShift = ({ formData, updateFormData }: Props) => {
             className="h-12"
           />
         </div>
+      </div>
+
+      {/* Fim da Execução: Data + Hora */}
+      <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
-          <Label>Hora Fim</Label>
+          <Label>Fim da Execução *</Label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  "w-full justify-start text-left font-normal h-12",
+                  !endDate && "text-muted-foreground"
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {endDate ? format(endDate, "dd/MM/yyyy", { locale: ptBR }) : "Selecione"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={endDate}
+                onSelect={handleEndDateChange}
+                locale={ptBR}
+                disabled={(d) => (startDate ? d < startDate : false)}
+                className={cn("p-3 pointer-events-auto")}
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
+        <div className="space-y-2">
+          <Label>Hora Fim *</Label>
           <Input
             type="time"
             value={formData.end_time}
@@ -162,6 +164,12 @@ export const StepServiceShift = ({ formData, updateFormData }: Props) => {
             className="h-12"
           />
         </div>
+      </div>
+
+      {/* Dia da semana (informativo) */}
+      <div className="space-y-2">
+        <Label>Dia da Semana (Início)</Label>
+        <Input value={formData.weekday} disabled className="h-12 bg-muted" />
       </div>
     </div>
   );

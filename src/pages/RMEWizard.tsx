@@ -17,6 +17,7 @@ export interface RMEFormData {
   ticket_id: string;
   tecnico_id: string;
   data_execucao: string;
+  data_fim_execucao: string;
   weekday: string;
   site_name: string;
   collaboration: string[];
@@ -78,7 +79,9 @@ const getWeekday = (date: Date): string => ["Domingo", "Segunda", "Terça", "Qua
 
 const defaultFormData: RMEFormData = {
   ordem_servico_id: "", ticket_id: "", tecnico_id: "",
-  data_execucao: new Date().toISOString().split("T")[0], weekday: getWeekday(new Date()),
+  data_execucao: new Date().toISOString().split("T")[0],
+  data_fim_execucao: new Date().toISOString().split("T")[0],
+  weekday: getWeekday(new Date()),
   site_name: "", collaboration: [], micro_number: "", inverter_number: "",
   service_type: [], shift: "manha", start_time: "08:00", end_time: "17:00",
   images_posted: false, modules_cleaned_qty: 0, string_box_qty: 0,
@@ -187,7 +190,9 @@ const RMEWizard = () => {
       setTecnicoNome(tecnico?.profiles?.nome || "");
       setFormData({
         id: data.id, ordem_servico_id: data.ordem_servico_id, ticket_id: data.ticket_id, tecnico_id: data.tecnico_id,
-        data_execucao: data.data_execucao?.split("T")[0] || "", weekday: data.weekday || "",
+        data_execucao: data.data_execucao?.split("T")[0] || "",
+        data_fim_execucao: data.data_execucao?.split("T")[0] || "",
+        weekday: data.weekday || "",
         site_name: data.site_name || os?.site_name || "",
         collaboration: Array.isArray(data.collaboration) ? (data.collaboration as string[]) : [],
         micro_number: data.micro_number || "", inverter_number: data.inverter_number || "",
