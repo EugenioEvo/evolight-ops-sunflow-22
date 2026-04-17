@@ -46,6 +46,7 @@ export interface RMEFormData {
   assinatura_cliente: string;
   nome_cliente_assinatura: string;
   status: string;
+  status_aprovacao?: string;
   client_name: string;
   address: string;
   ufv_solarz?: string;
