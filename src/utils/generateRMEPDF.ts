@@ -172,7 +172,7 @@ export const generateRMEPDF = async (data: RMEPDFData): Promise<Blob> => {
 
   // ============ HEADER (cover band) =================================
   doc.setFillColor(PRIMARY[0], PRIMARY[1], PRIMARY[2]);
-  doc.rect(0, 0, pageWidth, 35, 'F');
+  doc.rect(0, 0, pageWidth, 42, 'F');
 
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(16);
@@ -182,17 +182,21 @@ export const generateRMEPDF = async (data: RMEPDFData): Promise<Blob> => {
   doc.setFont('helvetica', 'normal');
   doc.text(`OS: ${data.numero_os || '-'}`, pageWidth / 2, 22, { align: 'center' });
 
-  // Approval status badge (top-right)
+  // Approval status badge — moved down to avoid clashing with title
+  const statusRaw = (data.status_aprovacao || 'pendente').toLowerCase();
   const statusColor: [number, number, number] =
-    data.status_aprovacao === 'aprovado' ? [34, 197, 94] :
-    data.status_aprovacao === 'rejeitado' ? [239, 68, 68] : [234, 179, 8];
+    statusRaw === 'aprovado' ? [34, 197, 94] :
+    statusRaw === 'rejeitado' ? [239, 68, 68] :
+    statusRaw === 'rascunho' ? [148, 163, 184] :
+    [234, 179, 8];
   doc.setFillColor(statusColor[0], statusColor[1], statusColor[2]);
-  doc.roundedRect(pageWidth - 50, 8, 40, 8, 2, 2, 'F');
+  doc.roundedRect(pageWidth - 50, 28, 40, 8, 2, 2, 'F');
+  doc.setTextColor(255, 255, 255);
   doc.setFontSize(8);
   doc.setFont('helvetica', 'bold');
-  doc.text((data.status_aprovacao || 'pendente').toUpperCase(), pageWidth - 30, 13, { align: 'center' });
+  doc.text(statusRaw.toUpperCase(), pageWidth - 30, 33, { align: 'center' });
 
-  yPos = 44;
+  yPos = 50;
   doc.setTextColor(TEXT[0], TEXT[1], TEXT[2]);
 
   // ============ STEP 1 — IDENTIFICAÇÃO ==============================
