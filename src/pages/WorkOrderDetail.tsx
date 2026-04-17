@@ -171,9 +171,11 @@ const WorkOrderDetail = () => {
                 <div className="flex items-center gap-2 mt-1">
                   <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
                   <span className="font-medium">
-                    {workOrder.tickets.data_conclusao
-                      ? format(new Date(workOrder.tickets.data_conclusao), "dd/MM/yyyy", { locale: ptBR })
-                      : "—"}
+                    {workOrder.rme_relatorios[0]?.data_execucao
+                      ? format(new Date(workOrder.rme_relatorios[0].data_execucao), "dd/MM/yyyy", { locale: ptBR })
+                      : workOrder.tickets.data_conclusao
+                        ? format(new Date(workOrder.tickets.data_conclusao), "dd/MM/yyyy", { locale: ptBR })
+                        : "—"}
                   </span>
                 </div>
               </div>
@@ -182,9 +184,11 @@ const WorkOrderDetail = () => {
                 <div className="flex items-center gap-2 mt-1">
                   <Clock className="h-4 w-4 text-muted-foreground" />
                   <span className="font-medium">
-                    {workOrder.tickets.data_conclusao
-                      ? format(new Date(workOrder.tickets.data_conclusao), "HH:mm", { locale: ptBR })
-                      : "—"}
+                    {workOrder.rme_relatorios[0]?.end_time
+                      ? workOrder.rme_relatorios[0].end_time
+                      : workOrder.tickets.data_conclusao
+                        ? format(new Date(workOrder.tickets.data_conclusao), "HH:mm", { locale: ptBR })
+                        : "—"}
                   </span>
                 </div>
               </div>
