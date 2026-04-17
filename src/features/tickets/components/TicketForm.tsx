@@ -297,10 +297,10 @@ export const TicketForm = ({
             </div>
 
             {similarTickets.length > 0 && (
-              <div className="flex gap-3 p-3 rounded-md border border-amber-500/40 bg-amber-500/10 text-sm">
-                <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-amber-600" />
+              <div className="flex gap-3 p-3 rounded-md border border-warning/40 bg-warning/10 text-sm">
+                <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-warning" />
                 <div className="flex-1 space-y-1">
-                  <p className="font-medium text-amber-700 dark:text-amber-400">
+                  <p className="font-medium text-warning">
                     Possível ticket duplicado
                   </p>
                   <p className="text-muted-foreground text-xs">
