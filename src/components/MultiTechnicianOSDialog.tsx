@@ -390,7 +390,7 @@ export const MultiTechnicianOSDialog = ({
                       id={`tech-${prestador.id}`}
                       checked={isSelected}
                       onCheckedChange={(checked) => handleTogglePrestador(prestador.id, checked as boolean)}
-                      disabled={!!hasConflict || !hasEmail}
+                      disabled={!!hasConflict || !hasEmail || (isAddMode && alreadyAssignedPrestadorIds.includes(prestador.id))}
                     />
                     <label htmlFor={`tech-${prestador.id}`} className="flex-1 text-sm font-medium cursor-pointer flex items-center gap-2">
                       <span className={!hasEmail ? 'text-destructive' : ''}>{prestador.nome}</span>
@@ -398,6 +398,9 @@ export const MultiTechnicianOSDialog = ({
                         <Badge variant="destructive" className="text-[10px]">
                           <AlertTriangle className="h-3 w-3 mr-1" />Sem email
                         </Badge>
+                      )}
+                      {isAddMode && alreadyAssignedPrestadorIds.includes(prestador.id) && (
+                        <Badge variant="outline" className="text-[10px]">Já alocado</Badge>
                       )}
                     </label>
                     <div className="flex-shrink-0">
@@ -419,10 +422,18 @@ export const MultiTechnicianOSDialog = ({
                 );
               })}
             </div>
-            {selectedPrestadores.length > 0 && (
-              <p className="text-xs text-muted-foreground">
-                {selectedPrestadores.length} técnico(s) selecionado(s) — será gerada 1 OS para cada
-              </p>
+            {isAddMode ? (
+              newSelectedPrestadores.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  {newSelectedPrestadores.length} novo(s) técnico(s) será(ão) adicionado(s) — 1 OS para cada.
+                </p>
+              )
+            ) : (
+              selectedPrestadores.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  {selectedPrestadores.length} técnico(s) selecionado(s) — será gerada 1 OS para cada
+                </p>
+              )
             )}
           </div>
 
