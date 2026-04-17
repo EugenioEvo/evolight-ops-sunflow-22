@@ -52,7 +52,10 @@ export const useTicketMutations = (loadData: () => Promise<void>) => {
   const updateTicket = async (editingTicket: TicketWithRelations, data: TicketFormData, technicianId: string | null, attachments: string[]) => {
     setLoading(true);
     try {
-      const ticketData = {
+      const addressChanged =
+        (data.endereco_servico || '').trim() !== (editingTicket.endereco_servico || '').trim();
+
+      const ticketData: any = {
         ...data,
         tempo_estimado: data.tempo_estimado || null,
         data_servico: data.data_servico || null,
@@ -61,6 +64,14 @@ export const useTicketMutations = (loadData: () => Promise<void>) => {
         anexos: attachments,
         status: 'aberto' as const,
       };
+
+      // Address changed → clear geolocation so it gets re-geocoded
+      if (addressChanged) {
+        ticketData.latitude = null;
+        ticketData.longitude = null;
+        ticketData.geocoded_at = null;
+        ticketData.geocoding_status = 'pending';
+      }
 
       const criticalChanged =
         (data.data_servico || null) !== (editingTicket.data_servico || null) ||
@@ -80,7 +91,7 @@ export const useTicketMutations = (loadData: () => Promise<void>) => {
         );
       }
 
-      toast.success('Ticket atualizado com sucesso!');
+      toast.success(addressChanged ? 'Ticket atualizado. Geolocalização será recalculada.' : 'Ticket atualizado com sucesso!');
       await loadData();
     } finally {
       setLoading(false);
