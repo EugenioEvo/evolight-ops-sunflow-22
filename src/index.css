@@ -39,6 +39,10 @@
     --destructive: 0 75% 55%;
     --destructive-foreground: 0 0% 100%;
 
+    /* Warning Amber */
+    --warning: 35 100% 50%;
+    --warning-foreground: 0 0% 100%;
+
     --border: 210 30% 90%;
     --input: 210 30% 95%;
     --ring: 210 100% 50%;
@@ -101,6 +105,9 @@
 
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
+
+    --warning: 35 100% 55%;
+    --warning-foreground: 0 0% 10%;
 
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
