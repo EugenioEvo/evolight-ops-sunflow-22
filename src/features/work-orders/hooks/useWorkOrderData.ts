@@ -27,6 +27,27 @@ export const useWorkOrderData = () => {
 
   useEffect(() => { loadWorkOrders(); loadClientes(); }, []);
 
+  // Realtime: refresh stats/listing when OS, tickets or RME status change
+  useEffect(() => {
+    const handleChange = () => { loadWorkOrders(); };
+    const channel = (workOrderService as any).supabase
+      ? null
+      : null;
+    // Use the shared supabase client via dynamic import to avoid circular deps in services
+    let cleanup: (() => void) | undefined;
+    (async () => {
+      const { supabase } = await import('@/integrations/supabase/client');
+      const ch = supabase
+        .channel('work-orders-listing')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'ordens_servico' }, handleChange)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets' }, handleChange)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'rme_relatorios' }, handleChange)
+        .subscribe();
+      cleanup = () => { supabase.removeChannel(ch); };
+    })();
+    return () => { cleanup?.(); };
+  }, []);
+
   const ufvSolarzOptions = useMemo(() => {
     const ufvSet = new Set<string>();
     workOrders.forEach(os => {
