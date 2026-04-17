@@ -37,8 +37,12 @@ const GerenciarRME = () => {
   const approveMutation = useApproveRMEMutation();
   const rejectMutation = useRejectRMEMutation();
 
-  // Realtime updates
-  useGlobalRealtime(() => refetch());
+  // Realtime updates - refresh listing AND stats badges
+  const queryClient = useQueryClient();
+  useGlobalRealtime(() => {
+    refetch();
+    queryClient.invalidateQueries({ queryKey: ['rme-stats'] });
+  });
 
   const handleViewDetails = (rme: any) => {
     setSelectedRME(rme);
