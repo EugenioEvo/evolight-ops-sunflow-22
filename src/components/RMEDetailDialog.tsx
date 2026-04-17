@@ -250,9 +250,9 @@ export const RMEDetailDialog: React.FC<RMEDetailDialogProps> = ({
               <CardContent>
                 <div className="space-y-2">
                   {rme.materiais_utilizados.map((material: any, index: number) => (
-                    <div key={index} className="flex justify-between text-sm border-b pb-2">
-                      <span>{material.nome}</span>
-                      <span className="font-medium">Qtd: {material.quantidade}</span>
+                    <div key={index} className="flex justify-between gap-4 text-sm border-b pb-2">
+                      <span>{material.descricao || material.nome || 'Material sem nome'}</span>
+                      <span className="font-medium whitespace-nowrap">Qtd: {material.quantidade ?? 0}{material.tinha_estoque !== undefined ? ` · ${material.tinha_estoque ? 'Em estoque' : 'Sem estoque'}` : ''}</span>
                     </div>
                   ))}
                 </div>
