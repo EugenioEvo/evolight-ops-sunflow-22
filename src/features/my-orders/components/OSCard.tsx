@@ -13,10 +13,12 @@ interface OSCardProps {
   isTecnico: boolean;
   startingId: string | null;
   navigating: string | null;
+  exportingRMEId?: string | null;
   aceiteLoading: boolean;
   onIniciarExecucao: (os: OrdemServico) => void;
   onPreencherRME: (os: OrdemServico) => void;
   onVerOS: (os: OrdemServico) => void;
+  onVerRMEPDF?: (os: OrdemServico) => void;
   onLigarCliente: (telefone?: string) => void;
   onAbrirMapa: (endereco: string) => void;
   onAceitarTicket: (os: OrdemServico) => void;
@@ -44,8 +46,8 @@ const getStatusBadge = (status: string) => {
 };
 
 export function OSCard({
-  os, isTecnico, startingId, navigating, aceiteLoading,
-  onIniciarExecucao, onPreencherRME, onVerOS, onLigarCliente, onAbrirMapa, onAceitarTicket, onAceitarOS, onRecusarOS,
+  os, isTecnico, startingId, navigating, exportingRMEId, aceiteLoading,
+  onIniciarExecucao, onPreencherRME, onVerOS, onVerRMEPDF, onLigarCliente, onAbrirMapa, onAceitarTicket, onAceitarOS, onRecusarOS,
 }: OSCardProps) {
   const statusBadge = getStatusBadge(os.tickets.status);
   const isPendente = os.tickets.status === 'ordem_servico_gerada' ||
@@ -281,6 +283,21 @@ export function OSCard({
           <Button onClick={() => onVerOS(os)} variant="outline" className="w-full">
             <Eye className="h-4 w-4 mr-2" />Ver OS em PDF
           </Button>
+
+          {os.rme_relatorios?.[0] && os.rme_relatorios[0].status !== 'rascunho' && onVerRMEPDF && (
+            <Button
+              onClick={() => onVerRMEPDF(os)}
+              variant="outline"
+              className="w-full"
+              disabled={exportingRMEId === os.id}
+            >
+              {exportingRMEId === os.id ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Gerando RME...</>
+              ) : (
+                <><FileText className="h-4 w-4 mr-2" />Ver RME em PDF</>
+              )}
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>

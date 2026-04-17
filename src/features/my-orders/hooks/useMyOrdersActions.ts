@@ -4,12 +4,15 @@ import { toast } from "sonner";
 import { useAceiteOS } from "@/hooks/useAceiteOS";
 import { useErrorHandler } from "@/hooks/useErrorHandler";
 import { generateOSPDF } from "@/utils/generateOSPDF";
+import { supabase } from "@/integrations/supabase/client";
+import { rmeService } from "@/features/rme/services/rmeService";
 import { myOrdersService } from "../services/myOrdersService";
 import type { OrdemServico } from "../types";
 
 export function useMyOrdersActions(loadOrdensServico: () => Promise<void>, setActiveTab: (tab: string) => void) {
   const [startingId, setStartingId] = useState<string | null>(null);
   const [navigating, setNavigating] = useState<string | null>(null);
+  const [exportingRMEId, setExportingRMEId] = useState<string | null>(null);
   const [recusaDialogOS, setRecusaDialogOS] = useState<OrdemServico | null>(null);
   const navigate = useNavigate();
   const { acceptOS, rejectOS, loading: aceiteLoading } = useAceiteOS();
@@ -70,6 +73,32 @@ export function useMyOrdersActions(loadOrdensServico: () => Promise<void>, setAc
     }
   };
 
+  const handleVerRMEPDF = async (os: OrdemServico) => {
+    const rmeId = os.rme_relatorios?.[0]?.id;
+    if (!rmeId) {
+      toast.error('Esta OS não possui RME para exportar.');
+      return;
+    }
+    setExportingRMEId(os.id);
+    try {
+      const { data, error } = await supabase
+        .from('rme_relatorios')
+        .select(`*,
+          tickets ( titulo, numero_ticket, endereco_servico, clientes ( empresa, endereco, ufv_solarz ) ),
+          tecnicos ( profiles ( nome ) )
+        `)
+        .eq('id', rmeId)
+        .single();
+      if (error || !data) throw error || new Error('RME não encontrado');
+      await rmeService.exportRMEPDF(data as any);
+      toast.success('Relatório RME baixado com sucesso.');
+    } catch (error) {
+      handleError(error, { fallbackMessage: 'Erro ao gerar PDF do RME' });
+    } finally {
+      setExportingRMEId(null);
+    }
+  };
+
   const handleLigarCliente = (telefone?: string) => {
     if (!telefone) {
       toast.error("Este cliente não possui telefone cadastrado.");
@@ -100,8 +129,8 @@ export function useMyOrdersActions(loadOrdensServico: () => Promise<void>, setAc
   };
 
   return {
-    startingId, navigating, recusaDialogOS, setRecusaDialogOS, aceiteLoading,
-    handleIniciarExecucao, handlePreencherRME, handleVerOS, handleLigarCliente,
+    startingId, navigating, exportingRMEId, recusaDialogOS, setRecusaDialogOS, aceiteLoading,
+    handleIniciarExecucao, handlePreencherRME, handleVerOS, handleVerRMEPDF, handleLigarCliente,
     handleAbrirMapa, handleAceitarTicket, handleAceitarOS, handleRecusarOS,
   };
 }
