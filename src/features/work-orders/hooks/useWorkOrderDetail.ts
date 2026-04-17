@@ -41,7 +41,7 @@ export interface WorkOrderDetailData {
       prioridade?: number | null;
     };
   };
-  rme_relatorios: Array<{ id: string; status: string; created_at: string }>;
+  rme_relatorios: Array<{ id: string; status: string; created_at: string; data_execucao?: string | null; start_time?: string | null; end_time?: string | null }>;
 }
 
 export const useWorkOrderDetail = (service = defaultService) => {
