@@ -14,6 +14,7 @@ export interface OrdemServico {
   aceite_tecnico?: string;
   aceite_at?: string;
   motivo_recusa?: string;
+  rme_relatorios?: Array<{ id: string; status: string }>;
   tickets: {
     id: string;
     numero_ticket: string;

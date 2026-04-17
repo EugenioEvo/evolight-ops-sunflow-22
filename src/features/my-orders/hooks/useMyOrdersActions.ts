@@ -32,7 +32,16 @@ export function useMyOrdersActions(loadOrdensServico: () => Promise<void>, setAc
   const handlePreencherRME = async (os: OrdemServico) => {
     setNavigating(os.id);
     await new Promise(resolve => setTimeout(resolve, 300));
-    navigate(`/rme-wizard/new?os=${os.id}`);
+    const rme = os.rme_relatorios?.[0];
+    // RME já submetido (pendente/aprovado/rejeitado) -> apenas visualização via detalhe da OS
+    if (rme && rme.status !== 'rascunho') {
+      navigate(`/work-orders/${os.id}`);
+    } else if (rme) {
+      // rascunho -> continuar edição
+      navigate(`/rme-wizard/${rme.id}?os=${os.id}`);
+    } else {
+      navigate(`/rme-wizard/new?os=${os.id}`);
+    }
   };
 
   const handleVerOS = async (os: OrdemServico) => {
