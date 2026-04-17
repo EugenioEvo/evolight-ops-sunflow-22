@@ -389,13 +389,17 @@ const WorkOrders = () => {
                     )}
                     <div className="pt-2 border-t flex items-center justify-between">
                       <div>
-                        {hasRME(os) ? (
-                          <Badge className={isRMECompleted(os) ? "bg-green-500/10 text-green-600 border-green-200" : "bg-amber-500/10 text-amber-600 border-amber-200"}>
-                            RME: {isRMECompleted(os) ? "Concluído" : "Rascunho"}
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="text-muted-foreground">Sem RME</Badge>
-                        )}
+                        {(() => {
+                          const rmeStatus = getRMEStatus(os);
+                          if (!rmeStatus) {
+                            return <Badge variant="outline" className="text-muted-foreground">Sem RME</Badge>;
+                          }
+                          return (
+                            <Badge variant="outline" className={RME_STATUS_BADGE_CLASS[rmeStatus]}>
+                              RME: {RME_STATUS_LABEL[rmeStatus]}
+                            </Badge>
+                          );
+                        })()}
                       </div>
                       <div className="flex items-center gap-1.5">
                         {canManageOS && (
