@@ -35,3 +35,12 @@ verify_jwt = false
 
 [functions.api-export]
 verify_jwt = false
+
+[functions.os-acceptance-action]
+verify_jwt = false
+
+[functions.send-rejection-notice]
+verify_jwt = true
+
+[functions.resend-os-acceptance-email]
+verify_jwt = true

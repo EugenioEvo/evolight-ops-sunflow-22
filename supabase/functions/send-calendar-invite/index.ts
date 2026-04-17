@@ -177,46 +177,23 @@ const handler = async (req: Request): Promise<Response> => {
     const isRejectionReschedule = action === "rejection_reschedule";
     const isReassignRemoved = action === "reassign_removed";
 
-    // Gerar token de confirmação de presença para incluir no email
-    let confirmUrl = "";
-    if (action !== "cancel") {
-      const { data: presenceToken, error: tokenError } = await supabase.rpc(
-        'generate_presence_token',
-        { p_os_id: os_id }
-      );
-
-      if (tokenError) {
-        console.warn("[send-calendar-invite] Erro ao gerar token de presença:", tokenError);
-      } else {
-        confirmUrl = `${supabaseUrl}/functions/v1/confirm-presence?os_id=${os_id}&token=${presenceToken}`;
-      }
-    }
-
     // Preparar email
     const recipients = [tecnicoEmail, CONFIG.teamEmail];
     const actionText = action === "create" ? "agendada" : action === "update" ? "reagendada" : action === "rejection_reschedule" ? "reagendada após recusa" : action === "reassign_removed" ? "reatribuída" : "cancelada";
     const dataFormatada = dtStart ? dtStart.toLocaleDateString("pt-BR") : "Não definida";
     const horaFormatada = dtStart ? dtStart.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "";
 
+    // [VERIFICADO] Subjects now include technician name per consolidated plan v3
     const emailSubject = action === "cancel"
-      ? `Cancelamento: ${os.numero_os} - ${clienteNome}`
+      ? `Cancelamento: ${os.numero_os} - ${clienteNome} - ${tecnicoNome}`
       : isReassignRemoved
-      ? `Reatribuição: ${os.numero_os} - ${clienteNome} — Você foi desatribuído`
+      ? `Reatribuição: ${os.numero_os} - ${clienteNome} - ${tecnicoNome} — Você foi desatribuído`
       : isRejectionReschedule
-      ? `Reagendamento: ${os.numero_os} - ${clienteNome} — Nova atribuição após recusa`
-      : `Agendamento: ${os.numero_os} - ${clienteNome} - ${dataFormatada} ${horaFormatada}`;
+      ? `Reagendamento: ${os.numero_os} - ${clienteNome} - ${tecnicoNome} — Nova atribuição após recusa`
+      : `Agendamento: ${os.numero_os} - ${clienteNome} - ${tecnicoNome}`;
 
-    const confirmButtonHtml = confirmUrl ? `
-<div style="text-align: center; margin: 30px 0;">
-  <a href="${confirmUrl}" 
-     style="display: inline-block; background: #16a34a; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px;">
-    ✅ Confirmar Presença
-  </a>
-  <p style="color: #6b7280; font-size: 12px; margin-top: 10px;">
-    Clique no botão acima para confirmar que você estará presente nesta OS
-  </p>
-</div>
-` : "";
+    // Presence-confirmation button removed: acceptance is now handled by os-acceptance-action email
+    const confirmButtonHtml = "";
 
     const cancelFooter = hasSchedule
       ? `<p style="color: #666; font-size: 12px;">Este evento foi cancelado. O convite em anexo removerá automaticamente o evento do seu calendário.</p>`

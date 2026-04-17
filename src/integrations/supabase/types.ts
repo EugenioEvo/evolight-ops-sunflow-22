@@ -503,6 +503,7 @@ export type Database = {
           servico_solicitado: string | null
           site_name: string | null
           tecnico_id: string | null
+          tecnico_responsavel_id: string | null
           ticket_id: string
           tipo_trabalho: string[] | null
           updated_at: string
@@ -539,6 +540,7 @@ export type Database = {
           servico_solicitado?: string | null
           site_name?: string | null
           tecnico_id?: string | null
+          tecnico_responsavel_id?: string | null
           ticket_id: string
           tipo_trabalho?: string[] | null
           updated_at?: string
@@ -575,6 +577,7 @@ export type Database = {
           servico_solicitado?: string | null
           site_name?: string | null
           tecnico_id?: string | null
+          tecnico_responsavel_id?: string | null
           ticket_id?: string
           tipo_trabalho?: string[] | null
           updated_at?: string
