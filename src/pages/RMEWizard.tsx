@@ -191,7 +191,8 @@ const RMEWizard = () => {
       setWorkOrder(data as unknown as WorkOrderInfo);
       const clienteNome = (data.tickets as any)?.clientes?.empresa || "";
       setFormData(prev => ({ ...prev, ordem_servico_id: data.id, ticket_id: data.ticket_id, site_name: data.site_name || "", client_name: clienteNome, address: (data.tickets as any)?.endereco_servico || "", ufv_solarz: (data.tickets as any)?.clientes?.ufv_solarz || "", nome_cliente_assinatura: prev.nome_cliente_assinatura || clienteNome }));
-      await loadGroupContext(data.ticket_id, tecnicoId);
+      setCurrentTicketId(data.ticket_id);
+      await loadGroupContext(data.ticket_id);
     } catch (error: any) {
       toast({ title: "Erro ao carregar OS", description: error.message, variant: "destructive" });
       navigate("/work-orders");
