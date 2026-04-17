@@ -210,6 +210,29 @@ serve(async (req) => {
       .single()
 
     if (osError) {
+      // 23505 = unique_violation -> índice ordens_servico_ticket_tecnico_active_unique
+      // Protege contra cliques duplos / corridas simultâneas mesmo após a checagem acima.
+      if ((osError as any).code === '23505') {
+        const { data: dupOS } = await supabaseClient
+          .from('ordens_servico')
+          .select('id, numero_os')
+          .eq('ticket_id', ticketId)
+          .eq('tecnico_id', tecnico?.id || '')
+          .neq('aceite_tecnico', 'recusado')
+          .maybeSingle()
+
+        return new Response(JSON.stringify({
+          success: true,
+          ordemServico: dupOS,
+          message: dupOS
+            ? `Já existe uma OS ativa (${dupOS.numero_os}) para este técnico neste ticket.`
+            : 'Já existe uma OS ativa para este técnico neste ticket.',
+          duplicate: true,
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        })
+      }
       throw osError
     }
 
