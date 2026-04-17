@@ -375,7 +375,7 @@ const RMEWizard = () => {
           {currentStep === 3 && <StepChecklists checklistItems={checklistItems} updateChecklistItem={updateChecklistItem} categories={["conexoes", "eletrica", "internet"]} />}
           {currentStep === 4 && <StepEvidence formData={formData} updateFormData={updateFormData} rmeId={formData.id} osId={formData.ordem_servico_id} />}
           {currentStep === 5 && <StepToolsEPIs checklistItems={checklistItems} updateChecklistItem={updateChecklistItem} categories={["ferramentas", "epis", "medidas_preventivas"]} />}
-          {currentStep === 6 && <StepSignatures formData={formData} updateFormData={updateFormData} />}
+          {currentStep === 6 && <StepSignatures formData={formData} updateFormData={updateFormData} tecnicoNome={tecnicoNome || profile?.nome || ""} />}
         </CardContent></Card>
       </div>
 
