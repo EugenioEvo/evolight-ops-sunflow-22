@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
 import { ticketService } from '../services/ticketService';
-import { notifyReassignRemoved, notifyNewAssignment, notifyTicketAltered, notifyTicketDeleted } from '@/shared/services/notificationStrategies';
+import { notifyReassignRemoved, notifyNewAssignment, notifyTicketAltered, notifyTicketDeleted, notifyTicketDecision } from '@/shared/services/notificationStrategies';
 import type { TicketFormData, TicketWithRelations, TicketPrestador } from '../types';
 
 export const useTicketMutations = (loadData: () => Promise<void>) => {
@@ -98,11 +98,15 @@ export const useTicketMutations = (loadData: () => Promise<void>) => {
     }
   };
 
-  const approveTicket = async (ticketId: string) => {
+  const approveTicket = async (ticketId: string, observacoes?: string) => {
     setLoading(true);
     try {
-      await ticketService.approve(ticketId, profile?.id || '');
-      toast.success('Ticket aprovado. Agora pode atribuir um técnico.');
+      await ticketService.approve(ticketId, profile?.id || '', observacoes);
+      // Fire-and-forget creator notification (in-app + email)
+      notifyTicketDecision(ticketId, 'aprovado', observacoes).catch((e) =>
+        console.warn('notifyTicketDecision approved failed:', e)
+      );
+      toast.success('Ticket aprovado. Criador notificado.');
       await loadData();
     } catch (error) {
       handleError(error, { fallbackMessage: 'Erro ao aprovar ticket' });
@@ -111,11 +115,14 @@ export const useTicketMutations = (loadData: () => Promise<void>) => {
     }
   };
 
-  const rejectTicket = async (ticketId: string) => {
+  const rejectTicket = async (ticketId: string, observacoes?: string) => {
     setLoading(true);
     try {
-      await ticketService.reject(ticketId, profile?.id || '');
-      toast.success('Ticket rejeitado');
+      await ticketService.reject(ticketId, profile?.id || '', observacoes);
+      notifyTicketDecision(ticketId, 'rejeitado', observacoes).catch((e) =>
+        console.warn('notifyTicketDecision rejected failed:', e)
+      );
+      toast.success('Ticket rejeitado. Criador notificado.');
       await loadData();
     } catch (error) {
       handleError(error, { fallbackMessage: 'Erro ao rejeitar ticket' });
