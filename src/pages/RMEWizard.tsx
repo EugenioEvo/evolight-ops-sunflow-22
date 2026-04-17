@@ -375,6 +375,7 @@ const RMEWizard = () => {
         signatures: formData.signatures,
 
         status_aprovacao: formData.status_aprovacao || "pendente",
+        status: formData.status || "rascunho",
       };
       await downloadRMEPDF(pdfData, `RME_${workOrder?.numero_os || "draft"}.pdf`);
       toast({ title: "PDF exportado com sucesso!" });
@@ -426,9 +427,14 @@ const RMEWizard = () => {
       </div>
 
       <div className="p-4 max-w-4xl mx-auto">
-        {isLocked && (
+        {isLocked && formData.status_aprovacao === "aprovado" && (
+          <div className="mb-4 rounded-md border border-green-500/40 bg-green-500/10 px-4 py-3 text-sm text-green-900 dark:text-green-200">
+            <strong>RME concluído.</strong> O relatório foi aprovado e está finalizado. Edição bloqueada — apenas visualização e impressão de PDF.
+          </div>
+        )}
+        {isLocked && formData.status_aprovacao !== "aprovado" && (
           <div className="mb-4 rounded-md border border-yellow-500/40 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-900 dark:text-yellow-200">
-            <strong>RME aguardando avaliação.</strong> A edição está bloqueada e só será liberada se o avaliador recusar o relatório.
+            <strong>RME pendente de aprovação.</strong> A edição está bloqueada — apenas visualização e impressão de PDF. Será liberada apenas se o avaliador recusar o relatório.
           </div>
         )}
         <Card><CardContent className="p-4 sm:p-6">
@@ -446,7 +452,7 @@ const RMEWizard = () => {
           <Button variant="outline" onClick={handlePrevious} disabled={currentStep === 1} className="flex-1 h-12">Anterior</Button>
           {isLocked ? (
             <div className="flex-1 h-12 flex items-center justify-center text-sm text-muted-foreground border rounded-md px-4 text-center">
-              RME aguardando avaliação — edição bloqueada
+              {formData.status_aprovacao === "aprovado" ? "RME concluído — somente leitura" : "RME pendente — somente leitura"}
             </div>
           ) : currentStep < STEPS.length ? (
             <Button onClick={handleNext} disabled={saving} className="flex-1 h-12">{saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}Próximo</Button>
