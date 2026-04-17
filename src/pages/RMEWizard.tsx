@@ -46,6 +46,7 @@ export interface RMEFormData {
   assinatura_cliente: string;
   nome_cliente_assinatura: string;
   status: string;
+  status_aprovacao?: string;
   client_name: string;
   address: string;
   ufv_solarz?: string;
@@ -89,7 +90,7 @@ const defaultFormData: RMEFormData = {
   signatures: {},
   fotos_antes: [], fotos_depois: [],
   assinatura_tecnico: "", assinatura_cliente: "", nome_cliente_assinatura: "",
-  status: "rascunho", client_name: "", address: "", ufv_solarz: "",
+  status: "rascunho", status_aprovacao: "pendente", client_name: "", address: "", ufv_solarz: "",
 };
 
 const RMEWizard = () => {
@@ -228,6 +229,7 @@ const RMEWizard = () => {
         assinatura_cliente: data.assinatura_cliente || "",
         nome_cliente_assinatura: data.nome_cliente_assinatura || "",
         status: data.status || "rascunho",
+        status_aprovacao: data.status_aprovacao || "pendente",
         client_name: os?.tickets?.clientes?.empresa || "", address: os?.tickets?.endereco_servico || "", ufv_solarz: os?.tickets?.clientes?.ufv_solarz || "",
       });
       const { data: items } = await supabase.from("rme_checklist_items").select("*").eq("rme_id", rmeId).order("category").order("item_key");
@@ -242,7 +244,15 @@ const RMEWizard = () => {
 
   const updateFormData = useCallback((updates: Partial<RMEFormData>) => { setFormData(prev => ({ ...prev, ...updates })); }, []);
 
+  // RME fica bloqueado para edição quando concluído E ainda não rejeitado.
+  // Só volta a ser editável após rejeição pelo avaliador (status_aprovacao === 'rejeitado').
+  const isLocked = formData.status === "concluido" && formData.status_aprovacao !== "rejeitado";
+
   const saveRME = async (finalize = false) => {
+    if (isLocked) {
+      toast({ title: "RME bloqueado para edição", description: "Aguarde a avaliação. Edição só é liberada se o avaliador recusar.", variant: "destructive" });
+      return null;
+    }
     if (!tecnicoId && !formData.tecnico_id) { toast({ title: "Erro", description: "Técnico não identificado", variant: "destructive" }); return null; }
     setSaving(true);
     try {
@@ -308,6 +318,10 @@ const RMEWizard = () => {
   };
 
   const updateChecklistItem = async (itemId: string, checked: boolean) => {
+    if (isLocked) {
+      toast({ title: "RME bloqueado para edição", description: "Aguarde a avaliação. Edição só é liberada se o avaliador recusar.", variant: "destructive" });
+      return;
+    }
     const { error } = await supabase.from("rme_checklist_items").update({ checked }).eq("id", itemId);
     if (!error) setChecklistItems(prev => prev.map(item => item.id === itemId ? { ...item, checked } : item));
   };
@@ -390,7 +404,7 @@ const RMEWizard = () => {
                   <span className="ml-2 hidden sm:inline">PDF</span>
                 </Button>
               )}
-              <Button variant="outline" size="sm" onClick={() => saveRME(false)} disabled={saving}>
+              <Button variant="outline" size="sm" onClick={() => saveRME(false)} disabled={saving || isLocked} title={isLocked ? "RME aguardando avaliação — edição bloqueada" : "Salvar rascunho"}>
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                 <span className="ml-2 hidden sm:inline">Salvar</span>
               </Button>
@@ -412,6 +426,11 @@ const RMEWizard = () => {
       </div>
 
       <div className="p-4 max-w-4xl mx-auto">
+        {isLocked && (
+          <div className="mb-4 rounded-md border border-yellow-500/40 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-900 dark:text-yellow-200">
+            <strong>RME aguardando avaliação.</strong> A edição está bloqueada e só será liberada se o avaliador recusar o relatório.
+          </div>
+        )}
         <Card><CardContent className="p-4 sm:p-6">
           {currentStep === 1 && <StepIdentification formData={formData} updateFormData={updateFormData} availableTechnicians={availableTechnicians} />}
           {currentStep === 2 && <StepServiceShift formData={formData} updateFormData={updateFormData} />}
@@ -425,7 +444,11 @@ const RMEWizard = () => {
       <div className="fixed bottom-0 left-0 right-0 bg-background border-t p-4 z-20">
         <div className="max-w-4xl mx-auto flex gap-3">
           <Button variant="outline" onClick={handlePrevious} disabled={currentStep === 1} className="flex-1 h-12">Anterior</Button>
-          {currentStep < STEPS.length ? (
+          {isLocked ? (
+            <div className="flex-1 h-12 flex items-center justify-center text-sm text-muted-foreground border rounded-md px-4 text-center">
+              RME aguardando avaliação — edição bloqueada
+            </div>
+          ) : currentStep < STEPS.length ? (
             <Button onClick={handleNext} disabled={saving} className="flex-1 h-12">{saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}Próximo</Button>
           ) : isResponsavel ? (
             <Button
