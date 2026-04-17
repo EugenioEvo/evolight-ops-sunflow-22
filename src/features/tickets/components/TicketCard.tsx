@@ -1,12 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Calendar, Clock, MapPin, Settings, FileText, CheckCircle, XCircle, Eye, Loader2, RefreshCw, Star, AlertTriangle, type LucideIcon } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { Calendar, Clock, MapPin, Settings, FileText, CheckCircle, XCircle, Loader2, RefreshCw, Star, AlertTriangle, ChevronDown, ClipboardCheck, type LucideIcon } from 'lucide-react';
 import { STATUS_COLORS, PRIORIDADE_COLORS } from '../types';
 import type { TicketWithRelations, TicketPrestador } from '../types';
-import { ticketService } from '../services/ticketService';
+import { supabase } from '@/integrations/supabase/client';
+import { RMEDetailDialog } from '@/components/RMEDetailDialog';
 import { useToast } from '@/hooks/use-toast';
 
 interface TicketCardProps {
