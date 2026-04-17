@@ -129,8 +129,8 @@ export function useMyOrdersActions(loadOrdensServico: () => Promise<void>, setAc
   };
 
   return {
-    startingId, navigating, recusaDialogOS, setRecusaDialogOS, aceiteLoading,
-    handleIniciarExecucao, handlePreencherRME, handleVerOS, handleLigarCliente,
+    startingId, navigating, exportingRMEId, recusaDialogOS, setRecusaDialogOS, aceiteLoading,
+    handleIniciarExecucao, handlePreencherRME, handleVerOS, handleVerRMEPDF, handleLigarCliente,
     handleAbrirMapa, handleAceitarTicket, handleAceitarOS, handleRecusarOS,
   };
 }
