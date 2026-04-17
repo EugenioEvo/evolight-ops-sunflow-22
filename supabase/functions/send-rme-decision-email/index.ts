@@ -30,7 +30,7 @@ serve(async (req) => {
     const { data: rme } = await supabase
       .from('rme_relatorios')
       .select(`
-        id, ticket_id, ordem_servico_id, tecnico_id,
+        id, ticket_id, ordem_servico_id, tecnico_id, collaboration,
         tickets!inner(numero_ticket, titulo, clientes(empresa)),
         tecnicos!inner(profiles!inner(email, nome))
       `)
@@ -48,9 +48,10 @@ serve(async (req) => {
       if (norm) recipients.add(norm)
     }
 
+    // 1) Autor do RME
     addEmail((rme as any).tecnicos?.profiles?.email)
 
-    // Technicians of linked accepted OSs
+    // 2) Técnicos de TODAS as OSs vinculadas ao mesmo ticket (aceitas/aprovadas — não recusadas)
     const { data: linkedOS } = await supabase
       .from('ordens_servico')
       .select('tecnico_id, tecnicos(profiles(email))')
@@ -59,6 +60,18 @@ serve(async (req) => {
 
     for (const os of linkedOS || []) {
       addEmail((os as any).tecnicos?.profiles?.email)
+    }
+
+    // 3) Colaboradores marcados no próprio RME (collaboration = array de tecnicos.id)
+    const collabIds: string[] = Array.isArray((rme as any).collaboration) ? (rme as any).collaboration : []
+    if (collabIds.length > 0) {
+      const { data: collabs } = await supabase
+        .from('tecnicos')
+        .select('id, profiles(email)')
+        .in('id', collabIds)
+      for (const c of collabs || []) {
+        addEmail((c as any).profiles?.email)
+      }
     }
 
     if (recipients.size === 0) {
