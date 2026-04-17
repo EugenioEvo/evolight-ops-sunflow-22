@@ -23,6 +23,9 @@ export const useClientDashData = (service = defaultClientService) => {
 
   useEffect(() => { loadClientData(); }, [user]);
 
+  // Realtime: refresh when tickets/OS/RME change
+  useGlobalRealtime(() => { loadClientData(); });
+
   const loadClientData = async () => {
     if (!user || !profile?.id) return;
     setLoading(true);
