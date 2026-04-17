@@ -33,31 +33,6 @@ export interface WorkOrder {
   }>;
 }
 
-/** Work order create form data */
-export interface WorkOrderCreateData {
-  cliente_id: string;
-  site_name: string;
-  servico_solicitado: string;
-  descricao: string;
-  data_programada: Date;
-  hora_inicio?: string;
-  hora_fim?: string;
-  inspetor_responsavel?: string;
-  notes?: string;
-}
-
-/** Client option for work order create */
-export interface WOClienteOption {
-  id: string;
-  empresa: string;
-  ufv_solarz: string | null;
-}
-
-/** Tecnico option for work order create */
-export interface WOTecnicoOption {
-  id: string;
-  nome: string;
-}
 
 export const STATUS_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
   aberta: { label: "Aberta", color: "bg-blue-500/10 text-blue-600 border-blue-200", icon: "FileText" },
