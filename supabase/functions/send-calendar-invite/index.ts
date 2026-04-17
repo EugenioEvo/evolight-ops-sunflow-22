@@ -192,8 +192,8 @@ const handler = async (req: Request): Promise<Response> => {
     const isRejectionReschedule = action === "rejection_reschedule";
     const isReassignRemoved = action === "reassign_removed";
 
-    // Preparar email
-    const recipients = [tecnicoEmail, CONFIG.teamEmail];
+    // Preparar email - apenas para o técnico (sem cópia para o time)
+    const recipients = [tecnicoEmail];
     const actionText = action === "create" ? "agendada" : action === "update" ? "reagendada" : action === "rejection_reschedule" ? "reagendada após recusa" : action === "reassign_removed" ? "reatribuída" : "cancelada";
     const dataFormatada = dtStart ? dtStart.toLocaleDateString("pt-BR") : "Não definida";
     const horaFormatada = dtStart ? dtStart.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "";
