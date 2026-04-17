@@ -190,7 +190,9 @@ const RMEWizard = () => {
       setTecnicoNome(tecnico?.profiles?.nome || "");
       setFormData({
         id: data.id, ordem_servico_id: data.ordem_servico_id, ticket_id: data.ticket_id, tecnico_id: data.tecnico_id,
-        data_execucao: data.data_execucao?.split("T")[0] || "", weekday: data.weekday || "",
+        data_execucao: data.data_execucao?.split("T")[0] || "",
+        data_fim_execucao: data.data_execucao?.split("T")[0] || "",
+        weekday: data.weekday || "",
         site_name: data.site_name || os?.site_name || "",
         collaboration: Array.isArray(data.collaboration) ? (data.collaboration as string[]) : [],
         micro_number: data.micro_number || "", inverter_number: data.inverter_number || "",
