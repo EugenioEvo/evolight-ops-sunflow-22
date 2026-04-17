@@ -32,7 +32,7 @@ import ClientDashboard from "./pages/ClientDashboard";
 import PresenceConfirmation from "./pages/PresenceConfirmation";
 import VisualizarOS from "./pages/VisualizarOS";
 import WorkOrders from "./pages/WorkOrders";
-// WorkOrderCreate deprecated — replaced by MultiTechnicianOSDialog (standalone mode) opened from /work-orders.
+// WorkOrderCreate removed (Phase 3) — replaced by MultiTechnicianOSDialog (standalone mode) opened from /work-orders.
 import WorkOrderDetail from "./pages/WorkOrderDetail";
 import RMEWizard from "./pages/RMEWizard";
 import ResetPassword from "./pages/ResetPassword";
