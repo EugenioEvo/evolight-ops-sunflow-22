@@ -9,6 +9,7 @@ export const createMyOrdersService = (client?: AppSupabaseClient) => {
       let query = db
         .from("ordens_servico")
         .select(`*, data_programada, hora_inicio, hora_fim, equipe, servico_solicitado, inspetor_responsavel, tipo_trabalho,
+          rme_relatorios (id, status),
           tickets!inner (id, numero_ticket, titulo, descricao, endereco_servico, prioridade, status, data_inicio_execucao,
             clientes (empresa, endereco, cidade, estado, profiles!clientes_profile_id_fkey(telefone)))`)
         .order("data_emissao", { ascending: false });
