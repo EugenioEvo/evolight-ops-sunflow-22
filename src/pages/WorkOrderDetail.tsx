@@ -41,10 +41,7 @@ const WorkOrderDetail = () => {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => {
-              if (window.history.length > 1) navigate(-1);
-              else navigate("/work-orders");
-            }}
+            onClick={() => navigate(-1)}
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
