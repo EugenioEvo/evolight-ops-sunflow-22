@@ -25,6 +25,7 @@ import { useWorkOrderData, useWorkOrderFilters, workOrderService } from "@/featu
 import type { WorkOrder } from "@/features/work-orders";
 import { MultiTechnicianOSDialog } from "@/components/MultiTechnicianOSDialog";
 import { supabase } from "@/integrations/supabase/client";
+import { RME_STATUS_LABEL, RME_STATUS_BADGE_CLASS, normalizeRMEStatus } from "@/utils/rmeStatus";
 
 const statusConfig: Record<string, { label: string; color: string; icon: React.ElementType }> = {
   aberta: { label: "Aberta", color: "bg-blue-500/10 text-blue-600 border-blue-200", icon: FileText },
