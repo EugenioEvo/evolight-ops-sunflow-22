@@ -130,7 +130,7 @@ const handler = async (req: Request): Promise<Response> => {
         const dataFormatada = dataOS.toLocaleDateString("pt-BR");
         const horaFormatada = os.hora_inicio;
 
-        const recipients = [tecnicoEmail, CONFIG.teamEmail];
+        const recipients = [tecnicoEmail];
 
         // Gerar token de confirmação seguro usando UUID
         const { data: tokenData, error: tokenError } = await supabase.rpc(
