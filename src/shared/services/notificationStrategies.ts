@@ -123,19 +123,6 @@ export async function notifyTicketAltered(os: LinkedOS): Promise<void> {
  * (#11) Email + in-app to ticket creator and OS creator (dedupe if same person).
  */
 export async function notifyTicketDeleted(os: LinkedOS): Promise<void> {
-  // Technician in-app
-  if (os.tecnico_id) {
-    const tecUserId = await notificationService.getTecnicoUserId(os.tecnico_id);
-    if (tecUserId) {
-      await notificationService.sendInApp(
-        tecUserId, 'ticket_excluido', 'Ticket Excluído',
-        `O ticket vinculado à OS ${os.numero_os} foi excluído pelo gestor. A OS será removida.`,
-        '/minhas-os'
-      ).catch((e) => console.warn('notifyTicketDeleted tech in-app failed:', e));
-    }
-  }
-
-  // Ticket creator in-app + email (OS creator = ticket creator in this domain, dedupe is a no-op)
   const { data: osRow } = await supabase
     .from('ordens_servico')
     .select('numero_os, ticket_id, tickets(created_by, numero_ticket, titulo)')
@@ -143,13 +130,42 @@ export async function notifyTicketDeleted(os: LinkedOS): Promise<void> {
     .maybeSingle();
 
   const creator = (osRow as any)?.tickets?.created_by;
-  if (creator) {
-    await notificationService.sendInApp(
-      creator, 'ticket_excluido_criador', 'Ticket Excluído',
-      `O ticket ${(osRow as any)?.tickets?.numero_ticket || ''} vinculado à OS ${os.numero_os} foi excluído pelo gestor.`,
-      '/tickets'
-    ).catch((e) => console.warn('notifyTicketDeleted creator in-app failed:', e));
+  const numeroTicket = (osRow as any)?.tickets?.numero_ticket || '';
 
+  // Dedupe central: técnico e criador podem coincidir — usar Set por user_id
+  const recipients = new Map<string, { tipo: string; titulo: string; mensagem: string; link: string }>();
+
+  if (os.tecnico_id) {
+    const tecUserId = await notificationService.getTecnicoUserId(os.tecnico_id);
+    if (tecUserId) {
+      recipients.set(tecUserId, {
+        tipo: 'ticket_excluido',
+        titulo: 'Ticket Excluído',
+        mensagem: `O ticket vinculado à OS ${os.numero_os} foi excluído pelo gestor. A OS será removida.`,
+        link: '/minhas-os',
+      });
+    }
+  }
+
+  if (creator && !recipients.has(creator)) {
+    recipients.set(creator, {
+      tipo: 'ticket_excluido_criador',
+      titulo: 'Ticket Excluído',
+      mensagem: `O ticket ${numeroTicket} vinculado à OS ${os.numero_os} foi excluído pelo gestor.`,
+      link: '/tickets',
+    });
+  }
+
+  await Promise.all(
+    Array.from(recipients.entries()).map(([uid, payload]) =>
+      notificationService
+        .sendInApp(uid, payload.tipo, payload.titulo, payload.mensagem, payload.link)
+        .catch((e) => console.warn('notifyTicketDeleted in-app failed:', e))
+    )
+  );
+
+  // Email apenas ao criador (edge function já cuida de 1 destinatário)
+  if (creator) {
     supabase.functions
       .invoke('send-ticket-deleted-email', { body: { os_id: os.id } })
       .catch((e) => console.warn('send-ticket-deleted-email failed:', e));
