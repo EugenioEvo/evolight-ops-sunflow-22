@@ -517,10 +517,17 @@ export const MultiTechnicianOSDialog = ({
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>Cancelar</Button>
-          <Button onClick={handleSubmit} disabled={loading || selectedPrestadores.length === 0}>
-            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Gerar {selectedPrestadores.length > 1 ? `${selectedPrestadores.length} OS` : 'OS'}
-          </Button>
+          {isAddMode ? (
+            <Button onClick={handleSubmit} disabled={loading || newSelectedPrestadores.length === 0}>
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Adicionar {newSelectedPrestadores.length > 1 ? `${newSelectedPrestadores.length} técnicos` : 'técnico'}
+            </Button>
+          ) : (
+            <Button onClick={handleSubmit} disabled={loading || selectedPrestadores.length === 0}>
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Gerar {selectedPrestadores.length > 1 ? `${selectedPrestadores.length} OS` : 'OS'}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
