@@ -452,58 +452,60 @@ export const MultiTechnicianOSDialog = ({
               );
             })}
 
-          {/* Tipo de Trabalho — moved BELOW Técnicos */}
-          <div className="space-y-2">
-            <Label>Tipo de Trabalho <span className="text-destructive">*</span></Label>
-            <div className="flex gap-6 flex-wrap">
-              {['internet', 'eletrica', 'limpeza'].map(tipo => (
-                <div key={tipo} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={`tipo-${tipo}`}
-                    checked={formData.tipo_trabalho.includes(tipo)}
-                    onCheckedChange={(checked) => handleTipoTrabalhoChange(tipo, checked as boolean)}
-                  />
-                  <label htmlFor={`tipo-${tipo}`} className="text-sm font-medium">
-                    {tipo === 'eletrica' ? 'ELÉTRICA' : tipo.toUpperCase()}
-                  </label>
+          {/* Tipo / Responsável / Descrição — apenas no modo "gerar OS" inicial */}
+          {!isAddMode && (
+            <>
+              <div className="space-y-2">
+                <Label>Tipo de Trabalho <span className="text-destructive">*</span></Label>
+                <div className="flex gap-6 flex-wrap">
+                  {['internet', 'eletrica', 'limpeza'].map(tipo => (
+                    <div key={tipo} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`tipo-${tipo}`}
+                        checked={formData.tipo_trabalho.includes(tipo)}
+                        onCheckedChange={(checked) => handleTipoTrabalhoChange(tipo, checked as boolean)}
+                      />
+                      <label htmlFor={`tipo-${tipo}`} className="text-sm font-medium">
+                        {tipo === 'eletrica' ? 'ELÉTRICA' : tipo.toUpperCase()}
+                      </label>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </div>
+              </div>
 
-          {/* Técnico Responsável (REQUIRED) */}
-          <div className="space-y-2">
-            <Label htmlFor="responsavel">Técnico Responsável <span className="text-destructive">*</span></Label>
-            <Select
-              value={tecnicoResponsavelId}
-              onValueChange={setTecnicoResponsavelId}
-              disabled={responsavelOptions.length === 0}
-            >
-              <SelectTrigger id="responsavel">
-                <SelectValue placeholder={responsavelOptions.length === 0 ? "Selecione técnicos acima" : "Escolha o responsável"} />
-              </SelectTrigger>
-              <SelectContent>
-                {responsavelOptions.map(p => (
-                  <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground">
-              Responsável principal pelo serviço. Se recusar, o próximo a aceitar assume.
-            </p>
-          </div>
+              <div className="space-y-2">
+                <Label htmlFor="responsavel">Técnico Responsável <span className="text-destructive">*</span></Label>
+                <Select
+                  value={tecnicoResponsavelId}
+                  onValueChange={setTecnicoResponsavelId}
+                  disabled={responsavelOptions.length === 0}
+                >
+                  <SelectTrigger id="responsavel">
+                    <SelectValue placeholder={responsavelOptions.length === 0 ? "Selecione técnicos acima" : "Escolha o responsável"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {responsavelOptions.map(p => (
+                      <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Responsável principal pelo serviço. Se recusar, o próximo a aceitar assume.
+                </p>
+              </div>
 
-          {/* Descrição Serviços Solicitados (textarea) */}
-          <div className="space-y-2">
-            <Label htmlFor="descricao_servicos">Descrição Serviços Solicitados <span className="text-destructive">*</span></Label>
-            <Textarea
-              id="descricao_servicos"
-              rows={3}
-              value={formData.descricao_servicos}
-              onChange={(e) => setFormData(prev => ({ ...prev, descricao_servicos: e.target.value }))}
-              placeholder="Descreva os serviços a serem executados"
-            />
-          </div>
+              <div className="space-y-2">
+                <Label htmlFor="descricao_servicos">Descrição Serviços Solicitados <span className="text-destructive">*</span></Label>
+                <Textarea
+                  id="descricao_servicos"
+                  rows={3}
+                  value={formData.descricao_servicos}
+                  onChange={(e) => setFormData(prev => ({ ...prev, descricao_servicos: e.target.value }))}
+                  placeholder="Descreva os serviços a serem executados"
+                />
+              </div>
+            </>
+          )}
 
           <div className="p-4 bg-warning/10 border border-warning/30 rounded-md">
             <p className="text-xs">
