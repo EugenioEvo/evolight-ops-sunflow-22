@@ -1,23 +1,29 @@
 import { useState } from "react";
-import { Plus, X } from "lucide-react";
+import { Check, ChevronsUpDown, X, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import type { RMEFormData } from "@/pages/RMEWizard";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { cn } from "@/lib/utils";
+import type { RMEFormData, TechnicianOption } from "@/pages/RMEWizard";
 
 interface Props {
   formData: RMEFormData;
   updateFormData: (updates: Partial<RMEFormData>) => void;
+  availableTechnicians?: TechnicianOption[];
 }
 
-export const StepIdentification = ({ formData, updateFormData }: Props) => {
-  const [newCollaborator, setNewCollaborator] = useState("");
+export const StepIdentification = ({ formData, updateFormData, availableTechnicians = [] }: Props) => {
+  const [open, setOpen] = useState(false);
 
-  const addCollaborator = () => {
-    if (newCollaborator.trim() && !formData.collaboration.includes(newCollaborator.trim())) {
-      updateFormData({ collaboration: [...formData.collaboration, newCollaborator.trim()] });
-      setNewCollaborator("");
+  const toggleTechnician = (name: string) => {
+    const current = formData.collaboration;
+    if (current.includes(name)) {
+      updateFormData({ collaboration: current.filter((c) => c !== name) });
+    } else {
+      updateFormData({ collaboration: [...current, name] });
     }
   };
 
@@ -81,26 +87,66 @@ export const StepIdentification = ({ formData, updateFormData }: Props) => {
         </div>
       </div>
 
-      {/* Collaboration */}
+      {/* Collaboration — multi-select dropdown of technicians with approved OS for the ticket */}
       <div className="space-y-3">
         <Label>Colaboradores Presentes</Label>
-        <div className="flex gap-2">
-          <Input
-            value={newCollaborator}
-            onChange={(e) => setNewCollaborator(e.target.value)}
-            placeholder="Nome do colaborador"
-            className="h-12"
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                addCollaborator();
-              }
-            }}
-          />
-          <Button type="button" onClick={addCollaborator} size="icon" className="h-12 w-12">
-            <Plus className="h-5 w-5" />
-          </Button>
-        </div>
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              type="button"
+              variant="outline"
+              role="combobox"
+              aria-expanded={open}
+              className="w-full justify-between h-12"
+              disabled={availableTechnicians.length === 0}
+            >
+              <span className="flex items-center gap-2 text-left truncate">
+                <Users className="h-4 w-4 shrink-0" />
+                {availableTechnicians.length === 0
+                  ? "Nenhum técnico aprovado neste ticket"
+                  : formData.collaboration.length === 0
+                  ? "Selecione os técnicos presentes"
+                  : `${formData.collaboration.length} selecionado(s)`}
+              </span>
+              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+            <Command>
+              <CommandInput placeholder="Buscar técnico..." />
+              <CommandList>
+                <CommandEmpty>Nenhum técnico encontrado.</CommandEmpty>
+                <CommandGroup>
+                  {availableTechnicians.map((tec) => {
+                    const checked = formData.collaboration.includes(tec.nome);
+                    return (
+                      <CommandItem
+                        key={tec.id}
+                        value={tec.nome}
+                        onSelect={() => toggleTechnician(tec.nome)}
+                        className="cursor-pointer"
+                      >
+                        <Check
+                          className={cn(
+                            "mr-2 h-4 w-4",
+                            checked ? "opacity-100" : "opacity-0"
+                          )}
+                        />
+                        <div className="flex flex-col">
+                          <span>{tec.nome}</span>
+                          {tec.email && (
+                            <span className="text-xs text-muted-foreground">{tec.email}</span>
+                          )}
+                        </div>
+                      </CommandItem>
+                    );
+                  })}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
+
         {formData.collaboration.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {formData.collaboration.map((name) => (
@@ -110,6 +156,7 @@ export const StepIdentification = ({ formData, updateFormData }: Props) => {
                   type="button"
                   onClick={() => removeCollaborator(name)}
                   className="ml-2 hover:text-destructive"
+                  aria-label={`Remover ${name}`}
                 >
                   <X className="h-3 w-3" />
                 </button>
