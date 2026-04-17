@@ -92,13 +92,19 @@ export const MultiTechnicianOSDialog = ({
     }
   }, [open]);
 
-  // Pre-select assigned tech (ticket-based mode)
+  // Pre-select assigned tech (ticket-based mode) — pre-selects the already assigned ones
+  // when in "add mode" so the user clearly sees who is already allocated.
   useEffect(() => {
-    if (open && !isStandalone && ticket?.tecnico_responsavel_id) {
-      setSelectedPrestadores([ticket.tecnico_responsavel_id]);
-      setTecnicoResponsavelId(ticket.tecnico_responsavel_id);
+    if (open && !isStandalone) {
+      if (isAddMode) {
+        setSelectedPrestadores([...alreadyAssignedPrestadorIds]);
+        setTecnicoResponsavelId(ticket?.tecnico_responsavel_id || alreadyAssignedPrestadorIds[0] || "");
+      } else if (ticket?.tecnico_responsavel_id) {
+        setSelectedPrestadores([ticket.tecnico_responsavel_id]);
+        setTecnicoResponsavelId(ticket.tecnico_responsavel_id);
+      }
     }
-  }, [open, ticket, isStandalone]);
+  }, [open, ticket, isStandalone, isAddMode, alreadyAssignedPrestadorIds]);
 
   // Availability check
   useEffect(() => {
