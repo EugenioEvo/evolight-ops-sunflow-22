@@ -12,6 +12,7 @@ import { Plus, Search, Ticket as TicketIcon, AlertTriangle } from 'lucide-react'
 import { EmptyState } from '@/components/EmptyState';
 import { Pagination } from '@/components/Pagination';
 import { MultiTechnicianOSDialog } from '@/components/MultiTechnicianOSDialog';
+import { ApprovalModal } from '@/components/ApprovalModal';
 import {
   useTicketData,
   useTicketMutations,
@@ -25,6 +26,7 @@ const Tickets = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTicket, setEditingTicket] = useState<any>(null);
   const [multiOSDialogTicket, setMultiOSDialogTicket] = useState<any>(null);
+  const [decisionModal, setDecisionModal] = useState<{ ticketId: string; type: 'approve' | 'reject' } | null>(null);
 
   const { user, profile } = useAuth();
   const { toast } = useToast();
@@ -173,8 +175,8 @@ const Tickets = () => {
                     generatingOsId={mutations.generatingOsId}
                     reprocessingTicketId={mutations.reprocessingTicketId}
                     geocoding={geocoding}
-                    onApprove={(id) => { mutations.approveTicket(id); filters.setActiveTab('aprovado'); }}
-                    onReject={(id) => { mutations.rejectTicket(id); filters.setActiveTab('todos'); }}
+                    onApprove={(id) => setDecisionModal({ ticketId: id, type: 'approve' })}
+                    onReject={(id) => setDecisionModal({ ticketId: id, type: 'reject' })}
                     onEdit={handleEdit}
                     onDelete={(id) => { mutations.deleteTicket(id); filters.setActiveTab('todos'); }}
                     onAssignTechnician={(ticketId, techId) => mutations.assignTechnician(ticketId, techId, tickets, prestadores)}
@@ -217,6 +219,25 @@ const Tickets = () => {
         onSuccess={() => {
           filters.setActiveTab('ordem_servico_gerada');
           loadData();
+        }}
+      />
+
+      <ApprovalModal
+        open={!!decisionModal}
+        onClose={() => setDecisionModal(null)}
+        type={decisionModal?.type || 'approve'}
+        entityLabel="Ticket"
+        loading={mutations.loading}
+        onConfirm={async (observacoes) => {
+          if (!decisionModal) return;
+          if (decisionModal.type === 'approve') {
+            await mutations.approveTicket(decisionModal.ticketId, observacoes);
+            filters.setActiveTab('aprovado');
+          } else {
+            await mutations.rejectTicket(decisionModal.ticketId, observacoes);
+            filters.setActiveTab('todos');
+          }
+          setDecisionModal(null);
         }}
       />
     </div>
