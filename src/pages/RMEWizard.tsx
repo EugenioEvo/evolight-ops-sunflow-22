@@ -169,6 +169,7 @@ const RMEWizard = () => {
       if (error) throw error;
       setWorkOrder(data as unknown as WorkOrderInfo);
       setFormData(prev => ({ ...prev, ordem_servico_id: data.id, ticket_id: data.ticket_id, site_name: data.site_name || "", client_name: (data.tickets as any)?.clientes?.empresa || "", address: (data.tickets as any)?.endereco_servico || "", ufv_solarz: (data.tickets as any)?.clientes?.ufv_solarz || "" }));
+      await loadGroupContext(data.ticket_id, tecnicoId);
     } catch (error: any) {
       toast({ title: "Erro ao carregar OS", description: error.message, variant: "destructive" });
       navigate("/work-orders");
@@ -206,6 +207,7 @@ const RMEWizard = () => {
       });
       const { data: items } = await supabase.from("rme_checklist_items").select("*").eq("rme_id", rmeId).order("category").order("item_key");
       setChecklistItems(items || []);
+      await loadGroupContext(data.ticket_id, tecnicoId);
     } catch (error: any) {
       toast({ title: "Erro ao carregar RME", description: error.message, variant: "destructive" });
       navigate("/work-orders");
