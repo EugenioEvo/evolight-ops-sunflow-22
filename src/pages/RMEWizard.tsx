@@ -383,16 +383,19 @@ const RMEWizard = () => {
           <Button variant="outline" onClick={handlePrevious} disabled={currentStep === 1} className="flex-1 h-12">Anterior</Button>
           {currentStep < STEPS.length ? (
             <Button onClick={handleNext} disabled={saving} className="flex-1 h-12">{saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}Próximo</Button>
-          ) : (
+          ) : isResponsavel ? (
             <Button
               onClick={handleFinalize}
-              disabled={saving || !isResponsavel}
+              disabled={saving}
               className="flex-1 h-12 bg-green-600 hover:bg-green-700"
-              title={!isResponsavel ? "Apenas o Técnico Responsável pode concluir o RME" : undefined}
             >
               {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
-              {isResponsavel ? "Concluir RME" : "Apenas Técnico Responsável"}
+              Concluir RME
             </Button>
+          ) : (
+            <div className="flex-1 h-12 flex items-center justify-center text-sm text-muted-foreground border rounded-md px-4 text-center">
+              Apenas o Técnico Responsável pode concluir o RME
+            </div>
           )}
         </div>
       </div>
