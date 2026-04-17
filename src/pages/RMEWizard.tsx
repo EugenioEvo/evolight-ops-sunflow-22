@@ -90,7 +90,7 @@ const defaultFormData: RMEFormData = {
   signatures: {},
   fotos_antes: [], fotos_depois: [],
   assinatura_tecnico: "", assinatura_cliente: "", nome_cliente_assinatura: "",
-  status: "rascunho", client_name: "", address: "", ufv_solarz: "",
+  status: "rascunho", status_aprovacao: "pendente", client_name: "", address: "", ufv_solarz: "",
 };
 
 const RMEWizard = () => {
