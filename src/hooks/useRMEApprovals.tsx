@@ -15,8 +15,7 @@ export const useRMEApprovals = () => {
       const { error } = await supabase
         .from('rme_relatorios')
         .update({
-          status: 'concluido',
-          status_aprovacao: 'aprovado',
+          status: 'aprovado',
           aprovado_por: userData.user?.id,
           data_aprovacao: new Date().toISOString(),
           observacoes_aprovacao: observacoes || null,
@@ -63,12 +62,11 @@ export const useRMEApprovals = () => {
     try {
       const { data: userData } = await supabase.auth.getUser();
 
-      // Reject + revert to draft so technician can edit and resubmit (#13)
+      // Reject so technician can edit and resubmit (#13)
       const { error } = await supabase
         .from('rme_relatorios')
         .update({
-          status_aprovacao: 'pendente',
-          status: 'rascunho',
+          status: 'rejeitado',
           aprovado_por: userData.user?.id,
           data_aprovacao: new Date().toISOString(),
           observacoes_aprovacao: motivo,
