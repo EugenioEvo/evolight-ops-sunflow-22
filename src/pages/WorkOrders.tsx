@@ -77,7 +77,10 @@ const WorkOrders = () => {
   };
 
   const hasRME = (os: WorkOrder) => os.rme_relatorios && os.rme_relatorios.length > 0;
-  const isRMECompleted = (os: WorkOrder) => os.rme_relatorios?.some((r) => r.status === "concluido");
+  const getRMEStatus = (os: WorkOrder) => {
+    const raw = os.rme_relatorios?.[0]?.status;
+    return raw ? normalizeRMEStatus(raw) : null;
+  };
 
   const handleDeleteOS = async (e: React.MouseEvent, osId: string, ticketId: string) => {
     e.stopPropagation();
