@@ -44,3 +44,6 @@ verify_jwt = true
 
 [functions.resend-os-acceptance-email]
 verify_jwt = true
+
+[functions.send-ticket-decision-email]
+verify_jwt = true

@@ -45,17 +45,27 @@ export const createTicketService = (client?: AppSupabaseClient) => {
       if (error) throw error;
     },
 
-    async approve(ticketId: string, profileId: string) {
+    async approve(ticketId: string, profileId: string, observacoes?: string) {
       const { error: updateError } = await db.from('tickets').update({ status: 'aprovado' }).eq('id', ticketId);
       if (updateError) throw updateError;
-      const { error: approvalError } = await db.from('aprovacoes').insert({ ticket_id: ticketId, aprovador_id: profileId, status: 'aprovado', observacoes: 'Aprovado automaticamente' });
+      const { error: approvalError } = await db.from('aprovacoes').insert({
+        ticket_id: ticketId,
+        aprovador_id: profileId,
+        status: 'aprovado',
+        observacoes: observacoes?.trim() || 'Aprovado',
+      });
       if (approvalError) throw approvalError;
     },
 
-    async reject(ticketId: string, profileId: string) {
+    async reject(ticketId: string, profileId: string, observacoes?: string) {
       const { error: updateError } = await db.from('tickets').update({ status: 'rejeitado' }).eq('id', ticketId);
       if (updateError) throw updateError;
-      const { error: approvalError } = await db.from('aprovacoes').insert({ ticket_id: ticketId, aprovador_id: profileId, status: 'rejeitado', observacoes: 'Rejeitado' });
+      const { error: approvalError } = await db.from('aprovacoes').insert({
+        ticket_id: ticketId,
+        aprovador_id: profileId,
+        status: 'rejeitado',
+        observacoes: observacoes?.trim() || 'Rejeitado',
+      });
       if (approvalError) throw approvalError;
     },
 

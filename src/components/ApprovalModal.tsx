@@ -17,6 +17,8 @@ interface ApprovalModalProps {
   onConfirm: (observacoes?: string) => void;
   type: 'approve' | 'reject';
   loading?: boolean;
+  /** Entity label, defaults to 'RME' for backwards compatibility. Examples: 'Ticket', 'OS' */
+  entityLabel?: string;
 }
 
 export const ApprovalModal: React.FC<ApprovalModalProps> = ({
@@ -25,6 +27,7 @@ export const ApprovalModal: React.FC<ApprovalModalProps> = ({
   onConfirm,
   type,
   loading = false,
+  entityLabel = 'RME',
 }) => {
   const [observacoes, setObservacoes] = useState('');
 
@@ -43,12 +46,12 @@ export const ApprovalModal: React.FC<ApprovalModalProps> = ({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            {type === 'approve' ? 'Aprovar RME' : 'Rejeitar RME'}
+            {type === 'approve' ? `Aprovar ${entityLabel}` : `Rejeitar ${entityLabel}`}
           </DialogTitle>
           <DialogDescription>
             {type === 'approve'
-              ? 'Confirma a aprovação deste relatório? Você pode adicionar observações.'
-              : 'Informe o motivo da rejeição. Este campo é obrigatório.'}
+              ? `Confirma a aprovação? Você pode adicionar observações que serão enviadas ao criador.`
+              : `Informe o motivo da rejeição. Esta informação será enviada ao criador. Este campo é obrigatório.`}
           </DialogDescription>
         </DialogHeader>
 
