@@ -135,7 +135,29 @@ export const StepSignatures = ({ formData, updateFormData, tecnicoNome = "" }: P
 
         <div className="space-y-2">
           <Label className="text-sm">Nome do Cliente para Assinatura</Label>
-          <Input value={formData.nome_cliente_assinatura} onChange={(e) => updateFormData({ nome_cliente_assinatura: e.target.value })} placeholder="Nome completo do cliente" className="h-12" />
+          <Input
+            value={formData.nome_cliente_assinatura}
+            onChange={(e) => updateFormData({ nome_cliente_assinatura: e.target.value })}
+            placeholder="Nome completo do cliente"
+            className="h-12"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label className="text-sm">Responsável Técnico</Label>
+          <Input
+            value={formData.signatures?.responsavel?.nome || tecnicoNome}
+            onChange={(e) =>
+              updateFormData({
+                signatures: {
+                  ...formData.signatures,
+                  responsavel: { nome: e.target.value, at: new Date().toISOString() },
+                },
+              })
+            }
+            placeholder="Nome completo do responsável técnico"
+            className="h-12"
+          />
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
@@ -147,12 +169,12 @@ export const StepSignatures = ({ formData, updateFormData, tecnicoNome = "" }: P
                 <div className="flex items-center justify-between">
                   <Label className="text-sm font-medium">{kind === "tecnico" ? "Técnico" : "Cliente"}</Label>
                   {saved && (
-                    <span className="text-xs text-green-600 flex items-center gap-1">
+                    <span className="text-xs text-primary flex items-center gap-1">
                       <Check className="h-3 w-3" /> Assinado
                     </span>
                   )}
                 </div>
-                <div className="border-2 rounded-md overflow-hidden bg-white">
+                <div className="border-2 rounded-md overflow-hidden bg-background">
                   <SignatureCanvas
                     ref={ref}
                     canvasProps={{ className: "w-full h-[160px]" }}
@@ -166,7 +188,7 @@ export const StepSignatures = ({ formData, updateFormData, tecnicoNome = "" }: P
                 </div>
                 {saved && (
                   <div className="text-xs text-muted-foreground">
-                    <img src={saved} alt={`Prévia assinatura ${kind}`} className="border rounded bg-white max-h-20 mt-1" />
+                    <img src={saved} alt={`Prévia assinatura ${kind}`} className="border rounded bg-background max-h-20 mt-1" />
                   </div>
                 )}
               </div>
@@ -174,65 +196,6 @@ export const StepSignatures = ({ formData, updateFormData, tecnicoNome = "" }: P
           })}
         </div>
       </div>
-
-      {/* Internal Approval Signatures (text-based, JSON) */}
-      <div className="space-y-3">
-        <Label>Assinaturas Internas (Aprovações)</Label>
-        <div className="grid gap-3">
-          {signatureFields.map((field) => {
-            const signature = formData.signatures[field.key];
-            return (
-              <div key={field.key} className="p-4 rounded-lg border">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">{field.label}</p>
-                    {signature ? (
-                      <p className="text-sm text-green-600 flex items-center gap-1">
-                        <Check className="h-3 w-3" />
-                        {signature.nome}
-                      </p>
-                    ) : (
-                      <p className="text-sm text-muted-foreground">Pendente</p>
-                    )}
-                  </div>
-                  {signature ? (
-                    <Button variant="ghost" size="sm" onClick={() => removeSignature(field.key)} className="text-destructive">
-                      Remover
-                    </Button>
-                  ) : (
-                    <SignatureInput onConfirm={(nome) => addSignature(field.key, nome)} />
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const SignatureInput = ({ onConfirm }: { onConfirm: (nome: string) => void }) => {
-  const [open, setOpen] = useState(false);
-  const [nome, setNome] = useState("");
-
-  const handleConfirm = () => {
-    if (nome.trim()) {
-      onConfirm(nome.trim());
-      setNome("");
-      setOpen(false);
-    }
-  };
-
-  if (!open) {
-    return <Button variant="outline" size="sm" onClick={() => setOpen(true)}>Assinar</Button>;
-  }
-
-  return (
-    <div className="flex gap-2">
-      <Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nome" className="h-9 w-40" autoFocus onKeyDown={(e) => e.key === "Enter" && handleConfirm()} />
-      <Button size="sm" onClick={handleConfirm}><Check className="h-4 w-4" /></Button>
-      <Button size="sm" variant="ghost" onClick={() => setOpen(false)}><X className="h-4 w-4" /></Button>
     </div>
   );
 };
