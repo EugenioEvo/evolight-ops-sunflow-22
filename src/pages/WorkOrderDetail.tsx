@@ -2,7 +2,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   ArrowLeft, Calendar, Clock, MapPin, Users, FileText, Download,
-  PlayCircle, CheckCircle2, AlertTriangle, XCircle, Edit, Loader2, Star, Mail
+  PlayCircle, CheckCircle2, AlertTriangle, XCircle, Edit, Eye, Loader2, Star, Mail
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,6 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { LoadingState } from "@/components/LoadingState";
 import { useWorkOrderDetail } from "@/features/work-orders";
+import { RME_STATUS_LABEL, RME_STATUS_BADGE_CLASS, normalizeRMEStatus } from "@/utils/rmeStatus";
 
 const statusTimeline = [
   { key: "aberta", label: "Aberta", icon: FileText },
@@ -22,13 +23,15 @@ const statusTimeline = [
 const WorkOrderDetail = () => {
   const {
     workOrder, loading, actionLoading, sendingEmail, canManageOS, canCreateRME,
-    hasRME, isRMECompleted, currentStatus,
+    hasRME, isRMEApproved, isRMELocked, rmeStatus, currentStatus,
     handleStartExecution, handleCompleteOS, handleSendEmail, handleDownloadPDF, handleCreateRME,
     navigate,
   } = useWorkOrderDetail();
 
   if (loading) return <div className="p-6"><LoadingState variant="card" count={2} /></div>;
   if (!workOrder) return null;
+
+  const normalizedRMEStatus = rmeStatus ? normalizeRMEStatus(rmeStatus) : null;
 
   return (
     <div className="p-4 sm:p-6 space-y-6 animate-fade-in pb-32">
@@ -113,8 +116,17 @@ const WorkOrderDetail = () => {
           </AlertDescription>
         </Alert>
       )}
-      {currentStatus === "em_execucao" && !isRMECompleted && (
-        <Alert><AlertTriangle className="h-4 w-4" /><AlertTitle>RME Pendente</AlertTitle><AlertDescription>Para concluir esta OS, é necessário preencher e concluir o RME.</AlertDescription></Alert>
+      {currentStatus === "em_execucao" && !isRMEApproved && (
+        <Alert>
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>RME Pendente</AlertTitle>
+          <AlertDescription>
+            {!hasRME && "Para concluir esta OS, é necessário criar e submeter o RME para aprovação."}
+            {rmeStatus === 'rascunho' && "O RME está em rascunho. Conclua e submeta para aprovação."}
+            {rmeStatus === 'pendente' && "O RME foi submetido e aguarda aprovação do avaliador."}
+            {rmeStatus === 'rejeitado' && "O RME foi rejeitado pelo avaliador. Edite e re-submeta para aprovação."}
+          </AlertDescription>
+        </Alert>
       )}
 
       {/* Details */}
@@ -166,15 +178,19 @@ const WorkOrderDetail = () => {
       <Card>
         <CardHeader><CardTitle className="text-lg flex items-center gap-2"><FileText className="h-5 w-5" />Relatório de Manutenção (RME)</CardTitle></CardHeader>
         <CardContent>
-          {hasRME ? (
+          {hasRME && normalizedRMEStatus ? (
             <div className="flex items-center justify-between">
               <div>
-                <Badge className={isRMECompleted ? "bg-green-500/10 text-green-600 border-green-200" : "bg-amber-500/10 text-amber-600 border-amber-200"}>
-                  {isRMECompleted ? "RME Concluído" : "RME em Rascunho"}
+                <Badge variant="outline" className={RME_STATUS_BADGE_CLASS[normalizedRMEStatus]}>
+                  {RME_STATUS_LABEL[normalizedRMEStatus]}
                 </Badge>
-                <p className="text-sm text-muted-foreground mt-2">Criado em {format(new Date(workOrder.rme_relatorios[0].created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Criado em {format(new Date(workOrder.rme_relatorios[0].created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                </p>
               </div>
-              <Button onClick={handleCreateRME}><Edit className="h-4 w-4 mr-2" />{isRMECompleted ? "Visualizar RME" : "Continuar RME"}</Button>
+              <Button onClick={handleCreateRME} variant={isRMELocked ? "outline" : "default"}>
+                {isRMELocked ? <><Eye className="h-4 w-4 mr-2" />Visualizar RME</> : <><Edit className="h-4 w-4 mr-2" />{rmeStatus === 'rejeitado' ? 'Corrigir RME' : 'Continuar RME'}</>}
+              </Button>
             </div>
           ) : (
             <div className="text-center py-6">
@@ -196,8 +212,15 @@ const WorkOrderDetail = () => {
           )}
           {currentStatus === "em_execucao" && canCreateRME && (
             <>
-              <Button variant="outline" className="flex-1 h-12" onClick={handleCreateRME}><Edit className="h-4 w-4 mr-2" />{hasRME ? "Editar RME" : "Criar RME"}</Button>
-              {isRMECompleted && canManageOS && (
+              <Button
+                variant="outline"
+                className="flex-1 h-12"
+                onClick={handleCreateRME}
+              >
+                {isRMELocked ? <Eye className="h-4 w-4 mr-2" /> : <Edit className="h-4 w-4 mr-2" />}
+                {isRMELocked ? 'Visualizar RME' : (hasRME ? (rmeStatus === 'rejeitado' ? 'Corrigir RME' : 'Editar RME') : 'Criar RME')}
+              </Button>
+              {isRMEApproved && canManageOS && (
                 <Button className="flex-1 h-12" onClick={handleCompleteOS} disabled={actionLoading}>
                   {actionLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}Concluir OS
                 </Button>

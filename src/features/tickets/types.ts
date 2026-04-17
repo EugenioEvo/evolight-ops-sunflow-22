@@ -68,7 +68,6 @@ export interface TicketWithRelations {
     rme_relatorios?: Array<{
       id: string;
       status: string | null;
-      status_aprovacao: string;
     }> | null;
   }> | null;
   prestadores: {

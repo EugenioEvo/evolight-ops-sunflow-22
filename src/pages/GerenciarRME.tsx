@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CheckCircle, XCircle, Clock, Search, Eye, FileText, Star, Mail, Loader2 } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, Search, Eye, FileText, Star, Mail, Loader2, Printer } from 'lucide-react';
 import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -14,6 +14,7 @@ import { ApprovalModal } from '@/components/ApprovalModal';
 import { Pagination } from '@/components/Pagination';
 import { useRMEQuery, useRMEStatsQuery, useApproveRMEMutation, useRejectRMEMutation } from '@/hooks/useRMEQuery';
 import { useGlobalRealtime } from '@/hooks/useRealtimeProvider';
+import { rmeService } from '@/features/rme/services/rmeService';
 
 const GerenciarRME = () => {
   const [page, setPage] = useState(1);
@@ -24,6 +25,7 @@ const GerenciarRME = () => {
   const [approvalModalOpen, setApprovalModalOpen] = useState(false);
   const [approvalType, setApprovalType] = useState<'approve' | 'reject'>('approve');
   const [sendingEmailId, setSendingEmailId] = useState<string | null>(null);
+  const [exportingPdfId, setExportingPdfId] = useState<string | null>(null);
 
   const { profile } = useAuth();
   const { toast } = useToast();
@@ -86,6 +88,18 @@ const GerenciarRME = () => {
       });
     } finally {
       setSendingEmailId(null);
+    }
+  };
+
+  const handleExportPDF = async (rme: any) => {
+    try {
+      setExportingPdfId(rme.id);
+      await rmeService.exportRMEPDF(rme);
+      toast({ title: 'PDF exportado com sucesso!' });
+    } catch (error: any) {
+      toast({ title: 'Erro ao exportar PDF', description: error.message, variant: 'destructive' });
+    } finally {
+      setExportingPdfId(null);
     }
   };
 
@@ -298,18 +312,21 @@ const GerenciarRME = () => {
                       )}
                       Email
                     </Button>
-                    {rme.pdf_url && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => window.open(rme.pdf_url, '_blank')}
-                        className="gap-2"
-                      >
-                        <FileText className="h-4 w-4" />
-                        PDF
-                      </Button>
-                    )}
-                    {rme.status_aprovacao === 'pendente' && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleExportPDF(rme)}
+                      disabled={exportingPdfId === rme.id}
+                      className="gap-2"
+                    >
+                      {exportingPdfId === rme.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Printer className="h-4 w-4" />
+                      )}
+                      PDF
+                    </Button>
+                    {rme.status === 'pendente' && (
                       <>
                         <Button
                           variant="default"

@@ -74,13 +74,25 @@ export const useWorkOrderDetail = (service = defaultService) => {
     if (!workOrder) return 'aberta';
     const s = workOrder.tickets.status;
     if (s === 'concluido') return 'concluida';
-    if (s === 'em_execucao') return workOrder.rme_relatorios.some(r => r.status === 'rascunho') ? 'aguardando_rme' : 'em_execucao';
+    if (s === 'em_execucao') {
+      // Only treat as "aguardando_rme" while RME is still in draft (technician still owes work).
+      // Pendente / aprovado / rejeitado mean the RME exists and has been submitted at least once.
+      const rmeStatus = workOrder.rme_relatorios[0]?.status;
+      return rmeStatus === 'rascunho' ? 'aguardando_rme' : 'em_execucao';
+    }
     if (s === 'cancelado') return 'cancelada';
     return 'aberta';
   };
 
-  const hasRME = workOrder?.rme_relatorios && workOrder.rme_relatorios.length > 0;
-  const isRMECompleted = workOrder?.rme_relatorios?.some(r => r.status === 'concluido');
+  const rmeStatus = workOrder?.rme_relatorios?.[0]?.status as
+    | 'rascunho' | 'pendente' | 'aprovado' | 'rejeitado' | undefined;
+  const hasRME = !!rmeStatus;
+  // Approved RME unlocks OS completion. Pendente/rejeitado are NOT enough.
+  const isRMEApproved = rmeStatus === 'aprovado';
+  // True whenever the technician is no longer allowed to edit the RME.
+  const isRMELocked = rmeStatus === 'pendente' || rmeStatus === 'aprovado';
+  // Backwards-compat: legacy callers used `isRMECompleted` to mean "ready to finish OS".
+  const isRMECompleted = isRMEApproved;
 
   const handleStartExecution = async () => {
     if (!workOrder) return;
@@ -97,8 +109,8 @@ export const useWorkOrderDetail = (service = defaultService) => {
   };
 
   const handleCompleteOS = async () => {
-    if (!workOrder || !isRMECompleted) {
-      toast.error('RME concluído necessário para finalizar a OS.');
+    if (!workOrder || !isRMEApproved) {
+      toast.error('A OS só pode ser concluída após aprovação do RME pelo avaliador.');
       return;
     }
     setActionLoading(true);
@@ -160,7 +172,8 @@ export const useWorkOrderDetail = (service = defaultService) => {
 
   return {
     workOrder, loading, actionLoading, sendingEmail, canManageOS, canCreateRME,
-    hasRME, isRMECompleted, currentStatus: getCurrentStatus(),
+    hasRME, isRMECompleted, isRMEApproved, isRMELocked, rmeStatus,
+    currentStatus: getCurrentStatus(),
     handleStartExecution, handleCompleteOS, handleSendEmail, handleDownloadPDF, handleCreateRME,
     navigate,
   };
