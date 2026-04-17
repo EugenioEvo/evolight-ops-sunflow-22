@@ -106,13 +106,16 @@ export const TicketCard = ({
   };
 
   // Build RME entries: each one tied to its OS
-  const rmeEntries = (ticket.ordens_servico || []).flatMap((os) =>
-    (os.rme_relatorios || []).map((rme) => ({
-      rme,
+  // Note: rme_relatorios may come as array (1:N) or single object (1:1) depending on FK uniqueness
+  const rmeEntries = (ticket.ordens_servico || []).flatMap((os) => {
+    const raw = (os as { rme_relatorios?: unknown }).rme_relatorios;
+    const rmeList = Array.isArray(raw) ? raw : raw ? [raw] : [];
+    return rmeList.map((rme) => ({
+      rme: rme as { id: string; status: string | null; status_aprovacao: string },
       os,
       tecnicoNome: os.tecnicos?.profiles?.nome || 'Técnico não atribuído',
-    }))
-  );
+    }));
+  });
 
   const getGeocodingStatusBadge = (status: string | null | undefined) => {
     if (!status) return null;
