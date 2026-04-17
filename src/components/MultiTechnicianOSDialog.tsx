@@ -38,6 +38,8 @@ interface MultiTechnicianOSDialogProps {
   prestadores: Prestador[];
   /** Required when ticketId is undefined (standalone). */
   clientes?: ClienteOption[];
+  /** IDs de prestadores já alocados (modo "adicionar técnicos"): aparecem marcados e desabilitados. */
+  alreadyAssignedPrestadorIds?: string[];
   onSuccess?: () => void;
 }
 
@@ -48,10 +50,12 @@ export const MultiTechnicianOSDialog = ({
   ticket,
   prestadores,
   clientes = [],
+  alreadyAssignedPrestadorIds = [],
   onSuccess,
 }: MultiTechnicianOSDialogProps) => {
   const { user } = useAuth();
   const isStandalone = !ticketId;
+  const isAddMode = alreadyAssignedPrestadorIds.length > 0;
 
   const [loading, setLoading] = useState(false);
   const [selectedPrestadores, setSelectedPrestadores] = useState<string[]>([]);
