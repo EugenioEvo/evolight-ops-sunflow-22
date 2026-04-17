@@ -111,6 +111,7 @@ const RMEWizard = () => {
   const [formData, setFormData] = useState<RMEFormData>(defaultFormData);
   const [availableTechnicians, setAvailableTechnicians] = useState<TechnicianOption[]>([]);
   const [isResponsavel, setIsResponsavel] = useState(false);
+  const [currentTicketId, setCurrentTicketId] = useState<string | null>(null);
 
   const isNewRME = id === "new";
 
@@ -119,6 +120,11 @@ const RMEWizard = () => {
     if (isNewRME && osId) loadWorkOrder(osId);
     else if (!isNewRME && id) loadExistingRME(id);
   }, [id, osId, isNewRME]);
+
+  // Re-evaluate responsável when tecnicoId resolves after the OS/RME has been loaded
+  useEffect(() => {
+    if (currentTicketId) loadGroupContext(currentTicketId);
+  }, [currentTicketId, tecnicoId, profile?.email]);
 
   const loadTecnicoId = async () => {
     if (!profile?.user_id) return;
@@ -130,8 +136,9 @@ const RMEWizard = () => {
    * Loads technicians with approved OS for the same ticket (for collaboration dropdown)
    * and checks whether the current user is the responsible technician.
    * Responsible = ordens_servico.tecnico_responsavel_id (prestador) matched against current profile email.
+   * Note: independent of tecnicoId resolution — relies on profile.email to avoid race condition on mount.
    */
-  const loadGroupContext = async (ticketId: string, currentTecnicoId: string | null) => {
+  const loadGroupContext = async (ticketId: string) => {
     const { data: osList } = await supabase
       .from("ordens_servico")
       .select("id, tecnico_id, tecnico_responsavel_id, aceite_tecnico, tecnicos:tecnico_id(id, profiles(nome, email))")
@@ -153,7 +160,7 @@ const RMEWizard = () => {
     }
     setAvailableTechnicians(techs);
 
-    if (currentTecnicoId && respPrestadorId && profile?.email) {
+    if (respPrestadorId && profile?.email) {
       const { data: prestador } = await supabase
         .from("prestadores")
         .select("email")
@@ -184,7 +191,8 @@ const RMEWizard = () => {
       setWorkOrder(data as unknown as WorkOrderInfo);
       const clienteNome = (data.tickets as any)?.clientes?.empresa || "";
       setFormData(prev => ({ ...prev, ordem_servico_id: data.id, ticket_id: data.ticket_id, site_name: data.site_name || "", client_name: clienteNome, address: (data.tickets as any)?.endereco_servico || "", ufv_solarz: (data.tickets as any)?.clientes?.ufv_solarz || "", nome_cliente_assinatura: prev.nome_cliente_assinatura || clienteNome }));
-      await loadGroupContext(data.ticket_id, tecnicoId);
+      setCurrentTicketId(data.ticket_id);
+      await loadGroupContext(data.ticket_id);
     } catch (error: any) {
       toast({ title: "Erro ao carregar OS", description: error.message, variant: "destructive" });
       navigate("/work-orders");
@@ -224,7 +232,8 @@ const RMEWizard = () => {
       });
       const { data: items } = await supabase.from("rme_checklist_items").select("*").eq("rme_id", rmeId).order("category").order("item_key");
       setChecklistItems(items || []);
-      await loadGroupContext(data.ticket_id, tecnicoId);
+      setCurrentTicketId(data.ticket_id);
+      await loadGroupContext(data.ticket_id);
     } catch (error: any) {
       toast({ title: "Erro ao carregar RME", description: error.message, variant: "destructive" });
       navigate("/work-orders");
