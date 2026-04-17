@@ -404,7 +404,7 @@ const RMEWizard = () => {
                   <span className="ml-2 hidden sm:inline">PDF</span>
                 </Button>
               )}
-              <Button variant="outline" size="sm" onClick={() => saveRME(false)} disabled={saving}>
+              <Button variant="outline" size="sm" onClick={() => saveRME(false)} disabled={saving || isLocked} title={isLocked ? "RME aguardando avaliação — edição bloqueada" : "Salvar rascunho"}>
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                 <span className="ml-2 hidden sm:inline">Salvar</span>
               </Button>
