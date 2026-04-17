@@ -111,6 +111,7 @@ const RMEWizard = () => {
   const [formData, setFormData] = useState<RMEFormData>(defaultFormData);
   const [availableTechnicians, setAvailableTechnicians] = useState<TechnicianOption[]>([]);
   const [isResponsavel, setIsResponsavel] = useState(false);
+  const [currentTicketId, setCurrentTicketId] = useState<string | null>(null);
 
   const isNewRME = id === "new";
 
@@ -119,6 +120,11 @@ const RMEWizard = () => {
     if (isNewRME && osId) loadWorkOrder(osId);
     else if (!isNewRME && id) loadExistingRME(id);
   }, [id, osId, isNewRME]);
+
+  // Re-evaluate responsável when tecnicoId resolves after the OS/RME has been loaded
+  useEffect(() => {
+    if (currentTicketId) loadGroupContext(currentTicketId);
+  }, [currentTicketId, tecnicoId, profile?.email]);
 
   const loadTecnicoId = async () => {
     if (!profile?.user_id) return;
