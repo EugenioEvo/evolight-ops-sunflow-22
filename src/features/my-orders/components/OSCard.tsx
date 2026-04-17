@@ -231,9 +231,22 @@ export function OSCard({
           )}
 
           {isPendente && osAceito && ticketAceito && (
-            <Badge variant="outline" className="w-full justify-center py-2 bg-green-50 text-green-700 border-green-200">
-              <CheckCircle2 className="h-3 w-3 mr-1" />Aceita — Próximo: Iniciar Execução
-            </Badge>
+            <>
+              <Badge variant="outline" className="w-full justify-center py-2 bg-green-50 text-green-700 border-green-200">
+                <CheckCircle2 className="h-3 w-3 mr-1" />Aceita — Próximo: Iniciar Execução
+              </Badge>
+              {isTecnico && (
+                <Button
+                  onClick={() => onRecusarOS(os)}
+                  variant="outline"
+                  size="sm"
+                  className="w-full text-destructive hover:text-destructive border-destructive/30 hover:bg-destructive/5"
+                  disabled={aceiteLoading}
+                >
+                  <ThumbsDown className="h-4 w-4 mr-2" />Cancelar aceite (devolver para gestão)
+                </Button>
+              )}
+            </>
           )}
 
           {emExecucao && (
