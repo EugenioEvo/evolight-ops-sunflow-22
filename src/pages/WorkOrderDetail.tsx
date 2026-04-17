@@ -23,13 +23,15 @@ const statusTimeline = [
 const WorkOrderDetail = () => {
   const {
     workOrder, loading, actionLoading, sendingEmail, canManageOS, canCreateRME,
-    hasRME, isRMECompleted, currentStatus,
+    hasRME, isRMEApproved, isRMELocked, rmeStatus, currentStatus,
     handleStartExecution, handleCompleteOS, handleSendEmail, handleDownloadPDF, handleCreateRME,
     navigate,
   } = useWorkOrderDetail();
 
   if (loading) return <div className="p-6"><LoadingState variant="card" count={2} /></div>;
   if (!workOrder) return null;
+
+  const normalizedRMEStatus = rmeStatus ? normalizeRMEStatus(rmeStatus) : null;
 
   return (
     <div className="p-4 sm:p-6 space-y-6 animate-fade-in pb-32">
