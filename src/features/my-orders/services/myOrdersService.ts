@@ -25,7 +25,16 @@ export const createMyOrdersService = (client?: AppSupabaseClient) => {
 
       const { data, error } = await query;
       if (error) throw error;
-      return data || [];
+      // Normalize rme_relatorios into an array (1-1 relation may come back as object)
+      const normalized = (data || []).map((row: any) => ({
+        ...row,
+        rme_relatorios: Array.isArray(row.rme_relatorios)
+          ? row.rme_relatorios
+          : row.rme_relatorios
+            ? [row.rme_relatorios]
+            : [],
+      }));
+      return normalized;
     },
 
     async iniciarExecucao(ticketId: string) {

@@ -40,6 +40,7 @@ const getStatusBadge = (status: string) => {
   const labels: Record<string, { label: string; variant: "default" | "outline" | "secondary" | "destructive" }> = {
     'ordem_servico_gerada': { label: 'Pendente', variant: 'outline' },
     'em_execucao': { label: 'Em Execução', variant: 'default' },
+    'aguardando_rme': { label: 'Aguardando RME', variant: 'secondary' },
     'concluido': { label: 'Concluído', variant: 'secondary' },
   };
   return labels[status] || { label: status, variant: 'outline' };
@@ -49,7 +50,14 @@ export function OSCard({
   os, isTecnico, startingId, navigating, exportingRMEId, aceiteLoading,
   onIniciarExecucao, onPreencherRME, onVerOS, onVerRMEPDF, onLigarCliente, onAbrirMapa, onAceitarTicket, onAceitarOS, onRecusarOS,
 }: OSCardProps) {
-  const statusBadge = getStatusBadge(os.tickets.status);
+  const rme = os.rme_relatorios?.[0];
+  const rmeStatus = rme?.status;
+  // Reflect RME state in the OS badge: em_execucao + RME submitted (pendente/aprovado/rejeitado) => Aguardando RME
+  const effectiveStatus =
+    os.tickets.status === 'em_execucao' && rme && rmeStatus !== 'rascunho' && rmeStatus !== 'aprovado'
+      ? 'aguardando_rme'
+      : os.tickets.status;
+  const statusBadge = getStatusBadge(effectiveStatus);
   const isPendente = os.tickets.status === 'ordem_servico_gerada' ||
     (os.tickets.status === 'aprovado' && os.aceite_tecnico === 'pendente');
   const emExecucao = os.tickets.status === 'em_execucao';
