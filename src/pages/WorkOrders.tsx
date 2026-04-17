@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { notificationService } from "@/shared/services/notificationService";
@@ -23,6 +23,8 @@ import { Pagination } from "@/components/Pagination";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useWorkOrderData, useWorkOrderFilters, workOrderService } from "@/features/work-orders";
 import type { WorkOrder } from "@/features/work-orders";
+import { MultiTechnicianOSDialog } from "@/components/MultiTechnicianOSDialog";
+import { supabase } from "@/integrations/supabase/client";
 
 const statusConfig: Record<string, { label: string; color: string; icon: React.ElementType }> = {
   aberta: { label: "Aberta", color: "bg-blue-500/10 text-blue-600 border-blue-200", icon: FileText },
@@ -40,6 +42,9 @@ const prioridadeConfig: Record<string, { label: string; color: string }> = {
 
 const WorkOrders = () => {
   const [sendingEmailId, setSendingEmailId] = useState<string | null>(null);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [prestadores, setPrestadores] = useState<Array<{ id: string; nome: string; email: string }>>([]);
+  const [standaloneClientes, setStandaloneClientes] = useState<Array<{ id: string; empresa: string | null; ufv_solarz: string | null; endereco: string | null; cidade: string | null; estado: string | null }>>([]);
   const { profile } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -48,6 +53,19 @@ const WorkOrders = () => {
 
   const { workOrders, clientes, loading, setLoading, loadWorkOrders, ufvSolarzOptions, stats } = useWorkOrderData();
   const filters = useWorkOrderFilters(workOrders);
+
+  // Load prestadores + clientes (with full address) for the standalone dialog
+  useEffect(() => {
+    if (!canManageOS) return;
+    (async () => {
+      const [{ data: prestData }, { data: cliData }] = await Promise.all([
+        supabase.from('prestadores').select('id, nome, email').eq('categoria', 'tecnico').eq('ativo', true).order('nome'),
+        supabase.from('clientes').select('id, empresa, ufv_solarz, endereco, cidade, estado').order('empresa'),
+      ]);
+      setPrestadores((prestData || []) as any);
+      setStandaloneClientes((cliData || []) as any);
+    })();
+  }, [canManageOS]);
 
   const getOSStatus = (os: WorkOrder) => {
     const ticketStatus = os.tickets.status;
@@ -127,11 +145,19 @@ const WorkOrders = () => {
           <p className="text-muted-foreground">Gerencie as ordens de serviço e RMEs</p>
         </div>
         {canManageOS && (
-          <Button onClick={() => navigate("/work-orders/new")} className="w-full sm:w-auto">
+          <Button onClick={() => setCreateDialogOpen(true)} className="w-full sm:w-auto">
             <Plus className="h-4 w-4 mr-2" />Nova OS
           </Button>
         )}
       </div>
+
+      <MultiTechnicianOSDialog
+        open={createDialogOpen}
+        onOpenChange={setCreateDialogOpen}
+        prestadores={prestadores}
+        clientes={standaloneClientes}
+        onSuccess={loadWorkOrders}
+      />
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">

@@ -32,7 +32,7 @@ import ClientDashboard from "./pages/ClientDashboard";
 import PresenceConfirmation from "./pages/PresenceConfirmation";
 import VisualizarOS from "./pages/VisualizarOS";
 import WorkOrders from "./pages/WorkOrders";
-import WorkOrderCreate from "./pages/WorkOrderCreate";
+// WorkOrderCreate deprecated — replaced by MultiTechnicianOSDialog (standalone mode) opened from /work-orders.
 import WorkOrderDetail from "./pages/WorkOrderDetail";
 import RMEWizard from "./pages/RMEWizard";
 import ResetPassword from "./pages/ResetPassword";
@@ -144,11 +144,7 @@ const App = () => (
                             } />
                             <Route path="/visualizar-os/:id" element={<VisualizarOS />} />
                             <Route path="/work-orders" element={<WorkOrders />} />
-                            <Route path="/work-orders/new" element={
-                              <ProtectedRoute roles={['admin', 'engenharia', 'supervisao']}>
-                                <WorkOrderCreate />
-                              </ProtectedRoute>
-                            } />
+                            <Route path="/work-orders/new" element={<Navigate to="/work-orders" replace />} />
                             <Route path="/work-orders/:id" element={<WorkOrderDetail />} />
                             <Route path="/rme-wizard/:id" element={<RMEWizard />} />
                             <Route path="*" element={<NotFound />} />

@@ -2,9 +2,8 @@ import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Calendar, Clock, MapPin, Settings, FileText, CheckCircle, XCircle, Download, Eye, Loader2, RefreshCw, Star, AlertTriangle, type LucideIcon } from 'lucide-react';
+import { Calendar, Clock, MapPin, Settings, FileText, CheckCircle, XCircle, Eye, Loader2, RefreshCw, Star, AlertTriangle, type LucideIcon } from 'lucide-react';
 import { STATUS_COLORS, PRIORIDADE_COLORS } from '../types';
 import type { TicketWithRelations, TicketPrestador } from '../types';
 import { ticketService } from '../services/ticketService';
@@ -245,48 +244,14 @@ export const TicketCard = ({
                 </>
               )}
 
-              {ticket.status === 'aprovado' && !ticket.tecnico_responsavel_id && (
+              {ticket.status === 'aprovado' && (
                 <>
-                  <Select onValueChange={(value) => onAssignTechnician(ticket.id, value)}>
-                    <SelectTrigger className="h-8 w-[200px]">
-                      <SelectValue placeholder="Atribuir técnico" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {getSortedPrestadores(ticket).map((prestador, index) => renderPrestadorOption(prestador, index))}
-                    </SelectContent>
-                  </Select>
-                  <Button size="sm" variant="outline" onClick={() => onEdit(ticket)}>Editar</Button>
-                  <DeleteButton />
-                </>
-              )}
-
-              {ticket.status === 'aprovado' && ticket.tecnico_responsavel_id && (
-                <>
-                  <Select onValueChange={(value) => onAssignTechnician(ticket.id, value)} defaultValue={ticket.tecnico_responsavel_id}>
-                    <SelectTrigger className="h-8 w-[200px]">
-                      <SelectValue placeholder="Trocar técnico" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {getSortedPrestadores(ticket).map((prestador, index) => renderPrestadorOption(prestador, index))}
-                    </SelectContent>
-                  </Select>
                   <Button size="sm" onClick={() => onGenerateOS(ticket)} className="flex items-center gap-2">
                     <FileText className="h-4 w-4" />Gerar Ordem de Serviço
                   </Button>
                   <Button size="sm" variant="outline" onClick={() => onEdit(ticket)}>Editar</Button>
                   <DeleteButton />
                 </>
-              )}
-
-              {(ticket.status === 'ordem_servico_gerada' || ticket.status === 'em_execucao') && (
-                <Select onValueChange={(value) => onAssignTechnician(ticket.id, value)} defaultValue={ticket.tecnico_responsavel_id || undefined}>
-                  <SelectTrigger className="h-8 w-[200px]">
-                    <SelectValue placeholder="Trocar técnico" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {getSortedPrestadores(ticket).map((prestador, index) => renderPrestadorOption(prestador, index))}
-                  </SelectContent>
-                </Select>
               )}
 
               {(ticket.status === 'ordem_servico_gerada' || ticket.status === 'em_execucao' || ticket.status === 'concluido') && (
