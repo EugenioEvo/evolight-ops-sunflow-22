@@ -13,10 +13,12 @@ interface OSCardProps {
   isTecnico: boolean;
   startingId: string | null;
   navigating: string | null;
+  exportingRMEId?: string | null;
   aceiteLoading: boolean;
   onIniciarExecucao: (os: OrdemServico) => void;
   onPreencherRME: (os: OrdemServico) => void;
   onVerOS: (os: OrdemServico) => void;
+  onVerRMEPDF?: (os: OrdemServico) => void;
   onLigarCliente: (telefone?: string) => void;
   onAbrirMapa: (endereco: string) => void;
   onAceitarTicket: (os: OrdemServico) => void;
