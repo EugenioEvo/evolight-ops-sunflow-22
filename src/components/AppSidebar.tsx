@@ -79,11 +79,10 @@ export function AppSidebar() {
       
       const channel = supabase
         .channel('rme-changes')
-        .on('postgres_changes', { 
-          event: '*', 
-          schema: 'public', 
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
           table: 'rme_relatorios',
-          filter: 'status=eq.pendente'
         }, loadPendingRMEsCount)
         .subscribe();
       
