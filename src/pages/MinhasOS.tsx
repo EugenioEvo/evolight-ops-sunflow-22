@@ -21,8 +21,8 @@ const MinhasOS = () => {
   } = useMyOrdersData();
 
   const {
-    startingId, navigating, recusaDialogOS, setRecusaDialogOS, aceiteLoading,
-    handleIniciarExecucao, handlePreencherRME, handleVerOS,
+    startingId, navigating, exportingRMEId, recusaDialogOS, setRecusaDialogOS, aceiteLoading,
+    handleIniciarExecucao, handlePreencherRME, handleVerOS, handleVerRMEPDF,
     handleLigarCliente, handleAbrirMapa, handleAceitarTicket, handleAceitarOS, handleRecusarOS,
   } = useMyOrdersActions(loadOrdensServico, setActiveTab);
 
