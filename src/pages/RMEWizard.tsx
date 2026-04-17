@@ -375,6 +375,7 @@ const RMEWizard = () => {
         signatures: formData.signatures,
 
         status_aprovacao: formData.status_aprovacao || "pendente",
+        status: formData.status || "rascunho",
       };
       await downloadRMEPDF(pdfData, `RME_${workOrder?.numero_os || "draft"}.pdf`);
       toast({ title: "PDF exportado com sucesso!" });
