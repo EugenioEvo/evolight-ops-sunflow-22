@@ -14,6 +14,7 @@ import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { downloadRMEPDF, RMEPDFData } from '@/utils/generateRMEPDF';
 import { useToast } from '@/hooks/use-toast';
+import { RME_STATUS_LABEL, RME_STATUS_BADGE_CLASS, normalizeRMEStatus } from '@/utils/rmeStatus';
 
 interface RMEDetailDialogProps {
   open: boolean;
@@ -82,7 +83,7 @@ export const RMEDetailDialog: React.FC<RMEDetailDialogProps> = ({
         condicoes_encontradas: rme.condicoes_encontradas || '-',
         signatures: rme.signatures || {},
         tecnico_nome: rme.tecnicos?.profiles?.nome || '-',
-        status_aprovacao: rme.status_aprovacao || 'pendente',
+        status: normalizeRMEStatus(rme.status),
         ufv_solarz: rme.tickets?.clientes?.ufv_solarz || undefined,
         fotos_antes_urls: Array.isArray(rme.fotos_antes) ? rme.fotos_antes : [],
         fotos_depois_urls: Array.isArray(rme.fotos_depois) ? rme.fotos_depois : [],
@@ -100,14 +101,13 @@ export const RMEDetailDialog: React.FC<RMEDetailDialogProps> = ({
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    const variants: Record<string, any> = {
-      pendente: { label: 'Pendente', variant: 'outline' },
-      aprovado: { label: 'Aprovado', variant: 'default' },
-      rejeitado: { label: 'Rejeitado', variant: 'destructive' },
-    };
-    const config = variants[status] || variants.pendente;
-    return <Badge variant={config.variant}>{config.label}</Badge>;
+  const getStatusBadge = (rawStatus: string) => {
+    const status = normalizeRMEStatus(rawStatus);
+    return (
+      <Badge variant="outline" className={RME_STATUS_BADGE_CLASS[status]}>
+        {RME_STATUS_LABEL[status]}
+      </Badge>
+    );
   };
 
   return (
@@ -131,7 +131,7 @@ export const RMEDetailDialog: React.FC<RMEDetailDialogProps> = ({
                 )}
                 Imprimir
               </Button>
-              {getStatusBadge(rme.status_aprovacao)}
+              {getStatusBadge(rme.status)}
             </div>
           </DialogTitle>
         </DialogHeader>
@@ -366,7 +366,7 @@ export const RMEDetailDialog: React.FC<RMEDetailDialogProps> = ({
           </Card>
 
           {/* Aprovação */}
-          {rme.status_aprovacao !== 'pendente' && (
+          {(rme.status === 'aprovado' || rme.status === 'rejeitado') && (
             <Card>
               <CardHeader>
                 <CardTitle className="text-sm">Informações de Aprovação</CardTitle>
@@ -374,7 +374,7 @@ export const RMEDetailDialog: React.FC<RMEDetailDialogProps> = ({
               <CardContent className="space-y-2 text-sm">
                 <div>
                   <span className="font-medium">Status:</span>{' '}
-                  {getStatusBadge(rme.status_aprovacao)}
+                  {getStatusBadge(rme.status)}
                 </div>
                 {rme.data_aprovacao && (
                   <div>
@@ -385,7 +385,7 @@ export const RMEDetailDialog: React.FC<RMEDetailDialogProps> = ({
                 {rme.aprovador?.nome && (
                   <div>
                     <span className="font-medium">
-                      {rme.status_aprovacao === 'aprovado' ? 'Aprovado' : 'Rejeitado'} por:
+                      {rme.status === 'aprovado' ? 'Aprovado' : 'Rejeitado'} por:
                     </span>{' '}
                     {rme.aprovador.nome}
                   </div>
