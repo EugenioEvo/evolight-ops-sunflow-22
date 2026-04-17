@@ -99,6 +99,7 @@ export function useMyOrdersActions(loadOrdensServico: () => Promise<void>, setAc
     }
   };
 
+  const handleLigarCliente = (telefone?: string) => {
     if (!telefone) {
       toast.error("Este cliente não possui telefone cadastrado.");
       return;
