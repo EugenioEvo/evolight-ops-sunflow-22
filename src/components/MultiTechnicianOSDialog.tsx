@@ -148,6 +148,8 @@ export const MultiTechnicianOSDialog = ({
   );
 
   const handleTogglePrestador = (prestadorId: string, checked: boolean) => {
+    // Em modo "adicionar técnicos", os já alocados são fixos
+    if (isAddMode && alreadyAssignedPrestadorIds.includes(prestadorId)) return;
     const availability = availabilityMap.get(prestadorId);
     if (availability && !availability.available && checked) {
       toast.error("Este técnico possui conflito de agenda no horário selecionado");
@@ -165,11 +167,20 @@ export const MultiTechnicianOSDialog = ({
     }));
   };
 
+  // Técnicos que efetivamente serão alvo de geração: em add-mode, somente os NOVOS
+  const newSelectedPrestadores = isAddMode
+    ? selectedPrestadores.filter(id => !alreadyAssignedPrestadorIds.includes(id))
+    : selectedPrestadores;
+
   const validate = (): string | null => {
-    if (selectedPrestadores.length === 0) return "Selecione ao menos um técnico";
-    if (!tecnicoResponsavelId) return "Selecione o Técnico Responsável";
-    if (formData.tipo_trabalho.length === 0) return "Selecione ao menos um tipo de trabalho";
-    if (!formData.descricao_servicos.trim()) return "Informe a descrição dos serviços solicitados";
+    if (isAddMode) {
+      if (newSelectedPrestadores.length === 0) return "Selecione ao menos um novo técnico para alocar";
+    } else {
+      if (selectedPrestadores.length === 0) return "Selecione ao menos um técnico";
+      if (!tecnicoResponsavelId) return "Selecione o Técnico Responsável";
+      if (formData.tipo_trabalho.length === 0) return "Selecione ao menos um tipo de trabalho";
+      if (!formData.descricao_servicos.trim()) return "Informe a descrição dos serviços solicitados";
+    }
     if (isStandalone) {
       if (!standaloneData.cliente_id) return "Selecione um cliente";
       if (!standaloneData.endereco_servico.trim()) return "Informe o endereço do serviço";
