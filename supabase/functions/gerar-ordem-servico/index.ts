@@ -1,9 +1,22 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.58.0'
+import { create as createJWT, getNumericDate } from 'https://deno.land/x/djwt@v3.0.2/mod.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+// [DOCUMENTAÇÃO] djwt v3 — HS256 JWT signing for action-link tokens
+async function signActionToken(payload: Record<string, unknown>, secret: string): Promise<string> {
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign', 'verify']
+  )
+  return await createJWT({ alg: 'HS256', typ: 'JWT' }, payload, key)
 }
 
 serve(async (req) => {
@@ -42,7 +55,8 @@ serve(async (req) => {
       servico_solicitado = 'MANUTENÇÃO',
       inspetor_responsavel = 'TODOS',
       tipo_trabalho = [],
-      tecnico_override_id = null
+      tecnico_override_id = null,
+      tecnico_responsavel_id = null,
     } = await req.json()
 
     // Buscar dados do ticket com cliente
@@ -141,6 +155,17 @@ serve(async (req) => {
       )
     }
 
+    // Determinar técnico responsável final (recebido ou já no ticket)
+    const finalResponsavelId = tecnico_responsavel_id || ticket.tecnico_responsavel_id || prestadorId;
+
+    // Atualizar ticket: garantir tecnico_responsavel_id setado
+    if (!ticket.tecnico_responsavel_id || ticket.tecnico_responsavel_id !== finalResponsavelId) {
+      await supabaseClient
+        .from('tickets')
+        .update({ tecnico_responsavel_id: finalResponsavelId })
+        .eq('id', ticketId)
+    }
+
     // Gerar número da OS
     const { data: numeroOS } = await supabaseClient.rpc('gerar_numero_os')
 
@@ -149,6 +174,7 @@ serve(async (req) => {
       ticket_id: ticketId,
       numero_os: numeroOS,
       tecnico_id: tecnico?.id || null,
+      tecnico_responsavel_id: finalResponsavelId,
       data_programada: ticket.data_servico || ticket.data_vencimento,
       qr_code: `OS-${numeroOS}-${ticketId}`,
       equipe: equipe,
@@ -263,17 +289,38 @@ QR Code: ${ordemServico.qr_code}
       .update({ status: 'ordem_servico_gerada' })
       .eq('id', ticketId)
 
-    // Enviar email de notificação ao técnico
+    // Enviar email de notificação ao técnico — agora com botões Aceitar / Recusar
     try {
       const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
+      const JWT_SECRET = Deno.env.get('SUPABASE_JWT_SECRET') || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
+      const PROJECT_URL = Deno.env.get('SUPABASE_URL') ?? ''
+
       if (RESEND_API_KEY && prestador.email) {
-        const dataProgramada = ticket.data_vencimento 
-          ? new Date(ticket.data_vencimento).toLocaleDateString('pt-BR') 
-          : 'A definir'
-        
+        const dataProgramada = ticket.data_servico
+          ? new Date(ticket.data_servico).toLocaleDateString('pt-BR')
+          : ticket.data_vencimento
+            ? new Date(ticket.data_vencimento).toLocaleDateString('pt-BR')
+            : 'A definir'
+
         const horario = osData.hora_inicio && osData.hora_fim
           ? `${osData.hora_inicio} - ${osData.hora_fim}`
           : 'A definir'
+
+        // [DOCUMENTAÇÃO] HS256 JWT for one-shot acceptance/rejection links (7-day exp)
+        const actionToken = await signActionToken(
+          {
+            os_id: ordemServico.id,
+            tecnico_id: tecnico?.id || null,
+            exp: getNumericDate(60 * 60 * 24 * 7),
+          },
+          JWT_SECRET
+        )
+
+        const actionBase = `${PROJECT_URL}/functions/v1/os-acceptance-action`
+        const acceptUrl = `${actionBase}?action=aceitar&token=${actionToken}`
+        const rejectUrl = `${actionBase}?action=recusar&token=${actionToken}`
+
+        const clienteNome = ticket.clientes.empresa || ticket.clientes.profiles?.nome || 'Cliente'
 
         const emailHtml = `
           <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
@@ -282,14 +329,20 @@ QR Code: ${ordemServico.qr_code}
             <p>Uma nova OS foi atribuída a você:</p>
             <table style="border-collapse:collapse;width:100%;margin:16px 0">
               <tr><td style="padding:8px;border:1px solid #ddd;background:#f9fafb"><strong>Nº OS</strong></td><td style="padding:8px;border:1px solid #ddd">${numeroOS}</td></tr>
-              <tr><td style="padding:8px;border:1px solid #ddd;background:#f9fafb"><strong>Cliente</strong></td><td style="padding:8px;border:1px solid #ddd">${ticket.clientes.empresa || ticket.clientes.profiles?.nome || 'N/A'}</td></tr>
+              <tr><td style="padding:8px;border:1px solid #ddd;background:#f9fafb"><strong>Cliente</strong></td><td style="padding:8px;border:1px solid #ddd">${clienteNome}</td></tr>
               <tr><td style="padding:8px;border:1px solid #ddd;background:#f9fafb"><strong>Serviço</strong></td><td style="padding:8px;border:1px solid #ddd">${ticket.titulo}</td></tr>
               <tr><td style="padding:8px;border:1px solid #ddd;background:#f9fafb"><strong>Endereço</strong></td><td style="padding:8px;border:1px solid #ddd">${ticket.endereco_servico}</td></tr>
               <tr><td style="padding:8px;border:1px solid #ddd;background:#f9fafb"><strong>Data</strong></td><td style="padding:8px;border:1px solid #ddd">${dataProgramada}</td></tr>
               <tr><td style="padding:8px;border:1px solid #ddd;background:#f9fafb"><strong>Horário</strong></td><td style="padding:8px;border:1px solid #ddd">${horario}</td></tr>
               <tr><td style="padding:8px;border:1px solid #ddd;background:#f9fafb"><strong>Prioridade</strong></td><td style="padding:8px;border:1px solid #ddd">${ticket.prioridade.toUpperCase()}</td></tr>
             </table>
-            <p style="margin-top:16px">Acesse o sistema para mais detalhes.</p>
+            <div style="text-align:center;margin:32px 0">
+              <a href="${acceptUrl}" style="display:inline-block;background:#16a34a;color:white;padding:14px 32px;text-decoration:none;border-radius:6px;font-weight:bold;font-size:16px;margin-right:12px">✅ Aceitar OS</a>
+              <a href="${rejectUrl}" style="display:inline-block;background:#dc2626;color:white;padding:14px 32px;text-decoration:none;border-radius:6px;font-weight:bold;font-size:16px">❌ Recusar OS</a>
+            </div>
+            <p style="color:#6b7280;font-size:13px;text-align:center;margin-top:8px">
+              Você também pode aceitar ou recusar diretamente no aplicativo.
+            </p>
             <p style="color:#6b7280;font-size:14px">— Equipe Evolight O&M</p>
           </div>
         `
@@ -300,7 +353,7 @@ QR Code: ${ordemServico.qr_code}
           body: JSON.stringify({
             from: 'SunFlow <oem@grupoevolight.com.br>',
             to: [prestador.email],
-            subject: `Nova OS Atribuída: ${numeroOS} - ${ticket.clientes.empresa || 'Cliente'}`,
+            subject: `Nova OS Atribuída: ${numeroOS} - ${prestador.nome}`,
             html: emailHtml,
           }),
         })
