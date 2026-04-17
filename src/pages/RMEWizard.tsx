@@ -106,6 +106,8 @@ const RMEWizard = () => {
   const [checklistItems, setChecklistItems] = useState<any[]>([]);
   const [tecnicoNome, setTecnicoNome] = useState("");
   const [formData, setFormData] = useState<RMEFormData>(defaultFormData);
+  const [availableTechnicians, setAvailableTechnicians] = useState<TechnicianOption[]>([]);
+  const [isResponsavel, setIsResponsavel] = useState(false);
 
   const isNewRME = id === "new";
 
@@ -119,6 +121,45 @@ const RMEWizard = () => {
     if (!profile?.user_id) return;
     const { data } = await supabase.from("tecnicos").select("id, profiles(nome)").eq("profile_id", profile.id).maybeSingle();
     if (data) { setTecnicoId(data.id); setTecnicoNome((data.profiles as any)?.nome || ""); }
+  };
+
+  /**
+   * Loads technicians with approved OS for the same ticket (for collaboration dropdown)
+   * and checks whether the current user is the responsible technician.
+   * Responsible = ordens_servico.tecnico_responsavel_id (prestador) matched against current profile email.
+   */
+  const loadGroupContext = async (ticketId: string, currentTecnicoId: string | null) => {
+    const { data: osList } = await supabase
+      .from("ordens_servico")
+      .select("id, tecnico_id, tecnico_responsavel_id, aceite_tecnico, tecnicos:tecnico_id(id, profiles(nome, email))")
+      .eq("ticket_id", ticketId)
+      .eq("aceite_tecnico", "aprovado");
+
+    const techs: TechnicianOption[] = [];
+    const seen = new Set<string>();
+    let respPrestadorId: string | null = null;
+    for (const os of osList || []) {
+      const tec: any = (os as any).tecnicos;
+      if (tec?.id && !seen.has(tec.id)) {
+        seen.add(tec.id);
+        techs.push({ id: tec.id, nome: tec.profiles?.nome || "Sem nome", email: tec.profiles?.email || "" });
+      }
+      if (!respPrestadorId && (os as any).tecnico_responsavel_id) {
+        respPrestadorId = (os as any).tecnico_responsavel_id;
+      }
+    }
+    setAvailableTechnicians(techs);
+
+    if (currentTecnicoId && respPrestadorId && profile?.email) {
+      const { data: prestador } = await supabase
+        .from("prestadores")
+        .select("email")
+        .eq("id", respPrestadorId)
+        .maybeSingle();
+      setIsResponsavel(!!prestador?.email && prestador.email.toLowerCase() === profile.email.toLowerCase());
+    } else {
+      setIsResponsavel(false);
+    }
   };
 
   const loadWorkOrder = async (workOrderId: string) => {
