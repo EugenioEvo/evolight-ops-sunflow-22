@@ -1,0 +1,1 @@
+DROP TRIGGER IF EXISTS trg_notify_os_atribuida ON public.ordens_servico;
