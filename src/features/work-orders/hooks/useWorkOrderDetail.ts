@@ -29,6 +29,9 @@ export interface WorkOrderDetailData {
     status: string;
     prioridade: string;
     endereco_servico: string;
+    data_inicio_execucao: string | null;
+    data_conclusao: string | null;
+    prestadores?: { id: string; nome: string } | null;
     clientes: {
       empresa: string;
       endereco: string;
