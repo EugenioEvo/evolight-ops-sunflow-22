@@ -46,8 +46,8 @@ const getStatusBadge = (status: string) => {
 };
 
 export function OSCard({
-  os, isTecnico, startingId, navigating, aceiteLoading,
-  onIniciarExecucao, onPreencherRME, onVerOS, onLigarCliente, onAbrirMapa, onAceitarTicket, onAceitarOS, onRecusarOS,
+  os, isTecnico, startingId, navigating, exportingRMEId, aceiteLoading,
+  onIniciarExecucao, onPreencherRME, onVerOS, onVerRMEPDF, onLigarCliente, onAbrirMapa, onAceitarTicket, onAceitarOS, onRecusarOS,
 }: OSCardProps) {
   const statusBadge = getStatusBadge(os.tickets.status);
   const isPendente = os.tickets.status === 'ordem_servico_gerada' ||
