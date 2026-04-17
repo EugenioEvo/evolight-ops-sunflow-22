@@ -427,9 +427,14 @@ const RMEWizard = () => {
       </div>
 
       <div className="p-4 max-w-4xl mx-auto">
-        {isLocked && (
+        {isLocked && formData.status_aprovacao === "aprovado" && (
+          <div className="mb-4 rounded-md border border-green-500/40 bg-green-500/10 px-4 py-3 text-sm text-green-900 dark:text-green-200">
+            <strong>RME concluído.</strong> O relatório foi aprovado e está finalizado. Edição bloqueada — apenas visualização e impressão de PDF.
+          </div>
+        )}
+        {isLocked && formData.status_aprovacao !== "aprovado" && (
           <div className="mb-4 rounded-md border border-yellow-500/40 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-900 dark:text-yellow-200">
-            <strong>RME aguardando avaliação.</strong> A edição está bloqueada e só será liberada se o avaliador recusar o relatório.
+            <strong>RME pendente de aprovação.</strong> A edição está bloqueada — apenas visualização e impressão de PDF. Será liberada apenas se o avaliador recusar o relatório.
           </div>
         )}
         <Card><CardContent className="p-4 sm:p-6">
