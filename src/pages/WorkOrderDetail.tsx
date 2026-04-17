@@ -140,8 +140,56 @@ const WorkOrderDetail = () => {
                 <div className="flex items-center gap-2 mt-1"><Calendar className="h-4 w-4 text-muted-foreground" /><span className="font-medium">{workOrder.data_programada ? format(new Date(workOrder.data_programada), "dd/MM/yyyy", { locale: ptBR }) : "Não definida"}</span></div>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Horário</p>
+                <p className="text-sm text-muted-foreground">Horário Programado</p>
                 <div className="flex items-center gap-2 mt-1"><Clock className="h-4 w-4 text-muted-foreground" /><span className="font-medium">{workOrder.hora_inicio || "00:00"} - {workOrder.hora_fim || "00:00"}</span></div>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm text-muted-foreground">Data Início</p>
+                <div className="flex items-center gap-2 mt-1">
+                  <PlayCircle className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium">
+                    {workOrder.tickets.data_inicio_execucao
+                      ? format(new Date(workOrder.tickets.data_inicio_execucao), "dd/MM/yyyy", { locale: ptBR })
+                      : "—"}
+                  </span>
+                </div>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Horário Início</p>
+                <div className="flex items-center gap-2 mt-1">
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium">
+                    {workOrder.tickets.data_inicio_execucao
+                      ? format(new Date(workOrder.tickets.data_inicio_execucao), "HH:mm", { locale: ptBR })
+                      : "—"}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm text-muted-foreground">Data Conclusão</p>
+                <div className="flex items-center gap-2 mt-1">
+                  <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium">
+                    {workOrder.tickets.data_conclusao
+                      ? format(new Date(workOrder.tickets.data_conclusao), "dd/MM/yyyy", { locale: ptBR })
+                      : "—"}
+                  </span>
+                </div>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Horário Fim</p>
+                <div className="flex items-center gap-2 mt-1">
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium">
+                    {workOrder.tickets.data_conclusao
+                      ? format(new Date(workOrder.tickets.data_conclusao), "HH:mm", { locale: ptBR })
+                      : "—"}
+                  </span>
+                </div>
               </div>
             </div>
             <Separator />
@@ -165,7 +213,15 @@ const WorkOrderDetail = () => {
               <div><p className="text-sm text-muted-foreground mb-2">Tipo de Trabalho</p><div className="flex flex-wrap gap-2">{workOrder.work_type.map(t => <Badge key={t} variant="outline">{t.toUpperCase()}</Badge>)}</div></div>
             )}
             <Separator />
-            <div><p className="text-sm text-muted-foreground">Responsável</p><div className="flex items-center gap-2 mt-1"><Users className="h-4 w-4 text-muted-foreground" /><span className="font-medium">{workOrder.inspetor_responsavel || "Não definido"}</span></div></div>
+            <div>
+              <p className="text-sm text-muted-foreground">Técnico Responsável</p>
+              <div className="flex items-center gap-2 mt-1">
+                <Users className="h-4 w-4 text-muted-foreground" />
+                <span className="font-medium">
+                  {workOrder.tickets.prestadores?.nome || workOrder.inspetor_responsavel || "Não definido"}
+                </span>
+              </div>
+            </div>
             {workOrder.equipe && workOrder.equipe.length > 0 && (
               <div><p className="text-sm text-muted-foreground mb-2">Equipe</p><div className="flex flex-wrap gap-2">{workOrder.equipe.map(m => <Badge key={m} variant="secondary">{m}</Badge>)}</div></div>
             )}
