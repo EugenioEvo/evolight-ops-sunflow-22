@@ -41,11 +41,14 @@ export const useConflictCheck = () => {
             data_programada,
             hora_inicio,
             hora_fim,
-            tickets(titulo)
+            aceite_tecnico,
+            tickets!inner(titulo, status)
           `)
           .eq('tecnico_id', tecnicoId)
           .gte('data_programada', format(date, 'yyyy-MM-dd'))
           .lte('data_programada', format(date, 'yyyy-MM-dd'))
+          .neq('aceite_tecnico', 'recusado')
+          .not('tickets.status', 'in', '(cancelado,concluido)')
           .not('id', 'eq', osId || '00000000-0000-0000-0000-000000000000');
 
         if (conflictError) throw conflictError;
