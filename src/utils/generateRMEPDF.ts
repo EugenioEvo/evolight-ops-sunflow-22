@@ -77,6 +77,8 @@ export interface RMEPDFData {
 
   // Approval status badge
   status_aprovacao: string;
+  /** Internal RME status: 'rascunho' | 'concluido'. Combined with status_aprovacao to derive the badge label. */
+  status?: string;
 }
 
 // === Wizard-aligned label maps =====================================
