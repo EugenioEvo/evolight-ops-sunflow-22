@@ -55,7 +55,14 @@ interface WorkOrderInfo {
   numero_os: string;
   site_name: string | null;
   ticket_id: string;
+  tecnico_responsavel_id?: string | null;
   tickets: { id: string; endereco_servico: string; clientes: { empresa: string; ufv_solarz: string | null } };
+}
+
+export interface TechnicianOption {
+  id: string; // tecnicos.id
+  nome: string;
+  email: string;
 }
 
 const STEPS = [
