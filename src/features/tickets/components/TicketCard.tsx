@@ -52,28 +52,67 @@ export const TicketCard = ({
   const { toast } = useToast();
   const isStaff = profile?.role === 'admin' || profile?.role === 'engenharia' || profile?.role === 'supervisao';
 
-  const handleViewOS = async () => {
+  const navigate = useNavigate();
+  const [rmeDialog, setRmeDialog] = useState<{ open: boolean; rme: any | null; loading: boolean }>({ open: false, rme: null, loading: false });
+
+  const handleOpenOS = (osId: string) => {
+    navigate(`/work-orders/${osId}`);
+  };
+
+  const handleOpenRME = async (rmeId: string) => {
     try {
-      const os = ticket.ordens_servico?.[0];
-      if (!os) {
-        toast({ title: 'Aviso', description: 'OS não encontrada' });
-        return;
+      setRmeDialog({ open: true, rme: null, loading: true });
+      const { data, error } = await supabase
+        .from('rme_relatorios')
+        .select(`*, tickets!inner(titulo, numero_ticket, clientes!inner(empresa, prioridade)), tecnicos!inner(profiles!inner(nome))`)
+        .eq('id', rmeId)
+        .single();
+      if (error) throw error;
+      let aprovador = null;
+      if ((data as any).aprovado_por) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('nome')
+          .eq('user_id', (data as any).aprovado_por)
+          .maybeSingle();
+        aprovador = profile ? { nome: profile.nome } : { nome: 'Desconhecido' };
       }
-      if (os.pdf_url) {
-        const signedUrl = await ticketService.getSignedPdfUrl(os.pdf_url);
-        if (signedUrl) {
-          window.open(signedUrl, '_blank');
-        } else {
-          toast({ title: 'Aviso', description: 'PDF ainda não disponível' });
-        }
-      } else {
-        toast({ title: 'Aviso', description: 'PDF ainda não gerado' });
-      }
+      setRmeDialog({ open: true, rme: { ...data, aprovador }, loading: false });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Erro desconhecido';
-      toast({ title: 'Erro', description: 'Erro ao abrir OS: ' + message, variant: 'destructive' });
+      toast({ title: 'Erro', description: 'Erro ao carregar RME: ' + message, variant: 'destructive' });
+      setRmeDialog({ open: false, rme: null, loading: false });
     }
   };
+
+  const getOSStatusLabel = (os: NonNullable<TicketWithRelations['ordens_servico']>[number]) => {
+    if (ticket.status === 'concluido') return 'Concluída';
+    if (ticket.status === 'em_execucao') return 'Em execução';
+    if (os.aceite_tecnico === 'aceito') return 'Aceita';
+    if (os.aceite_tecnico === 'recusado') return 'Recusada';
+    return 'Aberta';
+  };
+
+  const getAceiteLabel = (aceite: string) => {
+    const labels: Record<string, string> = { pendente: 'Aguardando aceite', aceito: 'Aceito', recusado: 'Recusado', nao_aplicavel: '—' };
+    return labels[aceite] || aceite;
+  };
+
+  const getRMEStatusLabel = (rme: { status: string | null; status_aprovacao: string }) => {
+    if (rme.status_aprovacao === 'aprovado') return 'Aprovado';
+    if (rme.status_aprovacao === 'rejeitado') return 'Rejeitado';
+    if (rme.status === 'concluido') return 'Aguardando aprovação';
+    return 'Rascunho';
+  };
+
+  // Build RME entries: each one tied to its OS
+  const rmeEntries = (ticket.ordens_servico || []).flatMap((os) =>
+    (os.rme_relatorios || []).map((rme) => ({
+      rme,
+      os,
+      tecnicoNome: os.tecnicos?.profiles?.nome || 'Técnico não atribuído',
+    }))
+  );
 
   const getGeocodingStatusBadge = (status: string | null | undefined) => {
     if (!status) return null;
