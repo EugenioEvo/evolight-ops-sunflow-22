@@ -119,9 +119,9 @@ const MinhasOS = () => {
                   <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                     {tab.data.map(os => (
                       <OSCard key={os.id} os={os} isTecnico={isTecnico}
-                        startingId={startingId} navigating={navigating} aceiteLoading={aceiteLoading}
+                        startingId={startingId} navigating={navigating} exportingRMEId={exportingRMEId} aceiteLoading={aceiteLoading}
                         onIniciarExecucao={handleIniciarExecucao} onPreencherRME={handlePreencherRME}
-                        onVerOS={handleVerOS} onLigarCliente={handleLigarCliente} onAbrirMapa={handleAbrirMapa}
+                        onVerOS={handleVerOS} onVerRMEPDF={handleVerRMEPDF} onLigarCliente={handleLigarCliente} onAbrirMapa={handleAbrirMapa}
                         onAceitarTicket={handleAceitarTicket} onAceitarOS={handleAceitarOS} onRecusarOS={(os) => setRecusaDialogOS(os)}
                       />
                     ))}
