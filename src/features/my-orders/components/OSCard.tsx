@@ -40,6 +40,7 @@ const getStatusBadge = (status: string) => {
   const labels: Record<string, { label: string; variant: "default" | "outline" | "secondary" | "destructive" }> = {
     'ordem_servico_gerada': { label: 'Pendente', variant: 'outline' },
     'em_execucao': { label: 'Em Execução', variant: 'default' },
+    'aguardando_rme': { label: 'Aguardando RME', variant: 'secondary' },
     'concluido': { label: 'Concluído', variant: 'secondary' },
   };
   return labels[status] || { label: status, variant: 'outline' };
