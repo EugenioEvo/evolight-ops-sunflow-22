@@ -247,6 +247,7 @@ export const MultiTechnicianOSDialog = ({
 
       for (const prestadorId of targetPrestadores) {
         try {
+          const horasTec = horasPorTecnico[prestadorId] || 1;
           const { data, error } = await supabase.functions.invoke('gerar-ordem-servico', {
             body: {
               ticketId: effectiveTicketId,
@@ -256,6 +257,7 @@ export const MultiTechnicianOSDialog = ({
               tipo_trabalho: formData.tipo_trabalho,
               tecnico_override_id: prestadorId,
               tecnico_responsavel_id: isAddMode ? (ticket?.tecnico_responsavel_id || tecnicoResponsavelId) : tecnicoResponsavelId,
+              horas_previstas: horasTec,
             },
           });
           if (error) throw error;
