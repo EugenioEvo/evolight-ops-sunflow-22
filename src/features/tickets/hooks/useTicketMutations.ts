@@ -56,7 +56,6 @@ export const useTicketMutations = (loadData: () => Promise<void>) => {
 
       const ticketData: any = {
         ...data,
-        tempo_estimado: data.tempo_estimado || null,
         data_servico: data.data_servico || null,
         data_vencimento: data.data_vencimento ? new Date(data.data_vencimento).toISOString() : null,
         tecnico_responsavel_id: technicianId || null,
