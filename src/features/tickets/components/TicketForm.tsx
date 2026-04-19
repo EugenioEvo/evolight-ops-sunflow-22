@@ -51,7 +51,6 @@ export const TicketForm = ({
       data_servico: editingTicket.data_servico || '',
       data_vencimento: editingTicket.data_vencimento ? new Date(editingTicket.data_vencimento).toISOString().split('T')[0] : '',
       horario_previsto_inicio: editingTicket.horario_previsto_inicio || '',
-      tempo_estimado: editingTicket.tempo_estimado || undefined,
       observacoes: editingTicket.observacoes || '',
       anexos: editingTicket.anexos || [],
     } : {
