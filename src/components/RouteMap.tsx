@@ -484,8 +484,8 @@ const RouteMap: React.FC = () => {
       return sum + km;
     }, 0);
     const activeTechnicians = new Set(ordensServico.map(os => os.tecnico_id).filter(Boolean)).size;
-    const avgDuration = ordensServico.reduce((sum, os) => sum + (os.tickets?.tempo_estimado || 0), 0) 
-      / (ordensServico.length || 1) * 60;
+    const avgDuration = ordensServico.reduce((sum, os) => sum + (os.duracao_estimada_min || 0), 0)
+      / (ordensServico.length || 1);
 
     return { totalOS, totalDistance, activeTechnicians, avgDuration };
   }, [tickets, rotasOtimizadas, ordensServico]);
