@@ -63,7 +63,6 @@ export const TicketForm = ({
       data_servico: '',
       data_vencimento: '',
       horario_previsto_inicio: '',
-      tempo_estimado: undefined,
       observacoes: '',
     },
   });
@@ -81,7 +80,6 @@ export const TicketForm = ({
         data_servico: editingTicket.data_servico || '',
         data_vencimento: editingTicket.data_vencimento ? new Date(editingTicket.data_vencimento).toISOString().split('T')[0] : '',
         horario_previsto_inicio: editingTicket.horario_previsto_inicio || '',
-        tempo_estimado: editingTicket.tempo_estimado || undefined,
         observacoes: editingTicket.observacoes || '',
         anexos: editingTicket.anexos || [],
       });
@@ -99,7 +97,6 @@ export const TicketForm = ({
         data_servico: '',
         data_vencimento: '',
         horario_previsto_inicio: '',
-        tempo_estimado: undefined,
         observacoes: '',
       });
       setSelectedTechnician('');
@@ -362,25 +359,8 @@ export const TicketForm = ({
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="tempo_estimado"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Tempo Estimado (horas)</FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="number" 
-                        {...field} 
-                        onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
-                        placeholder="Ex: 4"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            <div className="rounded-md border border-dashed bg-muted/30 p-3 text-xs text-muted-foreground">
+              <strong className="text-foreground">Horas previstas:</strong> agora são informadas por técnico no momento da geração da Ordem de Serviço (BI de Carga de Trabalho).
             </div>
 
             <FormField

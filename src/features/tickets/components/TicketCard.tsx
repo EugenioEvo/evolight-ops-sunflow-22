@@ -237,12 +237,7 @@ export const TicketCard = ({
             </div>
           </div>
 
-          {ticket.tempo_estimado && (
-            <div className="flex items-center gap-2 text-sm">
-              <Clock className="h-4 w-4" />
-              <span>{ticket.tempo_estimado} horas estimadas</span>
-            </div>
-          )}
+          {/* Tempo estimado removido do Ticket — agora é por técnico na OS */}
 
           {ticket.tecnico_responsavel_id && ticket.prestadores && (
             <p className="text-sm text-muted-foreground">
