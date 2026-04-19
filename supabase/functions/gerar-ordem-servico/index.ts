@@ -213,6 +213,18 @@ serve(async (req) => {
       .select()
       .single()
 
+    // Persistir horas previstas por técnico (para BI Carga de Trabalho)
+    if (!osError && ordemServico && tecnico?.id && osData.duracao_estimada_min) {
+      const { error: hpError } = await supabaseClient
+        .from('horas_previstas_os')
+        .insert({
+          ordem_servico_id: ordemServico.id,
+          tecnico_id: tecnico.id,
+          minutos_previstos: osData.duracao_estimada_min,
+        })
+      if (hpError) console.error('Erro ao salvar horas_previstas_os:', hpError)
+    }
+
     if (osError) {
       // 23505 = unique_violation -> índice ordens_servico_ticket_tecnico_active_unique
       // Protege contra cliques duplos / corridas simultâneas mesmo após a checagem acima.
