@@ -55,7 +55,8 @@ export const GerarOSDialog = ({ open, onOpenChange, ticketId, onSuccess }: Gerar
           equipe: formData.equipe.split('/').map(n => n.trim()),
           servico_solicitado: formData.servico_solicitado,
           inspetor_responsavel: formData.inspetor_responsavel,
-          tipo_trabalho: formData.tipo_trabalho
+          tipo_trabalho: formData.tipo_trabalho,
+          horas_previstas: formData.horas_previstas,
         }
       });
 
@@ -73,7 +74,8 @@ export const GerarOSDialog = ({ open, onOpenChange, ticketId, onSuccess }: Gerar
         equipe: "",
         servico_solicitado: "MANUTENÇÃO",
         inspetor_responsavel: "TODOS",
-        tipo_trabalho: []
+        tipo_trabalho: [],
+        horas_previstas: 1,
       });
 
       if (onSuccess) onSuccess();
