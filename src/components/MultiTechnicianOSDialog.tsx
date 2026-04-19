@@ -335,7 +335,7 @@ export const MultiTechnicianOSDialog = ({
                   placeholder="Endereço completo"
                 />
               </div>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
                   <Label htmlFor="data_servico">Data <span className="text-destructive">*</span></Label>
                   <Input
@@ -350,14 +350,6 @@ export const MultiTechnicianOSDialog = ({
                     id="hora_inicio" type="time"
                     value={standaloneData.horario_previsto_inicio}
                     onChange={(e) => setStandaloneData(prev => ({ ...prev, horario_previsto_inicio: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="duracao">Duração (h)</Label>
-                  <Input
-                    id="duracao" type="number" min={1} max={24}
-                    value={standaloneData.tempo_estimado}
-                    onChange={(e) => setStandaloneData(prev => ({ ...prev, tempo_estimado: Number(e.target.value) || 1 }))}
                   />
                 </div>
               </div>
