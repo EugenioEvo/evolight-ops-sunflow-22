@@ -29,11 +29,25 @@ export const createScheduleService = (client?: AppSupabaseClient) => {
     },
 
     async loadTecnicos() {
-      const { data } = await db.from('tecnicos').select('id, profiles!inner(nome)').order('profiles(nome)');
-      return (data || []).map((t) => ({
-        id: t.id,
-        nome: (t.profiles as unknown as { nome: string })?.nome || 'Sem nome',
-      }));
+      // Apenas técnicos que possuem OS atribuída (tecnico_id não nulo).
+      // Usa join via ordens_servico para filtrar e dedup no client.
+      const { data, error } = await db
+        .from('ordens_servico')
+        .select('tecnico_id, tecnicos!inner(id, profiles!inner(nome))')
+        .not('tecnico_id', 'is', null);
+
+      if (error) throw error;
+
+      const seen = new Map<string, string>();
+      for (const row of (data || []) as any[]) {
+        const tec = row.tecnicos;
+        if (!tec?.id) continue;
+        const nome = tec.profiles?.nome || 'Sem nome';
+        if (!seen.has(tec.id)) seen.set(tec.id, nome);
+      }
+      return Array.from(seen.entries())
+        .map(([id, nome]) => ({ id, nome }))
+        .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
     },
 
     async resendCalendarInvite(osId: string) {
