@@ -57,6 +57,7 @@ serve(async (req) => {
       tipo_trabalho = [],
       tecnico_override_id = null,
       tecnico_responsavel_id = null,
+      horas_previstas = null,
     } = await req.json()
 
     // Buscar dados do ticket com cliente
@@ -191,15 +192,18 @@ serve(async (req) => {
       tipo_trabalho: tipo_trabalho
     }
 
-    // Se o ticket tem horário previsto, definir hora_inicio e calcular hora_fim
+    // Janela de execução: usa horas_previstas (por técnico) quando informado; default 1h
+    const tempoEstimadoHoras = (typeof horas_previstas === 'number' && horas_previstas > 0)
+      ? horas_previstas
+      : 1
+    osData.duracao_estimada_min = Math.round(tempoEstimadoHoras * 60)
+
     if (ticket.horario_previsto_inicio) {
       osData.hora_inicio = ticket.horario_previsto_inicio
-      const tempoEstimadoHoras = ticket.tempo_estimado || 1
       const [horas, minutos] = ticket.horario_previsto_inicio.split(':').map(Number)
       const horaFimDate = new Date()
-      horaFimDate.setHours(horas + tempoEstimadoHoras, minutos, 0, 0)
+      horaFimDate.setHours(horas + Math.floor(tempoEstimadoHoras), minutos + Math.round((tempoEstimadoHoras % 1) * 60), 0, 0)
       osData.hora_fim = horaFimDate.toTimeString().slice(0, 5)
-      osData.duracao_estimada_min = tempoEstimadoHoras * 60
     }
 
     // Criar ordem de serviço
@@ -279,7 +283,7 @@ Título: ${ticket.titulo}
 Descrição: ${ticket.descricao}
 Equipamento: ${ticket.equipamento_tipo.replace('_', ' ')}
 Prioridade: ${ticket.prioridade.toUpperCase()}
-${ticket.tempo_estimado ? `Tempo Estimado: ${ticket.tempo_estimado} horas` : ''}
+${osData.duracao_estimada_min ? `Tempo Previsto: ${(osData.duracao_estimada_min / 60).toFixed(1)} horas` : ''}
 ${ticket.data_vencimento ? `Data Programada: ${new Date(ticket.data_vencimento).toLocaleDateString('pt-BR')}` : ''}
 
 ${ticket.observacoes ? `OBSERVAÇÕES\n${ticket.observacoes}` : ''}

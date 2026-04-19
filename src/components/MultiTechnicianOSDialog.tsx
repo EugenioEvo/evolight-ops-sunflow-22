@@ -431,6 +431,33 @@ export const MultiTechnicianOSDialog = ({
             )}
           </div>
 
+          {/* Horas previstas POR técnico (BI Carga de Trabalho) */}
+          {selectedPrestadores.length > 0 && !isAddMode && (
+            <div className="space-y-2">
+              <Label>Horas Previstas por Técnico <span className="text-destructive">*</span></Label>
+              <p className="text-xs text-muted-foreground">
+                Meta de horas que cada técnico deve gastar nesta OS. Usado pelo BI Carga de Trabalho (Meta × Realizado).
+              </p>
+              <div className="border rounded-md divide-y">
+                {selectedPrestadores.map(pid => {
+                  const p = prestadores.find(x => x.id === pid);
+                  return (
+                    <div key={pid} className="flex items-center justify-between gap-3 p-2">
+                      <span className="text-sm flex-1">{p?.nome || pid}</span>
+                      <Input
+                        type="number" min={0.5} max={24} step={0.5}
+                        className="w-24 h-9"
+                        value={horasPorTecnico[pid] ?? 1}
+                        onChange={(e) => setHorasPorTecnico(prev => ({ ...prev, [pid]: Number(e.target.value) || 1 }))}
+                      />
+                      <span className="text-xs text-muted-foreground w-6">h</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Conflict details */}
           {Array.from(availabilityMap.values())
             .filter(a => !a.available && a.conflictDetails)
