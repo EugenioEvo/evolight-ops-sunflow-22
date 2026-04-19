@@ -60,6 +60,8 @@ export const MultiTechnicianOSDialog = ({
   const [loading, setLoading] = useState(false);
   const [selectedPrestadores, setSelectedPrestadores] = useState<string[]>([]);
   const [tecnicoResponsavelId, setTecnicoResponsavelId] = useState<string>("");
+  /** Horas previstas POR técnico (sempre por técnico — usado pelo BI Carga de Trabalho) */
+  const [horasPorTecnico, setHorasPorTecnico] = useState<Record<string, number>>({});
   const [formData, setFormData] = useState({
     descricao_servicos: "MANUTENÇÃO",
     tipo_trabalho: [] as string[],
@@ -71,7 +73,6 @@ export const MultiTechnicianOSDialog = ({
     endereco_servico: "",
     data_servico: new Date().toISOString().slice(0, 10),
     horario_previsto_inicio: "08:00",
-    tempo_estimado: 1,
   });
 
   const { availabilityMap, checkAvailability, loading: checkingAvailability } = useTechnicianAvailability();
@@ -81,13 +82,13 @@ export const MultiTechnicianOSDialog = ({
     if (!open) {
       setSelectedPrestadores([]);
       setTecnicoResponsavelId("");
+      setHorasPorTecnico({});
       setFormData({ descricao_servicos: "MANUTENÇÃO", tipo_trabalho: [] });
       setStandaloneData({
         cliente_id: "",
         endereco_servico: "",
         data_servico: new Date().toISOString().slice(0, 10),
         horario_previsto_inicio: "08:00",
-        tempo_estimado: 1,
       });
     }
   }, [open]);
@@ -106,19 +107,19 @@ export const MultiTechnicianOSDialog = ({
     }
   }, [open, ticket, isStandalone, isAddMode, alreadyAssignedPrestadorIds]);
 
-  // Availability check
+  // Availability check — usa max(horas) entre os técnicos selecionados como janela
   useEffect(() => {
     const date = isStandalone ? standaloneData.data_servico : ticket?.data_servico;
     const startTime = isStandalone ? standaloneData.horario_previsto_inicio : ticket?.horario_previsto_inicio;
-    const tempoEstimado = isStandalone ? standaloneData.tempo_estimado : (ticket?.tempo_estimado || 1);
+    const maxHoras = Math.max(1, ...selectedPrestadores.map(id => horasPorTecnico[id] || 1));
     if (open && date && startTime) {
       const [h, m] = startTime.split(':').map(Number);
       const endDate = new Date();
-      endDate.setHours(h + tempoEstimado, m, 0, 0);
+      endDate.setHours(h + maxHoras, m, 0, 0);
       const endTime = endDate.toTimeString().slice(0, 5);
       checkAvailability(prestadores, date, startTime, endTime);
     }
-  }, [open, ticket, prestadores, isStandalone, standaloneData.data_servico, standaloneData.horario_previsto_inicio, standaloneData.tempo_estimado]);
+  }, [open, ticket, prestadores, isStandalone, standaloneData.data_servico, standaloneData.horario_previsto_inicio, selectedPrestadores, horasPorTecnico]);
 
   // Auto-fill endereco when cliente picked (standalone)
   useEffect(() => {
@@ -212,7 +213,6 @@ export const MultiTechnicianOSDialog = ({
         tecnico_responsavel_id: tecnicoResponsavelId,
         data_servico: standaloneData.data_servico,
         horario_previsto_inicio: standaloneData.horario_previsto_inicio || null,
-        tempo_estimado: standaloneData.tempo_estimado || null,
         created_by: user.id,
       } as any)
       .select('id')
@@ -247,6 +247,7 @@ export const MultiTechnicianOSDialog = ({
 
       for (const prestadorId of targetPrestadores) {
         try {
+          const horasTec = horasPorTecnico[prestadorId] || 1;
           const { data, error } = await supabase.functions.invoke('gerar-ordem-servico', {
             body: {
               ticketId: effectiveTicketId,
@@ -256,6 +257,7 @@ export const MultiTechnicianOSDialog = ({
               tipo_trabalho: formData.tipo_trabalho,
               tecnico_override_id: prestadorId,
               tecnico_responsavel_id: isAddMode ? (ticket?.tecnico_responsavel_id || tecnicoResponsavelId) : tecnicoResponsavelId,
+              horas_previstas: horasTec,
             },
           });
           if (error) throw error;
@@ -335,7 +337,7 @@ export const MultiTechnicianOSDialog = ({
                   placeholder="Endereço completo"
                 />
               </div>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
                   <Label htmlFor="data_servico">Data <span className="text-destructive">*</span></Label>
                   <Input
@@ -350,14 +352,6 @@ export const MultiTechnicianOSDialog = ({
                     id="hora_inicio" type="time"
                     value={standaloneData.horario_previsto_inicio}
                     onChange={(e) => setStandaloneData(prev => ({ ...prev, horario_previsto_inicio: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="duracao">Duração (h)</Label>
-                  <Input
-                    id="duracao" type="number" min={1} max={24}
-                    value={standaloneData.tempo_estimado}
-                    onChange={(e) => setStandaloneData(prev => ({ ...prev, tempo_estimado: Number(e.target.value) || 1 }))}
                   />
                 </div>
               </div>
@@ -436,6 +430,33 @@ export const MultiTechnicianOSDialog = ({
               )
             )}
           </div>
+
+          {/* Horas previstas POR técnico (BI Carga de Trabalho) */}
+          {selectedPrestadores.length > 0 && !isAddMode && (
+            <div className="space-y-2">
+              <Label>Horas Previstas por Técnico <span className="text-destructive">*</span></Label>
+              <p className="text-xs text-muted-foreground">
+                Meta de horas que cada técnico deve gastar nesta OS. Usado pelo BI Carga de Trabalho (Meta × Realizado).
+              </p>
+              <div className="border rounded-md divide-y">
+                {selectedPrestadores.map(pid => {
+                  const p = prestadores.find(x => x.id === pid);
+                  return (
+                    <div key={pid} className="flex items-center justify-between gap-3 p-2">
+                      <span className="text-sm flex-1">{p?.nome || pid}</span>
+                      <Input
+                        type="number" min={0.5} max={24} step={0.5}
+                        className="w-24 h-9"
+                        value={horasPorTecnico[pid] ?? 1}
+                        onChange={(e) => setHorasPorTecnico(prev => ({ ...prev, [pid]: Number(e.target.value) || 1 }))}
+                      />
+                      <span className="text-xs text-muted-foreground w-6">h</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Conflict details */}
           {Array.from(availabilityMap.values())

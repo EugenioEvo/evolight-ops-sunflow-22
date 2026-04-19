@@ -124,7 +124,7 @@ const RouteMap: React.FC = () => {
           tickets!inner(
             id, numero_ticket, titulo, endereco_servico,
             latitude, longitude, geocoded_at, prioridade,
-            status, tempo_estimado,
+            status,
             clientes!inner(empresa)
           ),
           tecnicos!inner(id, profiles!inner(nome))
@@ -218,7 +218,7 @@ const RouteMap: React.FC = () => {
         status: os.tickets.status,
         tipo: os.tickets.titulo,
         tecnico: os.tecnicos?.profiles?.nome || 'Não atribuído',
-        estimativa: os.tickets.tempo_estimado ? `${os.tickets.tempo_estimado}h` : 'N/A',
+        estimativa: 'N/A',
         dataProgramada: os.data_programada,
         coordenadas: hasCoords 
           ? normalizeCoordinates(os.tickets.latitude, os.tickets.longitude)
@@ -484,8 +484,8 @@ const RouteMap: React.FC = () => {
       return sum + km;
     }, 0);
     const activeTechnicians = new Set(ordensServico.map(os => os.tecnico_id).filter(Boolean)).size;
-    const avgDuration = ordensServico.reduce((sum, os) => sum + (os.tickets?.tempo_estimado || 0), 0) 
-      / (ordensServico.length || 1) * 60;
+    const avgDuration = ordensServico.reduce((sum, os) => sum + (os.duracao_estimada_min || 0), 0)
+      / (ordensServico.length || 1);
 
     return { totalOS, totalDistance, activeTechnicians, avgDuration };
   }, [tickets, rotasOtimizadas, ordensServico]);

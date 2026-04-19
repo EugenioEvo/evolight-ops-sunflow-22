@@ -10,7 +10,6 @@ export const ticketSchema = z.object({
   data_servico: z.string().optional(),
   data_vencimento: z.string().optional(),
   horario_previsto_inicio: z.string().optional(),
-  tempo_estimado: z.number().min(1, 'Tempo estimado deve ser maior que 0').optional(),
   observacoes: z.string().optional(),
   anexos: z.array(z.string()).optional(),
 });
@@ -33,7 +32,6 @@ export interface TicketWithRelations {
   data_conclusao: string | null;
   data_inicio_execucao: string | null;
   horario_previsto_inicio: string | null;
-  tempo_estimado: number | null;
   observacoes: string | null;
   anexos: string[] | null;
   cliente_id: string;

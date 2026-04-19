@@ -339,6 +339,48 @@ export type Database = {
         }
         Relationships: []
       }
+      horas_previstas_os: {
+        Row: {
+          created_at: string
+          id: string
+          minutos_previstos: number
+          ordem_servico_id: string
+          tecnico_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          minutos_previstos?: number
+          ordem_servico_id: string
+          tecnico_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          minutos_previstos?: number
+          ordem_servico_id?: string
+          tecnico_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "horas_previstas_os_ordem_servico_id_fkey"
+            columns: ["ordem_servico_id"]
+            isOneToOne: false
+            referencedRelation: "ordens_servico"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "horas_previstas_os_tecnico_id_fkey"
+            columns: ["tecnico_id"]
+            isOneToOne: false
+            referencedRelation: "tecnicos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       insumos: {
         Row: {
           categoria: string
@@ -1161,7 +1203,6 @@ export type Database = {
           prioridade: Database["public"]["Enums"]["prioridade_tipo"]
           status: Database["public"]["Enums"]["ticket_status"]
           tecnico_responsavel_id: string | null
-          tempo_estimado: number | null
           titulo: string
           updated_at: string
         }
@@ -1191,7 +1232,6 @@ export type Database = {
           prioridade?: Database["public"]["Enums"]["prioridade_tipo"]
           status?: Database["public"]["Enums"]["ticket_status"]
           tecnico_responsavel_id?: string | null
-          tempo_estimado?: number | null
           titulo: string
           updated_at?: string
         }
@@ -1221,7 +1261,6 @@ export type Database = {
           prioridade?: Database["public"]["Enums"]["prioridade_tipo"]
           status?: Database["public"]["Enums"]["ticket_status"]
           tecnico_responsavel_id?: string | null
-          tempo_estimado?: number | null
           titulo?: string
           updated_at?: string
         }
@@ -1308,8 +1347,22 @@ export type Database = {
           data: string
           os_concluidas: number
           os_pendentes: number
-          total_minutos: number
+          total_minutos_previstos: number
+          total_minutos_realizados: number
           total_os: number
+        }[]
+      }
+      get_technician_workload_os_detail: {
+        Args: { p_end_date: string; p_start_date: string; p_tecnico_id: string }
+        Returns: {
+          cliente: string
+          data_programada: string
+          minutos_previstos: number
+          minutos_realizados: number
+          numero_os: string
+          ordem_servico_id: string
+          ticket_status: string
+          ticket_titulo: string
         }[]
       }
       get_user_role: {
