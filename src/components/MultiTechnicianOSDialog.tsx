@@ -107,19 +107,19 @@ export const MultiTechnicianOSDialog = ({
     }
   }, [open, ticket, isStandalone, isAddMode, alreadyAssignedPrestadorIds]);
 
-  // Availability check
+  // Availability check — usa max(horas) entre os técnicos selecionados como janela
   useEffect(() => {
     const date = isStandalone ? standaloneData.data_servico : ticket?.data_servico;
     const startTime = isStandalone ? standaloneData.horario_previsto_inicio : ticket?.horario_previsto_inicio;
-    const tempoEstimado = isStandalone ? standaloneData.tempo_estimado : (ticket?.tempo_estimado || 1);
+    const maxHoras = Math.max(1, ...selectedPrestadores.map(id => horasPorTecnico[id] || 1));
     if (open && date && startTime) {
       const [h, m] = startTime.split(':').map(Number);
       const endDate = new Date();
-      endDate.setHours(h + tempoEstimado, m, 0, 0);
+      endDate.setHours(h + maxHoras, m, 0, 0);
       const endTime = endDate.toTimeString().slice(0, 5);
       checkAvailability(prestadores, date, startTime, endTime);
     }
-  }, [open, ticket, prestadores, isStandalone, standaloneData.data_servico, standaloneData.horario_previsto_inicio, standaloneData.tempo_estimado]);
+  }, [open, ticket, prestadores, isStandalone, standaloneData.data_servico, standaloneData.horario_previsto_inicio, selectedPrestadores, horasPorTecnico]);
 
   // Auto-fill endereco when cliente picked (standalone)
   useEffect(() => {
@@ -213,7 +213,6 @@ export const MultiTechnicianOSDialog = ({
         tecnico_responsavel_id: tecnicoResponsavelId,
         data_servico: standaloneData.data_servico,
         horario_previsto_inicio: standaloneData.horario_previsto_inicio || null,
-        tempo_estimado: standaloneData.tempo_estimado || null,
         created_by: user.id,
       } as any)
       .select('id')
