@@ -23,6 +23,7 @@ export const GerarOSDialog = ({ open, onOpenChange, ticketId, onSuccess }: Gerar
     servico_solicitado: "MANUTENÇÃO",
     inspetor_responsavel: "TODOS",
     tipo_trabalho: [] as string[],
+    horas_previstas: 1,
   });
 
   const handleTipoTrabalhoChange = (tipo: string, checked: boolean) => {
