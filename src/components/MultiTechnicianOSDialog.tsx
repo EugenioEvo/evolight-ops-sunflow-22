@@ -60,6 +60,8 @@ export const MultiTechnicianOSDialog = ({
   const [loading, setLoading] = useState(false);
   const [selectedPrestadores, setSelectedPrestadores] = useState<string[]>([]);
   const [tecnicoResponsavelId, setTecnicoResponsavelId] = useState<string>("");
+  /** Horas previstas POR técnico (sempre por técnico — usado pelo BI Carga de Trabalho) */
+  const [horasPorTecnico, setHorasPorTecnico] = useState<Record<string, number>>({});
   const [formData, setFormData] = useState({
     descricao_servicos: "MANUTENÇÃO",
     tipo_trabalho: [] as string[],
@@ -71,7 +73,6 @@ export const MultiTechnicianOSDialog = ({
     endereco_servico: "",
     data_servico: new Date().toISOString().slice(0, 10),
     horario_previsto_inicio: "08:00",
-    tempo_estimado: 1,
   });
 
   const { availabilityMap, checkAvailability, loading: checkingAvailability } = useTechnicianAvailability();
@@ -81,13 +82,13 @@ export const MultiTechnicianOSDialog = ({
     if (!open) {
       setSelectedPrestadores([]);
       setTecnicoResponsavelId("");
+      setHorasPorTecnico({});
       setFormData({ descricao_servicos: "MANUTENÇÃO", tipo_trabalho: [] });
       setStandaloneData({
         cliente_id: "",
         endereco_servico: "",
         data_servico: new Date().toISOString().slice(0, 10),
         horario_previsto_inicio: "08:00",
-        tempo_estimado: 1,
       });
     }
   }, [open]);
