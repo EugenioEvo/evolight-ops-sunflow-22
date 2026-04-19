@@ -32,7 +32,6 @@ export interface TicketWithRelations {
   data_conclusao: string | null;
   data_inicio_execucao: string | null;
   horario_previsto_inicio: string | null;
-  tempo_estimado: number | null;
   observacoes: string | null;
   anexos: string[] | null;
   cliente_id: string;
