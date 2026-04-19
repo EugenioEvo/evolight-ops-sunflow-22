@@ -23,6 +23,7 @@ export const GerarOSDialog = ({ open, onOpenChange, ticketId, onSuccess }: Gerar
     servico_solicitado: "MANUTENÇÃO",
     inspetor_responsavel: "TODOS",
     tipo_trabalho: [] as string[],
+    horas_previstas: 1,
   });
 
   const handleTipoTrabalhoChange = (tipo: string, checked: boolean) => {
@@ -54,7 +55,8 @@ export const GerarOSDialog = ({ open, onOpenChange, ticketId, onSuccess }: Gerar
           equipe: formData.equipe.split('/').map(n => n.trim()),
           servico_solicitado: formData.servico_solicitado,
           inspetor_responsavel: formData.inspetor_responsavel,
-          tipo_trabalho: formData.tipo_trabalho
+          tipo_trabalho: formData.tipo_trabalho,
+          horas_previstas: formData.horas_previstas,
         }
       });
 
@@ -72,7 +74,8 @@ export const GerarOSDialog = ({ open, onOpenChange, ticketId, onSuccess }: Gerar
         equipe: "",
         servico_solicitado: "MANUTENÇÃO",
         inspetor_responsavel: "TODOS",
-        tipo_trabalho: []
+        tipo_trabalho: [],
+        horas_previstas: 1,
       });
 
       if (onSuccess) onSuccess();
@@ -130,6 +133,23 @@ export const GerarOSDialog = ({ open, onOpenChange, ticketId, onSuccess }: Gerar
               value={formData.inspetor_responsavel}
               onChange={(e) => setFormData(prev => ({ ...prev, inspetor_responsavel: e.target.value }))}
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="horas_previstas">
+              Horas Previstas (por técnico) <span className="text-red-500">*</span>
+            </Label>
+            <Input
+              id="horas_previstas"
+              type="number"
+              min={0.5}
+              step={0.5}
+              value={formData.horas_previstas}
+              onChange={(e) => setFormData(prev => ({ ...prev, horas_previstas: Math.max(0.5, Number(e.target.value) || 0.5) }))}
+            />
+            <p className="text-xs text-muted-foreground">
+              Meta de tempo planejado para a execução desta OS. Usada no BI de Carga de Trabalho.
+            </p>
           </div>
 
           <div className="space-y-2">
