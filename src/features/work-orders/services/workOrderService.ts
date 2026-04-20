@@ -13,11 +13,38 @@ export const createWorkOrderService = (client?: AppSupabaseClient) => {
         .select(`*, tickets(id, titulo, status, prioridade, endereco_servico, clientes(empresa, ufv_solarz, prioridade)), rme_relatorios(id, status)`)
         .order("data_emissao", { ascending: false });
       if (error) throw error;
-      return (data || []).map((os) => ({
+
+      const rows = (data || []).map((os) => ({
         ...os,
         work_type: Array.isArray(os.work_type) ? os.work_type as string[] : [],
         rme_relatorios: Array.isArray(os.rme_relatorios) ? os.rme_relatorios : os.rme_relatorios ? [os.rme_relatorios] : [],
       })) as WorkOrder[];
+
+      // Sibling RME enrichment: when an OS has no RME of its own but a sibling OS
+      // (same ticket_id) has one, surface that RME so the status badge reflects the
+      // shared report. The technician filling the RME does it on behalf of the team.
+      const ticketIdsMissingRme = Array.from(new Set(
+        rows.filter(os => !os.rme_relatorios.length && os.tickets?.id).map(os => os.tickets!.id)
+      ));
+      if (ticketIdsMissingRme.length) {
+        const { data: ticketRmes } = await db
+          .from("rme_relatorios")
+          .select("id, status, ticket_id, created_at")
+          .in("ticket_id", ticketIdsMissingRme)
+          .order("created_at", { ascending: false });
+        const byTicket = new Map<string, { id: string; status: string }>();
+        (ticketRmes || []).forEach((r: any) => {
+          if (!byTicket.has(r.ticket_id)) byTicket.set(r.ticket_id, { id: r.id, status: r.status });
+        });
+        rows.forEach(os => {
+          if (!os.rme_relatorios.length) {
+            const shared = byTicket.get(os.tickets?.id || "");
+            if (shared) os.rme_relatorios = [shared];
+          }
+        });
+      }
+
+      return rows;
     },
 
     async loadClientes(): Promise<Array<{ id: string; empresa: string }>> {
