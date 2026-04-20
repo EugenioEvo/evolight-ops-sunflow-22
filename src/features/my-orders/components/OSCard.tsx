@@ -253,7 +253,7 @@ export function OSCard({
             </>
           )}
 
-          {emExecucao && (() => {
+          {!recusado && emExecucao && (() => {
             const rme = os.rme_relatorios?.[0];
             const rmeStatus = rme?.status;
             const isViewOnly = !!rme && rmeStatus !== 'rascunho';
