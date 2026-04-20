@@ -119,10 +119,13 @@ export async function notifyTicketAltered(os: LinkedOS): Promise<void> {
 }
 
 /**
- * Strategy: notify ticket creator + OS creator + technician about ticket deletion.
- * (#11) Email + in-app to ticket creator and OS creator (dedupe if same person).
+ * Strategy: notify ticket creator + OS creator + technician about ticket cancellation.
+ * Tickets are never hard-deleted — they are cancelled. Sends email to creator and
+ * in-app to creator + assigned technician (deduped if same user).
+ * The edge function name `send-ticket-deleted-email` is preserved for backward
+ * compatibility; its content was updated to reflect cancellation.
  */
-export async function notifyTicketDeleted(os: LinkedOS): Promise<void> {
+export async function notifyTicketCancelled(os: LinkedOS): Promise<void> {
   const { data: osRow } = await supabase
     .from('ordens_servico')
     .select('numero_os, ticket_id, tickets(created_by, numero_ticket, titulo)')
@@ -139,9 +142,9 @@ export async function notifyTicketDeleted(os: LinkedOS): Promise<void> {
     const tecUserId = await notificationService.getTecnicoUserId(os.tecnico_id);
     if (tecUserId) {
       recipients.set(tecUserId, {
-        tipo: 'ticket_excluido',
-        titulo: 'Ticket Excluído',
-        mensagem: `O ticket vinculado à OS ${os.numero_os} foi excluído pelo gestor. A OS será removida.`,
+        tipo: 'ticket_cancelado',
+        titulo: 'Ticket Cancelado',
+        mensagem: `O ticket vinculado à OS ${os.numero_os} foi cancelado pelo gestor. A OS também foi cancelada.`,
         link: '/minhas-os',
       });
     }
@@ -149,9 +152,9 @@ export async function notifyTicketDeleted(os: LinkedOS): Promise<void> {
 
   if (creator && !recipients.has(creator)) {
     recipients.set(creator, {
-      tipo: 'ticket_excluido_criador',
-      titulo: 'Ticket Excluído',
-      mensagem: `O ticket ${numeroTicket} vinculado à OS ${os.numero_os} foi excluído pelo gestor.`,
+      tipo: 'ticket_cancelado_criador',
+      titulo: 'Ticket Cancelado',
+      mensagem: `O ticket ${numeroTicket} vinculado à OS ${os.numero_os} foi cancelado pelo gestor.`,
       link: '/tickets',
     });
   }
@@ -160,17 +163,20 @@ export async function notifyTicketDeleted(os: LinkedOS): Promise<void> {
     Array.from(recipients.entries()).map(([uid, payload]) =>
       notificationService
         .sendInApp(uid, payload.tipo, payload.titulo, payload.mensagem, payload.link)
-        .catch((e) => console.warn('notifyTicketDeleted in-app failed:', e))
+        .catch((e) => console.warn('notifyTicketCancelled in-app failed:', e))
     )
   );
 
-  // Email apenas ao criador (edge function já cuida de 1 destinatário)
+  // Email ao criador (edge function reutiliza o nome legado mas com texto de cancelamento)
   if (creator) {
     supabase.functions
       .invoke('send-ticket-deleted-email', { body: { os_id: os.id } })
       .catch((e) => console.warn('send-ticket-deleted-email failed:', e));
   }
 }
+
+/** @deprecated Use notifyTicketCancelled — tickets are no longer deletable. */
+export const notifyTicketDeleted = notifyTicketCancelled;
 
 /**
  * Strategy: notify OS creator + technician when an OS is cancelled.

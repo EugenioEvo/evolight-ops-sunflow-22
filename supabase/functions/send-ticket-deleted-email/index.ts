@@ -50,14 +50,14 @@ serve(async (req) => {
     const clienteNome = (os as any).tickets?.clientes?.empresa || 'Cliente'
     const numeroTicket = (os as any).tickets?.numero_ticket || ''
     const titulo = (os as any).tickets?.titulo || ''
-    const subject = `Ticket Excluído: ${numeroTicket} - ${clienteNome}`
+    const subject = `Ticket Cancelado: ${numeroTicket} - ${clienteNome}`
 
     const html = `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
-        <h2 style="color:#dc2626">Ticket Excluído</h2>
+        <h2 style="color:#dc2626">Ticket Cancelado</h2>
         <p>Olá <strong>${creatorProfile.nome || ''}</strong>,</p>
-        <p>O ticket <strong>${numeroTicket}</strong>${titulo ? ` (${titulo})` : ''} vinculado à OS <strong>${(os as any).numero_os}</strong> foi excluído pelo gestor.</p>
-        <p>Caso precise reabrir esta solicitação, crie um novo ticket.</p>
+        <p>O ticket <strong>${numeroTicket}</strong>${titulo ? ` (${titulo})` : ''} vinculado à OS <strong>${(os as any).numero_os}</strong> foi cancelado pelo gestor. As OS vinculadas também foram canceladas e o histórico permanece preservado.</p>
+        <p>Caso precise retomar esta solicitação, abra um novo ticket.</p>
         <p style="color:#6b7280;font-size:13px">— Equipe Evolight O&M</p>
       </div>
     `
