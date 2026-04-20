@@ -6,6 +6,7 @@ import { useErrorHandler } from '@/hooks/useErrorHandler';
 import { notificationService } from '@/shared/services/notificationService';
 import { workOrderService as defaultService } from '../services/workOrderService';
 import { generateOSPDF } from '@/utils/generateOSPDF';
+import { buildOSPDFData } from '@/utils/buildOSPDFData';
 
 export interface WorkOrderDetailData {
   id: string;
@@ -145,19 +146,29 @@ export const useWorkOrderDetail = (service = defaultService) => {
   const handleDownloadPDF = async () => {
     if (!workOrder) return;
     try {
-      const pdfBlob = await generateOSPDF({
+      const pdfData = await buildOSPDFData({
+        os_id: workOrder.id,
         numero_os: workOrder.numero_os,
-        data_programada: workOrder.data_programada || new Date().toISOString(),
-        equipe: workOrder.equipe || ['Não informado'],
-        cliente: workOrder.tickets.clientes?.empresa || 'Não informado',
-        endereco: `${workOrder.tickets.clientes?.endereco || ''}, ${workOrder.tickets.clientes?.cidade || ''} - ${workOrder.tickets.clientes?.estado || ''}`,
-        servico_solicitado: workOrder.servico_solicitado || 'MANUTENÇÃO',
-        hora_marcada: workOrder.hora_inicio || '00:00',
-        descricao: workOrder.tickets.descricao || workOrder.tickets.titulo,
-        inspetor_responsavel: workOrder.inspetor_responsavel || 'TODOS',
-        tipo_trabalho: workOrder.work_type || [],
-        ufv_solarz: workOrder.tickets.clientes?.ufv_solarz || undefined,
+        data_programada: workOrder.data_programada,
+        hora_inicio: workOrder.hora_inicio,
+        servico_solicitado: workOrder.servico_solicitado,
+        tipo_trabalho: (workOrder.work_type as string[]) || [],
+        ticket_id: workOrder.tickets.id,
+        cliente: {
+          empresa: workOrder.tickets.clientes?.empresa,
+          endereco: workOrder.tickets.clientes?.endereco,
+          cidade: workOrder.tickets.clientes?.cidade,
+          estado: workOrder.tickets.clientes?.estado,
+          ufv_solarz: workOrder.tickets.clientes?.ufv_solarz,
+        },
+        ticket: {
+          titulo: workOrder.tickets.titulo,
+          descricao: workOrder.tickets.descricao,
+          endereco_servico: workOrder.tickets.endereco_servico,
+          tecnico_responsavel_id: (workOrder.tickets as any).tecnico_responsavel_id,
+        },
       });
+      const pdfBlob = await generateOSPDF(pdfData);
       const url = URL.createObjectURL(pdfBlob);
       const a = document.createElement('a');
       a.href = url; a.download = `OS_${workOrder.numero_os}.pdf`; a.click();

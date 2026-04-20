@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { useAceiteOS } from "@/hooks/useAceiteOS";
 import { useErrorHandler } from "@/hooks/useErrorHandler";
 import { generateOSPDF } from "@/utils/generateOSPDF";
+import { buildOSPDFData } from "@/utils/buildOSPDFData";
 import { supabase } from "@/integrations/supabase/client";
 import { rmeService } from "@/features/rme/services/rmeService";
 import { myOrdersService } from "../services/myOrdersService";
@@ -49,18 +50,27 @@ export function useMyOrdersActions(loadOrdensServico: () => Promise<void>, setAc
 
   const handleVerOS = async (os: OrdemServico) => {
     try {
-      const pdfData = {
+      const pdfData = await buildOSPDFData({
+        os_id: os.id,
         numero_os: os.numero_os,
-        data_programada: os.data_programada || new Date().toISOString(),
-        equipe: os.equipe || ['Não informado'],
-        cliente: os.tickets.clientes?.empresa || 'Não informado',
-        endereco: `${os.tickets.clientes?.endereco || os.tickets.endereco_servico}, ${os.tickets.clientes?.cidade || ''} - ${os.tickets.clientes?.estado || ''}`,
-        servico_solicitado: os.servico_solicitado || 'MANUTENÇÃO',
-        hora_marcada: os.hora_inicio || '00:00',
-        descricao: os.tickets.descricao || os.tickets.titulo || '',
-        inspetor_responsavel: os.inspetor_responsavel || 'TODOS',
-        tipo_trabalho: os.tipo_trabalho || []
-      };
+        data_programada: os.data_programada,
+        hora_inicio: os.hora_inicio,
+        servico_solicitado: os.servico_solicitado,
+        tipo_trabalho: os.tipo_trabalho,
+        ticket_id: os.ticket_id,
+        cliente: {
+          empresa: os.tickets.clientes?.empresa,
+          endereco: os.tickets.clientes?.endereco,
+          cidade: os.tickets.clientes?.cidade,
+          estado: os.tickets.clientes?.estado,
+        },
+        ticket: {
+          titulo: os.tickets.titulo,
+          descricao: os.tickets.descricao,
+          endereco_servico: os.tickets.endereco_servico,
+          tecnico_responsavel_id: (os.tickets as any).tecnico_responsavel_id,
+        },
+      });
       const pdfBlob = await generateOSPDF(pdfData);
       const url = URL.createObjectURL(pdfBlob);
       const a = document.createElement('a');

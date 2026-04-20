@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, Download, ArrowLeft, FileText, Star } from "lucide-react";
 import { toast } from "sonner";
 import { generateOSPDF } from "@/utils/generateOSPDF";
+import { buildOSPDFData } from "@/utils/buildOSPDFData";
 
 const VisualizarOS = () => {
   const { id } = useParams();
@@ -58,19 +59,28 @@ const VisualizarOS = () => {
 
     setGenerating(true);
     try {
-      const pdfData = {
+      const pdfData = await buildOSPDFData({
+        os_id: os.id,
         numero_os: os.numero_os,
         data_programada: os.data_programada,
-        equipe: os.equipe || ['Não informado'],
-        cliente: ticket.clientes?.empresa || 'Não informado',
-        endereco: `${ticket.clientes?.endereco || ''}, ${ticket.clientes?.cidade || ''} - ${ticket.clientes?.estado || ''}`,
-        servico_solicitado: os.servico_solicitado || 'MANUTENÇÃO',
-        hora_marcada: os.hora_inicio || '00:00',
-        descricao: ticket.descricao || ticket.titulo || '',
-        inspetor_responsavel: os.inspetor_responsavel || 'TODOS',
-        tipo_trabalho: os.tipo_trabalho || [],
-        ufv_solarz: ticket.clientes?.ufv_solarz || undefined,
-      };
+        hora_inicio: os.hora_inicio,
+        servico_solicitado: os.servico_solicitado,
+        tipo_trabalho: os.tipo_trabalho,
+        ticket_id: os.ticket_id,
+        cliente: {
+          empresa: ticket.clientes?.empresa,
+          endereco: ticket.clientes?.endereco,
+          cidade: ticket.clientes?.cidade,
+          estado: ticket.clientes?.estado,
+          ufv_solarz: ticket.clientes?.ufv_solarz,
+        },
+        ticket: {
+          titulo: ticket.titulo,
+          descricao: ticket.descricao,
+          endereco_servico: ticket.endereco_servico,
+          tecnico_responsavel_id: ticket.tecnico_responsavel_id,
+        },
+      });
 
       const pdfBlob = await generateOSPDF(pdfData);
 
