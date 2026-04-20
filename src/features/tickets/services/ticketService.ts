@@ -40,9 +40,74 @@ export const createTicketService = (client?: AppSupabaseClient) => {
       if (error) throw error;
     },
 
-    async delete(id: string) {
-      const { error } = await db.from('tickets').delete().eq('id', id);
-      if (error) throw error;
+    /**
+     * Tickets are the source of truth for OS/RME and must NEVER be hard-deleted.
+     * Use `cancel` instead — it sets status='cancelado' and cascades to linked OS.
+     * Kept here only as a guarded fallback (will throw to surface accidental usage).
+     */
+    async delete(_id: string) {
+      throw new Error('Tickets não podem ser excluídos. Use cancelTicket.');
+    },
+
+    /**
+     * Cancel a ticket and cascade-cancel all linked OS that are not already
+     * concluded/cancelled. Blocks if there is at least one RME in 'rascunho'
+     * for this ticket (the report is mid-edit and would lose context).
+     * Returns the list of cancelled OS so the caller can fan out notifications.
+     */
+    async cancel(ticketId: string): Promise<{ cancelledOS: LinkedOS[] }> {
+      // 1) Block if any RME draft exists for this ticket
+      const { data: drafts, error: rmeErr } = await db
+        .from('rme_relatorios')
+        .select('id, status')
+        .eq('ticket_id', ticketId)
+        .eq('status', 'rascunho');
+      if (rmeErr) throw rmeErr;
+      if ((drafts || []).length > 0) {
+        throw new Error(
+          'Existe pelo menos 1 RME em rascunho para este ticket. Conclua ou exclua o RME antes de cancelar o ticket.'
+        );
+      }
+
+      // 2) Fetch linked OS (with current ticket status semantics) to cascade
+      const { data: linked, error: osErr } = await db
+        .from('ordens_servico')
+        .select('id, numero_os, tecnico_id, tickets:ticket_id(status)')
+        .eq('ticket_id', ticketId);
+      if (osErr) throw osErr;
+
+      const cancellable = (linked || []).filter((os: any) => {
+        const tStatus = os?.tickets?.status;
+        return tStatus !== 'concluido' && tStatus !== 'cancelado';
+      });
+
+      // 3) Clear scheduling fields on each cancellable OS so the slot is freed
+      if (cancellable.length > 0) {
+        await db
+          .from('ordens_servico')
+          .update({
+            data_programada: null,
+            hora_inicio: null,
+            hora_fim: null,
+            duracao_estimada_min: null,
+          })
+          .in('id', cancellable.map((os: any) => os.id));
+      }
+
+      // 4) Flip ticket → cancelado (cascades visually to all OS via getOSStatus)
+      const { error: updErr } = await db
+        .from('tickets')
+        .update({ status: 'cancelado', data_conclusao: null })
+        .eq('id', ticketId);
+      if (updErr) throw updErr;
+
+      return {
+        cancelledOS: cancellable.map((os: any) => ({
+          id: os.id,
+          numero_os: os.numero_os,
+          tecnico_id: os.tecnico_id,
+        })),
+      };
     },
 
     async approve(ticketId: string, profileId: string, observacoes?: string) {
