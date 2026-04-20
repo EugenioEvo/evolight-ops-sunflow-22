@@ -1,9 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, FileText, Eye, Calendar, MapPin, User, Play, Edit, Phone, Navigation, AlertCircle, CheckCircle2, ThumbsUp, ThumbsDown, Hourglass, ClipboardCheck } from "lucide-react";
+import { Loader2, FileText, Eye, Calendar, MapPin, User, Play, Edit, Phone, Navigation, AlertCircle, CheckCircle2, ThumbsUp, ThumbsDown, ClipboardCheck } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import type { OrdemServico } from "../types";
@@ -15,8 +14,6 @@ interface OSCardProps {
   navigating: string | null;
   exportingRMEId?: string | null;
   aceiteLoading: boolean;
-  /** Number of sibling OS on the same ticket still awaiting technician acceptance (excludes this OS if already decided). */
-  siblingPendingAcceptance?: number;
   onIniciarExecucao: (os: OrdemServico) => void;
   onPreencherRME: (os: OrdemServico) => void;
   onVerOS: (os: OrdemServico) => void;
@@ -49,7 +46,7 @@ const getStatusBadge = (status: string) => {
 };
 
 export function OSCard({
-  os, isTecnico, startingId, navigating, exportingRMEId, aceiteLoading, siblingPendingAcceptance = 0,
+  os, isTecnico, startingId, navigating, exportingRMEId, aceiteLoading,
   onIniciarExecucao, onPreencherRME, onVerOS, onVerRMEPDF, onLigarCliente, onAbrirMapa, onAceitarTicket, onAceitarOS, onRecusarOS,
 }: OSCardProps) {
   const rme = os.rme_relatorios?.[0];
@@ -72,10 +69,6 @@ export function OSCard({
   const aguardandoAceiteOS = isPendente && osAceite === 'pendente' && ticketAceito;
   const osAceito = osAceite === 'aceito';
   const recusado = osAceite === 'recusado';
-
-  // Block starting execution (which unlocks RME filling) while any sibling OS on the
-  // same ticket is still awaiting technician decision.
-  const siblingsBloqueando = siblingPendingAcceptance > 0;
 
   return (
     <Card className={`hover:shadow-lg transition-shadow ${recusado ? 'border-destructive/40 bg-destructive/5' : ''} ${aguardandoAceiteTicket ? 'border-blue-300 bg-blue-50/30' : ''}`}>
@@ -226,39 +219,17 @@ export function OSCard({
         {/* Main action buttons */}
         <div className="space-y-2">
           {isPendente && (osAceito || !isTecnico) && !recusado && ticketAceito && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="block w-full">
-                  <Button
-                    onClick={() => onIniciarExecucao(os)}
-                    className="w-full"
-                    disabled={startingId === os.id || siblingsBloqueando}
-                  >
-                    {startingId === os.id ? (
-                      <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Iniciando...</>
-                    ) : (
-                      <><Play className="h-4 w-4 mr-2" />Iniciar Execução</>
-                    )}
-                  </Button>
-                </span>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>
-                  {siblingsBloqueando
-                    ? `Aguardando ${siblingPendingAcceptance} técnico(s) aceitar/recusar outras OS deste ticket antes de iniciar.`
-                    : 'Inicie a execução para depois preencher o RME'}
-                </p>
-              </TooltipContent>
-            </Tooltip>
-          )}
-
-          {siblingsBloqueando && isPendente && (osAceito || !isTecnico) && !recusado && ticketAceito && (
-            <Alert className="border-amber-200 bg-amber-50">
-              <Hourglass className="h-4 w-4 text-amber-600" />
-              <AlertDescription className="text-amber-800 text-xs">
-                Execução bloqueada: {siblingPendingAcceptance} OS vinculada(s) a este ticket ainda aguarda(m) aceite ou recusa do(s) técnico(s).
-              </AlertDescription>
-            </Alert>
+            <Button
+              onClick={() => onIniciarExecucao(os)}
+              className="w-full"
+              disabled={startingId === os.id}
+            >
+              {startingId === os.id ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Iniciando...</>
+              ) : (
+                <><Play className="h-4 w-4 mr-2" />Iniciar Execução</>
+              )}
+            </Button>
           )}
 
           {!recusado && isPendente && osAceito && ticketAceito && (
