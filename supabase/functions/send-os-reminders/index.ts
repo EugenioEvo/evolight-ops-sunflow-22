@@ -130,7 +130,10 @@ const handler = async (req: Request): Promise<Response> => {
         const dataFormatada = dataOS.toLocaleDateString("pt-BR");
         const horaFormatada = os.hora_inicio;
 
-        const recipients = [tecnicoEmail];
+    const recipients = [tecnicoEmail];
+    
+    // NOTA: Removido teamEmail (oem@grupoevolight.com.br) como destinatário conforme solicitação.
+    // Apenas o técnico alocado recebe o lembrete.
 
         // Gerar token de confirmação seguro usando UUID
         const { data: tokenData, error: tokenError } = await supabase.rpc(
