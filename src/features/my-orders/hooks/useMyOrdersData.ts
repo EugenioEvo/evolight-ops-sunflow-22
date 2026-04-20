@@ -26,7 +26,48 @@ export function useMyOrdersData() {
     if (data) setOrdensServico(data as any);
     setLoading(false);
   }, [profile?.id, isTecnico]);
-...
+
+  const realtimeCallback = useCallback(() => {
+    if (canViewOS) loadOrdensServico();
+  }, [canViewOS, loadOrdensServico]);
+  useGlobalRealtime(realtimeCallback);
+
+  useEffect(() => {
+    if (canViewOS) loadOrdensServico();
+  }, [canViewOS, loadOrdensServico]);
+
+  let osFiltradas = ordensServico;
+  if (prioridadeFiltro !== 'todas') {
+    osFiltradas = osFiltradas.filter(os => os.tickets.prioridade === prioridadeFiltro);
+  }
+
+  // Classificação por aba (alinhada ao Dashboard do técnico):
+  // - Pendentes: aguardando aceite OU aceitas mas ainda 'ordem_servico_gerada' (NÃO inclui recusadas)
+  // - Em Execução: ticket 'em_execucao' OU 'aguardando_rme' (técnico ainda tem ação no RME)
+  // - Concluídas: ticket 'concluido'
+  // - Recusadas: aceite_tecnico === 'recusado'
+  // - Todas: ativas (tudo acima exceto Concluídas e Canceladas)
+  const recusadas = osFiltradas.filter(os => (os as any).aceite_tecnico === 'recusado');
+  const pendentes = osFiltradas.filter(os => {
+    const ticketStatus = os.tickets.status;
+    const osAceite = (os as any).aceite_tecnico || 'pendente';
+    if (osAceite === 'recusado') return false;
+    if (['concluido', 'cancelado', 'em_execucao', 'aguardando_rme'].includes(ticketStatus)) return false;
+    if (osAceite === 'pendente') return true;
+    if (osAceite === 'aceito' && ticketStatus === 'ordem_servico_gerada') return true;
+    return false;
+  });
+  const emExecucao = osFiltradas.filter(os =>
+    (os.tickets.status === 'em_execucao' || os.tickets.status === 'aguardando_rme') &&
+    (os as any).aceite_tecnico !== 'recusado'
+  );
+  const concluidas = osFiltradas.filter(os => os.tickets.status === 'concluido');
+  const aguardandoGestaoCount = recusadas.length;
+  const todas = osFiltradas.filter(os =>
+    !['concluido', 'cancelado'].includes(os.tickets.status) &&
+    (os as any).aceite_tecnico !== 'recusado'
+  );
+
   return {
     ordensServico, loading, prioridadeFiltro, setPrioridadeFiltro,
     activeTab, setActiveTab, isTecnico, canViewOS, loadOrdensServico,
