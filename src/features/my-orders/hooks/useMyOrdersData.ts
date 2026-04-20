@@ -10,6 +10,7 @@ export function useMyOrdersData() {
   const [loading, setLoading] = useState(true);
   const [prioridadeFiltro, setPrioridadeFiltro] = useState<string>('todas');
   const [activeTab, setActiveTab] = useState<string>('todas');
+  const [pendingAcceptanceByTicket, setPendingAcceptanceByTicket] = useState<Record<string, number>>({});
   const { profile } = useAuth();
   const { handleAsyncError } = useErrorHandler();
 
@@ -23,7 +24,15 @@ export function useMyOrdersData() {
       () => myOrdersService.loadOrdensServico(profile?.id, isTecnico),
       { fallbackMessage: 'Erro ao carregar ordens de serviço' }
     );
-    if (data) setOrdensServico(data as any);
+    if (data) {
+      setOrdensServico(data as any);
+      const ticketIds = Array.from(new Set((data as any[]).map((os) => os.ticket_id).filter(Boolean)));
+      const pendingMap = await handleAsyncError(
+        () => myOrdersService.loadPendingAcceptanceByTicket(ticketIds),
+        { silent: true, fallbackMessage: 'Erro ao verificar aceites pendentes' }
+      );
+      setPendingAcceptanceByTicket(pendingMap || {});
+    }
     setLoading(false);
   }, [profile?.id, isTecnico]);
 
