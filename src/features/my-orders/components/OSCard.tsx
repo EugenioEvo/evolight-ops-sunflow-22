@@ -234,7 +234,7 @@ export function OSCard({
             </Tooltip>
           )}
 
-          {isPendente && osAceito && ticketAceito && (
+          {!recusado && isPendente && osAceito && ticketAceito && (
             <>
               <Badge variant="outline" className="w-full justify-center py-2 bg-green-50 text-green-700 border-green-200">
                 <CheckCircle2 className="h-3 w-3 mr-1" />Aceita — Próximo: Iniciar Execução
