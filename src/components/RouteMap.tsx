@@ -148,10 +148,37 @@ const RouteMap: React.FC = () => {
         query = query.eq('tecnico_id', tecnicoFilter);
       }
 
-      if (statusFilter !== 'todos') {
-        query = query.eq('tickets.status', statusFilter as any);
-      } else {
-        query = query.in('tickets.status', ['ordem_servico_gerada', 'em_execucao', 'concluido']);
+      // Filtro de Status — alinhado ao status real da OS (combinação ticket.status + aceite_tecnico)
+      switch (statusFilter) {
+        case 'aguardando_aceite':
+          query = query
+            .eq('aceite_tecnico', 'pendente')
+            .in('tickets.status', ['ordem_servico_gerada', 'em_execucao']);
+          break;
+        case 'aceita':
+          query = query
+            .eq('aceite_tecnico', 'aceito')
+            .eq('tickets.status', 'ordem_servico_gerada');
+          break;
+        case 'em_execucao':
+          query = query.eq('tickets.status', 'em_execucao');
+          break;
+        case 'concluido':
+          query = query.eq('tickets.status', 'concluido');
+          break;
+        case 'recusada':
+          query = query.eq('aceite_tecnico', 'recusado');
+          break;
+        case 'cancelado':
+          query = query.eq('tickets.status', 'cancelado');
+          break;
+        case 'todos':
+        default:
+          // "Ativas": exclui canceladas e recusadas para manter o mapa limpo
+          query = query
+            .in('tickets.status', ['ordem_servico_gerada', 'em_execucao', 'concluido'])
+            .neq('aceite_tecnico', 'recusado');
+          break;
       }
 
       // Date filter
