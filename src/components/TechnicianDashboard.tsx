@@ -94,8 +94,13 @@ const TechnicianDashboard = () => {
           recusadas: osData.filter(os => os.aceite_tecnico === 'recusado').length,
         });
 
-        // OS ativas: tudo que não está concluído nem cancelado
-        setRecentOS(osData.filter(os => !['concluido', 'cancelado'].includes(os.tickets.status)).slice(0, 8));
+        // OS ativas: pendentes, em execução e aguardando RME (exclui concluídas, canceladas e recusadas)
+        setRecentOS(
+          osData
+            .filter(os => !['concluido', 'cancelado'].includes(os.tickets.status))
+            .filter(os => os.aceite_tecnico !== 'recusado')
+            .slice(0, 8)
+        );
       }
     } catch (error) {
       console.error("Erro ao carregar dashboard:", error);
