@@ -18,6 +18,7 @@ const MinhasOS = () => {
     ordensServico, loading, prioridadeFiltro, setPrioridadeFiltro,
     activeTab, setActiveTab, isTecnico, canViewOS, loadOrdensServico,
     todas, pendentes, aguardandoGestaoCount, emExecucao, concluidas, recusadas,
+    pendingAcceptanceByTicket,
   } = useMyOrdersData();
 
   const {
