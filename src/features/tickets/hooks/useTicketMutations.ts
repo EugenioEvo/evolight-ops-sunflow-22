@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
 import { ticketService } from '../services/ticketService';
-import { notifyReassignRemoved, notifyNewAssignment, notifyTicketAltered, notifyTicketDeleted, notifyTicketDecision } from '@/shared/services/notificationStrategies';
+import { notifyReassignRemoved, notifyNewAssignment, notifyTicketAltered, notifyTicketDecision } from '@/shared/services/notificationStrategies';
 import type { TicketFormData, TicketWithRelations, TicketPrestador } from '../types';
 
 export const useTicketMutations = (loadData: () => Promise<void>) => {
@@ -129,31 +129,43 @@ export const useTicketMutations = (loadData: () => Promise<void>) => {
     }
   };
 
-  const deleteTicket = async (ticketId: string) => {
+  /**
+   * Tickets are the source of truth and can never be hard-deleted.
+   * Cancelling a ticket cascades cancellation to every linked OS that is
+   * not already concluded/cancelled. Blocked if any RME draft exists.
+   */
+  const cancelTicket = async (ticketId: string, motivo?: string) => {
     setLoading(true);
     try {
-      const [osData, rmeData] = await Promise.all([
-        ticketService.getLinkedOS(ticketId),
-        ticketService.getLinkedRME(ticketId),
-      ]);
+      const { cancelledOS } = await ticketService.cancel(ticketId);
 
-      if (osData.length > 0 || rmeData.length > 0) {
-        const parts: string[] = [];
-        if (osData.length > 0) parts.push(`${osData.length} OS`);
-        if (rmeData.length > 0) parts.push(`${rmeData.length} RME`);
+      // Fire-and-forget cascade notifications: calendar CANCEL + creator email per OS
+      await Promise.all(
+        cancelledOS.map(async (os) => {
+          try {
+            // Cancel calendar invite to assigned technician
+            await import('@/shared/services/notificationService').then(({ notificationService }) =>
+              notificationService.sendCalendarInvite(os.id, 'cancel')
+            );
+          } catch (e) {
+            console.warn('cancelTicket calendar cancel failed:', e);
+          }
+          // Notify the OS/ticket creator (in-app + email)
+          const { notifyOSCancelled } = await import('@/shared/services/notificationStrategies');
+          notifyOSCancelled(os.id, motivo).catch((e) =>
+            console.warn('notifyOSCancelled failed (non-blocking):', e)
+          );
+        })
+      );
 
-        // Parallelize all deletion notifications
-        await Promise.all(osData.map(os => notifyTicketDeleted(os)));
-
-        toast.error(`Este ticket possui ${parts.join(' e ')} vinculado(s). Remova-os antes de excluir o ticket.`);
-        return;
-      }
-
-      await ticketService.delete(ticketId);
-      toast.success('Ticket excluído com sucesso');
+      const cascadedMsg =
+        cancelledOS.length > 0
+          ? ` ${cancelledOS.length} OS vinculada(s) também foram canceladas.`
+          : '';
+      toast.success(`Ticket cancelado com sucesso.${cascadedMsg}`);
       await loadData();
     } catch (error) {
-      handleError(error, { fallbackMessage: 'Erro ao excluir ticket' });
+      handleError(error, { fallbackMessage: 'Erro ao cancelar ticket' });
     } finally {
       setLoading(false);
     }
@@ -243,6 +255,6 @@ export const useTicketMutations = (loadData: () => Promise<void>) => {
 
   return {
     loading, setLoading, generatingOsId, reprocessingTicketId, setReprocessingTicketId,
-    createTicket, updateTicket, approveTicket, rejectTicket, deleteTicket, assignTechnician, generateOS,
+    createTicket, updateTicket, approveTicket, rejectTicket, cancelTicket, assignTechnician, generateOS,
   };
 };

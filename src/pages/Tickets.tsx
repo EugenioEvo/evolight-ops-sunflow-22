@@ -179,7 +179,7 @@ const Tickets = () => {
                     onApprove={(id) => setDecisionModal({ ticketId: id, type: 'approve' })}
                     onReject={(id) => setDecisionModal({ ticketId: id, type: 'reject' })}
                     onEdit={handleEdit}
-                    onDelete={(id) => { mutations.deleteTicket(id); filters.setActiveTab('todos'); }}
+                    onCancel={(id) => { mutations.cancelTicket(id); filters.setActiveTab('cancelado'); }}
                     onAssignTechnician={(ticketId, techId) => mutations.assignTechnician(ticketId, techId, tickets, prestadores)}
                     onGenerateOS={(ticket) => { setAddTechMode(false); setMultiOSDialogTicket(ticket); }}
                     onAddTechnicians={(ticket) => { setAddTechMode(true); setMultiOSDialogTicket(ticket); }}
