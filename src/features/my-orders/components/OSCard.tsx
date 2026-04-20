@@ -296,7 +296,7 @@ export function OSCard({
             <Eye className="h-4 w-4 mr-2" />Ver OS em PDF
           </Button>
 
-          {os.rme_relatorios?.[0] && os.rme_relatorios[0].status !== 'rascunho' && onVerRMEPDF && (
+          {!recusado && os.rme_relatorios?.[0] && os.rme_relatorios[0].status !== 'rascunho' && onVerRMEPDF && (
             <Button
               onClick={() => onVerRMEPDF(os)}
               variant="outline"
