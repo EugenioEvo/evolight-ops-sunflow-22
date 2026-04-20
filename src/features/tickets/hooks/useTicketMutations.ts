@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
 import { ticketService } from '../services/ticketService';
-import { notifyReassignRemoved, notifyNewAssignment, notifyTicketAltered, notifyTicketDecision } from '@/shared/services/notificationStrategies';
+import { notifyReassignRemoved, notifyNewAssignment, notifyTicketAltered, notifyTicketDecision, notifyTicketCancelled } from '@/shared/services/notificationStrategies';
 import type { TicketFormData, TicketWithRelations, TicketPrestador } from '../types';
 
 export const useTicketMutations = (loadData: () => Promise<void>) => {
@@ -139,7 +139,7 @@ export const useTicketMutations = (loadData: () => Promise<void>) => {
     try {
       const { cancelledOS } = await ticketService.cancel(ticketId);
 
-      // Fire-and-forget cascade notifications: calendar CANCEL + creator email per OS
+      // Fire-and-forget cascade notifications: calendar CANCEL + cancellation emails per OS
       await Promise.all(
         cancelledOS.map(async (os) => {
           try {
@@ -150,10 +150,14 @@ export const useTicketMutations = (loadData: () => Promise<void>) => {
           } catch (e) {
             console.warn('cancelTicket calendar cancel failed:', e);
           }
-          // Notify the OS/ticket creator (in-app + email)
+          // Notify the OS/ticket creator (in-app + email) — generic OS cancellation
           const { notifyOSCancelled } = await import('@/shared/services/notificationStrategies');
           notifyOSCancelled(os.id, motivo).catch((e) =>
             console.warn('notifyOSCancelled failed (non-blocking):', e)
+          );
+          // Notify ticket cancellation specifically (in-app + email com texto de cancelamento de TICKET)
+          notifyTicketCancelled(os).catch((e) =>
+            console.warn('notifyTicketCancelled failed (non-blocking):', e)
           );
         })
       );
