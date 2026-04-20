@@ -228,16 +228,37 @@ export function OSCard({
           {isPendente && (osAceito || !isTecnico) && !recusado && ticketAceito && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button onClick={() => onIniciarExecucao(os)} className="w-full" disabled={startingId === os.id}>
-                  {startingId === os.id ? (
-                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Iniciando...</>
-                  ) : (
-                    <><Play className="h-4 w-4 mr-2" />Iniciar Execução</>
-                  )}
-                </Button>
+                <span className="block w-full">
+                  <Button
+                    onClick={() => onIniciarExecucao(os)}
+                    className="w-full"
+                    disabled={startingId === os.id || siblingsBloqueando}
+                  >
+                    {startingId === os.id ? (
+                      <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Iniciando...</>
+                    ) : (
+                      <><Play className="h-4 w-4 mr-2" />Iniciar Execução</>
+                    )}
+                  </Button>
+                </span>
               </TooltipTrigger>
-              <TooltipContent><p>Inicie a execução para depois preencher o RME</p></TooltipContent>
+              <TooltipContent>
+                <p>
+                  {siblingsBloqueando
+                    ? `Aguardando ${siblingPendingAcceptance} técnico(s) aceitar/recusar outras OS deste ticket antes de iniciar.`
+                    : 'Inicie a execução para depois preencher o RME'}
+                </p>
+              </TooltipContent>
             </Tooltip>
+          )}
+
+          {siblingsBloqueando && isPendente && (osAceito || !isTecnico) && !recusado && ticketAceito && (
+            <Alert className="border-amber-200 bg-amber-50">
+              <Hourglass className="h-4 w-4 text-amber-600" />
+              <AlertDescription className="text-amber-800 text-xs">
+                Execução bloqueada: {siblingPendingAcceptance} OS vinculada(s) a este ticket ainda aguarda(m) aceite ou recusa do(s) técnico(s).
+              </AlertDescription>
+            </Alert>
           )}
 
           {!recusado && isPendente && osAceito && ticketAceito && (
