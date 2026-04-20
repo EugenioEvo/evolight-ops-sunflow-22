@@ -23,7 +23,7 @@ interface TicketCardProps {
   onApprove: (id: string) => void;
   onReject: (id: string) => void;
   onEdit: (ticket: TicketWithRelations) => void;
-  onDelete: (id: string) => void;
+  onCancel: (id: string) => void;
   onAssignTechnician: (ticketId: string, technicianId: string) => void;
   onGenerateOS: (ticket: TicketWithRelations) => void;
   onAddTechnicians?: (ticket: TicketWithRelations) => void;
@@ -43,7 +43,7 @@ export const TicketCard = ({
   onApprove,
   onReject,
   onEdit,
-  onDelete,
+  onCancel,
   onAssignTechnician,
   onGenerateOS,
   onAddTechnicians,
@@ -137,21 +137,25 @@ export const TicketCard = ({
     );
   };
 
-  const DeleteButton = () => (
+  const CancelButton = () => (
     <AlertDialog>
       <AlertDialogTrigger asChild>
-        <Button size="sm" variant="destructive">Excluir</Button>
+        <Button size="sm" variant="destructive">Cancelar Ticket</Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+          <AlertDialogTitle>Cancelar Ticket</AlertDialogTitle>
           <AlertDialogDescription>
-            Tem certeza que deseja excluir este ticket? Esta ação não pode ser desfeita.
+            Esta ação cancelará o ticket e <strong>todas as OS vinculadas</strong> que ainda
+            não foram concluídas. Tickets nunca são excluídos da base — eles são fonte de
+            verdade para OS, RME e histórico.
+            <br /><br />
+            Bloqueado se existir pelo menos 1 RME em rascunho para este ticket.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-          <AlertDialogAction onClick={() => onDelete(ticket.id)}>Excluir</AlertDialogAction>
+          <AlertDialogCancel>Voltar</AlertDialogCancel>
+          <AlertDialogAction onClick={() => onCancel(ticket.id)}>Cancelar Ticket</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
@@ -372,11 +376,11 @@ export const TicketCard = ({
                   </DropdownMenu>
 
                   <Button size="sm" variant="outline" onClick={() => onEdit(ticket)}>Editar</Button>
-                  <DeleteButton />
+                  {ticket.status !== 'concluido' && ticket.status !== 'cancelado' && <CancelButton />}
                 </>
               )}
 
-              {(ticket.status === 'rejeitado' || ticket.status === 'cancelado') && <DeleteButton />}
+              {ticket.status === 'rejeitado' && <CancelButton />}
             </div>
           )}
 
