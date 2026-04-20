@@ -72,7 +72,7 @@ export function OSCard({
   const recusado = osAceite === 'recusado';
 
   return (
-    <Card className={`hover:shadow-lg transition-shadow ${recusado && isPendente ? 'border-amber-300 bg-amber-50/50' : ''} ${aguardandoAceiteTicket ? 'border-blue-300 bg-blue-50/30' : ''}`}>
+    <Card className={`hover:shadow-lg transition-shadow ${recusado ? 'border-destructive/40 bg-destructive/5' : ''} ${aguardandoAceiteTicket ? 'border-blue-300 bg-blue-50/30' : ''}`}>
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-2">
           <div className="space-y-1 min-w-0 flex-1">
@@ -82,41 +82,43 @@ export function OSCard({
             </CardTitle>
             <div className="flex flex-wrap gap-1">
               <Badge variant="outline" className="text-xs">{os.tickets.numero_ticket}</Badge>
-              {aguardandoAceiteTicket && (
+              {!recusado && aguardandoAceiteTicket && (
                 <Badge className="text-xs bg-blue-100 text-blue-800 border-blue-200">
                   <ClipboardCheck className="h-3 w-3 mr-1" />Aceitar Atribuição
                 </Badge>
               )}
-              {ticketAceito && aguardandoAceiteOS && (
+              {!recusado && ticketAceito && aguardandoAceiteOS && (
                 <Badge className="text-xs bg-amber-100 text-amber-800 border-amber-200">Aguardando Aceite OS</Badge>
               )}
-              {osAceito && isPendente && (
+              {!recusado && osAceito && isPendente && (
                 <Badge className="text-xs bg-green-100 text-green-800 border-green-200">
                   <CheckCircle2 className="h-3 w-3 mr-1" />Aceita
                 </Badge>
               )}
-              {recusado && isPendente && (
-                <Badge className="text-xs bg-amber-100 text-amber-800 border-amber-300">
-                  <Hourglass className="h-3 w-3 mr-1" />Aguardando Resposta da Gestão
-                </Badge>
-              )}
             </div>
           </div>
-          {!(recusado && isPendente) && (
-            <div className="flex flex-col gap-1 items-end flex-shrink-0">
-              <Badge variant={getPrioridadeColor(os.tickets.prioridade) as any} className="text-xs">{os.tickets.prioridade}</Badge>
-              <Badge variant={statusBadge.variant as any} className="text-xs">{statusBadge.label}</Badge>
-            </div>
-          )}
+          <div className="flex flex-col gap-1 items-end flex-shrink-0">
+            {recusado ? (
+              <Badge variant="destructive" className="text-xs">
+                <ThumbsDown className="h-3 w-3 mr-1" />Recusada
+              </Badge>
+            ) : (
+              <>
+                <Badge variant={getPrioridadeColor(os.tickets.prioridade) as any} className="text-xs">{os.tickets.prioridade}</Badge>
+                <Badge variant={statusBadge.variant as any} className="text-xs">{statusBadge.label}</Badge>
+              </>
+            )}
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {recusado && isPendente && (
-          <Alert className="border-amber-300 bg-amber-100/60">
-            <Hourglass className="h-4 w-4 text-amber-700" />
-            <AlertDescription className="text-amber-900 text-xs space-y-1">
-              <p className="font-semibold text-sm">OS Recusada — Aguardando Resposta da Gestão</p>
-              {os.motivo_recusa && <p className="italic">Motivo: {os.motivo_recusa}</p>}
+        {recusado && (
+          <Alert className="border-destructive/40 bg-destructive/10">
+            <ThumbsDown className="h-4 w-4 text-destructive" />
+            <AlertDescription className="text-xs space-y-1">
+              <p className="font-semibold text-sm">OS Recusada por você</p>
+              {os.motivo_recusa && <p className="italic text-muted-foreground">Motivo: {os.motivo_recusa}</p>}
+              <p className="text-muted-foreground">A gestão foi notificada e poderá atribuir outro técnico.</p>
             </AlertDescription>
           </Alert>
         )}
