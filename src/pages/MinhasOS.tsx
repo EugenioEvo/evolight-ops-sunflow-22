@@ -17,7 +17,7 @@ const MinhasOS = () => {
   const {
     ordensServico, loading, prioridadeFiltro, setPrioridadeFiltro,
     activeTab, setActiveTab, isTecnico, canViewOS, loadOrdensServico,
-    pendentes, aguardandoGestaoCount, emExecucao, concluidas,
+    todas, pendentes, aguardandoGestaoCount, emExecucao, concluidas, recusadas,
   } = useMyOrdersData();
 
   const {
@@ -85,32 +85,39 @@ const MinhasOS = () => {
           <EmptyState icon={FileText} title="Nenhuma OS atribuída" description="Você ainda não possui ordens de serviço atribuídas." />
         ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-2 sm:grid-cols-5 h-auto">
+              <TabsTrigger value="todas" className="relative">
+                Todas
+                {todas.length > 0 && <Badge variant="secondary" className="ml-2 h-5 min-w-5 rounded-full px-1.5 text-[10px]">{todas.length}</Badge>}
+              </TabsTrigger>
               <TabsTrigger value="pendentes" className="relative">
                 Pendentes
-                {pendentes.length > 0 && (
-                  <span className="ml-2 inline-flex items-center gap-1">
-                    <Badge className="h-5 w-5 rounded-full p-0 flex items-center justify-center">{pendentes.length}</Badge>
-                    {aguardandoGestaoCount > 0 && (
-                      <Badge variant="outline" className="h-5 rounded-full px-1.5 text-[10px] bg-muted text-muted-foreground">{aguardandoGestaoCount} gestão</Badge>
-                    )}
-                  </span>
-                )}
+                {pendentes.length > 0 && <Badge className="ml-2 h-5 min-w-5 rounded-full px-1.5 text-[10px]">{pendentes.length}</Badge>}
               </TabsTrigger>
               <TabsTrigger value="execucao" className="relative">
                 Em Execução
-                {emExecucao.length > 0 && <Badge className="ml-2 h-5 w-5 rounded-full p-0 flex items-center justify-center">{emExecucao.length}</Badge>}
+                {emExecucao.length > 0 && <Badge className="ml-2 h-5 min-w-5 rounded-full px-1.5 text-[10px]">{emExecucao.length}</Badge>}
               </TabsTrigger>
               <TabsTrigger value="concluidas">
                 Concluídas
-                {concluidas.length > 0 && <Badge variant="secondary" className="ml-2 h-5 w-5 rounded-full p-0 flex items-center justify-center">{concluidas.length}</Badge>}
+                {concluidas.length > 0 && <Badge variant="secondary" className="ml-2 h-5 min-w-5 rounded-full px-1.5 text-[10px]">{concluidas.length}</Badge>}
+              </TabsTrigger>
+              <TabsTrigger value="recusadas" className="relative">
+                Recusadas
+                {recusadas.length > 0 && (
+                  <Badge variant="outline" className="ml-2 h-5 min-w-5 rounded-full px-1.5 text-[10px] bg-red-50 text-red-700 border-red-200">
+                    {recusadas.length}
+                  </Badge>
+                )}
               </TabsTrigger>
             </TabsList>
 
             {[
-              { key: 'pendentes', data: pendentes, emptyIcon: Calendar, emptyTitle: 'Nenhuma OS pendente', emptyDesc: 'Todas as suas ordens de serviço já foram iniciadas ou concluídas.' },
+              { key: 'todas', data: todas, emptyIcon: ClipboardList, emptyTitle: 'Nenhuma OS ativa', emptyDesc: 'Você não possui ordens de serviço ativas no momento.' },
+              { key: 'pendentes', data: pendentes, emptyIcon: Calendar, emptyTitle: 'Nenhuma OS pendente', emptyDesc: 'Todas as suas ordens de serviço já foram aceitas e iniciadas.' },
               { key: 'execucao', data: emExecucao, emptyIcon: Play, emptyTitle: 'Nenhuma OS em execução', emptyDesc: 'Inicie a execução de uma OS pendente para que ela apareça aqui.' },
-              { key: 'concluidas', data: concluidas, emptyIcon: FileText, emptyTitle: 'Nenhuma OS concluída', emptyDesc: 'As ordens de serviço concluídas aparecerão aqui após o preenchimento do RME.' },
+              { key: 'concluidas', data: concluidas, emptyIcon: FileText, emptyTitle: 'Nenhuma OS concluída', emptyDesc: 'As ordens de serviço concluídas aparecerão aqui após a aprovação do RME.' },
+              { key: 'recusadas', data: recusadas, emptyIcon: FileText, emptyTitle: 'Nenhuma OS recusada', emptyDesc: 'Você não recusou nenhuma ordem de serviço.' },
             ].map(tab => (
               <TabsContent key={tab.key} value={tab.key} className="mt-6">
                 {tab.data.length === 0 ? (
