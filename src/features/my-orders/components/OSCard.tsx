@@ -49,7 +49,7 @@ const getStatusBadge = (status: string) => {
 };
 
 export function OSCard({
-  os, isTecnico, startingId, navigating, exportingRMEId, aceiteLoading,
+  os, isTecnico, startingId, navigating, exportingRMEId, aceiteLoading, siblingPendingAcceptance = 0,
   onIniciarExecucao, onPreencherRME, onVerOS, onVerRMEPDF, onLigarCliente, onAbrirMapa, onAceitarTicket, onAceitarOS, onRecusarOS,
 }: OSCardProps) {
   const rme = os.rme_relatorios?.[0];
@@ -72,6 +72,10 @@ export function OSCard({
   const aguardandoAceiteOS = isPendente && osAceite === 'pendente' && ticketAceito;
   const osAceito = osAceite === 'aceito';
   const recusado = osAceite === 'recusado';
+
+  // Block starting execution (which unlocks RME filling) while any sibling OS on the
+  // same ticket is still awaiting technician decision.
+  const siblingsBloqueando = siblingPendingAcceptance > 0;
 
   return (
     <Card className={`hover:shadow-lg transition-shadow ${recusado ? 'border-destructive/40 bg-destructive/5' : ''} ${aguardandoAceiteTicket ? 'border-blue-300 bg-blue-50/30' : ''}`}>
