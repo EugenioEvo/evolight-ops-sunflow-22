@@ -82,5 +82,6 @@ export function useMyOrdersData() {
     ordensServico, loading, prioridadeFiltro, setPrioridadeFiltro,
     activeTab, setActiveTab, isTecnico, canViewOS, loadOrdensServico,
     todas, pendentes, aguardandoGestaoCount, emExecucao, concluidas, recusadas,
+    pendingAcceptanceByTicket,
   };
 }
