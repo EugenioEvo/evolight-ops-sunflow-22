@@ -105,7 +105,7 @@ const MinhasOS = () => {
               <TabsTrigger value="recusadas" className="relative">
                 Recusadas
                 {recusadas.length > 0 && (
-                  <Badge variant="outline" className="ml-2 h-5 min-w-5 rounded-full px-1.5 text-[10px] bg-red-50 text-red-700 border-red-200">
+                  <Badge variant="destructive" className="ml-2 h-5 min-w-5 rounded-full px-1.5 text-[10px]">
                     {recusadas.length}
                   </Badge>
                 )}
