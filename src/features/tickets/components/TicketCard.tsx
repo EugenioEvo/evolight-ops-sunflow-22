@@ -285,7 +285,7 @@ export const TicketCard = ({
                     <XCircle className="h-4 w-4" />Rejeitar
                   </Button>
                   <Button size="sm" variant="outline" onClick={() => onEdit(ticket)}>Editar</Button>
-                  <DeleteButton />
+                  <CancelButton />
                 </>
               )}
 
@@ -295,7 +295,7 @@ export const TicketCard = ({
                     <FileText className="h-4 w-4" />Gerar Ordem de Serviço
                   </Button>
                   <Button size="sm" variant="outline" onClick={() => onEdit(ticket)}>Editar</Button>
-                  <DeleteButton />
+                  <CancelButton />
                 </>
               )}
 
@@ -376,7 +376,7 @@ export const TicketCard = ({
                   </DropdownMenu>
 
                   <Button size="sm" variant="outline" onClick={() => onEdit(ticket)}>Editar</Button>
-                  {ticket.status !== 'concluido' && ticket.status !== 'cancelado' && <CancelButton />}
+                  {ticket.status !== 'concluido' && <CancelButton />}
                 </>
               )}
 
