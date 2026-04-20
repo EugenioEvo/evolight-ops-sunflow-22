@@ -10,7 +10,10 @@ interface OSData {
   servico_solicitado: string;
   hora_marcada: string;
   descricao: string;
-  inspetor_responsavel: string;
+  /** Nome do Técnico Responsável (substitui o antigo "inspetor_responsavel") */
+  tecnico_responsavel?: string;
+  /** @deprecated use tecnico_responsavel */
+  inspetor_responsavel?: string;
   tipo_trabalho: string[];
   ufv_solarz?: string;
 }
@@ -159,18 +162,19 @@ export const generateOSPDF = async (osData: OSData): Promise<Blob> => {
   doc.text(descricaoLines, margin + 2, yPos + 5);
   yPos += descricaoHeight;
 
-  // INSPETOR RESPONSÁVEL (fundo verde)
+  // TÉCNICO RESPONSÁVEL (fundo verde)
   doc.setFillColor(200, 200, 200);
   doc.rect(margin, yPos, 45, 8, 'F');
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
-  doc.text('INSPETOR RESPONSÁVEL:', margin + 2, yPos + 5);
+  doc.text('TÉCNICO RESPONSÁVEL:', margin + 2, yPos + 5);
 
   doc.setFillColor(0, 200, 0);
   doc.rect(margin + 45, yPos, pageWidth - 2 * margin - 45, 8, 'F');
   doc.setTextColor(0, 0, 0);
   doc.setFont('helvetica', 'bold');
-  doc.text(osData.inspetor_responsavel.toUpperCase(), margin + 47, yPos + 5);
+  const tecnicoResp = (osData.tecnico_responsavel || osData.inspetor_responsavel || 'TODOS').toUpperCase();
+  doc.text(tecnicoResp, margin + 47, yPos + 5);
   yPos += 8;
 
   // OBS sobre RME (fundo amarelo)
