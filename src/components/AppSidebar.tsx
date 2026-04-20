@@ -36,12 +36,13 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
+// hideForTecnico: oculta o item para o perfil tecnico_campo (acesso indireto via Minhas OS)
 const mainItems = [
   { title: "Dashboard", url: "/", icon: Home },
   { title: "Meu Painel", url: "/meu-painel", icon: User, clientOnly: true },
-  { title: "Tickets", url: "/tickets", icon: Package },
-  { title: "Ordens de Serviço", url: "/work-orders", icon: ClipboardList },
-  { title: "RME", url: "/rme", icon: BarChart3 },
+  { title: "Tickets", url: "/tickets", icon: Package, hideForTecnico: true },
+  { title: "Ordens de Serviço", url: "/work-orders", icon: ClipboardList, hideForTecnico: true },
+  { title: "RME", url: "/rme", icon: BarChart3, hideForTecnico: true },
   { title: "Rotas", url: "/routes", icon: Route },
   { title: "Agenda", url: "/agenda", icon: Calendar, adminOnly: true },
   { title: "Carga de Trabalho", url: "/carga-trabalho", icon: TrendingUp, adminOnly: true },
@@ -133,33 +134,41 @@ export function AppSidebar() {
                 .filter(item => {
                   if (item.adminOnly && !isAdminOrAreaTecnica) return false;
                   if (item.clientOnly && !isCliente) return false;
+                  if ((item as any).hideForTecnico && isTecnico) return false;
                   return true;
                 })
-                .map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild>
-                      <NavLink to={item.url} className={getNavClass(item.url)}>
-                        <item.icon className="h-4 w-4" />
-                        {!collapsed && <span>{item.title}</span>}
-                        {item.title === "Aprovar RMEs" && pendingRMEsCount > 0 && !collapsed && (
-                          <Badge variant="destructive" className="ml-auto">
-                            {pendingRMEsCount}
-                          </Badge>
-                        )}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              {isTecnico && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
-                    <NavLink to="/minhas-os" className={getNavClass("/minhas-os")}>
-                      <ClipboardList className="h-4 w-4" />
-                      {!collapsed && <span>Minhas OS</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              )}
+                .flatMap((item) => {
+                  // Para técnico: inserir "Minhas OS" logo após Dashboard
+                  const out: JSX.Element[] = [];
+                  out.push(
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton asChild>
+                        <NavLink to={item.url} className={getNavClass(item.url)}>
+                          <item.icon className="h-4 w-4" />
+                          {!collapsed && <span>{item.title}</span>}
+                          {item.title === "Aprovar RMEs" && pendingRMEsCount > 0 && !collapsed && (
+                            <Badge variant="destructive" className="ml-auto">
+                              {pendingRMEsCount}
+                            </Badge>
+                          )}
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                  if (isTecnico && item.url === "/") {
+                    out.push(
+                      <SidebarMenuItem key="minhas-os">
+                        <SidebarMenuButton asChild>
+                          <NavLink to="/minhas-os" className={getNavClass("/minhas-os")}>
+                            <ClipboardList className="h-4 w-4" />
+                            {!collapsed && <span>Minhas OS</span>}
+                          </NavLink>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  }
+                  return out;
+                })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
