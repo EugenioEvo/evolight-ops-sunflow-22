@@ -38,6 +38,20 @@ export const createMyOrdersService = (client?: AppSupabaseClient) => {
     },
 
     async iniciarExecucao(ticketId: string) {
+      // Guard: block if any sibling OS on the same ticket is still awaiting technician acceptance.
+      const { data: siblings, error: sibErr } = await db
+        .from("ordens_servico")
+        .select("id, numero_os, aceite_tecnico")
+        .eq("ticket_id", ticketId);
+      if (sibErr) throw sibErr;
+      const pendentes = (siblings || []).filter((s: any) => (s.aceite_tecnico || 'pendente') === 'pendente');
+      if (pendentes.length > 0) {
+        const nums = pendentes.map((p: any) => p.numero_os).join(', ');
+        throw new Error(
+          `Não é possível iniciar a execução: ainda há ${pendentes.length} OS aguardando aceite do técnico neste ticket (${nums}). Aguarde todos os técnicos aceitarem ou recusarem.`
+        );
+      }
+
       const { error } = await db.from("tickets").update({
         status: "em_execucao", data_inicio_execucao: new Date().toISOString()
       }).eq("id", ticketId);
@@ -47,6 +61,27 @@ export const createMyOrdersService = (client?: AppSupabaseClient) => {
         }
         throw error;
       }
+    },
+
+    /**
+     * For each ticket_id, return how many OS are still 'pendente' for technician acceptance.
+     * Used by the UI to block "Iniciar Execução" while sibling OS are undecided.
+     */
+    async loadPendingAcceptanceByTicket(ticketIds: string[]): Promise<Record<string, number>> {
+      if (!ticketIds.length) return {};
+      const { data, error } = await db
+        .from("ordens_servico")
+        .select("ticket_id, aceite_tecnico")
+        .in("ticket_id", ticketIds);
+      if (error) throw error;
+      const map: Record<string, number> = {};
+      (data || []).forEach((row: any) => {
+        const aceite = row.aceite_tecnico || 'pendente';
+        if (aceite === 'pendente') {
+          map[row.ticket_id] = (map[row.ticket_id] || 0) + 1;
+        }
+      });
+      return map;
     }
   };
 };
