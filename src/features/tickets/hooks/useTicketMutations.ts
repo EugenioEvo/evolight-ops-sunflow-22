@@ -255,6 +255,6 @@ export const useTicketMutations = (loadData: () => Promise<void>) => {
 
   return {
     loading, setLoading, generatingOsId, reprocessingTicketId, setReprocessingTicketId,
-    createTicket, updateTicket, approveTicket, rejectTicket, deleteTicket, assignTechnician, generateOS,
+    createTicket, updateTicket, approveTicket, rejectTicket, cancelTicket, assignTechnician, generateOS,
   };
 };
