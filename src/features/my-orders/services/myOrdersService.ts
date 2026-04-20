@@ -34,6 +34,33 @@ export const createMyOrdersService = (client?: AppSupabaseClient) => {
             ? [row.rme_relatorios]
             : [],
       }));
+
+      // Sibling RME enrichment: surface the shared RME (filled by the responsible
+      // technician on behalf of the team) on every OS of the same ticket so each
+      // technician sees the current status of the team's report.
+      const ticketIdsMissingRme = Array.from(new Set(
+        normalized
+          .filter((os: any) => !os.rme_relatorios.length && os.ticket_id)
+          .map((os: any) => os.ticket_id)
+      ));
+      if (ticketIdsMissingRme.length) {
+        const { data: ticketRmes } = await db
+          .from("rme_relatorios")
+          .select("id, status, ticket_id, created_at")
+          .in("ticket_id", ticketIdsMissingRme)
+          .order("created_at", { ascending: false });
+        const byTicket = new Map<string, { id: string; status: string }>();
+        (ticketRmes || []).forEach((r: any) => {
+          if (!byTicket.has(r.ticket_id)) byTicket.set(r.ticket_id, { id: r.id, status: r.status });
+        });
+        normalized.forEach((os: any) => {
+          if (!os.rme_relatorios.length) {
+            const shared = byTicket.get(os.ticket_id);
+            if (shared) os.rme_relatorios = [shared];
+          }
+        });
+      }
+
       return normalized;
     },
 
