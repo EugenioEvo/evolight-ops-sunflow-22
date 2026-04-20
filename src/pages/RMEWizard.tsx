@@ -306,9 +306,23 @@ const RMEWizard = () => {
       toast({ title: "Campo obrigatório", description: "Preencha a descrição do serviço realizado", variant: "destructive" });
       return;
     }
+    // Guard: cannot submit the RME while sibling OS on the same ticket are still undecided.
+    // Draft/auto-save remains allowed — only submission (rascunho → pendente) is blocked.
+    if (formData.ticket_id) {
+      const { myOrdersService } = await import('@/features/my-orders/services/myOrdersService');
+      const pendentes = await myOrdersService.getPendingAcceptanceSiblings(formData.ticket_id);
+      if (pendentes.length > 0) {
+        const nums = pendentes.map(p => p.numero_os).join(', ');
+        toast({
+          title: "Não é possível concluir o RME ainda",
+          description: `${pendentes.length} OS deste ticket ainda aguarda(m) aceite ou recusa do(s) técnico(s): ${nums}. Você pode continuar preenchendo e salvando como rascunho.`,
+          variant: "destructive",
+        });
+        return;
+      }
+    }
     const rmeId = await saveRME(true);
     if (rmeId) {
-      // Notify staff (in-app + email) that an RME is awaiting approval (#14) — fire-and-forget
       const { notifyRMESubmitted } = await import('@/shared/services/notificationStrategies');
       notifyRMESubmitted(rmeId).catch((e) => console.warn('notifyRMESubmitted failed:', e));
       navigate(`/work-orders/${formData.ordem_servico_id}`);

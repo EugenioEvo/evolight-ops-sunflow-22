@@ -18,7 +18,6 @@ const MinhasOS = () => {
     ordensServico, loading, prioridadeFiltro, setPrioridadeFiltro,
     activeTab, setActiveTab, isTecnico, canViewOS, loadOrdensServico,
     todas, pendentes, aguardandoGestaoCount, emExecucao, concluidas, recusadas,
-    pendingAcceptanceByTicket,
   } = useMyOrdersData();
 
   const {
@@ -128,14 +127,6 @@ const MinhasOS = () => {
                     {tab.data.map(os => (
                       <OSCard key={os.id} os={os} isTecnico={isTecnico}
                         startingId={startingId} navigating={navigating} exportingRMEId={exportingRMEId} aceiteLoading={aceiteLoading}
-                        siblingPendingAcceptance={
-                          // Exclude this OS from the count if it's itself still pendente
-                          Math.max(
-                            0,
-                            (pendingAcceptanceByTicket[os.ticket_id] || 0) -
-                              ((os.aceite_tecnico || 'pendente') === 'pendente' ? 1 : 0)
-                          )
-                        }
                         onIniciarExecucao={handleIniciarExecucao} onPreencherRME={handlePreencherRME}
                         onVerOS={handleVerOS} onVerRMEPDF={handleVerRMEPDF} onLigarCliente={handleLigarCliente} onAbrirMapa={handleAbrirMapa}
                         onAceitarTicket={handleAceitarTicket} onAceitarOS={handleAceitarOS} onRecusarOS={(os) => setRecusaDialogOS(os)}

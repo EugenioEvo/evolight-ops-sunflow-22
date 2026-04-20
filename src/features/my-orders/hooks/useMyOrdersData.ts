@@ -10,7 +10,6 @@ export function useMyOrdersData() {
   const [loading, setLoading] = useState(true);
   const [prioridadeFiltro, setPrioridadeFiltro] = useState<string>('todas');
   const [activeTab, setActiveTab] = useState<string>('todas');
-  const [pendingAcceptanceByTicket, setPendingAcceptanceByTicket] = useState<Record<string, number>>({});
   const { profile } = useAuth();
   const { handleAsyncError } = useErrorHandler();
 
@@ -24,15 +23,7 @@ export function useMyOrdersData() {
       () => myOrdersService.loadOrdensServico(profile?.id, isTecnico),
       { fallbackMessage: 'Erro ao carregar ordens de serviço' }
     );
-    if (data) {
-      setOrdensServico(data as any);
-      const ticketIds = Array.from(new Set((data as any[]).map((os) => os.ticket_id).filter(Boolean)));
-      const pendingMap = await handleAsyncError(
-        () => myOrdersService.loadPendingAcceptanceByTicket(ticketIds),
-        { fallbackMessage: 'Erro ao verificar aceites pendentes' }
-      );
-      setPendingAcceptanceByTicket(pendingMap || {});
-    }
+    if (data) setOrdensServico(data as any);
     setLoading(false);
   }, [profile?.id, isTecnico]);
 
@@ -72,7 +63,6 @@ export function useMyOrdersData() {
   );
   const concluidas = osFiltradas.filter(os => os.tickets.status === 'concluido');
   const aguardandoGestaoCount = recusadas.length;
-  // 'Todas' = ativas, exclui concluídas, canceladas e recusadas (recusadas têm aba própria)
   const todas = osFiltradas.filter(os =>
     !['concluido', 'cancelado'].includes(os.tickets.status) &&
     (os as any).aceite_tecnico !== 'recusado'
@@ -82,6 +72,5 @@ export function useMyOrdersData() {
     ordensServico, loading, prioridadeFiltro, setPrioridadeFiltro,
     activeTab, setActiveTab, isTecnico, canViewOS, loadOrdensServico,
     todas, pendentes, aguardandoGestaoCount, emExecucao, concluidas, recusadas,
-    pendingAcceptanceByTicket,
   };
 }

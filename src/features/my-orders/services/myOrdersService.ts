@@ -38,20 +38,9 @@ export const createMyOrdersService = (client?: AppSupabaseClient) => {
     },
 
     async iniciarExecucao(ticketId: string) {
-      // Guard: block if any sibling OS on the same ticket is still awaiting technician acceptance.
-      const { data: siblings, error: sibErr } = await db
-        .from("ordens_servico")
-        .select("id, numero_os, aceite_tecnico")
-        .eq("ticket_id", ticketId);
-      if (sibErr) throw sibErr;
-      const pendentes = (siblings || []).filter((s: any) => (s.aceite_tecnico || 'pendente') === 'pendente');
-      if (pendentes.length > 0) {
-        const nums = pendentes.map((p: any) => p.numero_os).join(', ');
-        throw new Error(
-          `Não é possível iniciar a execução: ainda há ${pendentes.length} OS aguardando aceite do técnico neste ticket (${nums}). Aguarde todos os técnicos aceitarem ou recusarem.`
-        );
-      }
-
+      // Technicians may start execution independently (they often work on different shifts/times).
+      // The guard that prevents finalizing the RME while sibling OS are undecided lives in the
+      // RME submission flow — see `checkRMESubmissionAllowed`.
       const { error } = await db.from("tickets").update({
         status: "em_execucao", data_inicio_execucao: new Date().toISOString()
       }).eq("id", ticketId);
@@ -65,7 +54,7 @@ export const createMyOrdersService = (client?: AppSupabaseClient) => {
 
     /**
      * For each ticket_id, return how many OS are still 'pendente' for technician acceptance.
-     * Used by the UI to block "Iniciar Execução" while sibling OS are undecided.
+     * Used by the RME Wizard to block submission (rascunho → pendente) while sibling OS are undecided.
      */
     async loadPendingAcceptanceByTicket(ticketIds: string[]): Promise<Record<string, number>> {
       if (!ticketIds.length) return {};
@@ -82,6 +71,21 @@ export const createMyOrdersService = (client?: AppSupabaseClient) => {
         }
       });
       return map;
+    },
+
+    /**
+     * Returns the list of sibling OS (numero_os) on the same ticket that are still awaiting
+     * technician acceptance. The responsible technician can only submit the RME once this list is empty.
+     */
+    async getPendingAcceptanceSiblings(ticketId: string): Promise<{ id: string; numero_os: string }[]> {
+      const { data, error } = await db
+        .from("ordens_servico")
+        .select("id, numero_os, aceite_tecnico")
+        .eq("ticket_id", ticketId);
+      if (error) throw error;
+      return (data || [])
+        .filter((r: any) => (r.aceite_tecnico || 'pendente') === 'pendente')
+        .map((r: any) => ({ id: r.id, numero_os: r.numero_os }));
     }
   };
 };
