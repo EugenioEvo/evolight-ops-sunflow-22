@@ -161,15 +161,17 @@ export function OSCard({
           )}
         </div>
 
-        {/* Quick actions */}
-        <div className="flex gap-2">
-          <Button size="sm" variant="outline" onClick={() => onLigarCliente(os.tickets.clientes?.profiles?.telefone)} disabled={!os.tickets.clientes?.profiles?.telefone} className="flex-1">
-            <Phone className="h-4 w-4 mr-1" />Ligar
-          </Button>
-          <Button size="sm" variant="outline" onClick={() => onAbrirMapa(os.tickets.endereco_servico)} className="flex-1">
-            <Navigation className="h-4 w-4 mr-1" />Mapa
-          </Button>
-        </div>
+        {/* Quick actions — hidden for rejected orders (historical record only) */}
+        {!recusado && (
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={() => onLigarCliente(os.tickets.clientes?.profiles?.telefone)} disabled={!os.tickets.clientes?.profiles?.telefone} className="flex-1">
+              <Phone className="h-4 w-4 mr-1" />Ligar
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => onAbrirMapa(os.tickets.endereco_servico)} className="flex-1">
+              <Navigation className="h-4 w-4 mr-1" />Mapa
+            </Button>
+          </div>
+        )}
 
         {/* Step 1: Accept ticket assignment (only on reassignment) */}
         {aguardandoAceiteTicket && (
