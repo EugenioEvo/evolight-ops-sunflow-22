@@ -15,6 +15,8 @@ interface OSCardProps {
   navigating: string | null;
   exportingRMEId?: string | null;
   aceiteLoading: boolean;
+  /** Number of sibling OS on the same ticket still awaiting technician acceptance (excludes this OS if already decided). */
+  siblingPendingAcceptance?: number;
   onIniciarExecucao: (os: OrdemServico) => void;
   onPreencherRME: (os: OrdemServico) => void;
   onVerOS: (os: OrdemServico) => void;
