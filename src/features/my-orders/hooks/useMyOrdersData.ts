@@ -63,8 +63,10 @@ export function useMyOrdersData() {
   );
   const concluidas = osFiltradas.filter(os => os.tickets.status === 'concluido');
   const aguardandoGestaoCount = recusadas.length;
+  // 'Todas' = ativas, exclui concluídas, canceladas e recusadas (recusadas têm aba própria)
   const todas = osFiltradas.filter(os =>
-    !['concluido', 'cancelado'].includes(os.tickets.status)
+    !['concluido', 'cancelado'].includes(os.tickets.status) &&
+    (os as any).aceite_tecnico !== 'recusado'
   );
 
   return {
