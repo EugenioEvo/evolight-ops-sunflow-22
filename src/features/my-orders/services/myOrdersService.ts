@@ -54,7 +54,7 @@ export const createMyOrdersService = (client?: AppSupabaseClient) => {
 
     /**
      * For each ticket_id, return how many OS are still 'pendente' for technician acceptance.
-     * Used by the UI to block "Iniciar Execução" while sibling OS are undecided.
+     * Used by the RME Wizard to block submission (rascunho → pendente) while sibling OS are undecided.
      */
     async loadPendingAcceptanceByTicket(ticketIds: string[]): Promise<Record<string, number>> {
       if (!ticketIds.length) return {};
@@ -71,6 +71,21 @@ export const createMyOrdersService = (client?: AppSupabaseClient) => {
         }
       });
       return map;
+    },
+
+    /**
+     * Returns the list of sibling OS (numero_os) on the same ticket that are still awaiting
+     * technician acceptance. The responsible technician can only submit the RME once this list is empty.
+     */
+    async getPendingAcceptanceSiblings(ticketId: string): Promise<{ id: string; numero_os: string }[]> {
+      const { data, error } = await db
+        .from("ordens_servico")
+        .select("id, numero_os, aceite_tecnico")
+        .eq("ticket_id", ticketId);
+      if (error) throw error;
+      return (data || [])
+        .filter((r: any) => (r.aceite_tecnico || 'pendente') === 'pendente')
+        .map((r: any) => ({ id: r.id, numero_os: r.numero_os }));
     }
   };
 };
