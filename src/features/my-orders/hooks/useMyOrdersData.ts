@@ -41,17 +41,25 @@ export function useMyOrdersData() {
     osFiltradas = osFiltradas.filter(os => os.tickets.prioridade === prioridadeFiltro);
   }
 
+  // Classificação unificada (alinhada ao Dashboard do técnico):
+  // - Pendentes: aguardando aceite OU aceitas porém ainda não iniciadas (ordem_servico_gerada)
+  //   Inclui também as recusadas, para o técnico ter visibilidade do retorno da gestão.
+  // - Em Execução: ticket.status === 'em_execucao'
+  // - Concluídas: ticket.status === 'concluido' OU 'aguardando_rme' (parte final do ciclo)
   const pendentes = osFiltradas.filter(os => {
     const ticketStatus = os.tickets.status;
     const osAceite = (os as any).aceite_tecnico || 'pendente';
-    const ticketAceite = (os.tickets as any).aceite_tecnico || 'nao_aplicavel';
-    return ticketStatus === 'ordem_servico_gerada' ||
-      (ticketStatus === 'aprovado' && osAceite === 'pendente') ||
-      ticketAceite === 'pendente';
+    if (['concluido', 'cancelado', 'em_execucao', 'aguardando_rme'].includes(ticketStatus)) return false;
+    if (osAceite === 'recusado') return true;
+    if (osAceite === 'pendente') return true;
+    if (osAceite === 'aceito' && ticketStatus === 'ordem_servico_gerada') return true;
+    return false;
   });
   const aguardandoGestaoCount = pendentes.filter(os => (os as any).aceite_tecnico === 'recusado').length;
   const emExecucao = osFiltradas.filter(os => os.tickets.status === 'em_execucao');
-  const concluidas = osFiltradas.filter(os => os.tickets.status === 'concluido');
+  const concluidas = osFiltradas.filter(os =>
+    os.tickets.status === 'concluido' || os.tickets.status === 'aguardando_rme'
+  );
 
   return {
     ordensServico, loading, prioridadeFiltro, setPrioridadeFiltro,
