@@ -71,16 +71,19 @@ const RouteFiltersComponent = ({
         </div>
 
         <div>
-          <Label htmlFor="status" className="text-xs">Status</Label>
+          <Label htmlFor="status" className="text-xs">Status da OS</Label>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger id="status" className="mt-1">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="todos">Todos</SelectItem>
-              <SelectItem value="ordem_servico_gerada">OS Gerada</SelectItem>
-              <SelectItem value="em_execucao">Em Execução</SelectItem>
-              <SelectItem value="concluido">Concluído</SelectItem>
+              <SelectItem value="todos">Todos (ativas)</SelectItem>
+              <SelectItem value="aguardando_aceite">Aguardando aceite do técnico</SelectItem>
+              <SelectItem value="aceita">Aceita / Programada</SelectItem>
+              <SelectItem value="em_execucao">Em execução</SelectItem>
+              <SelectItem value="concluido">Concluída</SelectItem>
+              <SelectItem value="recusada">Recusada pelo técnico</SelectItem>
+              <SelectItem value="cancelado">Cancelada</SelectItem>
             </SelectContent>
           </Select>
         </div>
