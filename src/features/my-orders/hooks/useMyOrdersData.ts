@@ -29,7 +29,7 @@ export function useMyOrdersData() {
       const ticketIds = Array.from(new Set((data as any[]).map((os) => os.ticket_id).filter(Boolean)));
       const pendingMap = await handleAsyncError(
         () => myOrdersService.loadPendingAcceptanceByTicket(ticketIds),
-        { silent: true, fallbackMessage: 'Erro ao verificar aceites pendentes' }
+        { fallbackMessage: 'Erro ao verificar aceites pendentes' }
       );
       setPendingAcceptanceByTicket(pendingMap || {});
     }
