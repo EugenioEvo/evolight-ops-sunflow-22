@@ -1,97 +1,113 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useGlobalRealtime } from "@/hooks/useRealtimeProvider";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { LoadingState } from "./LoadingState";
-import { EmptyState } from "./EmptyState";
-import { ClipboardList, Clock, CheckCircle2, AlertCircle, MapPin, FileText, Calendar, TrendingUp } from "lucide-react";
+import { ClipboardList, Clock, CheckCircle2, AlertCircle, MapPin, Calendar, TrendingUp } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
 
 interface OSStats {
-  pendentes: number;
+  aguardandoAceite: number;
+  pendentesExecucao: number;
   emExecucao: number;
+  aguardandoRME: number;
   concluidasHoje: number;
   totalConcluidas: number;
-  aguardandoAceite: number;
   recusadas: number;
 }
 
+// Mapeia (status do ticket + aceite_tecnico) para um rótulo único exibido na OS
+const getOSDisplayStatus = (os: any): { label: string; variant: "default" | "outline" | "secondary"; className?: string } => {
+  const tStatus = os.tickets?.status;
+  const aceite = os.aceite_tecnico;
+
+  if (aceite === 'recusado') {
+    return { label: 'Recusada', variant: 'outline', className: 'bg-red-50 text-red-700 border-red-200' };
+  }
+  if (tStatus === 'concluido') {
+    return { label: 'Concluída', variant: 'outline', className: 'bg-green-50 text-green-700 border-green-200' };
+  }
+  if (tStatus === 'cancelado') {
+    return { label: 'Cancelada', variant: 'outline', className: 'bg-muted text-muted-foreground' };
+  }
+  if (tStatus === 'aguardando_rme') {
+    return { label: 'Aguardando RME', variant: 'outline', className: 'bg-purple-50 text-purple-700 border-purple-200' };
+  }
+  if (tStatus === 'em_execucao') {
+    return { label: 'Em Execução', variant: 'default' };
+  }
+  if (aceite === 'pendente') {
+    return { label: 'Aguardando Aceite', variant: 'outline', className: 'bg-yellow-50 text-yellow-700 border-yellow-200' };
+  }
+  if (aceite === 'aceito' && tStatus === 'ordem_servico_gerada') {
+    return { label: 'Pronta p/ Iniciar', variant: 'outline', className: 'bg-blue-50 text-blue-700 border-blue-200' };
+  }
+  return { label: 'Pendente', variant: 'outline' };
+};
+
 const TechnicianDashboard = () => {
-  const [stats, setStats] = useState<OSStats>({ pendentes: 0, emExecucao: 0, concluidasHoje: 0, totalConcluidas: 0, aguardandoAceite: 0, recusadas: 0 });
+  const [stats, setStats] = useState<OSStats>({
+    aguardandoAceite: 0, pendentesExecucao: 0, emExecucao: 0,
+    aguardandoRME: 0, concluidasHoje: 0, totalConcluidas: 0, recusadas: 0,
+  });
   const [recentOS, setRecentOS] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const { profile } = useAuth();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    loadDashboardData();
-  }, [profile]);
-
-  const loadDashboardData = async () => {
+  const loadDashboardData = useCallback(async () => {
+    if (!profile?.id) return;
     try {
       setLoading(true);
 
-      // Buscar ID do técnico
       const { data: tecnicoData } = await supabase
         .from("tecnicos")
         .select("id")
-        .eq("profile_id", profile?.id)
+        .eq("profile_id", profile.id)
         .single();
 
-      if (!tecnicoData) return;
+      if (!tecnicoData) { setRecentOS([]); return; }
 
-      // Buscar todas as OS do técnico
       const { data: osData } = await supabase
         .from("ordens_servico")
         .select(`
-          *,
-          aceite_tecnico,
-          motivo_recusa,
-          data_programada,
-          hora_inicio,
-          hora_fim,
-          tickets!inner(
-            status,
-            titulo,
-            numero_ticket,
-            endereco_servico,
-            prioridade,
-            data_conclusao,
-            clientes(empresa)
-          )
+          *, aceite_tecnico, motivo_recusa, data_programada, hora_inicio, hora_fim,
+          tickets!inner(status, titulo, numero_ticket, endereco_servico, prioridade, data_conclusao, clientes(empresa))
         `)
         .eq("tecnico_id", tecnicoData.id)
         .order("data_programada", { ascending: true });
 
       if (osData) {
         const hoje = new Date().toISOString().split('T')[0];
-        
+
         setStats({
-          pendentes: osData.filter(os => os.tickets.status === 'ordem_servico_gerada' && os.aceite_tecnico === 'pendente').length,
+          aguardandoAceite: osData.filter(os => os.aceite_tecnico === 'pendente' && !['concluido', 'cancelado'].includes(os.tickets.status)).length,
+          pendentesExecucao: osData.filter(os => os.aceite_tecnico === 'aceito' && os.tickets.status === 'ordem_servico_gerada').length,
           emExecucao: osData.filter(os => os.tickets.status === 'em_execucao').length,
-          concluidasHoje: osData.filter(os => 
-            os.tickets.status === 'concluido' && 
-            os.tickets.data_conclusao?.startsWith(hoje)
-          ).length,
+          aguardandoRME: osData.filter(os => os.tickets.status === 'aguardando_rme').length,
+          concluidasHoje: osData.filter(os => os.tickets.status === 'concluido' && os.tickets.data_conclusao?.startsWith(hoje)).length,
           totalConcluidas: osData.filter(os => os.tickets.status === 'concluido').length,
-          aguardandoAceite: osData.filter(os => os.aceite_tecnico === 'pendente' && os.tickets.status === 'ordem_servico_gerada').length,
           recusadas: osData.filter(os => os.aceite_tecnico === 'recusado').length,
         });
 
-        // OS recentes (não concluídas)
-        setRecentOS(osData.filter(os => os.tickets.status !== 'concluido').slice(0, 5));
+        // OS ativas: tudo que não está concluído nem cancelado
+        setRecentOS(osData.filter(os => !['concluido', 'cancelado'].includes(os.tickets.status)).slice(0, 8));
       }
     } catch (error) {
       console.error("Erro ao carregar dashboard:", error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [profile?.id]);
+
+  useEffect(() => { loadDashboardData(); }, [loadDashboardData]);
+
+  // Realtime: atualiza stats e listagem quando tickets/OS/RME mudam
+  useGlobalRealtime(loadDashboardData);
 
   if (loading) {
     return (
@@ -105,7 +121,7 @@ const TechnicianDashboard = () => {
     );
   }
 
-  const hasNoOS = stats.pendentes === 0 && stats.emExecucao === 0 && stats.totalConcluidas === 0;
+  const hasNoOS = stats.aguardandoAceite === 0 && stats.pendentesExecucao === 0 && stats.emExecucao === 0 && stats.aguardandoRME === 0 && stats.totalConcluidas === 0;
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
@@ -143,12 +159,34 @@ const TechnicianDashboard = () => {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Prontas p/ Iniciar</CardTitle>
+            <Calendar className="h-4 w-4 text-blue-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.pendentesExecucao}</div>
+            <p className="text-xs text-muted-foreground">Aceitas, aguardando início</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Em Execução</CardTitle>
             <Clock className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.emExecucao}</div>
             <p className="text-xs text-muted-foreground">Trabalhos ativos</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Aguardando RME</CardTitle>
+            <ClipboardList className="h-4 w-4 text-purple-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.aguardandoRME}</div>
+            <p className="text-xs text-muted-foreground">Pendente preenchimento/aprovação</p>
           </CardContent>
         </Card>
 
@@ -171,17 +209,6 @@ const TechnicianDashboard = () => {
           <CardContent>
             <div className="text-2xl font-bold">{stats.recusadas}</div>
             <p className="text-xs text-muted-foreground">Recusadas por você</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Concluídas</CardTitle>
-            <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalConcluidas}</div>
-            <p className="text-xs text-muted-foreground">Histórico completo</p>
           </CardContent>
         </Card>
       </div>
@@ -222,50 +249,43 @@ const TechnicianDashboard = () => {
                   if (!a.hora_inicio || !b.hora_inicio) return 0;
                   return a.hora_inicio.localeCompare(b.hora_inicio);
                 })
-                .map((os) => (
-                  <div key={os.id} className="flex items-center justify-between p-3 border rounded-lg bg-card">
-                    <div className="flex items-center gap-3 flex-1">
-                      <div className="flex items-center justify-center w-16 h-16 rounded-lg bg-primary/10">
-                        <div className="text-center">
-                          <div className="text-lg font-bold text-primary">
-                            {os.hora_inicio ? os.hora_inicio.substring(0, 5) : '--:--'}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {os.hora_fim ? os.hora_fim.substring(0, 5) : '--:--'}
+                .map((os) => {
+                  const display = getOSDisplayStatus(os);
+                  return (
+                    <div key={os.id} className="flex items-center justify-between p-3 border rounded-lg bg-card">
+                      <div className="flex items-center gap-3 flex-1">
+                        <div className="flex items-center justify-center w-16 h-16 rounded-lg bg-primary/10">
+                          <div className="text-center">
+                            <div className="text-lg font-bold text-primary">
+                              {os.hora_inicio ? os.hora_inicio.substring(0, 5) : '--:--'}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {os.hora_fim ? os.hora_fim.substring(0, 5) : '--:--'}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <p className="font-medium text-sm truncate">{os.numero_os}</p>
-                      <Badge variant={os.tickets.status === 'em_execucao' ? 'default' : 'outline'} className="flex-shrink-0">
-                            {os.tickets.status === 'em_execucao' ? 'Em Execução' : 'Pendente'}
-                          </Badge>
-                          {os.aceite_tecnico === 'pendente' && (
-                            <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200 text-xs flex-shrink-0">
-                              Aguardando Aceite
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <p className="font-medium text-sm truncate">{os.numero_os}</p>
+                            <Badge variant={display.variant} className={`flex-shrink-0 ${display.className ?? ''}`}>
+                              {display.label}
                             </Badge>
-                          )}
-                          {os.aceite_tecnico === 'recusado' && (
-                            <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 text-xs flex-shrink-0">
-                              Recusada
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-sm text-muted-foreground truncate">{os.tickets.titulo}</p>
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                          <MapPin className="h-3 w-3 flex-shrink-0" />
-                          <span className="truncate">{os.tickets.endereco_servico}</span>
+                          </div>
+                          <p className="text-sm text-muted-foreground truncate">{os.tickets.titulo}</p>
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                            <MapPin className="h-3 w-3 flex-shrink-0" />
+                            <span className="truncate">{os.tickets.endereco_servico}</span>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
             </div>
           )}
-          <Button 
-            onClick={() => navigate("/routes")} 
-            variant="outline" 
+          <Button
+            onClick={() => navigate("/routes")}
+            variant="outline"
             className="w-full mt-4"
           >
             <MapPin className="mr-2 h-4 w-4" />
@@ -289,21 +309,17 @@ const TechnicianDashboard = () => {
             <MapPin className="mr-2 h-4 w-4" />
             Ver Rota
           </Button>
-          <Button onClick={() => navigate("/rme")} variant="outline" className="flex-1 min-w-[200px]">
-            <FileText className="mr-2 h-4 w-4" />
-            Preencher RME
-          </Button>
         </CardContent>
       </Card>
 
-      {/* OS Recentes */}
+      {/* OS Ativas */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <AlertCircle className="h-5 w-5" />
             Ordens de Serviço Ativas
           </CardTitle>
-          <CardDescription>Suas OS pendentes e em execução</CardDescription>
+          <CardDescription>Suas OS pendentes, em execução e aguardando RME</CardDescription>
         </CardHeader>
         <CardContent>
           {recentOS.length === 0 ? (
@@ -312,37 +328,30 @@ const TechnicianDashboard = () => {
             </p>
           ) : (
             <div className="space-y-3">
-              {recentOS.map((os) => (
-                <div key={os.id} className="flex items-start justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <p className="font-medium text-sm">{os.numero_os}</p>
-                      <Badge variant={os.tickets.status === 'em_execucao' ? 'default' : 'outline'}>
-                        {os.tickets.status === 'em_execucao' ? 'Em Execução' : 'Pendente'}
-                      </Badge>
-                      {os.aceite_tecnico === 'pendente' && (
-                        <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200 text-xs">
-                          Aguardando Aceite
+              {recentOS.map((os) => {
+                const display = getOSDisplayStatus(os);
+                return (
+                  <div key={os.id} className="flex items-start justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <p className="font-medium text-sm">{os.numero_os}</p>
+                        <Badge variant={display.variant} className={display.className}>
+                          {display.label}
                         </Badge>
-                      )}
-                      {os.aceite_tecnico === 'recusado' && (
-                        <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 text-xs">
-                          Recusada
-                        </Badge>
-                      )}
+                      </div>
+                      <p className="text-sm text-muted-foreground">{os.tickets.titulo}</p>
+                      <p className="text-xs text-muted-foreground">{os.tickets.clientes?.empresa}</p>
                     </div>
-                    <p className="text-sm text-muted-foreground">{os.tickets.titulo}</p>
-                    <p className="text-xs text-muted-foreground">{os.tickets.clientes?.empresa}</p>
+                    <Button
+                      size="sm"
+                      onClick={() => navigate("/minhas-os")}
+                      variant="ghost"
+                    >
+                      Ver Detalhes
+                    </Button>
                   </div>
-                  <Button 
-                    size="sm" 
-                    onClick={() => navigate("/minhas-os")}
-                    variant="ghost"
-                  >
-                    Ver Detalhes
-                  </Button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>
