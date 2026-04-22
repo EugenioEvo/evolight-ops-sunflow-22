@@ -154,43 +154,36 @@ const RMEWizard = () => {
   };
 
   /**
-   * Loads technicians with approved OS for the same ticket (for collaboration dropdown)
-   * and checks whether the current user is the responsible technician.
-   * Responsible = ordens_servico.tecnico_responsavel_id (prestador) matched against current profile email.
-   * Note: independent of tecnicoId resolution — relies on profile.email to avoid race condition on mount.
+   * Loads the accepted technicians for the current ticket via a SECURITY DEFINER RPC,
+   * so the responsible technician can still see sibling technicians after they accept
+   * their own OS even when direct profile joins are restricted by RLS.
    */
   const loadGroupContext = async (ticketId: string) => {
-    const { data: osList } = await supabase
-      .from("ordens_servico")
-      .select("id, tecnico_id, tecnico_responsavel_id, aceite_tecnico, tecnicos:tecnico_id(id, profiles(nome, email))")
-      .eq("ticket_id", ticketId)
-      .in("aceite_tecnico", ["aprovado", "aceito"]);
+    const { data, error } = await supabase.rpc("get_ticket_rme_group_context", {
+      p_ticket_id: ticketId,
+    });
 
-    const techs: TechnicianOption[] = [];
-    const seen = new Set<string>();
-    let respPrestadorId: string | null = null;
-    for (const os of osList || []) {
-      const tec: any = (os as any).tecnicos;
-      if (tec?.id && !seen.has(tec.id)) {
-        seen.add(tec.id);
-        techs.push({ id: tec.id, nome: tec.profiles?.nome || "Sem nome", email: tec.profiles?.email || "" });
-      }
-      if (!respPrestadorId && (os as any).tecnico_responsavel_id) {
-        respPrestadorId = (os as any).tecnico_responsavel_id;
-      }
+    if (error) {
+      console.warn("loadGroupContext failed:", error);
+      setAvailableTechnicians([]);
+      setIsResponsavel(false);
+      return;
     }
+
+    const techs: TechnicianOption[] = (data || []).map((row: any) => ({
+      id: row.tecnico_id,
+      nome: row.nome || "Sem nome",
+      email: row.email || "",
+    }));
+
     setAvailableTechnicians(techs);
 
-    if (respPrestadorId && profile?.email) {
-      const { data: prestador } = await supabase
-        .from("prestadores")
-        .select("email")
-        .eq("id", respPrestadorId)
-        .maybeSingle();
-      setIsResponsavel(!!prestador?.email && prestador.email.toLowerCase() === profile.email.toLowerCase());
-    } else {
-      setIsResponsavel(false);
-    }
+    const responsavelEmail = data?.[0]?.responsavel_email;
+    setIsResponsavel(
+      !!responsavelEmail &&
+        !!profile?.email &&
+        responsavelEmail.toLowerCase() === profile.email.toLowerCase()
+    );
   };
 
   const loadWorkOrder = async (workOrderId: string) => {
