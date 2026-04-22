@@ -27,8 +27,13 @@ export const createProviderService = (client?: AppSupabaseClient) => {
       if (error) throw error;
     },
 
-    async approve(id: string) {
-      const { error } = await db.from('prestadores').update({ ativo: true }).eq('id', id);
+    async reject(id: string, motivo?: string) {
+      const { error } = await db.from('prestadores').update({
+        status_candidatura: 'rejeitado',
+        ativo: false,
+        motivo_rejeicao: motivo || null,
+        data_avaliacao: new Date().toISOString(),
+      } as any).eq('id', id);
       if (error) throw error;
     },
   };
