@@ -251,7 +251,10 @@ export function OSCard({
             </>
           )}
 
-          {!recusado && emExecucao && (() => {
+          {/* RME actions only when THIS OS has been accepted by the technician.
+              Without this guard, sibling OS on the same ticket (em_execucao) would expose
+              "Preencher RME" to a technician who hasn't accepted yet. */}
+          {!recusado && emExecucao && osAceito && (() => {
             const rme = os.rme_relatorios?.[0];
             const rmeStatus = rme?.status;
             const isViewOnly = !!rme && rmeStatus !== 'rascunho';
