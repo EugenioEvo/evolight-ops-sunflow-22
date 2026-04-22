@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -6,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Plus, Search, Mail, Phone, MapPin, Edit, Trash2, GraduationCap, Eye, Wrench, CheckCircle, XCircle, Clock, ShieldAlert } from "lucide-react";
+import { Users, Plus, Search, Mail, Phone, MapPin, Edit, Trash2, Eye, Wrench, CheckCircle, XCircle, Clock, ExternalLink } from "lucide-react";
 import {
   useProviderData,
   useProviderMutations,
@@ -14,21 +15,18 @@ import {
   certificacoesOptions,
   experienciaOptions,
 } from "@/features/providers";
+import { ApprovePrestadorDialog } from "@/features/providers/components/ApprovePrestadorDialog";
 
 const getCategoriaColor = (categoria: string) => {
   switch (categoria) {
-    case "admin": return "bg-purple-100 text-purple-800";
-    case "engenharia": return "bg-blue-100 text-blue-800";
-    case "supervisao": return "bg-orange-100 text-orange-800";
-    case "tecnico": return "bg-green-100 text-green-800";
+    case "supervisao": return "bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300";
+    case "tecnico": return "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300";
     default: return "bg-muted text-muted-foreground";
   }
 };
 
 const getCategoriaIcon = (categoria: string) => {
   switch (categoria) {
-    case "admin": return ShieldAlert;
-    case "engenharia": return GraduationCap;
     case "supervisao": return Eye;
     case "tecnico": return Wrench;
     default: return Users;
@@ -38,13 +36,15 @@ const getCategoriaIcon = (categoria: string) => {
 const Prestadores = () => {
   const {
     loading, searchTerm, setSearchTerm, activeTab, setActiveTab,
-    pendingPrestadores, filteredPrestadores, categoryCounts, reload,
+    pendingPrestadores, rejectedPrestadores, filteredPrestadores, categoryCounts, reload,
   } = useProviderData();
 
   const {
     form, isDialogOpen, setIsDialogOpen, editingPrestador,
-    onSubmit, handleEdit, handleDelete, handleApprove, handleReject, openNew,
+    onSubmit, handleEdit, handleDelete, handleReject, openNew,
   } = useProviderMutations(reload);
+
+  const [approving, setApproving] = useState<any>(null);
 
   if (loading) {
     return (
