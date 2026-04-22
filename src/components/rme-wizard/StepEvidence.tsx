@@ -91,6 +91,8 @@ export const StepEvidence = ({ formData, updateFormData, rmeId, osId }: Props) =
     updateFormData({ [key]: next } as Partial<RMEFormData>);
   };
 
+  const isVideoUrl = (url: string) => /\.(mp4|webm|mov|m4v|avi|mkv|3gp|quicktime)(\?|$)/i.test(url);
+
   const renderUploadArea = (type: PhotoType, label: string) => {
     const photos = type === "antes" ? formData.fotos_antes : formData.fotos_depois;
     const isUploading = uploading === type;
@@ -98,8 +100,8 @@ export const StepEvidence = ({ formData, updateFormData, rmeId, osId }: Props) =
       <div className="space-y-2">
         <Label>{label} ({photos?.length || 0})</Label>
         <div className="border-2 border-dashed rounded-lg p-4 space-y-3">
-          <input type="file" accept="image/*" capture="environment" multiple onChange={(e) => handleFileInput(e, type)} className="hidden" id={`camera-${type}`} disabled={!!uploading || !rmeId} />
-          <input type="file" accept="image/*" multiple onChange={(e) => handleFileInput(e, type)} className="hidden" id={`gallery-${type}`} disabled={!!uploading || !rmeId} />
+          <input type="file" accept="image/*,video/*" capture="environment" multiple onChange={(e) => handleFileInput(e, type)} className="hidden" id={`camera-${type}`} disabled={!!uploading || !rmeId} />
+          <input type="file" accept="image/*,video/*" multiple onChange={(e) => handleFileInput(e, type)} className="hidden" id={`gallery-${type}`} disabled={!!uploading || !rmeId} />
 
           {isUploading ? (
             <div className="flex items-center justify-center py-4">
@@ -124,14 +126,18 @@ export const StepEvidence = ({ formData, updateFormData, rmeId, osId }: Props) =
           )}
 
           {!rmeId && (
-            <p className="text-xs text-center text-muted-foreground">Salve o RME primeiro para enviar imagens</p>
+            <p className="text-xs text-center text-muted-foreground">Salve o RME primeiro para enviar imagens ou vídeos</p>
           )}
 
           {photos && photos.length > 0 && (
             <div className="grid grid-cols-3 gap-2 mt-2">
               {photos.map((url, idx) => (
                 <div key={`${type}-${idx}`} className="relative group">
-                  <img src={url} alt={`${label} ${idx + 1}`} className="w-full h-20 object-cover rounded border" />
+                  {isVideoUrl(url) ? (
+                    <video src={url} className="w-full h-20 object-cover rounded border bg-black" muted playsInline preload="metadata" />
+                  ) : (
+                    <img src={url} alt={`${label} ${idx + 1}`} className="w-full h-20 object-cover rounded border" />
+                  )}
                   <div className="absolute top-0.5 right-0.5 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                     <Button type="button" variant="secondary" size="icon" className="h-6 w-6" onClick={() => window.open(url, "_blank")}>
                       <Eye className="h-3 w-3" />
@@ -165,8 +171,8 @@ export const StepEvidence = ({ formData, updateFormData, rmeId, osId }: Props) =
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        {renderUploadArea("antes", "Fotos Antes")}
-        {renderUploadArea("depois", "Fotos Depois")}
+        {renderUploadArea("antes", "Fotos/Vídeos Antes")}
+        {renderUploadArea("depois", "Fotos/Vídeos Depois")}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">

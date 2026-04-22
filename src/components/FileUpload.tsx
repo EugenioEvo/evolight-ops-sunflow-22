@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Upload, X, FileText, Image, Download, Eye, Camera, Clipboard } from 'lucide-react';
+import { Upload, X, FileText, Image, Download, Eye, Camera, Clipboard, Video } from 'lucide-react';
 
 interface FileUploadProps {
   ticketId: string;
@@ -35,6 +35,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   }, [existingFiles]);
 
   const isImage = (filename: string) => /\.(jpg|jpeg|png|gif|webp)$/i.test(filename);
+  const isVideo = (filename: string) => /\.(mp4|webm|mov|m4v|avi|mkv|3gp|quicktime)$/i.test(filename);
 
   const getFileUrl = async (path: string) => {
     const { data } = await supabase.storage.from('ticket-anexos').createSignedUrl(path, 3600);
@@ -155,24 +156,25 @@ export const FileUpload: React.FC<FileUploadProps> = ({
 
       {/* Gallery input — accepts any file type */}
       <input id="file-gallery" type="file" multiple accept="*/*" onChange={handleFileUpload} className="hidden" />
-      {/* Camera input */}
-      <input id="file-camera" type="file" accept="image/*" capture="environment" onChange={handleFileUpload} className="hidden" />
+      {/* Camera input — accepts photos and videos */}
+      <input id="file-camera" type="file" accept="image/*,video/*" capture="environment" onChange={handleFileUpload} className="hidden" />
 
       {files.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {files.map((path) => {
             const filename = path.split('/').pop() || '';
             const isImg = isImage(filename);
+            const isVid = isVideo(filename);
             return (
               <Card key={path} className="p-3 flex items-center gap-3">
                 <div className="flex-shrink-0">
-                  {isImg ? <Image className="h-8 w-8 text-primary" /> : <FileText className="h-8 w-8 text-muted-foreground" />}
+                  {isImg ? <Image className="h-8 w-8 text-primary" /> : isVid ? <Video className="h-8 w-8 text-primary" /> : <FileText className="h-8 w-8 text-muted-foreground" />}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate" title={filename}>{filename}</p>
                 </div>
                 <div className="flex gap-1">
-                  {isImg && (
+                  {(isImg || isVid) && (
                     <Button type="button" variant="ghost" size="sm" onClick={() => handlePreview(path)} className="h-8 w-8 p-0">
                       <Eye className="h-4 w-4" />
                     </Button>

@@ -193,7 +193,7 @@ const RME = () => {
                       <div key={type} className="space-y-3">
                         <label className="text-sm font-medium">{label}</label>
                         <div className="border-2 border-dashed border-muted rounded-lg p-6 text-center hover:border-primary transition-colors">
-                          <input type="file" multiple accept="image/*" capture="environment" onChange={e => handlePhotoUpload(e, type)} className="hidden" id={`photos-${type}`} />
+                          <input type="file" multiple accept="image/*,video/*" capture="environment" onChange={e => handlePhotoUpload(e, type)} className="hidden" id={`photos-${type}`} />
                           <label htmlFor={`photos-${type}`} className="cursor-pointer"><Upload className="h-10 w-10 mx-auto mb-2 text-muted-foreground" /><p className="text-sm text-muted-foreground">Clique ou arraste</p></label>
                         </div>
                         <div className="grid grid-cols-2 gap-2">{photos.map((file, i) => (
