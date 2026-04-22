@@ -134,10 +134,12 @@ const Usuarios = () => {
 
   const remove = async (row: UsuarioRow) => {
     try {
-      await supabase.from('user_roles').delete().eq('user_id', row.user_id);
-      const { error } = await supabase.from('profiles').delete().eq('id', row.id);
+      const { data, error } = await supabase.functions.invoke('delete-user', {
+        body: { user_id: row.user_id },
+      });
       if (error) throw error;
-      toast.success('Usuário removido. (A conta de login deve ser excluída no backend.)');
+      if ((data as any)?.error) throw new Error((data as any).error);
+      toast.success('Usuário excluído (perfil, papéis e conta de login).');
       await load();
     } catch (err: any) {
       toast.error(err.message || 'Erro ao remover');
@@ -209,10 +211,10 @@ const Usuarios = () => {
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>
-                            <AlertDialogTitle>Remover usuário</AlertDialogTitle>
+                            <AlertDialogTitle>Excluir usuário</AlertDialogTitle>
                             <AlertDialogDescription>
-                              Remove o perfil e todos os papéis de <strong>{row.nome}</strong>.
-                              A conta de login no backend precisa ser excluída separadamente.
+                              Exclui permanentemente <strong>{row.nome}</strong>: perfil, papéis e a conta de login no backend.
+                              Se houver prestador vinculado, ele será mantido como histórico (inativo). Esta ação não pode ser desfeita.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
