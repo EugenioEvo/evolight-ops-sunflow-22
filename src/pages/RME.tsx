@@ -198,7 +198,11 @@ const RME = () => {
                         </div>
                         <div className="grid grid-cols-2 gap-2">{photos.map((file, i) => (
                           <div key={i} className="relative group">
-                            <img src={URL.createObjectURL(file)} alt={`${label} ${i + 1}`} className="w-full h-24 object-cover rounded-lg" />
+                            {file.type.startsWith('video/') ? (
+                              <video src={URL.createObjectURL(file)} className="w-full h-24 object-cover rounded-lg bg-black" muted playsInline preload="metadata" controls />
+                            ) : (
+                              <img src={URL.createObjectURL(file)} alt={`${label} ${i + 1}`} className="w-full h-24 object-cover rounded-lg" />
+                            )}
                             <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => removePhoto(i, type)}><X className="h-4 w-4" /></Button>
                           </div>
                         ))}</div>
