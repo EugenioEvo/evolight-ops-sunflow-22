@@ -145,6 +145,6 @@ export function useMyOrdersActions(loadOrdensServico: () => Promise<void>, setAc
   return {
     startingId, navigating, exportingRMEId, recusaDialogOS, setRecusaDialogOS, aceiteLoading,
     handleIniciarExecucao, handlePreencherRME, handleVerOS, handleVerRMEPDF, handleLigarCliente,
-    handleAbrirMapa, handleAceitarTicket, handleAceitarOS, handleRecusarOS,
+    handleAbrirMapa, handleAceitarTicket, handleAceitarOS, handleRecusarOS, handleRegistrarSaida,
   };
 }
