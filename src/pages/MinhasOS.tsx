@@ -9,11 +9,13 @@ import { LoadingState } from "@/components/LoadingState";
 import { TechnicianBreadcrumb } from "@/components/TechnicianBreadcrumb";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { RecusaOSDialog } from "@/components/RecusaOSDialog";
+import { useAuth } from "@/hooks/useAuth";
 import { useMyOrdersData } from "@/features/my-orders/hooks/useMyOrdersData";
 import { useMyOrdersActions } from "@/features/my-orders/hooks/useMyOrdersActions";
 import { OSCard } from "@/features/my-orders/components/OSCard";
 
 const MinhasOS = () => {
+  const { profile } = useAuth();
   const {
     ordensServico, loading, prioridadeFiltro, setPrioridadeFiltro,
     activeTab, setActiveTab, isTecnico, canViewOS, loadOrdensServico,
@@ -125,7 +127,7 @@ const MinhasOS = () => {
                 ) : (
                   <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                     {tab.data.map(os => (
-                      <OSCard key={os.id} os={os} isTecnico={isTecnico}
+                      <OSCard key={os.id} os={os} isTecnico={isTecnico} currentUserEmail={profile?.email}
                         startingId={startingId} navigating={navigating} exportingRMEId={exportingRMEId} aceiteLoading={aceiteLoading}
                         onIniciarExecucao={handleIniciarExecucao} onPreencherRME={handlePreencherRME}
                         onVerOS={handleVerOS} onVerRMEPDF={handleVerRMEPDF} onLigarCliente={handleLigarCliente} onAbrirMapa={handleAbrirMapa}
