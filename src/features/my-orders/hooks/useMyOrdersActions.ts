@@ -48,6 +48,10 @@ export function useMyOrdersActions(loadOrdensServico: () => Promise<void>, setAc
     }
   };
 
+  const handleRegistrarSaida = (os: OrdemServico) => {
+    navigate(`/insumos?os=${os.id}`);
+  };
+
   const handleVerOS = async (os: OrdemServico) => {
     try {
       const pdfData = await buildOSPDFData({
