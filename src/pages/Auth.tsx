@@ -6,62 +6,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-
-import { Textarea } from '@/components/ui/textarea';
 import { Eye, EyeOff, Zap } from 'lucide-react';
-import { z } from 'zod';
 import { ForgotPasswordLink } from '@/components/ForgotPasswordLink';
 
-const signupSchema = z.object({
-  nome: z.string()
-    .min(2, 'Nome deve ter no mínimo 2 caracteres')
-    .max(100, 'Nome deve ter no máximo 100 caracteres')
-    .regex(/^[a-zA-ZÀ-ÿ\s]+$/, 'Nome deve conter apenas letras'),
-  email: z.string()
-    .email('Email inválido')
-    .max(255, 'Email deve ter no máximo 255 caracteres'),
-  password: z.string()
-    .min(8, 'Senha deve ter no mínimo 8 caracteres')
-    .max(72, 'Senha deve ter no máximo 72 caracteres'),
-  telefone: z.string()
-    .regex(/^\d{10,11}$/, 'Telefone deve ter 10 ou 11 dígitos')
-    .optional()
-    .or(z.literal('')),
-  role: z.enum(['cliente', 'tecnico_campo', 'engenharia', 'supervisao']),
-  empresa: z.string().max(200, 'Empresa deve ter no máximo 200 caracteres').optional(),
-  cnpjCpf: z.string()
-    .regex(/^\d{11}$|^\d{14}$/, 'CPF deve ter 11 dígitos ou CNPJ 14 dígitos')
-    .optional()
-    .or(z.literal('')),
-  endereco: z.string().max(500, 'Endereço deve ter no máximo 500 caracteres').optional(),
-  cidade: z.string().max(100, 'Cidade deve ter no máximo 100 caracteres').optional(),
-  estado: z.string().max(2, 'Estado deve ter 2 caracteres').optional(),
-  cep: z.string()
-    .regex(/^\d{8}$/, 'CEP deve ter 8 dígitos')
-    .optional()
-    .or(z.literal('')),
-  registroProfissional: z.string().max(50, 'Registro deve ter no máximo 50 caracteres').optional(),
-  especialidades: z.string().max(500, 'Especialidades devem ter no máximo 500 caracteres').optional(),
-  regiaoAtuacao: z.string().max(200, 'Região deve ter no máximo 200 caracteres').optional(),
-});
-
 const Auth = () => {
-  const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [nome, setNome] = useState('');
-  const [telefone, setTelefone] = useState('');
-  const role = 'cliente'; // Self-registration always creates cliente accounts
-  const [empresa, setEmpresa] = useState('');
-  const [cnpjCpf, setCnpjCpf] = useState('');
-  const [endereco, setEndereco] = useState('');
-  const [cidade, setCidade] = useState('');
-  const [estado, setEstado] = useState('');
-  const [cep, setCep] = useState('');
-  const [registroProfissional, setRegistroProfissional] = useState('');
-  const [especialidades, setEspecialidades] = useState('');
-  const [regiaoAtuacao, setRegiaoAtuacao] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   
