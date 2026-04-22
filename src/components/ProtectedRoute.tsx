@@ -13,9 +13,18 @@ export const ProtectedRoute = ({ children, roles }: ProtectedRouteProps) => {
   const { user, profile, loading } = useAuth();
   const [approvalStatus, setApprovalStatus] = useState<'loading' | 'approved' | 'pending'>('loading');
 
+  // Multi-role: o gate de "aprovação pendente" só se aplica quando o usuário é
+  // EXCLUSIVAMENTE tecnico_campo. Se acumular staff (admin/eng/supervisao), o login
+  // é liberado pela role de staff — não faz sentido bloquear um supervisor pelo
+  // status do prestador.
+  const isStaff = !!profile?.roles?.some((r) =>
+    r === 'admin' || r === 'engenharia' || r === 'supervisao'
+  );
+  const isTecnicoOnly = !!profile?.roles?.includes('tecnico_campo') && !isStaff;
+
   useEffect(() => {
     const checkApproval = async () => {
-      if (!profile || profile.role !== 'tecnico_campo') {
+      if (!profile || !isTecnicoOnly) {
         setApprovalStatus('approved');
         return;
       }
@@ -41,9 +50,9 @@ export const ProtectedRoute = ({ children, roles }: ProtectedRouteProps) => {
     } else if (!loading) {
       setApprovalStatus('approved');
     }
-  }, [profile, loading]);
+  }, [profile, loading, isTecnicoOnly]);
 
-  if (loading || (profile?.role === 'tecnico_campo' && approvalStatus === 'loading')) {
+  if (loading || (isTecnicoOnly && approvalStatus === 'loading')) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
@@ -64,8 +73,8 @@ export const ProtectedRoute = ({ children, roles }: ProtectedRouteProps) => {
     );
   }
 
-  // Tecnico pending approval
-  if (profile?.role === 'tecnico_campo' && approvalStatus === 'pending') {
+  // Tecnico-only pending approval
+  if (isTecnicoOnly && approvalStatus === 'pending') {
     return <PendingApproval />;
   }
 
