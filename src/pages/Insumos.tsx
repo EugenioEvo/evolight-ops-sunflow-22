@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Plus, Package, Wrench, Trash2, Edit, ArrowDownIcon, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +22,8 @@ const getCategoriaIcon = (categoria: string) =>
 
 export default function Insumos() {
   const { profile } = useAuth();
+  const [searchParams] = useSearchParams();
+  const osIdParam = searchParams.get("os");
   const {
     insumos, kits, loading, searchTerm, setSearchTerm,
     activeTab, setActiveTab, filteredInsumos, categoriaCounts, reload,
@@ -72,6 +75,16 @@ export default function Insumos() {
       setOsAtivas(data || []);
     })();
   }, [watchedTecnicoId]);
+
+  // Auto-abrir dialog de saída quando navega de Minhas OS via ?os=<id>
+  useEffect(() => {
+    if (!osIdParam) return;
+    saidaForm.reset({
+      tipo: "insumo", insumo_id: undefined, kit_id: undefined,
+      quantidade: 1, tecnico_id: meuTecnicoId || "", ordem_servico_id: osIdParam, observacoes: "",
+    });
+    setIsSaidaDialogOpen(true);
+  }, [osIdParam, meuTecnicoId]);
 
   if (loading) {
     return <div className="container mx-auto py-8"><div className="flex items-center justify-center h-64"><div className="text-lg">Carregando...</div></div></div>;
