@@ -78,13 +78,15 @@ export const ProtectedRoute = ({ children, roles }: ProtectedRouteProps) => {
     return <PendingApproval />;
   }
 
-  // Verificar permissões de role
+  // Verificar permissões de role — considera TODAS as roles do usuário (multi-role).
+  // Basta uma das roles do user estar na lista permitida da rota.
   if (roles && roles.length > 0) {
-    if (!profile?.role) {
+    const userRoles = profile?.roles ?? (profile?.role ? [profile.role] : []);
+    if (userRoles.length === 0) {
       return <Navigate to="/auth" />;
     }
-    
-    if (!roles.includes(profile.role)) {
+    const allowed = userRoles.some((r) => roles.includes(r));
+    if (!allowed) {
       return <Navigate to="/" />;
     }
   }
