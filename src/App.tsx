@@ -36,6 +36,8 @@ import WorkOrders from "./pages/WorkOrders";
 import WorkOrderDetail from "./pages/WorkOrderDetail";
 import RMEWizard from "./pages/RMEWizard";
 import ResetPassword from "./pages/ResetPassword";
+import Candidatar from "./pages/Candidatar";
+import Usuarios from "./pages/Usuarios";
 
 // Legacy /rme route → redirects to the unified Wizard, preserving ?os=
 const LegacyRMERedirect = () => {
@@ -67,6 +69,7 @@ const App = () => (
             <Routes>
               <Route path="/auth" element={<Auth />} />
               <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/candidatar-se" element={<Candidatar />} />
               <Route path="/confirmar-presenca" element={<PresenceConfirmation />} />
               <Route path="/*" element={
                 <ProtectedRoute>
@@ -108,6 +111,11 @@ const App = () => (
                             <Route path="/prestadores" element={
                               <ProtectedRoute roles={['admin', 'engenharia', 'supervisao']}>
                                 <Prestadores />
+                              </ProtectedRoute>
+                            } />
+                            <Route path="/usuarios" element={
+                              <ProtectedRoute roles={['admin', 'engenharia']}>
+                                <Usuarios />
                               </ProtectedRoute>
                             } />
                             <Route path="/tecnicos" element={
