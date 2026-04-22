@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, FileText, Eye, Calendar, MapPin, User, Play, Edit, Phone, Navigation, AlertCircle, CheckCircle2, ThumbsUp, ThumbsDown, ClipboardCheck } from "lucide-react";
+import { Loader2, FileText, Eye, Calendar, MapPin, User, Play, Edit, Phone, Navigation, AlertCircle, CheckCircle2, ThumbsUp, ThumbsDown, ClipboardCheck, Package } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import type { OrdemServico } from "../types";
@@ -24,6 +24,7 @@ interface OSCardProps {
   onAceitarTicket: (os: OrdemServico) => void;
   onAceitarOS: (os: OrdemServico) => void;
   onRecusarOS: (os: OrdemServico) => void;
+  onRegistrarSaida?: (os: OrdemServico) => void;
 }
 
 const getPrioridadeColor = (prioridade: string) => {
@@ -48,7 +49,7 @@ const getStatusBadge = (status: string) => {
 
 export function OSCard({
   os, isTecnico, currentUserEmail, startingId, navigating, exportingRMEId, aceiteLoading,
-  onIniciarExecucao, onPreencherRME, onVerOS, onVerRMEPDF, onLigarCliente, onAbrirMapa, onAceitarTicket, onAceitarOS, onRecusarOS,
+  onIniciarExecucao, onPreencherRME, onVerOS, onVerRMEPDF, onLigarCliente, onAbrirMapa, onAceitarTicket, onAceitarOS, onRecusarOS, onRegistrarSaida,
 }: OSCardProps) {
   const rme = os.rme_relatorios?.[0];
   const rmeStatus = rme?.status;
@@ -322,6 +323,13 @@ export function OSCard({
           <Button onClick={() => onVerOS(os)} variant="outline" className="w-full">
             <Eye className="h-4 w-4 mr-2" />Ver OS em PDF
           </Button>
+
+          {/* Registrar saída de insumo — disponível para a OS aceita pelo técnico, em qualquer fase ativa */}
+          {!recusado && osAceito && isTecnico && onRegistrarSaida && (
+            <Button onClick={() => onRegistrarSaida(os)} variant="outline" className="w-full">
+              <Package className="h-4 w-4 mr-2" />Registrar Saída de Insumo
+            </Button>
+          )}
 
           {!recusado && os.rme_relatorios?.[0] && os.rme_relatorios[0].status !== 'rascunho' && onVerRMEPDF && (
             <Button
