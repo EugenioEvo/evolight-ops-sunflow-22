@@ -381,6 +381,142 @@ export type Database = {
           },
         ]
       }
+      insumo_devolucoes: {
+        Row: {
+          aprovado_at: string | null
+          aprovado_por: string | null
+          created_at: string
+          id: string
+          observacoes: string | null
+          quantidade: number
+          registrada_por: string
+          rejeitado_motivo: string | null
+          saida_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          aprovado_at?: string | null
+          aprovado_por?: string | null
+          created_at?: string
+          id?: string
+          observacoes?: string | null
+          quantidade: number
+          registrada_por: string
+          rejeitado_motivo?: string | null
+          saida_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          aprovado_at?: string | null
+          aprovado_por?: string | null
+          created_at?: string
+          id?: string
+          observacoes?: string | null
+          quantidade?: number
+          registrada_por?: string
+          rejeitado_motivo?: string | null
+          saida_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "insumo_devolucoes_saida_id_fkey"
+            columns: ["saida_id"]
+            isOneToOne: false
+            referencedRelation: "insumo_saidas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      insumo_saidas: {
+        Row: {
+          aprovado_at: string | null
+          aprovado_por: string | null
+          created_at: string
+          id: string
+          insumo_id: string | null
+          kit_id: string | null
+          observacoes: string | null
+          ordem_servico_id: string
+          quantidade: number
+          quantidade_devolvida: number
+          registrado_por: string
+          rejeitado_motivo: string | null
+          retornavel: boolean
+          status: string
+          tecnico_id: string
+          updated_at: string
+        }
+        Insert: {
+          aprovado_at?: string | null
+          aprovado_por?: string | null
+          created_at?: string
+          id?: string
+          insumo_id?: string | null
+          kit_id?: string | null
+          observacoes?: string | null
+          ordem_servico_id: string
+          quantidade: number
+          quantidade_devolvida?: number
+          registrado_por: string
+          rejeitado_motivo?: string | null
+          retornavel?: boolean
+          status?: string
+          tecnico_id: string
+          updated_at?: string
+        }
+        Update: {
+          aprovado_at?: string | null
+          aprovado_por?: string | null
+          created_at?: string
+          id?: string
+          insumo_id?: string | null
+          kit_id?: string | null
+          observacoes?: string | null
+          ordem_servico_id?: string
+          quantidade?: number
+          quantidade_devolvida?: number
+          registrado_por?: string
+          rejeitado_motivo?: string | null
+          retornavel?: boolean
+          status?: string
+          tecnico_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "insumo_saidas_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "insumos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "insumo_saidas_kit_id_fkey"
+            columns: ["kit_id"]
+            isOneToOne: false
+            referencedRelation: "kits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "insumo_saidas_ordem_servico_id_fkey"
+            columns: ["ordem_servico_id"]
+            isOneToOne: false
+            referencedRelation: "ordens_servico"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "insumo_saidas_tecnico_id_fkey"
+            columns: ["tecnico_id"]
+            isOneToOne: false
+            referencedRelation: "tecnicos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       insumos: {
         Row: {
           categoria: string
@@ -394,6 +530,7 @@ export type Database = {
           observacoes: string | null
           preco: number | null
           quantidade: number
+          retornavel: boolean
           unidade: string
           updated_at: string | null
         }
@@ -409,6 +546,7 @@ export type Database = {
           observacoes?: string | null
           preco?: number | null
           quantidade?: number
+          retornavel?: boolean
           unidade?: string
           updated_at?: string | null
         }
@@ -424,8 +562,75 @@ export type Database = {
           observacoes?: string | null
           preco?: number | null
           quantidade?: number
+          retornavel?: boolean
           unidade?: string
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      kit_itens: {
+        Row: {
+          created_at: string
+          id: string
+          insumo_id: string
+          kit_id: string
+          quantidade: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          insumo_id: string
+          kit_id: string
+          quantidade: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          insumo_id?: string
+          kit_id?: string
+          quantidade?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kit_itens_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "insumos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kit_itens_kit_id_fkey"
+            columns: ["kit_id"]
+            isOneToOne: false
+            referencedRelation: "kits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kits: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          descricao: string | null
+          id: string
+          nome: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          nome: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          nome?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -1369,6 +1574,21 @@ export type Database = {
       gerar_numero_os: { Args: never; Returns: string }
       gerar_numero_ticket: { Args: never; Returns: string }
       get_dashboard_stats: { Args: never; Returns: Json }
+      get_rme_pendencias_insumos: {
+        Args: { p_rme_id: string }
+        Returns: {
+          insumo_nome: string
+          kit_nome: string
+          numero_os: string
+          ordem_servico_id: string
+          quantidade: number
+          quantidade_devolvida: number
+          retornavel: boolean
+          saida_id: string
+          status: string
+          tecnico_nome: string
+        }[]
+      }
       get_technician_workload: {
         Args: { p_end_date: string; p_start_date: string; p_tecnico_id: string }
         Returns: {
@@ -1387,6 +1607,17 @@ export type Database = {
           data_programada: string
           minutos_previstos: number
           minutos_realizados: number
+          numero_os: string
+          ordem_servico_id: string
+          ticket_status: string
+          ticket_titulo: string
+        }[]
+      }
+      get_tecnico_os_ativas: {
+        Args: { p_tecnico_id: string }
+        Returns: {
+          cliente: string
+          data_programada: string
           numero_os: string
           ordem_servico_id: string
           ticket_status: string
@@ -1415,7 +1646,9 @@ export type Database = {
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_admin_safe: { Args: never; Returns: boolean }
+      is_backoffice: { Args: { _user_id: string }; Returns: boolean }
       is_staff: { Args: { _user_id: string }; Returns: boolean }
+      is_staff_or_backoffice: { Args: { _user_id: string }; Returns: boolean }
       log_presence_attempt: {
         Args: { p_ip: string; p_os_id: string }
         Returns: undefined
@@ -1435,6 +1668,7 @@ export type Database = {
         | "cliente"
         | "engenharia"
         | "supervisao"
+        | "backoffice"
       equipamento_tipo:
         | "painel_solar"
         | "inversor"
@@ -1596,6 +1830,7 @@ export const Constants = {
         "cliente",
         "engenharia",
         "supervisao",
+        "backoffice",
       ],
       equipamento_tipo: [
         "painel_solar",

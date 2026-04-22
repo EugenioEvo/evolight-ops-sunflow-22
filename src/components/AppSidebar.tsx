@@ -6,9 +6,7 @@ import {
   Package, 
   Route, 
   BarChart3, 
-  Settings,
   Home,
-  FileText,
   LogOut,
   User,
   ClipboardList,
@@ -16,13 +14,14 @@ import {
   CheckSquare,
   TrendingUp,
   Monitor,
-  ShieldAlert
+  ShieldAlert,
+  PackageCheck,
+  Boxes
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { Button } from "@/components/ui/button";
 
 import {
   Sidebar,
@@ -36,76 +35,119 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
-// hideForTecnico: oculta o item para o perfil tecnico_campo (acesso indireto via Minhas OS)
-const mainItems = [
-  { title: "Dashboard", url: "/", icon: Home },
-  { title: "Meu Painel", url: "/meu-painel", icon: User, clientOnly: true },
-  { title: "Tickets", url: "/tickets", icon: Package, hideForTecnico: true },
-  { title: "Ordens de Serviço", url: "/work-orders", icon: ClipboardList, hideForTecnico: true },
-  { title: "RME", url: "/rme", icon: BarChart3, hideForTecnico: true },
-  { title: "Rotas", url: "/routes", icon: Route },
-  { title: "Agenda", url: "/agenda", icon: Calendar, adminOnly: true },
-  { title: "Carga de Trabalho", url: "/carga-trabalho", icon: TrendingUp, adminOnly: true },
-  { title: "Confirmações", url: "/dashboard-presenca", icon: Monitor, adminOnly: true },
-  { title: "Aprovar RMEs", url: "/gerenciar-rme", icon: CheckSquare, adminOnly: true },
+type Role = 'admin' | 'engenharia' | 'supervisao' | 'backoffice' | 'tecnico_campo' | 'cliente';
+
+interface NavItem {
+  title: string;
+  url: string;
+  icon: any;
+  /** roles permitidas; se omitido, todas as autenticadas */
+  allow?: Role[];
+}
+
+const STAFF: Role[] = ['admin', 'engenharia', 'supervisao'];
+const STAFF_BO: Role[] = [...STAFF, 'backoffice'];
+
+const mainItems: NavItem[] = [
+  { title: "Dashboard", url: "/", icon: Home, allow: [...STAFF_BO, 'tecnico_campo', 'cliente'] },
+  { title: "Meu Painel", url: "/meu-painel", icon: User, allow: ['cliente'] },
+  { title: "Tickets", url: "/tickets", icon: Package, allow: STAFF_BO },
+  { title: "Ordens de Serviço", url: "/work-orders", icon: ClipboardList, allow: STAFF_BO },
+  { title: "RME", url: "/rme", icon: BarChart3, allow: STAFF_BO },
+  { title: "Rotas", url: "/routes", icon: Route, allow: [...STAFF_BO, 'tecnico_campo'] },
+  { title: "Agenda", url: "/agenda", icon: Calendar, allow: STAFF_BO },
+  { title: "Carga de Trabalho", url: "/carga-trabalho", icon: TrendingUp, allow: STAFF },
+  { title: "Confirmações", url: "/dashboard-presenca", icon: Monitor, allow: STAFF },
+  { title: "Aprovar RMEs", url: "/gerenciar-rme", icon: CheckSquare, allow: STAFF },
+  { title: "Validar Insumos", url: "/backoffice/insumos", icon: PackageCheck, allow: [...STAFF, 'backoffice'] },
 ];
 
-const cadastroItems = [
-  { title: "Clientes", url: "/clientes", icon: Building2 },
-  { title: "Prestadores", url: "/prestadores", icon: Users },
-  { title: "Usuários", url: "/usuarios", icon: User, adminEngOnly: true },
-  { title: "Equipamentos", url: "/equipamentos", icon: Zap },
-  { title: "Insumos", url: "/insumos", icon: Package },
+const cadastroItems: NavItem[] = [
+  { title: "Clientes", url: "/clientes", icon: Building2, allow: STAFF_BO },
+  { title: "Prestadores", url: "/prestadores", icon: Users, allow: STAFF_BO },
+  { title: "Usuários", url: "/usuarios", icon: User, allow: ['admin', 'engenharia'] },
+  { title: "Equipamentos", url: "/equipamentos", icon: Zap, allow: STAFF_BO },
+  { title: "Insumos", url: "/insumos", icon: Package, allow: [...STAFF_BO, 'tecnico_campo'] },
+  { title: "Kits", url: "/kits", icon: Boxes, allow: ['admin', 'backoffice'] },
 ];
 
-const systemItems = [
-  { title: "Relatórios", url: "/relatorios", icon: BarChart3, adminOnly: true },
-  { title: "Auditoria", url: "/audit-logs", icon: ShieldAlert, adminOnly: true },
+const systemItems: NavItem[] = [
+  { title: "Relatórios", url: "/relatorios", icon: BarChart3, allow: STAFF_BO },
+  { title: "Auditoria", url: "/audit-logs", icon: ShieldAlert, allow: ['admin'] },
 ];
 
 export function AppSidebar() {
-  const { open, isMobile } = useSidebar();
+  const { open } = useSidebar();
   const { profile, signOut } = useAuth();
   const location = useLocation();
   const currentPath = location.pathname;
   const collapsed = !open;
   const [pendingRMEsCount, setPendingRMEsCount] = useState(0);
+  const [pendingInsumosCount, setPendingInsumosCount] = useState(0);
 
-  const isTecnico = profile?.role === "tecnico_campo";
-  const isCliente = profile?.role === "cliente";
-  const isAdminOrAreaTecnica = profile?.role === "admin" || profile?.role === "engenharia" || profile?.role === "supervisao";
+  const userRoles = (profile?.roles ?? []) as Role[];
+  const hasAnyRole = (allow?: Role[]) => !allow || allow.some(r => userRoles.includes(r));
+
+  const isTecnico = userRoles.includes('tecnico_campo');
+  const isStaff = userRoles.some(r => STAFF.includes(r));
+  const isBackoffice = userRoles.includes('backoffice');
+  const showCadastros = isStaff || isBackoffice || isTecnico;
 
   useEffect(() => {
-    if (isAdminOrAreaTecnica) {
+    if (isStaff) {
       loadPendingRMEsCount();
-      
       const channel = supabase
         .channel('rme-changes')
-        .on('postgres_changes', {
-          event: '*',
-          schema: 'public',
-          table: 'rme_relatorios',
-        }, loadPendingRMEsCount)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'rme_relatorios' }, loadPendingRMEsCount)
         .subscribe();
-      
       return () => { supabase.removeChannel(channel); };
     }
-  }, [isAdminOrAreaTecnica]);
+  }, [isStaff]);
+
+  useEffect(() => {
+    if (isStaff || isBackoffice) {
+      loadPendingInsumosCount();
+      const channel = supabase
+        .channel('insumo-saidas-changes')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'insumo_saidas' }, loadPendingInsumosCount)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'insumo_devolucoes' }, loadPendingInsumosCount)
+        .subscribe();
+      return () => { supabase.removeChannel(channel); };
+    }
+  }, [isStaff, isBackoffice]);
 
   const loadPendingRMEsCount = async () => {
-    const { count } = await supabase
-      .from('rme_relatorios')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'pendente');
-    
+    const { count } = await supabase.from('rme_relatorios').select('*', { count: 'exact', head: true }).eq('status', 'pendente');
     setPendingRMEsCount(count || 0);
+  };
+
+  const loadPendingInsumosCount = async () => {
+    const [{ count: c1 }, { count: c2 }] = await Promise.all([
+      supabase.from('insumo_saidas').select('*', { count: 'exact', head: true }).eq('status', 'pendente_aprovacao'),
+      supabase.from('insumo_devolucoes').select('*', { count: 'exact', head: true }).eq('status', 'pendente_aprovacao'),
+    ]);
+    setPendingInsumosCount((c1 || 0) + (c2 || 0));
   };
 
   const isActive = (path: string) => currentPath === path;
   const getNavClass = (path: string) =>
-    isActive(path) 
-      ? "bg-primary/10 text-primary font-medium border-r-2 border-primary" 
+    isActive(path)
+      ? "bg-primary/10 text-primary font-medium border-r-2 border-primary"
       : "hover:bg-muted/50 text-muted-foreground hover:text-foreground";
+
+  const renderItem = (item: NavItem, badgeCount?: number) => (
+    <SidebarMenuItem key={item.title}>
+      <SidebarMenuButton asChild>
+        <NavLink to={item.url} className={getNavClass(item.url)}>
+          <item.icon className="h-4 w-4" />
+          {!collapsed && <span>{item.title}</span>}
+          {!collapsed && badgeCount && badgeCount > 0 && (
+            <Badge variant="destructive" className="ml-auto">{badgeCount}</Badge>
+          )}
+        </NavLink>
+      </SidebarMenuButton>
+    </SidebarMenuItem>
+  );
 
   return (
     <Sidebar className={collapsed ? "w-14" : "w-64"} collapsible="icon">
@@ -131,71 +173,37 @@ export function AppSidebar() {
           <SidebarGroupLabel>Principal</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {mainItems
-                .filter(item => {
-                  if (item.adminOnly && !isAdminOrAreaTecnica) return false;
-                  if (item.clientOnly && !isCliente) return false;
-                  if ((item as any).hideForTecnico && isTecnico) return false;
-                  return true;
-                })
-                .flatMap((item) => {
-                  // Para técnico: inserir "Minhas OS" logo após Dashboard
-                  const out: JSX.Element[] = [];
+              {mainItems.filter(i => hasAnyRole(i.allow)).flatMap(item => {
+                const out: JSX.Element[] = [];
+                const badge =
+                  item.title === "Aprovar RMEs" ? pendingRMEsCount :
+                  item.title === "Validar Insumos" ? pendingInsumosCount :
+                  undefined;
+                out.push(renderItem(item, badge));
+                if (isTecnico && item.url === "/") {
                   out.push(
-                    <SidebarMenuItem key={item.title}>
+                    <SidebarMenuItem key="minhas-os">
                       <SidebarMenuButton asChild>
-                        <NavLink to={item.url} className={getNavClass(item.url)}>
-                          <item.icon className="h-4 w-4" />
-                          {!collapsed && <span>{item.title}</span>}
-                          {item.title === "Aprovar RMEs" && pendingRMEsCount > 0 && !collapsed && (
-                            <Badge variant="destructive" className="ml-auto">
-                              {pendingRMEsCount}
-                            </Badge>
-                          )}
+                        <NavLink to="/minhas-os" className={getNavClass("/minhas-os")}>
+                          <ClipboardList className="h-4 w-4" />
+                          {!collapsed && <span>Minhas OS</span>}
                         </NavLink>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   );
-                  if (isTecnico && item.url === "/") {
-                    out.push(
-                      <SidebarMenuItem key="minhas-os">
-                        <SidebarMenuButton asChild>
-                          <NavLink to="/minhas-os" className={getNavClass("/minhas-os")}>
-                            <ClipboardList className="h-4 w-4" />
-                            {!collapsed && <span>Minhas OS</span>}
-                          </NavLink>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    );
-                  }
-                  return out;
-                })}
+                }
+                return out;
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {isAdminOrAreaTecnica && (
+        {showCadastros && (
           <SidebarGroup>
             <SidebarGroupLabel>Cadastros</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {cadastroItems
-                  .filter(item => {
-                    if ((item as any).adminEngOnly) {
-                      return profile?.roles?.some(r => r === 'admin' || r === 'engenharia');
-                    }
-                    return true;
-                  })
-                  .map((item) => (
-                    <SidebarMenuItem key={item.title}>
-                      <SidebarMenuButton asChild>
-                        <NavLink to={item.url} className={getNavClass(item.url)}>
-                          <item.icon className="h-4 w-4" />
-                          {!collapsed && <span>{item.title}</span>}
-                        </NavLink>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
+                {cadastroItems.filter(i => hasAnyRole(i.allow)).map(item => renderItem(item))}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
@@ -205,23 +213,7 @@ export function AppSidebar() {
           <SidebarGroupLabel>Sistema</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {systemItems
-                .filter(item => {
-                  if (item.adminOnly && !isAdminOrAreaTecnica) return false;
-                  return true;
-                })
-                .map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild>
-                      <NavLink to={item.url} className={getNavClass(item.url)}>
-                        <item.icon className="h-4 w-4" />
-                        {!collapsed && <span>{item.title}</span>}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              
-              {/* Logout Button */}
+              {systemItems.filter(i => hasAnyRole(i.allow)).map(item => renderItem(item))}
               <SidebarMenuItem>
                 <SidebarMenuButton onClick={signOut} className="text-destructive hover:text-destructive hover:bg-destructive/10">
                   <LogOut className="h-4 w-4" />
@@ -232,7 +224,6 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Footer com informações do usuário */}
         {profile && !collapsed && (
           <div className="mt-auto p-4 border-t">
             <div className="flex items-center gap-2 text-sm">
