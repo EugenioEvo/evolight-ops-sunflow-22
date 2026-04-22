@@ -81,22 +81,26 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           }
         }
 
-        // Se encontrou o perfil, buscar role separadamente
+        // Se encontrou o perfil, buscar TODAS as roles separadamente (suporta multi-role)
         if (data) {
-          const { data: roleData } = await supabase
+          const { data: roleRows } = await supabase
             .from('user_roles')
             .select('role')
-            .eq('user_id', userId)
-            .maybeSingle();
+            .eq('user_id', userId);
 
-          // Se tem role, sucesso!
-          if (roleData?.role) {
-            setProfile({ ...data, role: roleData.role as UserProfile['role'] });
+          const roles = (roleRows ?? [])
+            .map((r) => r.role as AppRole)
+            .filter(Boolean);
+
+          // Se tem ao menos uma role, sucesso!
+          if (roles.length > 0) {
+            const primary = pickPrimaryRole(roles);
+            setProfile({ ...data, role: primary, roles });
             return;
           }
 
           // Se não tem role ainda e não é última tentativa, aguardar
-          if (!roleData?.role && attempt < maxAttempts - 1) {
+          if (attempt < maxAttempts - 1) {
             await new Promise(resolve => setTimeout(resolve, 500));
             continue;
           }
@@ -104,8 +108,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           // Última tentativa sem role - permitir acesso como cliente
           if (attempt === maxAttempts - 1) {
             console.warn('Profile encontrado mas role não foi carregado após 10 tentativas. Usando perfil sem role.');
-            // Define role padrão como cliente se não foi carregado
-            setProfile({ ...data, role: (roleData?.role || 'cliente') as UserProfile['role'] });
+            setProfile({ ...data, role: 'cliente', roles: ['cliente'] });
             return;
           }
         }
