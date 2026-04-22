@@ -10,6 +10,7 @@ import type { OrdemServico } from "../types";
 interface OSCardProps {
   os: OrdemServico;
   isTecnico: boolean;
+  currentUserEmail?: string | null;
   startingId: string | null;
   navigating: string | null;
   exportingRMEId?: string | null;
