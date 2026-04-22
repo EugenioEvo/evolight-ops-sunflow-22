@@ -211,10 +211,10 @@ const Usuarios = () => {
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>
-                            <AlertDialogTitle>Remover usuário</AlertDialogTitle>
+                            <AlertDialogTitle>Excluir usuário</AlertDialogTitle>
                             <AlertDialogDescription>
-                              Remove o perfil e todos os papéis de <strong>{row.nome}</strong>.
-                              A conta de login no backend precisa ser excluída separadamente.
+                              Exclui permanentemente <strong>{row.nome}</strong>: perfil, papéis e a conta de login no backend.
+                              Se houver prestador vinculado, ele será mantido como histórico (inativo). Esta ação não pode ser desfeita.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
