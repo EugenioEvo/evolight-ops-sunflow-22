@@ -24,6 +24,8 @@ export interface OrdemServico {
     prioridade: string;
     status: string;
     data_inicio_execucao: string | null;
+    tecnico_responsavel_id?: string | null;
+    prestadores?: { id: string; email: string | null } | null;
     clientes: {
       empresa: string;
       endereco?: string;
