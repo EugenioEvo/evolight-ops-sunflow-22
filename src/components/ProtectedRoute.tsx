@@ -29,20 +29,34 @@ export const ProtectedRoute = ({ children, roles }: ProtectedRouteProps) => {
         return;
       }
 
-      // Check if the prestador linked to this email is active
-      const { data, error } = await supabase
+      // Look up the prestador via the FK on tecnicos (robust to email changes).
+      // Falls back to email matching for legacy técnicos that haven't been backfilled.
+      const { data: tecData } = await supabase
+        .from('tecnicos')
+        .select('prestador_id, prestadores:prestador_id(ativo)')
+        .eq('profile_id', profile.id)
+        .maybeSingle();
+
+      const prestadorAtivo = (tecData?.prestadores as { ativo: boolean } | null)?.ativo;
+
+      if (prestadorAtivo !== undefined) {
+        setApprovalStatus(prestadorAtivo ? 'approved' : 'pending');
+        return;
+      }
+
+      // Legacy fallback: no FK link yet, try by email
+      const { data: legacy } = await supabase
         .from('prestadores')
         .select('ativo')
         .eq('email', profile.email)
         .maybeSingle();
 
-      if (error || !data) {
-        // No prestador found - might be legacy, allow access
+      if (!legacy) {
         setApprovalStatus('approved');
         return;
       }
 
-      setApprovalStatus(data.ativo ? 'approved' : 'pending');
+      setApprovalStatus(legacy.ativo ? 'approved' : 'pending');
     };
 
     if (profile) {

@@ -140,20 +140,24 @@ serve(async (req) => {
       await admin.from('user_roles').insert({ user_id: authUserId, role: body.role })
     }
 
-    // 4. If técnico, ensure tecnicos row
+    // 4. If técnico, ensure tecnicos row (linked to prestador via FK — no more email matching)
     if (body.role === 'tecnico_campo') {
       const { data: existingTec } = await admin
         .from('tecnicos')
-        .select('id')
+        .select('id, prestador_id')
         .eq('profile_id', profileId)
         .maybeSingle()
       if (!existingTec) {
         await admin.from('tecnicos').insert({
           profile_id: profileId,
+          prestador_id: prestador.id,
           especialidades: prestador.especialidades || [],
           regiao_atuacao: prestador.cidade ? `${prestador.cidade}/${prestador.estado || ''}` : '',
           registro_profissional: '',
         })
+      } else if (!existingTec.prestador_id) {
+        // Backfill the link if técnico already exists but FK is empty
+        await admin.from('tecnicos').update({ prestador_id: prestador.id }).eq('id', existingTec.id)
       }
     }
 
