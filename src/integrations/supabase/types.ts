@@ -701,6 +701,7 @@ export type Database = {
       prestadores: {
         Row: {
           ativo: boolean
+          avaliado_por: string | null
           categoria: string
           cep: string | null
           certificacoes: string[] | null
@@ -708,18 +709,24 @@ export type Database = {
           cpf: string | null
           created_at: string
           data_admissao: string | null
+          data_avaliacao: string | null
           email: string
           endereco: string | null
           especialidades: string[] | null
           estado: string | null
           experiencia: string | null
           id: string
+          motivo_rejeicao: string | null
           nome: string
+          observacoes_candidato: string | null
+          status_candidatura: string
           telefone: string | null
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           ativo?: boolean
+          avaliado_por?: string | null
           categoria: string
           cep?: string | null
           certificacoes?: string[] | null
@@ -727,18 +734,24 @@ export type Database = {
           cpf?: string | null
           created_at?: string
           data_admissao?: string | null
+          data_avaliacao?: string | null
           email: string
           endereco?: string | null
           especialidades?: string[] | null
           estado?: string | null
           experiencia?: string | null
           id?: string
+          motivo_rejeicao?: string | null
           nome: string
+          observacoes_candidato?: string | null
+          status_candidatura?: string
           telefone?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           ativo?: boolean
+          avaliado_por?: string | null
           categoria?: string
           cep?: string | null
           certificacoes?: string[] | null
@@ -746,15 +759,20 @@ export type Database = {
           cpf?: string | null
           created_at?: string
           data_admissao?: string | null
+          data_avaliacao?: string | null
           email?: string
           endereco?: string | null
           especialidades?: string[] | null
           estado?: string | null
           experiencia?: string | null
           id?: string
+          motivo_rejeicao?: string | null
           nome?: string
+          observacoes_candidato?: string | null
+          status_candidatura?: string
           telefone?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }

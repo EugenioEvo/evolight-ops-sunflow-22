@@ -62,20 +62,10 @@ export const useProviderMutations = (reload: () => void) => {
     }
   };
 
-  const handleApprove = async (id: string) => {
+  const handleReject = async (id: string, motivo?: string) => {
     try {
-      await providerService.approve(id);
-      toast.success("Prestador aprovado com sucesso!");
-      reload();
-    } catch (error) {
-      handleError(error, { fallbackMessage: 'Erro ao aprovar prestador' });
-    }
-  };
-
-  const handleReject = async (id: string) => {
-    try {
-      await providerService.remove(id);
-      toast.success("Prestador rejeitado e removido.");
+      await providerService.reject(id, motivo);
+      toast.success("Candidatura rejeitada.");
       reload();
     } catch (error) {
       handleError(error, { fallbackMessage: 'Erro ao rejeitar prestador' });
@@ -90,6 +80,6 @@ export const useProviderMutations = (reload: () => void) => {
 
   return {
     form, isDialogOpen, setIsDialogOpen, editingPrestador,
-    onSubmit, handleEdit, handleDelete, handleApprove, handleReject, openNew,
+    onSubmit, handleEdit, handleDelete, handleReject, openNew,
   };
 };

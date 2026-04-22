@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -6,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Plus, Search, Mail, Phone, MapPin, Edit, Trash2, GraduationCap, Eye, Wrench, CheckCircle, XCircle, Clock, ShieldAlert } from "lucide-react";
+import { Users, Plus, Search, Mail, Phone, MapPin, Edit, Trash2, Eye, Wrench, CheckCircle, XCircle, Clock, ExternalLink } from "lucide-react";
 import {
   useProviderData,
   useProviderMutations,
@@ -14,21 +15,18 @@ import {
   certificacoesOptions,
   experienciaOptions,
 } from "@/features/providers";
+import { ApprovePrestadorDialog } from "@/features/providers/components/ApprovePrestadorDialog";
 
 const getCategoriaColor = (categoria: string) => {
   switch (categoria) {
-    case "admin": return "bg-purple-100 text-purple-800";
-    case "engenharia": return "bg-blue-100 text-blue-800";
-    case "supervisao": return "bg-orange-100 text-orange-800";
-    case "tecnico": return "bg-green-100 text-green-800";
+    case "supervisao": return "bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300";
+    case "tecnico": return "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300";
     default: return "bg-muted text-muted-foreground";
   }
 };
 
 const getCategoriaIcon = (categoria: string) => {
   switch (categoria) {
-    case "admin": return ShieldAlert;
-    case "engenharia": return GraduationCap;
     case "supervisao": return Eye;
     case "tecnico": return Wrench;
     default: return Users;
@@ -38,13 +36,15 @@ const getCategoriaIcon = (categoria: string) => {
 const Prestadores = () => {
   const {
     loading, searchTerm, setSearchTerm, activeTab, setActiveTab,
-    pendingPrestadores, filteredPrestadores, categoryCounts, reload,
+    pendingPrestadores, rejectedPrestadores, filteredPrestadores, categoryCounts, reload,
   } = useProviderData();
 
   const {
     form, isDialogOpen, setIsDialogOpen, editingPrestador,
-    onSubmit, handleEdit, handleDelete, handleApprove, handleReject, openNew,
+    onSubmit, handleEdit, handleDelete, handleReject, openNew,
   } = useProviderMutations(reload);
+
+  const [approving, setApproving] = useState<any>(null);
 
   if (loading) {
     return (
@@ -221,17 +221,24 @@ const Prestadores = () => {
         </div>
       </div>
 
+      <div className="rounded-lg border border-dashed bg-muted/30 p-3 text-sm text-muted-foreground flex items-start gap-2">
+        <ExternalLink className="h-4 w-4 mt-0.5 flex-shrink-0" />
+        <span>
+          Cadastros públicos chegam aqui via página de candidatura: <code className="px-1 bg-muted rounded">{window.location.origin}/candidatar-se</code>.
+          Para gerenciar contas internas (admin, engenharia), use <strong>Cadastros → Usuários</strong>.
+        </span>
+      </div>
+
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="pendentes" className="relative">
             Pendentes ({categoryCounts.pendentes})
             {categoryCounts.pendentes > 0 && <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-destructive animate-pulse" />}
           </TabsTrigger>
-          <TabsTrigger value="todos">Todos ({categoryCounts.todos})</TabsTrigger>
-          <TabsTrigger value="admin">Admin ({categoryCounts.admin})</TabsTrigger>
-          <TabsTrigger value="engenharia">Engenharia ({categoryCounts.engenharia})</TabsTrigger>
-          <TabsTrigger value="supervisao">Supervisão ({categoryCounts.supervisao})</TabsTrigger>
+          <TabsTrigger value="todos">Aprovados ({categoryCounts.todos})</TabsTrigger>
           <TabsTrigger value="tecnico">Técnicos ({categoryCounts.tecnico})</TabsTrigger>
+          <TabsTrigger value="supervisao">Supervisores ({categoryCounts.supervisao})</TabsTrigger>
+          <TabsTrigger value="rejeitados">Rejeitados ({categoryCounts.rejeitados})</TabsTrigger>
         </TabsList>
 
         {activeTab === 'pendentes' && (
@@ -261,7 +268,7 @@ const Prestadores = () => {
                       </div>
                       <div className="flex items-center gap-2">
                         <Badge variant="outline" className="border-amber-300 text-amber-700 dark:text-amber-400">Pendente</Badge>
-                        <Button size="sm" variant="default" onClick={() => handleApprove(prestador.id)}>
+                        <Button size="sm" variant="default" onClick={() => setApproving(prestador)}>
                           <CheckCircle className="h-4 w-4 mr-1" />Aprovar
                         </Button>
                         <Button size="sm" variant="destructive" onClick={() => handleReject(prestador.id)}>
@@ -347,7 +354,34 @@ const Prestadores = () => {
             )}
           </div>
         </TabsContent>
+
+        {activeTab === 'rejeitados' && (
+          <div className="mt-6 grid gap-4">
+            {rejectedPrestadores.length === 0 ? (
+              <Card className="p-6 text-center text-muted-foreground">Nenhuma candidatura rejeitada.</Card>
+            ) : rejectedPrestadores.map(p => (
+              <Card key={p.id} className="opacity-70">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-base">{p.nome}</CardTitle>
+                      <div className="text-sm text-muted-foreground">{p.email}</div>
+                    </div>
+                    <Badge variant="outline" className="border-destructive text-destructive">Rejeitado</Badge>
+                  </div>
+                </CardHeader>
+              </Card>
+            ))}
+          </div>
+        )}
       </Tabs>
+
+      <ApprovePrestadorDialog
+        open={!!approving}
+        onOpenChange={(o) => !o && setApproving(null)}
+        prestador={approving}
+        onApproved={reload}
+      />
     </div>
   );
 };

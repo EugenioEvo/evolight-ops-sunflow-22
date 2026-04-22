@@ -53,6 +53,7 @@ const mainItems = [
 const cadastroItems = [
   { title: "Clientes", url: "/clientes", icon: Building2 },
   { title: "Prestadores", url: "/prestadores", icon: Users },
+  { title: "Usuários", url: "/usuarios", icon: User, adminEngOnly: true },
   { title: "Equipamentos", url: "/equipamentos", icon: Zap },
   { title: "Insumos", url: "/insumos", icon: Package },
 ];
@@ -178,16 +179,23 @@ export function AppSidebar() {
             <SidebarGroupLabel>Cadastros</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {cadastroItems.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild>
-                      <NavLink to={item.url} className={getNavClass(item.url)}>
-                        <item.icon className="h-4 w-4" />
-                        {!collapsed && <span>{item.title}</span>}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
+                {cadastroItems
+                  .filter(item => {
+                    if ((item as any).adminEngOnly) {
+                      return profile?.roles?.some(r => r === 'admin' || r === 'engenharia');
+                    }
+                    return true;
+                  })
+                  .map((item) => (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton asChild>
+                        <NavLink to={item.url} className={getNavClass(item.url)}>
+                          <item.icon className="h-4 w-4" />
+                          {!collapsed && <span>{item.title}</span>}
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
