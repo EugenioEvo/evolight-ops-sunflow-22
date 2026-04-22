@@ -186,7 +186,7 @@ const Usuarios = () => {
                     {row.telefone && <div className="text-xs text-muted-foreground">{row.telefone}</div>}
                     <div className="flex gap-1 mt-2 flex-wrap">
                       {row.roles.length === 0
-                        ? <Badge variant="outline" className="text-amber-700">Sem papel</Badge>
+                        ? <Badge variant="outline" className="text-warning">Sem papel</Badge>
                         : row.roles.map(r => (
                             <Badge key={r} className={ROLE_COLOR[r]}>{ROLE_LABEL[r]}</Badge>
                           ))}
