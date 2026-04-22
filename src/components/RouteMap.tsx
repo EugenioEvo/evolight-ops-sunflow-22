@@ -130,8 +130,12 @@ const RouteMap: React.FC = () => {
           tecnicos!inner(id, profiles!inner(nome))
         `);
 
-      // Filter by technician for field technicians
-      if (profile?.role === 'tecnico_campo') {
+      // Filter by technician for field technicians.
+      // Suporta multi-role: usa roles[] para detectar técnico operacional mesmo
+      // quando a role principal é staff (ex: supervisor que faz campo).
+      const isFieldTech =
+        profile?.roles?.includes('tecnico_campo') ?? profile?.role === 'tecnico_campo';
+      if (isFieldTech) {
         const { data: tecnicoData } = await supabase
           .from('tecnicos')
           .select('id')

@@ -13,7 +13,10 @@ export function useMyOrdersData() {
   const { profile } = useAuth();
   const { handleAsyncError } = useErrorHandler();
 
-  const isTecnico = profile?.role === "tecnico_campo";
+  // "É técnico operacional?" deriva da lista completa de roles, suportando multi-role
+  // (ex: supervisor que também faz campo). Quando isTecnico=true, "Minhas OS" filtra
+  // pelas OS do próprio tecnico.id; senão, vê todas (perfil staff).
+  const isTecnico = !!profile?.roles?.includes("tecnico_campo");
   const isAreaTecnica = profile?.role === "engenharia" || profile?.role === "supervisao" || profile?.role === "admin";
   const canViewOS = isTecnico || isAreaTecnica;
 
