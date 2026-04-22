@@ -1161,6 +1161,7 @@ export type Database = {
           created_at: string
           especialidades: string[] | null
           id: string
+          prestador_id: string | null
           profile_id: string
           regiao_atuacao: string | null
           registro_profissional: string | null
@@ -1170,6 +1171,7 @@ export type Database = {
           created_at?: string
           especialidades?: string[] | null
           id?: string
+          prestador_id?: string | null
           profile_id: string
           regiao_atuacao?: string | null
           registro_profissional?: string | null
@@ -1179,12 +1181,20 @@ export type Database = {
           created_at?: string
           especialidades?: string[] | null
           id?: string
+          prestador_id?: string | null
           profile_id?: string
           regiao_atuacao?: string | null
           registro_profissional?: string | null
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "tecnicos_prestador_id_fkey"
+            columns: ["prestador_id"]
+            isOneToOne: false
+            referencedRelation: "prestadores"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "tecnicos_profile_id_fkey"
             columns: ["profile_id"]
