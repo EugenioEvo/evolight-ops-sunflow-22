@@ -265,12 +265,18 @@ export function OSCard({
 
           {/* RME actions only when THIS OS has been accepted by the technician.
               Without this guard, sibling OS on the same ticket (em_execucao) would expose
-              "Preencher RME" to a technician who hasn't accepted yet. */}
+              "Preencher RME" to a technician who hasn't accepted yet.
+              Additionally, only the responsible technician can fill/submit the RME — for
+              collaborators the button is disabled and an explanatory note is shown. */}
           {!recusado && emExecucao && osAceito && (() => {
             const rme = os.rme_relatorios?.[0];
             const rmeStatus = rme?.status;
             const isViewOnly = !!rme && rmeStatus !== 'rascunho';
-            const buttonLabel = !rme
+            // Collaborators can still VIEW the RME once it's submitted (read-only),
+            // but cannot trigger the wizard while it is still in draft.
+            const collaboratorCanView = !isResponsavelRME && isViewOnly;
+            const buttonDisabled = navigating === os.id || (!isResponsavelRME && !collaboratorCanView);
+            const baseLabel = !rme
               ? 'Preencher RME'
               : rmeStatus === 'rascunho'
                 ? 'Continuar RME'
@@ -279,27 +285,35 @@ export function OSCard({
                   : rmeStatus === 'aprovado'
                     ? 'Visualizar RME (Aprovado)'
                     : 'Visualizar RME (Rejeitado)';
+            const buttonLabel = !isResponsavelRME && !collaboratorCanView
+              ? 'RME — somente Técnico Responsável'
+              : baseLabel;
             const Icon = isViewOnly ? Eye : Edit;
-            const nextLabel = !rme
-              ? 'Próximo: Preencher RME'
-              : rmeStatus === 'rascunho'
-                ? 'Próximo: Concluir RME'
-                : rmeStatus === 'pendente'
-                  ? 'Aguardando aprovação do RME'
-                  : rmeStatus === 'aprovado'
-                    ? 'RME aprovado — OS em conclusão'
-                    : 'RME rejeitado — revise com a gestão';
+            const nextLabel = !isResponsavelRME
+              ? 'Aguardando o Técnico Responsável preencher o RME'
+              : !rme
+                ? 'Próximo: Preencher RME'
+                : rmeStatus === 'rascunho'
+                  ? 'Próximo: Concluir RME'
+                  : rmeStatus === 'pendente'
+                    ? 'Aguardando aprovação do RME'
+                    : rmeStatus === 'aprovado'
+                      ? 'RME aprovado — OS em conclusão'
+                      : 'RME rejeitado — revise com a gestão';
             return (
               <>
-                <Button onClick={() => onPreencherRME(os)} className="w-full" disabled={navigating === os.id}>
+                <Button onClick={() => onPreencherRME(os)} className="w-full" disabled={buttonDisabled}>
                   {navigating === os.id ? (
                     <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Carregando RME...</>
                   ) : (
                     <><Icon className="h-4 w-4 mr-2" />{buttonLabel}</>
                   )}
                 </Button>
-                <Badge variant="default" className="w-full justify-center py-2">
-                  <Edit className="h-3 w-3 mr-1" />{nextLabel}
+                <Badge
+                  variant={isResponsavelRME ? 'default' : 'secondary'}
+                  className="w-full justify-center py-2 text-center whitespace-normal"
+                >
+                  <Edit className="h-3 w-3 mr-1 flex-shrink-0" />{nextLabel}
                 </Badge>
               </>
             );
