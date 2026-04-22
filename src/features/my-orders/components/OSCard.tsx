@@ -57,16 +57,19 @@ export function OSCard({
       ? 'aguardando_rme'
       : os.tickets.status;
   const statusBadge = getStatusBadge(effectiveStatus);
-  const isPendente = os.tickets.status === 'ordem_servico_gerada' ||
-    (os.tickets.status === 'aprovado' && os.aceite_tecnico === 'pendente');
-  const emExecucao = os.tickets.status === 'em_execucao';
   const osAceite = os.aceite_tecnico || 'pendente';
   const ticketAceite = (os.tickets as any).aceite_tecnico || 'nao_aplicavel';
+  const isPendente = os.tickets.status === 'ordem_servico_gerada' ||
+    (os.tickets.status === 'aprovado' && osAceite === 'pendente') ||
+    // Sibling OS scenario: ticket already em_execucao (started by another tech),
+    // but THIS technician hasn't accepted yet — still treat as pending for acceptance UI.
+    (os.tickets.status === 'em_execucao' && osAceite === 'pendente');
+  const emExecucao = os.tickets.status === 'em_execucao';
 
   // Two-step acceptance: ticket first, then OS
   const aguardandoAceiteTicket = ticketAceite === 'pendente' && isTecnico;
   const ticketAceito = ticketAceite === 'aceito' || ticketAceite === 'nao_aplicavel';
-  const aguardandoAceiteOS = isPendente && osAceite === 'pendente' && ticketAceito;
+  const aguardandoAceiteOS = osAceite === 'pendente' && ticketAceito && (isPendente || emExecucao);
   const osAceito = osAceite === 'aceito';
   const recusado = osAceite === 'recusado';
 
