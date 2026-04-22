@@ -221,17 +221,24 @@ const Prestadores = () => {
         </div>
       </div>
 
+      <div className="rounded-lg border border-dashed bg-muted/30 p-3 text-sm text-muted-foreground flex items-start gap-2">
+        <ExternalLink className="h-4 w-4 mt-0.5 flex-shrink-0" />
+        <span>
+          Cadastros públicos chegam aqui via página de candidatura: <code className="px-1 bg-muted rounded">{window.location.origin}/candidatar-se</code>.
+          Para gerenciar contas internas (admin, engenharia), use <strong>Cadastros → Usuários</strong>.
+        </span>
+      </div>
+
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="pendentes" className="relative">
             Pendentes ({categoryCounts.pendentes})
             {categoryCounts.pendentes > 0 && <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-destructive animate-pulse" />}
           </TabsTrigger>
-          <TabsTrigger value="todos">Todos ({categoryCounts.todos})</TabsTrigger>
-          <TabsTrigger value="admin">Admin ({categoryCounts.admin})</TabsTrigger>
-          <TabsTrigger value="engenharia">Engenharia ({categoryCounts.engenharia})</TabsTrigger>
-          <TabsTrigger value="supervisao">Supervisão ({categoryCounts.supervisao})</TabsTrigger>
+          <TabsTrigger value="todos">Aprovados ({categoryCounts.todos})</TabsTrigger>
           <TabsTrigger value="tecnico">Técnicos ({categoryCounts.tecnico})</TabsTrigger>
+          <TabsTrigger value="supervisao">Supervisores ({categoryCounts.supervisao})</TabsTrigger>
+          <TabsTrigger value="rejeitados">Rejeitados ({categoryCounts.rejeitados})</TabsTrigger>
         </TabsList>
 
         {activeTab === 'pendentes' && (
@@ -261,7 +268,7 @@ const Prestadores = () => {
                       </div>
                       <div className="flex items-center gap-2">
                         <Badge variant="outline" className="border-amber-300 text-amber-700 dark:text-amber-400">Pendente</Badge>
-                        <Button size="sm" variant="default" onClick={() => handleApprove(prestador.id)}>
+                        <Button size="sm" variant="default" onClick={() => setApproving(prestador)}>
                           <CheckCircle className="h-4 w-4 mr-1" />Aprovar
                         </Button>
                         <Button size="sm" variant="destructive" onClick={() => handleReject(prestador.id)}>
