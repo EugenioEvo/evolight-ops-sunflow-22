@@ -9,7 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { downloadRMEPDF, type RMEPDFData } from "@/utils/generateRMEPDF";
-import { StepIdentification, StepServiceShift, StepChecklists, StepEvidence, StepToolsEPIs, StepSignatures } from "@/components/rme-wizard";
+import { StepIdentification, StepServiceShift, StepChecklists, StepEvidence, StepToolsEPIs, StepSignatures, RMEInsumosPanel } from "@/components/rme-wizard";
 
 export interface RMEFormData {
   id?: string;
@@ -466,6 +466,7 @@ const RMEWizard = () => {
             <strong>RME rejeitado.</strong> Revise os pontos apontados pelo avaliador, edite o relatório e re-submeta para nova aprovação.
           </div>
         )}
+        <RMEInsumosPanel rmeId={formData.id} rmeStatus={formData.status} />
         <Card><CardContent className="p-4 sm:p-6">
           {currentStep === 1 && <StepIdentification formData={formData} updateFormData={updateFormData} availableTechnicians={availableTechnicians} />}
           {currentStep === 2 && <StepServiceShift formData={formData} updateFormData={updateFormData} />}
