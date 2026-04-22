@@ -354,7 +354,34 @@ const Prestadores = () => {
             )}
           </div>
         </TabsContent>
+
+        {activeTab === 'rejeitados' && (
+          <div className="mt-6 grid gap-4">
+            {rejectedPrestadores.length === 0 ? (
+              <Card className="p-6 text-center text-muted-foreground">Nenhuma candidatura rejeitada.</Card>
+            ) : rejectedPrestadores.map(p => (
+              <Card key={p.id} className="opacity-70">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-base">{p.nome}</CardTitle>
+                      <div className="text-sm text-muted-foreground">{p.email}</div>
+                    </div>
+                    <Badge variant="outline" className="border-destructive text-destructive">Rejeitado</Badge>
+                  </div>
+                </CardHeader>
+              </Card>
+            ))}
+          </div>
+        )}
       </Tabs>
+
+      <ApprovePrestadorDialog
+        open={!!approving}
+        onOpenChange={(o) => !o && setApproving(null)}
+        prestador={approving}
+        onApproved={reload}
+      />
     </div>
   );
 };
