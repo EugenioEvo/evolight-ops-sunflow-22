@@ -47,7 +47,7 @@ const getStatusBadge = (status: string) => {
 };
 
 export function OSCard({
-  os, isTecnico, startingId, navigating, exportingRMEId, aceiteLoading,
+  os, isTecnico, currentUserEmail, startingId, navigating, exportingRMEId, aceiteLoading,
   onIniciarExecucao, onPreencherRME, onVerOS, onVerRMEPDF, onLigarCliente, onAbrirMapa, onAceitarTicket, onAceitarOS, onRecusarOS,
 }: OSCardProps) {
   const rme = os.rme_relatorios?.[0];
@@ -73,6 +73,14 @@ export function OSCard({
   const aguardandoAceiteOS = osAceite === 'pendente' && ticketAceito && (isPendente || emExecucao);
   const osAceito = osAceite === 'aceito';
   const recusado = osAceite === 'recusado';
+
+  // RME ownership: only the responsible technician of the ticket can fill/submit the RME.
+  // For collaborators (sibling OS on the same ticket), the RME button is disabled and a
+  // message indicates that the responsible technician is in charge of the report.
+  const responsavelEmail = os.tickets.prestadores?.email?.toLowerCase() || null;
+  const isResponsavelRME = !isTecnico || (
+    !!responsavelEmail && !!currentUserEmail && responsavelEmail === currentUserEmail.toLowerCase()
+  );
 
   return (
     <Card className={`hover:shadow-lg transition-shadow ${recusado ? 'border-destructive/40 bg-destructive/5' : ''} ${aguardandoAceiteTicket ? 'border-blue-300 bg-blue-50/30' : ''}`}>
