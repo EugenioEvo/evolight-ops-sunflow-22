@@ -1,130 +1,164 @@
 
 
-## Plano Consolidado v3 — Ticket > OS > RME
+# Reformulação de Insumos + nova role BackOffice
 
-### Decisões incorporadas (acumuladas)
-1. Lógica unificada in-app + email (mesma função `acceptOS/rejectOS`).
-2. Auth: Supabase + RLS no app; JWT curto apenas via email.
-3. App dispara emails (agendamento no aceite; recusa para criador).
-4. `motivo_recusa` obrigatório em ambos canais.
-5. `tecnico_responsavel_id` = técnico marcado como "Técnico Responsável" no modal.
-6. **NOVO**: Toda OS herda e exibe `tecnico_responsavel_id` (mesmo as OS secundárias do mesmo serviço).
-7. **NOVO**: Se o responsável recusa, o **próximo técnico que aceitar** vira responsável automaticamente — propagando para Ticket + todas OS linkadas.
-8. **NOVO**: Títulos de email de agendamento e recusa terminam com nome do técnico (ex: `"Agendamento: OS000025 - JJC Alimentos - João Silva"`).
+## Objetivo
+Eliminar a tabela paralela `responsaveis` (e o botão "Novo Responsável"), centralizar movimentações na figura do técnico já existente, criar a role **BackOffice** com fluxo de aprovação de saídas/devoluções, introduzir flag **Retornável** e **KITs**, e amarrar tudo a OS aceitas + RME.
 
 ---
 
-### Fase 0 — Memória CORE
-Adicionar 2 itens ao `mem://index.md` + arquivo `mem://processo/api-quality-and-recommendations` (rótulos `[VERIFICADO]/[DOCUMENTAÇÃO]/[PADRÃO GERAL]`; calibrar recomendações pelo perfil técnico do usuário).
+## 1. Nova role: BackOffice
+
+- Adicionar valor `'backoffice'` ao enum `app_role`.
+- Atribuição feita via **Usuários** (mesma UI que admin/engenharia já usam — sem mudança estrutural, só incluir o novo papel no `ALL_ROLES`).
+- Edge function `create-staff-user` aceita também `'backoffice'` como role válida no convite.
+- Helper de banco `is_backoffice(uuid)` (security definer) para uso em RLS e UI.
+
+### Permissões de menu (sidebar)
+
+| Item                      | admin | engenharia | supervisao | backoffice | tecnico_campo |
+|---------------------------|:-----:|:----------:|:----------:|:----------:|:-------------:|
+| Agenda (Principal)        |   ✓   |     ✓      |     ✓      |     ✓      |       —       |
+| Cadastros (todo o grupo)  |   ✓   |     ✓      |     ✓      |     ✓      |       —       |
+| Insumos (em Cadastros)    |   ✓   |     ✓      |     ✓      |     ✓      |       ✓       |
+| Relatórios (Sistema)      |   ✓   |     ✓      |     ✓      |     ✓      |       —       |
+| Demais itens admin-only   |   ✓   |     ✓      |     ✓      |     —      |       —       |
+
+`AppSidebar`: introduzir flag `backofficeAllowed` por item; rota `/insumos` passa a aceitar técnicos também.
 
 ---
 
-### Fase 1 — UI (a, b, c, f)
+## 2. Limpeza da página Insumos
 
-**1a `TicketCard.tsx`**: remover dropdowns de seleção de técnico.
-**1b `FileUpload.tsx`**: galeria aceita `*/*`; preview com ícone genérico para não-imagens.
-**1c `MultiTechnicianOSDialog.tsx`**: remover "Equipe"; mover "Tipo de Trabalho" abaixo dos Técnicos; "Descrição Serviços Solicitados" como Textarea 3 linhas; "Técnico Responsável" como Select obrigatório populado pelos técnicos selecionados.
-**1f "+ Nova OS" standalone**: `WorkOrders.tsx` abre `MultiTechnicianOSDialog` em modo standalone (sem ticket). Cliente cria ticket implícito (`status='aprovado'`, `tecnico_responsavel_id` = responsável escolhido, `created_by=auth.uid()`) → invoca `gerar-ordem-servico`. Deprecar `/work-orders/new`.
-
-**Validação**: `tsc --noEmit` + teste E2E manual.
-
-**CHECKPOINT 1** antes da Fase 2.
+- Remover botão **"+ Novo Responsável"** e todo o diálogo associado.
+- Remover `useSupplyActions.onSubmitResponsavel` / `responsavelForm` / `createResponsavel` do service.
+- Botão **"+ Novo Insumo"** fica oculto para técnicos (apenas leitura + ações de saída/devolução para eles).
+- Tabela `responsaveis`: mantida no banco apenas para histórico das movimentações antigas; **remover RLS de leitura para não-staff** e parar de carregá-la no front.
 
 ---
 
-### Fase 2 — Aceite unificado, propagação de responsável, emails
+## 3. Modelo de dados (migrações)
 
-**2.1 Edge function `gerar-ordem-servico`**:
-- Receber `tecnico_responsavel_id` no payload.
-- Fazer UPDATE no ticket setando `tecnico_responsavel_id` (se ainda for null).
-- Criar uma OS por técnico selecionado; **todas** carregam `tecnico_responsavel_id` em campo dedicado (ver 2.2).
-- Email "Nova OS Atribuída" agora inclui botões **Aceitar** e **Recusar** (URLs apontam para `os-acceptance-action` com JWT curto).
+### 3.1 `insumos`
+- `retornavel boolean NOT NULL DEFAULT false` — flag controlada no formulário de cadastro/edição.
 
-**2.2 Schema — adicionar coluna `tecnico_responsavel_id` em `ordens_servico`** (migração):
-- `tecnico_responsavel_id uuid` (referência lógica a `tecnicos.id`).
-- Permite que cada OS carregue a identidade do responsável atual do serviço, não apenas o técnico individual da OS.
-- UI de listagem/detalhe passa a exibir badge "Responsável: {nome}" em todas as OS do mesmo ticket.
-
-**2.3 Refatorar `useAceiteOS.tsx`** — função única consolidada:
-- `acceptOS(osId)`:
-  - UPDATE OS (`aceite_tecnico='aceito'`, `aceite_at`).
-  - **Lógica de promoção a responsável**: se o ticket atual tem `tecnico_responsavel_id` apontando para um técnico cuja OS foi recusada (ou nulo), promover este técnico a responsável: UPDATE `tickets.tecnico_responsavel_id` + UPDATE em todas `ordens_servico` do mesmo ticket setando `tecnico_responsavel_id`.
-  - Invocar `send-calendar-invite` (action `create`) — título: `"Agendamento: {numero_os} - {cliente} - {nome_tecnico}"`.
-  - Notificações in-app para staff.
-- `rejectOS(osId, motivo)`:
-  - UPDATE OS (`aceite_tecnico='recusado'`, `motivo_recusa`).
-  - Reverter ticket para `aprovado` apenas se for a única OS ativa.
-  - Invocar `send-rejection-notice` — título: `"OS Recusada: {numero_os} - {cliente} - {nome_tecnico}"`.
-  - Notificações in-app para staff e criador.
-- Remover `aceitarTicket` (1-step direto na OS).
-
-**2.4 Nova edge function `os-acceptance-action`** (`verify_jwt = false`):
-- Valida JWT HS256 (payload `{os_id, tecnico_id, exp:7d}`, assinado com `SUPABASE_JWT_SECRET`).
-- `?action=aceitar` → executa mesma lógica de `acceptOS` (incluindo promoção a responsável).
-- `?action=recusar` → renderiza HTML leve com textarea obrigatória; POST executa `rejectOS`.
-- Retorna HTML de confirmação.
-
-**2.5 Nova edge function `send-rejection-notice`** (`verify_jwt = true`):
-- Recebe `os_id`. JOIN `ordens_servico → tickets → profiles.email` (do `created_by`).
-- Envia via Resend para o criador, assunto `"OS Recusada: {numero_os} - {cliente} - {nome_tecnico}"`, link `/work-orders/{id}`.
-
-**2.6 Nova edge function `resend-os-acceptance-email`** (`verify_jwt = true`):
-- Reenvia email com botões aceite/recusa para um técnico ao reatribuir uma OS recusada.
-
-**2.7 `WorkOrderDetail.tsx`** — Reatribuição quando `aceite_tecnico='recusado'`:
-- Dropdown "Reatribuir técnico".
-- Ao trocar: UPDATE `tecnico_id` + reset `aceite_tecnico='pendente'` + `motivo_recusa=null` → invoca `resend-os-acceptance-email`.
-
-**2.8 `send-calendar-invite`**: remover botão "Confirmar Presença" do template base (lógica de aceite migrou); ajustar assunto para incluir nome do técnico; manter actions `cancel`/`reassign_removed`/`update`.
-
-**Validação Fase 2**: deploy de todas funções; teste E2E completo (aprovar → gerar OS → email com botões → recusa via email → criador notificado → reatribuir → novo aceite → calendário enviado → responsável propagado para Ticket+OS linkadas).
-
----
-
-### Fase 3 — Limpeza
-- Remover `WorkOrderCreate.tsx` e rota antiga.
-- Atualizar memórias: `os-generation/technician-acceptance-flow`, novas `email-delivery/os-acceptance-email-buttons`, `os-generation/standalone-os-creation`, `os-generation/responsible-technician-promotion`.
-
----
-
-### Detalhes técnicos críticos
-
-**Promoção automática a responsável** (in-app e email — lógica idêntica):
+### 3.2 KITs (cadastro estático)
 ```text
-ON acceptOS(osId):
-  current_responsavel = tickets.tecnico_responsavel_id
-  IF current_responsavel IS NULL OR
-     EXISTS(OS with tecnico_id=current_responsavel AND aceite_tecnico='recusado'):
-    novo_responsavel = OS.tecnico_id (do que está aceitando)
-    UPDATE tickets SET tecnico_responsavel_id = novo_responsavel
-    UPDATE ordens_servico SET tecnico_responsavel_id = novo_responsavel
-      WHERE ticket_id = OS.ticket_id
+kits (id, nome, descricao, ativo, created_at, updated_at)
+kit_itens (id, kit_id, insumo_id, quantidade)
+```
+RLS: leitura para staff/backoffice/técnicos; escrita só para admin/backoffice.
+Tela nova **Cadastros → Kits** (lista + dialog de cadastro) — mesma estrutura visual de Insumos.
+
+### 3.3 Saídas vinculadas a OS — substitui o uso atual de `movimentacoes` para retiradas de campo
+```text
+insumo_saidas (
+  id,
+  insumo_id, kit_id (nullable, exclusivo com insumo_id),
+  quantidade,
+  retornavel boolean,                    -- snapshot da flag no momento da saída
+  ordem_servico_id NOT NULL,             -- amarração obrigatória à OS
+  tecnico_id NOT NULL,                   -- responsável pela saída (sempre técnico)
+  registrado_por uuid NOT NULL,          -- profile.user_id de quem registrou
+  status text NOT NULL DEFAULT 'pendente_aprovacao'
+    CHECK in ('pendente_aprovacao','aprovada','rejeitada','devolvida_total','devolvida_parcial'),
+  quantidade_devolvida int DEFAULT 0,
+  aprovado_por uuid, aprovado_at,
+  rejeitado_motivo text,
+  observacoes text,
+  created_at, updated_at
+)
+
+insumo_devolucoes (
+  id, saida_id, quantidade,
+  status text DEFAULT 'pendente_aprovacao'  -- backoffice valida toda devolução
+    CHECK in ('pendente_aprovacao','aprovada','rejeitada'),
+  registrada_por, aprovado_por, aprovado_at,
+  observacoes, created_at
+)
 ```
 
-**Schema change necessária** (migração):
-```sql
-ALTER TABLE ordens_servico ADD COLUMN tecnico_responsavel_id uuid;
-CREATE INDEX idx_os_tecnico_responsavel ON ordens_servico(tecnico_responsavel_id);
-```
-Sem FK rígida (consistente com padrão atual da tabela). Validação por trigger opcional ou client-side.
+### 3.4 Regra de estoque — **decrementa na saída** (escolhido)
+Trigger `AFTER INSERT` em `insumo_saidas`: `insumos.quantidade -= quantidade` (expandindo KITs).
+Trigger `AFTER UPDATE` em `insumo_devolucoes` quando `status → aprovada`: incrementa `insumos.quantidade` pela quantidade devolvida e atualiza `quantidade_devolvida`/`status` da saída.
+Rejeição da saída pelo backoffice estorna o estoque.
 
-**Templates de assunto de email**:
-| Tipo | Formato |
-|---|---|
-| Nova OS Atribuída | `Nova OS Atribuída: {numero_os} - {nome_tecnico}` |
-| Agendamento (aceite) | `Agendamento: {numero_os} - {cliente} - {nome_tecnico}` |
-| OS Recusada | `OS Recusada: {numero_os} - {cliente} - {nome_tecnico}` |
+### 3.5 RPCs auxiliares (security definer)
+- `get_tecnico_os_ativas(p_tecnico_id)` → OS com `aceite_tecnico in ('aceito','aprovado')` e ticket em `ordem_servico_gerada`/`em_execucao` (para o dropdown).
+- `get_rme_pendencias_insumos(p_rme_id)` → todas as saídas das OS-irmãs do ticket do RME que ainda não foram devolvidas/aprovadas.
 
-**Risco — promoção em condição de corrida**: dois técnicos aceitam simultaneamente. Mitigação: usar `UPDATE ... WHERE tecnico_responsavel_id IS NULL OR tecnico_responsavel_id = ?` (condicional) — apenas o primeiro update terá efeito; segundo retorna 0 rows e ignora promoção. `[PADRÃO GERAL]` — validar com teste após deploy.
+### 3.6 Migração de dados
+- Para cada `movimentacoes.responsavel_id` cujo `responsaveis.tipo='prestador'`, tentar match por nome com `prestadores → tecnicos` e remapear como histórico em uma view; movimentações sem match ficam só com nome em texto livre. Sem perda de histórico, sem migrar para a nova tabela (são entradas/saídas administrativas, não saídas de OS).
 
 ---
 
-### Ordem de execução
-1. Fase 0 (memória)
-2. Fase 1a, 1b, 1c, 1f
-3. **CHECKPOINT 1**
-4. Migração schema (2.2) + Fase 2.1, 2.3 (refator in-app) — testar promoção localmente
-5. Fase 2.4–2.8 (edge functions + emails) — deploy incremental
-6. **CHECKPOINT 2** — E2E completo
-7. Fase 3 — limpeza e memórias
+## 4. Fluxo de saída de insumo (UI)
+
+Dialog **"Registrar Saída"** unificado (substitui o diálogo de Saída atual):
+
+| Campo                  | Comportamento                                                                                  |
+|------------------------|------------------------------------------------------------------------------------------------|
+| Tipo                   | Toggle: **Item avulso** / **KIT**                                                              |
+| Insumo / KIT           | Combobox conforme toggle                                                                       |
+| Quantidade             | Numérico (KIT já calcula multiplicador)                                                        |
+| **Técnico responsável**| Se quem registra é técnico → preenchido com seu nome, **disabled**. Caso contrário: combobox.  |
+| **Ordem de Serviço**   | Dropdown **disabled até técnico ser escolhido**; depois lista só OS aceitas/em execução dele   |
+| Observações            | Livre                                                                                          |
+
+Saída entra com `status='pendente_aprovacao'` + estoque já decrementado. Aviso visual: "Aguardando validação do BackOffice".
+
+### Botão "Devolver"
+Disponível em qualquer saída ainda não bloqueada (RME do ticket não aprovado). Cria `insumo_devolucoes` `pendente_aprovacao`. Permitido para retornáveis e não-retornáveis (parafusos parciais).
+
+---
+
+## 5. Integração com RME
+
+- Nova aba **"Insumos"** no detalhe do RME (e leitura no Wizard) que **herda** `insumo_saidas` de **todas** as OS irmãs do ticket cujo `aceite_tecnico in ('aceito','aprovado')`.
+- Não permite editar diretamente as saídas; só visualizar, registrar devoluções e ver status (pendente/aprovada/devolvida).
+- Trigger `AFTER UPDATE` em `rme_relatorios` quando `status → aprovado`:
+  - Cria notificação in-app para todos com role `backoffice`: "RME XYZ aprovado — N saídas pendentes de validação".
+  - Bloqueia novas devoluções nas saídas vinculadas (constraint na tabela: `can_register_devolucao(saida_id)` checa se RME do ticket está aprovado).
+- Aprovação do RME = limite final para devoluções, conforme regra do usuário.
+
+---
+
+## 6. Painel BackOffice (nova rota `/backoffice/insumos`)
+
+Acessível para `backoffice` + staff. Tabs:
+1. **Saídas pendentes** — aprovar / rejeitar (com motivo).
+2. **Devoluções pendentes** — para retornáveis: confirmar quantidade que voltou; para não-retornáveis: confirmar baixa parcial.
+3. **RMEs aprovados com pendências** — lista RME aprovados com saídas não-validadas/devolvidas; ação direta para resolver cada item.
+
+Notificações in-app + badge no menu lateral (mesmo padrão do "Aprovar RMEs").
+
+---
+
+## 7. RLS resumido
+
+| Tabela              | Leitura                                                | Escrita                                                                    |
+|---------------------|--------------------------------------------------------|----------------------------------------------------------------------------|
+| `insumos`           | staff + backoffice + tecnico_campo                     | staff + backoffice (técnico **não** cria)                                  |
+| `kits`/`kit_itens`  | mesmos da leitura de insumos                            | admin + backoffice                                                         |
+| `insumo_saidas`     | staff + backoffice + técnico dono da OS                | INSERT: técnico/staff/backoffice; UPDATE de `status`: só staff+backoffice |
+| `insumo_devolucoes` | mesmos da saída                                        | INSERT: técnico/staff/backoffice; UPDATE de `status`: só staff+backoffice |
+
+---
+
+## Arquivos impactados (resumo)
+
+**Banco/edge:**
+- Nova migração: enum + tabelas + triggers + RPCs + RLS + remapeamento de histórico.
+- `supabase/functions/create-staff-user/index.ts` aceita `'backoffice'`.
+
+**Frontend:**
+- `src/hooks/useAuth.tsx`: adicionar `'backoffice'` ao tipo + prioridade (entre supervisao e tecnico_campo).
+- `src/components/AppSidebar.tsx`: nova flag `backofficeAllowed`, Insumos liberado p/ técnico, novo item "Validar Insumos" para backoffice.
+- `src/App.tsx`: ajustar `roles=` das rotas (Insumos abre p/ técnico; novas rotas `/backoffice/insumos` e `/cadastros/kits`).
+- `src/pages/Usuarios.tsx`: incluir `'backoffice'` em `ALL_ROLES` + label/cor.
+- `src/pages/Insumos.tsx`: remove "Novo Responsável", esconde "Novo Insumo" para técnicos, adiciona campo "Retornável" no form, novo dialog de saída com técnico+OS.
+- `src/features/supplies/`: novo `kitService`, `saidaService`; remoção do fluxo de responsável; `useSupplyData` carrega via novas RPCs.
+- Novo módulo `src/features/backoffice-insumos/` com hooks e página.
+- `src/pages/RMEWizard.tsx` + `RMEDetailDialog`: nova aba "Insumos" lendo `insumo_saidas` agrupadas.
+- Memory updates: registrar role backoffice + fluxo de insumos.
 
