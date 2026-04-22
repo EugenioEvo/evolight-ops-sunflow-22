@@ -38,6 +38,8 @@ import RMEWizard from "./pages/RMEWizard";
 import ResetPassword from "./pages/ResetPassword";
 import Candidatar from "./pages/Candidatar";
 import Usuarios from "./pages/Usuarios";
+import Kits from "./pages/Kits";
+import BackofficeInsumos from "./pages/BackofficeInsumos";
 
 // Legacy /rme route → redirects to the unified Wizard, preserving ?os=
 const LegacyRMERedirect = () => {
@@ -130,8 +132,18 @@ const App = () => (
                               </ProtectedRoute>
                             } />
                             <Route path="/insumos" element={
-                              <ProtectedRoute roles={['admin', 'engenharia', 'supervisao']}>
+                              <ProtectedRoute roles={['admin', 'engenharia', 'supervisao', 'backoffice', 'tecnico_campo']}>
                                 <Insumos />
+                              </ProtectedRoute>
+                            } />
+                            <Route path="/kits" element={
+                              <ProtectedRoute roles={['admin', 'backoffice']}>
+                                <Kits />
+                              </ProtectedRoute>
+                            } />
+                            <Route path="/backoffice/insumos" element={
+                              <ProtectedRoute roles={['admin', 'engenharia', 'supervisao', 'backoffice']}>
+                                <BackofficeInsumos />
                               </ProtectedRoute>
                             } />
                             <Route path="/rme" element={<LegacyRMERedirect />} />

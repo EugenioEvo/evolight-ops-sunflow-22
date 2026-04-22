@@ -10,7 +10,7 @@ interface CreateBody {
   nome: string
   email: string
   telefone?: string
-  role: 'admin' | 'engenharia'
+  role: 'admin' | 'engenharia' | 'supervisao' | 'backoffice'
   redirect_to?: string
 }
 
@@ -51,8 +51,9 @@ serve(async (req) => {
     }
 
     const body = (await req.json()) as CreateBody
-    if (!body?.nome || !body?.email || !['admin', 'engenharia'].includes(body.role)) {
-      return new Response(JSON.stringify({ error: 'Dados inválidos. Role deve ser admin ou engenharia.' }), {
+    const VALID_ROLES = ['admin', 'engenharia', 'supervisao', 'backoffice']
+    if (!body?.nome || !body?.email || !VALID_ROLES.includes(body.role)) {
+      return new Response(JSON.stringify({ error: `Dados inválidos. Role deve ser uma de: ${VALID_ROLES.join(', ')}.` }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
     }
