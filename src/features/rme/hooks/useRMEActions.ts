@@ -56,20 +56,28 @@ export const useRMEActions = () => {
 
   const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>, type: 'before' | 'after') => {
     const files = Array.from(event.target.files || []);
-    const MAX_SIZE = 5 * 1024 * 1024;
+    const MAX_IMAGE_SIZE = 5 * 1024 * 1024;   // 5 MB for photos
+    const MAX_VIDEO_SIZE = 50 * 1024 * 1024;  // 50 MB for videos
     const MAX_COUNT = 10;
-    const ALLOWED = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    const ALLOWED_IMAGE = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 
     const currentCount = type === 'before' ? fotosBefore.length : fotosAfter.length;
 
     if (currentCount + files.length > MAX_COUNT) {
-      toast.error(`Máximo de ${MAX_COUNT} fotos por tipo.`);
+      toast.error(`Máximo de ${MAX_COUNT} arquivos por tipo.`);
       return;
     }
 
-    const invalidFiles = files.filter(f => !ALLOWED.includes(f.type) || f.size > MAX_SIZE);
+    const invalidFiles = files.filter(f => {
+      const isImage = ALLOWED_IMAGE.includes(f.type);
+      const isVideo = f.type.startsWith('video/');
+      if (!isImage && !isVideo) return true;
+      if (isImage && f.size > MAX_IMAGE_SIZE) return true;
+      if (isVideo && f.size > MAX_VIDEO_SIZE) return true;
+      return false;
+    });
     if (invalidFiles.length > 0) {
-      toast.error('Use apenas JPG/PNG/WEBP até 5MB.');
+      toast.error('Use imagens (JPG/PNG/WEBP até 5MB) ou vídeos (até 50MB).');
       return;
     }
 

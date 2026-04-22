@@ -193,12 +193,16 @@ const RME = () => {
                       <div key={type} className="space-y-3">
                         <label className="text-sm font-medium">{label}</label>
                         <div className="border-2 border-dashed border-muted rounded-lg p-6 text-center hover:border-primary transition-colors">
-                          <input type="file" multiple accept="image/*" capture="environment" onChange={e => handlePhotoUpload(e, type)} className="hidden" id={`photos-${type}`} />
+                          <input type="file" multiple accept="image/*,video/*" capture="environment" onChange={e => handlePhotoUpload(e, type)} className="hidden" id={`photos-${type}`} />
                           <label htmlFor={`photos-${type}`} className="cursor-pointer"><Upload className="h-10 w-10 mx-auto mb-2 text-muted-foreground" /><p className="text-sm text-muted-foreground">Clique ou arraste</p></label>
                         </div>
                         <div className="grid grid-cols-2 gap-2">{photos.map((file, i) => (
                           <div key={i} className="relative group">
-                            <img src={URL.createObjectURL(file)} alt={`${label} ${i + 1}`} className="w-full h-24 object-cover rounded-lg" />
+                            {file.type.startsWith('video/') ? (
+                              <video src={URL.createObjectURL(file)} className="w-full h-24 object-cover rounded-lg bg-black" muted playsInline preload="metadata" controls />
+                            ) : (
+                              <img src={URL.createObjectURL(file)} alt={`${label} ${i + 1}`} className="w-full h-24 object-cover rounded-lg" />
+                            )}
                             <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => removePhoto(i, type)}><X className="h-4 w-4" /></Button>
                           </div>
                         ))}</div>

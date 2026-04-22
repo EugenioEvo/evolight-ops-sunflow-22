@@ -127,6 +127,26 @@ const RMEWizard = () => {
     if (currentTicketId) loadGroupContext(currentTicketId);
   }, [currentTicketId, tecnicoId, profile?.email]);
 
+  // Realtime: refresh available technicians whenever sibling OS aceite_tecnico changes
+  // (e.g. another technician accepts/rejects after this wizard was opened).
+  useEffect(() => {
+    if (!currentTicketId) return;
+    const channel = supabase
+      .channel(`rme-wizard-os-${currentTicketId}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "ordens_servico", filter: `ticket_id=eq.${currentTicketId}` },
+        () => { loadGroupContext(currentTicketId); }
+      )
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "ordens_servico", filter: `ticket_id=eq.${currentTicketId}` },
+        () => { loadGroupContext(currentTicketId); }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [currentTicketId]);
+
   const loadTecnicoId = async () => {
     if (!profile?.user_id) return;
     const { data } = await supabase.from("tecnicos").select("id, profiles(nome)").eq("profile_id", profile.id).maybeSingle();
