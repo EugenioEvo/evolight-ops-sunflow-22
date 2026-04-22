@@ -236,166 +236,59 @@ const Auth = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs value={isLogin ? 'login' : 'signup'} onValueChange={(value) => setIsLogin(value === 'login')}>
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="login">Entrar</TabsTrigger>
-              <TabsTrigger value="signup">Cadastrar</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="login">
-              <form onSubmit={handleLogin} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password">Senha</Label>
-                  <div className="relative">
-                    <Input
-                      id="password"
-                      type={showPassword ? "text" : "password"}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="absolute right-0 top-0 h-full px-3"
-                      onClick={() => setShowPassword(!showPassword)}
-                    >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </Button>
-                  </div>
-                </div>
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? 'Entrando...' : 'Entrar'}
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Senha</Label>
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-0 top-0 h-full px-3"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </Button>
-                <ForgotPasswordLink />
-              </form>
-            </TabsContent>
-            
-            <TabsContent value="signup">
-              <form onSubmit={handleSignup} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-email">Email</Label>
-                    <Input
-                      id="signup-email"
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-password">Senha</Label>
-                    <Input
-                      id="signup-password"
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                      minLength={6}
-                    />
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="nome">Nome</Label>
-                    <Input
-                      id="nome"
-                      value={nome}
-                      onChange={(e) => setNome(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="telefone">Telefone</Label>
-                    <Input
-                      id="telefone"
-                      value={telefone}
-                      onChange={(e) => setTelefone(e.target.value)}
-                    />
-                  </div>
-                </div>
+              </div>
+            </div>
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? 'Entrando...' : 'Entrar'}
+            </Button>
+            <ForgotPasswordLink />
 
-                {/* Role is always 'cliente' for self-registration. 
-                    Elevated roles (tecnico_campo, engenharia, supervisao) are assigned by admins only. */}
-
-                {true && (
-                  <>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="empresa">Empresa</Label>
-                        <Input
-                          id="empresa"
-                          value={empresa}
-                          onChange={(e) => setEmpresa(e.target.value)}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="cnpjCpf">CNPJ/CPF</Label>
-                        <Input
-                          id="cnpjCpf"
-                          value={cnpjCpf}
-                          onChange={(e) => setCnpjCpf(e.target.value)}
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="endereco">Endereço</Label>
-                      <Textarea
-                        id="endereco"
-                        value={endereco}
-                        onChange={(e) => setEndereco(e.target.value)}
-                        rows={2}
-                      />
-                    </div>
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="cidade">Cidade</Label>
-                        <Input
-                          id="cidade"
-                          value={cidade}
-                          onChange={(e) => setCidade(e.target.value)}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="estado">Estado</Label>
-                        <Input
-                          id="estado"
-                          value={estado}
-                          onChange={(e) => setEstado(e.target.value)}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="cep">CEP</Label>
-                        <Input
-                          id="cep"
-                          value={cep}
-                          onChange={(e) => setCep(e.target.value)}
-                        />
-                      </div>
-                    </div>
-                  </>
-                )}
-
-
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? 'Criando conta...' : 'Criar Conta'}
-                </Button>
-              </form>
-            </TabsContent>
-          </Tabs>
+            <div className="pt-4 border-t space-y-2 text-center text-sm">
+              <p className="text-muted-foreground">
+                <strong>Primeiro acesso?</strong> Use "Esqueci minha senha" com o e-mail cadastrado pela Evolight.
+              </p>
+              <p className="text-muted-foreground">
+                Quer ser prestador?{' '}
+                <button
+                  type="button"
+                  onClick={() => navigate('/candidatar-se')}
+                  className="text-primary underline-offset-4 hover:underline font-medium"
+                >
+                  Candidate-se aqui
+                </button>
+              </p>
+            </div>
+          </form>
         </CardContent>
       </Card>
     </div>
