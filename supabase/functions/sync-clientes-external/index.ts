@@ -138,6 +138,10 @@ Deno.serve(async (req) => {
   let rowsUpserted = 0;
   const errors: string[] = [];
 
+  // Conjuntos para saneamento (soft-delete) ao final
+  const seenSolarzIds = new Set<string>();
+  const seenCaIds = new Set<string>();
+
   // ─── Hard timeout (5 minutes) ─────────────────────────────────────────
   // Promise.race garante que QUALQUER await trava (ex: MySQL handshake)
   // será interrompido. checkTimeout() é mantido como guard adicional entre
