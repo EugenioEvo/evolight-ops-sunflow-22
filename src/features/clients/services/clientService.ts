@@ -11,7 +11,7 @@ import { PAGE_SIZE } from '../types';
 
 const SELECT_BASE = `
   id, empresa, cnpj_cpf, endereco, cidade, estado, cep,
-  origem, solarz_customer_id, sem_solarz, prioridade, observacoes,
+  origem, solarz_customer_id, sem_solarz, ativo, prioridade, observacoes,
   telefones_unificados, enderecos_unificados,
   atrasos_recebimentos, status_financeiro_ca, ufv_status_resumo,
   sync_source_updated_at,
@@ -48,7 +48,8 @@ function mapRow(row: any): Cliente {
     sync_source_updated_at: row.sync_source_updated_at ?? null,
     created_at: row.created_at ?? null,
     updated_at: row.updated_at ?? null,
-    status: 'ativo',
+    ativo: row.ativo !== false,
+    status: row.ativo === false ? 'inativo' : 'ativo',
     profile: row.profiles
       ? {
           id: row.profiles.id,
@@ -86,6 +87,7 @@ export const createClientService = (client?: AppSupabaseClient) => {
       page: number;
       pageSize?: number;
       search?: string;
+      includeInactive?: boolean;
     }): Promise<PagedClientes> {
       const pageSize = params.pageSize ?? PAGE_SIZE;
       const from = (params.page - 1) * pageSize;
@@ -96,6 +98,10 @@ export const createClientService = (client?: AppSupabaseClient) => {
         .select(SELECT_BASE, { count: 'exact' })
         .order('empresa', { ascending: true, nullsFirst: false })
         .range(from, to);
+
+      if (!params.includeInactive) {
+        query = query.eq('ativo', true);
+      }
 
       const search = params.search?.trim();
       if (search) {

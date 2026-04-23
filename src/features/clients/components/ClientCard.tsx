@@ -152,7 +152,11 @@ export function ClientCard({ cliente, onOpen }: ClientCardProps) {
   );
 
   return (
-    <Card className="hover:shadow-md transition-shadow">
+    <Card
+      className={`hover:shadow-md transition-shadow ${
+        cliente.ativo === false ? 'opacity-70 border-dashed' : ''
+      }`}
+    >
       <CardContent className="p-6 space-y-4">
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 space-y-2 min-w-0">
@@ -161,6 +165,15 @@ export function ClientCard({ cliente, onOpen }: ClientCardProps) {
               <h3 className="font-semibold text-foreground text-base leading-tight">
                 {cliente.empresa}
               </h3>
+              {cliente.ativo === false && (
+                <Badge
+                  variant="outline"
+                  className="text-xs flex items-center gap-1 bg-muted text-muted-foreground border-border"
+                >
+                  <CircleSlash className="h-3 w-3" />
+                  Removido das origens
+                </Badge>
+              )}
               <Badge variant="outline" className={`text-xs ${origemMeta.className}`}>
                 {origemMeta.label}
               </Badge>
