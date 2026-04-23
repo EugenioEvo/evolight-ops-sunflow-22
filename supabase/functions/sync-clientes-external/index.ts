@@ -176,6 +176,7 @@ Deno.serve(async (req) => {
       `SELECT id, nome, nome_empresa, documento, email,
               telefone_celular, telefone_comercial,
               logradouro, numero_end, complemento, bairro, cidade, uf, cep, pais,
+              atrasos_recebimentos,
               data_alteracao
        FROM pessoas
        WHERE LOWER(perfis) LIKE '%cliente%'
