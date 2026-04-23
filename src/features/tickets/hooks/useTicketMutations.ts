@@ -28,6 +28,7 @@ export const useTicketMutations = (loadData: () => Promise<void>) => {
         titulo: data.titulo,
         descricao: data.descricao,
         cliente_id: data.cliente_id,
+        ufv_nome: data.ufv_nome?.trim() || null,
         equipamento_tipo: data.equipamento_tipo,
         prioridade: data.prioridade,
         endereco_servico: data.endereco_servico,
@@ -56,6 +57,7 @@ export const useTicketMutations = (loadData: () => Promise<void>) => {
 
       const ticketData: any = {
         ...data,
+        ufv_nome: data.ufv_nome?.trim() || null,
         data_servico: data.data_servico || null,
         data_vencimento: data.data_vencimento ? new Date(data.data_vencimento).toISOString() : null,
         tecnico_responsavel_id: technicianId || null,

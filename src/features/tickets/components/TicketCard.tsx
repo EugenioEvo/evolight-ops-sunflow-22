@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
-import { Calendar, Clock, MapPin, Settings, FileText, CheckCircle, XCircle, Loader2, RefreshCw, Star, AlertTriangle, ChevronDown, ClipboardCheck, UserPlus, type LucideIcon } from 'lucide-react';
+import { Calendar, Clock, MapPin, Settings, FileText, CheckCircle, XCircle, Loader2, RefreshCw, Star, AlertTriangle, ChevronDown, ClipboardCheck, UserPlus, Sun, CircleDollarSign, type LucideIcon } from 'lucide-react';
 import { STATUS_COLORS, PRIORIDADE_COLORS } from '../types';
 import type { TicketWithRelations, TicketPrestador } from '../types';
 import { supabase } from '@/integrations/supabase/client';
@@ -172,12 +172,37 @@ export const TicketCard = ({
             </div>
             <CardDescription className="flex items-center gap-2 flex-wrap">
               <span>Cliente: {ticket.clientes?.empresa || ticket.clientes?.profiles?.nome}</span>
+              {ticket.clientes?.cnpj_cpf && (
+                <span className="text-xs text-muted-foreground">· {ticket.clientes.cnpj_cpf}</span>
+              )}
               <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs flex items-center gap-1">
                 <Star className="h-3 w-3" />P{ticket.clientes?.prioridade ?? 5}
               </Badge>
-              {ticket.clientes?.ufv_solarz && (
-                <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-xs">
-                  Usina: {ticket.clientes.ufv_solarz}
+              {ticket.clientes?.status_financeiro_ca &&
+                ticket.clientes.status_financeiro_ca.toUpperCase() !== 'OK' && (
+                  <Badge
+                    variant="outline"
+                    className="bg-destructive/10 text-destructive border-destructive/30 text-xs flex items-center gap-1"
+                    title={
+                      ticket.clientes.atrasos_recebimentos && ticket.clientes.atrasos_recebimentos > 0
+                        ? `Atrasos: ${ticket.clientes.atrasos_recebimentos.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`
+                        : 'Cliente com pendências financeiras'
+                    }
+                  >
+                    <CircleDollarSign className="h-3 w-3" />
+                    {ticket.clientes.atrasos_recebimentos && ticket.clientes.atrasos_recebimentos > 0
+                      ? ticket.clientes.atrasos_recebimentos.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+                      : 'Inadimplente'}
+                  </Badge>
+                )}
+              {ticket.ufv_nome ? (
+                <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-xs flex items-center gap-1">
+                  <Sun className="h-3 w-3" />
+                  Usina: {ticket.ufv_nome}
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="bg-muted text-muted-foreground border-muted-foreground/20 text-xs italic">
+                  Sem usina
                 </Badge>
               )}
             </CardDescription>
