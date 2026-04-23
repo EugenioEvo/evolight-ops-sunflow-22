@@ -1,33 +1,74 @@
-import { useState, useEffect } from "react";
-import { toast } from "sonner";
-import { useErrorHandler } from "@/hooks/useErrorHandler";
-import { clientService } from "../services/clientService";
-import type { Cliente } from "../types";
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useErrorHandler } from '@/hooks/useErrorHandler';
+import { useDebounce } from '@/hooks/useDebounce';
+import { clientService } from '../services/clientService';
+import { PAGE_SIZE, type Cliente } from '../types';
 
-export function useClientData() {
+export interface UseClientDataResult {
+  clientes: Cliente[];
+  loading: boolean;
+  searchTerm: string;
+  setSearchTerm: (value: string) => void;
+  page: number;
+  setPage: (page: number) => void;
+  pageSize: number;
+  totalCount: number;
+  totalPages: number;
+  refetch: () => Promise<void>;
+}
+
+export function useClientData(pageSize: number = PAGE_SIZE): UseClientDataResult {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [page, setPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
   const { handleAsyncError } = useErrorHandler();
 
-  const fetchClientes = async () => {
+  const debouncedSearch = useDebounce(searchTerm, 350);
+
+  // Whenever the search term changes, reset to page 1.
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch]);
+
+  const fetchPage = useCallback(async () => {
     setLoading(true);
     const data = await handleAsyncError(
-      () => clientService.fetchAll(),
-      { fallbackMessage: 'Erro ao carregar clientes' }
+      () =>
+        clientService.fetchPage({
+          page,
+          pageSize,
+          search: debouncedSearch,
+        }),
+      { fallbackMessage: 'Erro ao carregar clientes' },
     );
-    if (data) setClientes(data);
+    if (data) {
+      setClientes(data.rows);
+      setTotalCount(data.total);
+    }
     setLoading(false);
-  };
+  }, [debouncedSearch, handleAsyncError, page, pageSize]);
 
-  useEffect(() => { fetchClientes(); }, []);
+  useEffect(() => {
+    fetchPage();
+  }, [fetchPage]);
 
-  const filteredClientes = clientes.filter(cliente =>
-    cliente.empresa.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    cliente.cnpj_cpf.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    cliente.cidade.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (cliente.ufv_solarz && cliente.ufv_solarz.toLowerCase().includes(searchTerm.toLowerCase()))
+  const totalPages = useMemo(
+    () => Math.max(1, Math.ceil(totalCount / pageSize)),
+    [pageSize, totalCount],
   );
 
-  return { clientes, loading, searchTerm, setSearchTerm, filteredClientes, fetchClientes };
+  return {
+    clientes,
+    loading,
+    searchTerm,
+    setSearchTerm,
+    page,
+    setPage,
+    pageSize,
+    totalCount,
+    totalPages,
+    refetch: fetchPage,
+  };
 }
