@@ -27,7 +27,7 @@ type SyncRun = {
 
 const STAFF_ROLES = ["admin", "engenharia", "supervisao"] as const;
 const RUN_POLL_INTERVAL_MS = 5000;
-const RUN_STALE_MS = 10 * 60 * 1000;
+const RUN_STALE_MS = 5 * 60 * 1000;
 
 const isRunInProgress = (run?: SyncRun) => {
   if (!run || run.status !== "running") return false;
