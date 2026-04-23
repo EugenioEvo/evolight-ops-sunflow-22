@@ -12,6 +12,7 @@ import { BulkImportDialog } from '@/components/BulkImportDialog';
 import { useClientData } from '@/features/clients/hooks/useClientData';
 import { useClientMutations } from '@/features/clients/hooks/useClientMutations';
 import { ESTADOS_BR } from '@/features/clients/types';
+import { SyncClientesButton } from '@/features/clients/components/SyncClientesButton';
 
 export default function Clientes() {
   const { loading, searchTerm, setSearchTerm, filteredClientes, fetchClientes } = useClientData();
@@ -25,7 +26,8 @@ export default function Clientes() {
           <h1 className="text-3xl font-bold text-foreground">Cadastro de Clientes</h1>
           <p className="text-muted-foreground">Gerencie os clientes da empresa</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <SyncClientesButton onSyncComplete={fetchClientes} />
           <Button variant="outline" onClick={() => setIsImportOpen(true)}>
             <Upload className="h-4 w-4 mr-2" />Importar
           </Button>
