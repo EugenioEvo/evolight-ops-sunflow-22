@@ -203,6 +203,7 @@ export type Database = {
       }
       clientes: {
         Row: {
+          ativo: boolean
           atrasos_recebimentos: number | null
           cep: string | null
           cidade: string | null
@@ -230,6 +231,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          ativo?: boolean
           atrasos_recebimentos?: number | null
           cep?: string | null
           cidade?: string | null
@@ -257,6 +259,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          ativo?: boolean
           atrasos_recebimentos?: number | null
           cep?: string | null
           cidade?: string | null
