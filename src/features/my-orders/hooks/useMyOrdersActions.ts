@@ -98,13 +98,20 @@ export function useMyOrdersActions(loadOrdensServico: () => Promise<void>, setAc
       const { data, error } = await supabase
         .from('rme_relatorios')
         .select(`*,
-          tickets ( titulo, numero_ticket, endereco_servico, clientes ( empresa, endereco, ufv_solarz ) ),
+          tickets ( titulo, numero_ticket, endereco_servico, clientes ( empresa, endereco, cliente_ufvs(nome) ) ),
           tecnicos ( profiles ( nome ) )
         `)
         .eq('id', rmeId)
         .single();
       if (error || !data) throw error || new Error('RME não encontrado');
-      await rmeService.exportRMEPDF(data as any);
+      // Derive ufv_solarz (legacy field) from cliente_ufvs.nome list
+      const anyData: any = data;
+      if (anyData.tickets?.clientes) {
+        const ufvs = Array.isArray(anyData.tickets.clientes.cliente_ufvs) ? anyData.tickets.clientes.cliente_ufvs : [];
+        const names = ufvs.map((u: any) => u?.nome).filter(Boolean);
+        anyData.tickets.clientes.ufv_solarz = names.length ? names.join(', ') : null;
+      }
+      await rmeService.exportRMEPDF(anyData as any);
       toast.success('Relatório RME baixado com sucesso.');
     } catch (error) {
       handleError(error, { fallbackMessage: 'Erro ao gerar PDF do RME' });
