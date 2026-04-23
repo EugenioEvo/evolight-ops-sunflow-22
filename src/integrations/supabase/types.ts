@@ -98,6 +98,109 @@ export type Database = {
         }
         Relationships: []
       }
+      cliente_conta_azul_ids: {
+        Row: {
+          cliente_id: string
+          cnpj_cpf: string | null
+          conta_azul_customer_id: string
+          created_at: string
+          email: string | null
+          id: string
+          nome_fiscal: string | null
+          observacoes: string | null
+          updated_at: string
+        }
+        Insert: {
+          cliente_id: string
+          cnpj_cpf?: string | null
+          conta_azul_customer_id: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          nome_fiscal?: string | null
+          observacoes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cliente_id?: string
+          cnpj_cpf?: string | null
+          conta_azul_customer_id?: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          nome_fiscal?: string | null
+          observacoes?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cliente_conta_azul_ids_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cliente_ufvs: {
+        Row: {
+          cep: string | null
+          cidade: string | null
+          cliente_id: string
+          created_at: string
+          endereco: string | null
+          estado: string | null
+          id: string
+          latitude: number | null
+          longitude: number | null
+          nome: string | null
+          potencia_kwp: number | null
+          solarz_ufv_id: string
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          cep?: string | null
+          cidade?: string | null
+          cliente_id: string
+          created_at?: string
+          endereco?: string | null
+          estado?: string | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          nome?: string | null
+          potencia_kwp?: number | null
+          solarz_ufv_id: string
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cep?: string | null
+          cidade?: string | null
+          cliente_id?: string
+          created_at?: string
+          endereco?: string | null
+          estado?: string | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          nome?: string | null
+          potencia_kwp?: number | null
+          solarz_ufv_id?: string
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cliente_ufvs_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clientes: {
         Row: {
           cep: string | null
@@ -111,8 +214,12 @@ export type Database = {
           id: string
           latitude: number | null
           longitude: number | null
+          origem: string | null
           prioridade: number | null
           profile_id: string | null
+          sem_solarz: boolean | null
+          solarz_customer_id: string | null
+          sync_source_updated_at: string | null
           ufv_solarz: string | null
           updated_at: string
         }
@@ -128,8 +235,12 @@ export type Database = {
           id?: string
           latitude?: number | null
           longitude?: number | null
+          origem?: string | null
           prioridade?: number | null
           profile_id?: string | null
+          sem_solarz?: boolean | null
+          solarz_customer_id?: string | null
+          sync_source_updated_at?: string | null
           ufv_solarz?: string | null
           updated_at?: string
         }
@@ -145,8 +256,12 @@ export type Database = {
           id?: string
           latitude?: number | null
           longitude?: number | null
+          origem?: string | null
           prioridade?: number | null
           profile_id?: string | null
+          sem_solarz?: boolean | null
+          solarz_customer_id?: string | null
+          sync_source_updated_at?: string | null
           ufv_solarz?: string | null
           updated_at?: string
         }
@@ -1360,6 +1475,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      sync_runs: {
+        Row: {
+          created_at: string
+          error: string | null
+          finished_at: string | null
+          id: string
+          last_sync_cursor: string | null
+          rows_read: number
+          rows_upserted: number
+          source: string
+          started_at: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          last_sync_cursor?: string | null
+          rows_read?: number
+          rows_upserted?: number
+          source: string
+          started_at?: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          last_sync_cursor?: string | null
+          rows_read?: number
+          rows_upserted?: number
+          source?: string
+          started_at?: string
+          status?: string
+        }
+        Relationships: []
       }
       tecnicos: {
         Row: {
