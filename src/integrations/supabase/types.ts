@@ -1831,6 +1831,7 @@ export type Database = {
         Args: { p_ip: string; p_os_id: string }
         Returns: undefined
       }
+      mark_stale_clientes_sync_runs: { Args: never; Returns: undefined }
       mark_token_used: { Args: { p_token: string }; Returns: undefined }
       populate_rme_checklist: { Args: { p_rme_id: string }; Returns: undefined }
       validate_presence_token: {
