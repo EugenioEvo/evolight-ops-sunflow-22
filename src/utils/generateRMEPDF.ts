@@ -220,7 +220,7 @@ export const generateRMEPDF = async (data: RMEPDFData): Promise<Blob> => {
   const idRows: Array<[string, string]> = [
     ['Cliente:', data.cliente],
   ];
-  if (data.ufv_solarz) idRows.push(['UFV/SolarZ:', data.ufv_solarz]);
+  if (data.ufv_solarz) idRows.push(['Usina(s):', data.ufv_solarz]);
   idRows.push(
     ['Endereço:', data.endereco],
     ['Usina:', data.site_name || '-'],

@@ -61,10 +61,16 @@ const WorkOrders = () => {
     (async () => {
       const [{ data: prestData }, { data: cliData }] = await Promise.all([
         supabase.from('prestadores').select('id, nome, email').eq('categoria', 'tecnico').eq('ativo', true).order('nome'),
-        supabase.from('clientes').select('id, empresa, ufv_solarz, endereco, cidade, estado').order('empresa'),
+        supabase.from('clientes').select('id, empresa, endereco, cidade, estado, cliente_ufvs(nome)').order('empresa'),
       ]);
       setPrestadores((prestData || []) as any);
-      setStandaloneClientes((cliData || []) as any);
+      // Derive ufv_solarz (legacy field, now = joined UFV names) for downstream consumers
+      const enriched = (cliData || []).map((c: any) => {
+        const ufvs = Array.isArray(c.cliente_ufvs) ? c.cliente_ufvs : [];
+        const names = ufvs.map((u: any) => u?.nome).filter(Boolean);
+        return { ...c, ufv_solarz: names.length ? names.join(', ') : null };
+      });
+      setStandaloneClientes(enriched as any);
     })();
   }, [canManageOS]);
 
@@ -255,9 +261,9 @@ const WorkOrders = () => {
             </Select>
             {ufvSolarzOptions.length > 0 && (
               <Select value={filters.ufvSolarzFilter} onValueChange={filters.setUfvSolarzFilter}>
-                <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="UFV/SolarZ" /></SelectTrigger>
+                <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Usina" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Todos UFV/SolarZ</SelectItem>
+                  <SelectItem value="all">Todas as usinas</SelectItem>
                   {ufvSolarzOptions.map((ufv) => (
                     <SelectItem key={ufv} value={ufv}>{ufv}</SelectItem>
                   ))}
