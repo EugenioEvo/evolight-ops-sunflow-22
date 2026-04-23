@@ -540,6 +540,7 @@ Deno.serve(async (req) => {
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } finally {
+    clearTimeout(timeoutHandle);
     await Promise.allSettled([
       szConn?.end(),
       caConn?.end(),
