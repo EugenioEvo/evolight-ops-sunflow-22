@@ -389,6 +389,7 @@ Deno.serve(async (req) => {
 
     // ─── 6) Conta Azul órfãos (sem solarz no De-Para) ───────────────────────
     for (const [caId, ca] of caById) {
+      checkTimeout();
       if (caToSz.has(caId)) continue; // já tratado acima
 
       const empresa =
