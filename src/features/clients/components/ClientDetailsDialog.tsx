@@ -1,4 +1,17 @@
-import { Lock, Sun, Database, MapPin, Phone, Mail, Building2 } from 'lucide-react';
+import {
+  Lock,
+  Sun,
+  Database,
+  MapPin,
+  Phone,
+  Mail,
+  Building2,
+  AlertTriangle,
+  CheckCircle2,
+  CircleAlert,
+  CircleSlash,
+  Info,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -12,8 +25,15 @@ import { Badge } from '@/components/ui/badge';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import type { UseFormReturn } from 'react-hook-form';
 import type { Cliente, ClienteEditableForm } from '../types';
+import { formatBRL, formatCep, formatCpfCnpj, formatPhone, formatPhoneLines } from '../utils/format';
 
 interface ClientDetailsDialogProps {
   open: boolean;
@@ -56,6 +76,41 @@ function ReadOnlyField({
   );
 }
 
+const UFV_BADGE: Record<string, { label: string; className: string; Icon: typeof CheckCircle2 }> = {
+  OK: {
+    label: 'UFVs OK',
+    className:
+      'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800',
+    Icon: CheckCircle2,
+  },
+  ALERTA: {
+    label: 'UFVs em alerta',
+    className:
+      'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-800',
+    Icon: AlertTriangle,
+  },
+  SEM_UFV: {
+    label: 'Sem UFV',
+    className: 'bg-muted text-muted-foreground border-border',
+    Icon: CircleSlash,
+  },
+};
+
+const FIN_BADGE: Record<string, { label: string; className: string; Icon: typeof CheckCircle2 }> = {
+  OK: {
+    label: 'Em dia',
+    className:
+      'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800',
+    Icon: CheckCircle2,
+  },
+  INADIMPLENTE: {
+    label: 'Inadimplente',
+    className:
+      'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800',
+    Icon: CircleAlert,
+  },
+};
+
 export function ClientDetailsDialog({
   open,
   onOpenChange,
@@ -82,6 +137,13 @@ export function ClientDetailsDialog({
     ? new Date(cliente.sync_source_updated_at).toLocaleString('pt-BR')
     : '—';
 
+  const ufvMeta = cliente.ufv_status_resumo
+    ? UFV_BADGE[cliente.ufv_status_resumo] ?? UFV_BADGE.SEM_UFV
+    : null;
+  const finMeta = cliente.status_financeiro_ca
+    ? FIN_BADGE[cliente.status_financeiro_ca] ?? FIN_BADGE.OK
+    : null;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
@@ -96,6 +158,24 @@ export function ClientDetailsDialog({
             </Badge>
             {cliente.solarz_customer_id && (
               <Badge variant="outline">Solarz ID: {cliente.solarz_customer_id}</Badge>
+            )}
+            {ufvMeta && (
+              <Badge variant="outline" className={`flex items-center gap-1 ${ufvMeta.className}`}>
+                <ufvMeta.Icon className="h-3 w-3" />
+                {ufvMeta.label}
+              </Badge>
+            )}
+            {finMeta && (
+              <Badge variant="outline" className={`flex items-center gap-1 ${finMeta.className}`}>
+                <finMeta.Icon className="h-3 w-3" />
+                {finMeta.label}
+                {cliente.status_financeiro_ca === 'INADIMPLENTE' &&
+                  cliente.atrasos_recebimentos != null && (
+                    <span className="ml-1 font-mono">
+                      · {formatBRL(cliente.atrasos_recebimentos)}
+                    </span>
+                  )}
+              </Badge>
             )}
             <span className="text-xs text-muted-foreground">Última sincronização: {lastSync}</span>
           </DialogDescription>
@@ -112,11 +192,13 @@ export function ClientDetailsDialog({
             </h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <ReadOnlyField label="Empresa / Nome" value={cliente.empresa} />
-              <ReadOnlyField label="CNPJ / CPF" value={cliente.cnpj_cpf} />
+              <ReadOnlyField label="CNPJ / CPF" value={formatCpfCnpj(cliente.cnpj_cpf)} />
               <ReadOnlyField label="Endereço principal" value={cliente.endereco} />
               <ReadOnlyField
                 label="Cidade / UF / CEP"
-                value={[cliente.cidade, cliente.estado, cliente.cep].filter(Boolean).join(' · ')}
+                value={[cliente.cidade, cliente.estado, formatCep(cliente.cep)]
+                  .filter((v) => v && v !== '—')
+                  .join(' · ')}
               />
             </div>
           </section>
@@ -133,7 +215,7 @@ export function ClientDetailsDialog({
                 {cliente.profile.telefone && (
                   <div className="flex items-center gap-2">
                     <Phone className="h-4 w-4 text-muted-foreground" />
-                    <span>{cliente.profile.telefone}</span>
+                    <span>{formatPhone(cliente.profile.telefone)}</span>
                   </div>
                 )}
               </div>
@@ -152,7 +234,7 @@ export function ClientDetailsDialog({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <ReadOnlyField
                   label="Telefones"
-                  value={cliente.telefones_unificados}
+                  value={formatPhoneLines(cliente.telefones_unificados)}
                   multiline
                 />
                 <ReadOnlyField
@@ -189,7 +271,9 @@ export function ClientDetailsDialog({
                         </span>
                         <div className="flex items-center gap-2 text-xs">
                           {ufv.potencia_kwp != null && (
-                            <Badge variant="secondary">{Number(ufv.potencia_kwp).toFixed(2)} kWp</Badge>
+                            <Badge variant="secondary">
+                              {Number(ufv.potencia_kwp).toFixed(2)} kWp
+                            </Badge>
                           )}
                           {ufv.status && <Badge variant="outline">{ufv.status}</Badge>}
                         </div>
@@ -198,11 +282,15 @@ export function ClientDetailsDialog({
                         <div className="flex items-start gap-1.5 text-xs text-muted-foreground">
                           <MapPin className="h-3 w-3 mt-0.5 shrink-0" />
                           <span>
-                            {[ufv.endereco, local, ufv.cep].filter(Boolean).join(' · ')}
+                            {[ufv.endereco, local, formatCep(ufv.cep)]
+                              .filter((v) => v && v !== '—')
+                              .join(' · ')}
                           </span>
                         </div>
                       )}
-                      <p className="text-[11px] text-muted-foreground">ID Solarz: {ufv.solarz_ufv_id}</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        ID Solarz: {ufv.solarz_ufv_id}
+                      </p>
                     </div>
                   );
                 })}
@@ -215,6 +303,11 @@ export function ClientDetailsDialog({
             <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
               <Database className="h-4 w-4" />
               IDs Conta Azul ({cliente.conta_azul_ids.length})
+              {cliente.status_financeiro_ca === 'INADIMPLENTE' && (
+                <Badge variant="outline" className={FIN_BADGE.INADIMPLENTE.className}>
+                  Em atraso: {formatBRL(cliente.atrasos_recebimentos)}
+                </Badge>
+              )}
             </h4>
             {cliente.conta_azul_ids.length === 0 ? (
               <p className="text-xs text-muted-foreground">
@@ -236,7 +329,9 @@ export function ClientDetailsDialog({
                       </Badge>
                     </div>
                     {ca.cnpj_cpf && (
-                      <p className="text-xs text-muted-foreground">CNPJ/CPF: {ca.cnpj_cpf}</p>
+                      <p className="text-xs text-muted-foreground">
+                        CNPJ/CPF: {formatCpfCnpj(ca.cnpj_cpf)}
+                      </p>
                     )}
                     {ca.email && (
                       <p className="text-xs text-muted-foreground truncate">{ca.email}</p>
@@ -255,7 +350,7 @@ export function ClientDetailsDialog({
               className="space-y-4 rounded-md border border-border/60 bg-background/50 p-4"
             >
               <div className="flex items-center gap-2">
-                <h4 className="text-sm font-semibold text-foreground">Configurações Lovable</h4>
+                <h4 className="text-sm font-semibold text-foreground">Configurações internas</h4>
                 <span className="text-xs text-muted-foreground">(editáveis)</span>
               </div>
 
@@ -265,40 +360,39 @@ export function ClientDetailsDialog({
                   name="prioridade"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Prioridade</FormLabel>
+                      <FormLabel className="flex items-center gap-1.5">
+                        Prioridade
+                        <TooltipProvider delayDuration={150}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-xs">
+                              Escala de 1 a 5. <strong>Quanto menor, mais urgente</strong> — 1 é a
+                              prioridade máxima e 5 a mais baixa.
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </FormLabel>
                       <FormControl>
                         <Input
                           type="number"
-                          min={0}
+                          min={1}
+                          max={5}
                           {...field}
                           value={field.value ?? 5}
-                          onChange={(e) =>
-                            field.onChange(e.target.value ? parseInt(e.target.value, 10) : 5)
-                          }
-                          placeholder="Quanto menor, mais prioritário"
+                          onChange={(e) => {
+                            const v = e.target.value ? parseInt(e.target.value, 10) : 5;
+                            field.onChange(Math.min(5, Math.max(1, v)));
+                          }}
+                          placeholder="1 (urgente) a 5 (baixa)"
                         />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-                <FormField
-                  control={form.control}
-                  name="ufv_solarz"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>UFV/SolarZ (apelido interno)</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          value={field.value ?? ''}
-                          placeholder="Identificador interno do projeto"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <div /> {/* spacer */}
               </div>
 
               <FormField
@@ -311,13 +405,12 @@ export function ClientDetailsDialog({
                       <Textarea
                         {...field}
                         value={field.value ?? ''}
-                        rows={3}
+                        rows={4}
                         placeholder="Anotações operacionais (não são enviadas para Solarz/Conta Azul)"
-                        disabled
                       />
                     </FormControl>
                     <p className="text-[11px] text-muted-foreground">
-                      Campo reservado — em breve poderá ser editado.
+                      Visível apenas internamente. Sobrescreve o histórico mesclado de duplicatas.
                     </p>
                     <FormMessage />
                   </FormItem>
