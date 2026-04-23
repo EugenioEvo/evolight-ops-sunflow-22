@@ -209,6 +209,7 @@ export type Database = {
           created_at: string
           empresa: string | null
           endereco: string | null
+          enderecos_unificados: string | null
           estado: string | null
           geocoded_at: string | null
           id: string
@@ -220,6 +221,7 @@ export type Database = {
           sem_solarz: boolean | null
           solarz_customer_id: string | null
           sync_source_updated_at: string | null
+          telefones_unificados: string | null
           ufv_solarz: string | null
           updated_at: string
         }
@@ -230,6 +232,7 @@ export type Database = {
           created_at?: string
           empresa?: string | null
           endereco?: string | null
+          enderecos_unificados?: string | null
           estado?: string | null
           geocoded_at?: string | null
           id?: string
@@ -241,6 +244,7 @@ export type Database = {
           sem_solarz?: boolean | null
           solarz_customer_id?: string | null
           sync_source_updated_at?: string | null
+          telefones_unificados?: string | null
           ufv_solarz?: string | null
           updated_at?: string
         }
@@ -251,6 +255,7 @@ export type Database = {
           created_at?: string
           empresa?: string | null
           endereco?: string | null
+          enderecos_unificados?: string | null
           estado?: string | null
           geocoded_at?: string | null
           id?: string
@@ -262,6 +267,7 @@ export type Database = {
           sem_solarz?: boolean | null
           solarz_customer_id?: string | null
           sync_source_updated_at?: string | null
+          telefones_unificados?: string | null
           ufv_solarz?: string | null
           updated_at?: string
         }
