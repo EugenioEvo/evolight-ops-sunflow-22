@@ -87,6 +87,7 @@ export const createClientService = (client?: AppSupabaseClient) => {
       page: number;
       pageSize?: number;
       search?: string;
+      includeInactive?: boolean;
     }): Promise<PagedClientes> {
       const pageSize = params.pageSize ?? PAGE_SIZE;
       const from = (params.page - 1) * pageSize;
@@ -97,6 +98,10 @@ export const createClientService = (client?: AppSupabaseClient) => {
         .select(SELECT_BASE, { count: 'exact' })
         .order('empresa', { ascending: true, nullsFirst: false })
         .range(from, to);
+
+      if (!params.includeInactive) {
+        query = query.eq('ativo', true);
+      }
 
       const search = params.search?.trim();
       if (search) {

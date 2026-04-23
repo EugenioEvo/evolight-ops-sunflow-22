@@ -14,6 +14,8 @@ export interface UseClientDataResult {
   pageSize: number;
   totalCount: number;
   totalPages: number;
+  includeInactive: boolean;
+  setIncludeInactive: (value: boolean) => void;
   refetch: () => Promise<void>;
 }
 
@@ -23,14 +25,15 @@ export function useClientData(pageSize: number = PAGE_SIZE): UseClientDataResult
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  const [includeInactive, setIncludeInactive] = useState(false);
   const { handleAsyncError } = useErrorHandler();
 
   const debouncedSearch = useDebounce(searchTerm, 350);
 
-  // Whenever the search term changes, reset to page 1.
+  // Whenever the search term or inactive filter changes, reset to page 1.
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch]);
+  }, [debouncedSearch, includeInactive]);
 
   const fetchPage = useCallback(async () => {
     setLoading(true);
@@ -40,6 +43,7 @@ export function useClientData(pageSize: number = PAGE_SIZE): UseClientDataResult
           page,
           pageSize,
           search: debouncedSearch,
+          includeInactive,
         }),
       { fallbackMessage: 'Erro ao carregar clientes' },
     );
@@ -48,7 +52,7 @@ export function useClientData(pageSize: number = PAGE_SIZE): UseClientDataResult
       setTotalCount(data.total);
     }
     setLoading(false);
-  }, [debouncedSearch, handleAsyncError, page, pageSize]);
+  }, [debouncedSearch, handleAsyncError, includeInactive, page, pageSize]);
 
   useEffect(() => {
     fetchPage();
@@ -69,6 +73,8 @@ export function useClientData(pageSize: number = PAGE_SIZE): UseClientDataResult
     pageSize,
     totalCount,
     totalPages,
+    includeInactive,
+    setIncludeInactive,
     refetch: fetchPage,
   };
 }
