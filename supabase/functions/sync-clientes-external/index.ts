@@ -439,6 +439,7 @@ Deno.serve(async (req) => {
     for (const [caId, ca] of caById) {
       checkTimeout();
       if (caToSz.has(caId)) continue; // já tratado acima
+      seenCaIds.add(caId);
 
       const empresa =
         norm(ca.nome_empresa) ?? norm(ca.nome) ?? "(sem nome)";
@@ -462,6 +463,7 @@ Deno.serve(async (req) => {
           .update({
             empresa,
             cnpj_cpf: cnpjCpf,
+            ativo: true,
             endereco: norm(ca.logradouro),
             cidade: norm(ca.cidade),
             estado: norm(ca.uf),
@@ -494,6 +496,7 @@ Deno.serve(async (req) => {
           .from("clientes")
           .insert({
             origem: "conta_azul",
+            ativo: true,
             empresa,
             cnpj_cpf: cnpjCpf,
             endereco: norm(ca.logradouro),
