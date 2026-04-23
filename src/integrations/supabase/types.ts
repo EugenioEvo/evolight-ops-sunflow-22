@@ -203,6 +203,7 @@ export type Database = {
       }
       clientes: {
         Row: {
+          atrasos_recebimentos: number | null
           cep: string | null
           cidade: string | null
           cnpj_cpf: string | null
@@ -215,17 +216,21 @@ export type Database = {
           id: string
           latitude: number | null
           longitude: number | null
+          observacoes: string | null
           origem: string | null
           prioridade: number | null
           profile_id: string | null
           sem_solarz: boolean | null
           solarz_customer_id: string | null
+          status_financeiro_ca: string | null
           sync_source_updated_at: string | null
           telefones_unificados: string | null
           ufv_solarz: string | null
+          ufv_status_resumo: string | null
           updated_at: string
         }
         Insert: {
+          atrasos_recebimentos?: number | null
           cep?: string | null
           cidade?: string | null
           cnpj_cpf?: string | null
@@ -238,17 +243,21 @@ export type Database = {
           id?: string
           latitude?: number | null
           longitude?: number | null
+          observacoes?: string | null
           origem?: string | null
           prioridade?: number | null
           profile_id?: string | null
           sem_solarz?: boolean | null
           solarz_customer_id?: string | null
+          status_financeiro_ca?: string | null
           sync_source_updated_at?: string | null
           telefones_unificados?: string | null
           ufv_solarz?: string | null
+          ufv_status_resumo?: string | null
           updated_at?: string
         }
         Update: {
+          atrasos_recebimentos?: number | null
           cep?: string | null
           cidade?: string | null
           cnpj_cpf?: string | null
@@ -261,14 +270,17 @@ export type Database = {
           id?: string
           latitude?: number | null
           longitude?: number | null
+          observacoes?: string | null
           origem?: string | null
           prioridade?: number | null
           profile_id?: string | null
           sem_solarz?: boolean | null
           solarz_customer_id?: string | null
+          status_financeiro_ca?: string | null
           sync_source_updated_at?: string | null
           telefones_unificados?: string | null
           ufv_solarz?: string | null
+          ufv_status_resumo?: string | null
           updated_at?: string
         }
         Relationships: [

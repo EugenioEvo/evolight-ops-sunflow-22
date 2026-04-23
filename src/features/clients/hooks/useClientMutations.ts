@@ -15,7 +15,6 @@ export function useClientMutations(refetch: () => Promise<void>) {
   const form = useForm<ClienteEditableForm>({
     resolver: zodResolver(clienteEditableSchema),
     defaultValues: {
-      ufv_solarz: '',
       prioridade: 5,
       observacoes: '',
     },
@@ -25,7 +24,6 @@ export function useClientMutations(refetch: () => Promise<void>) {
   useEffect(() => {
     if (editingClient) {
       form.reset({
-        ufv_solarz: editingClient.ufv_solarz ?? '',
         prioridade: editingClient.prioridade ?? 5,
         observacoes: editingClient.observacoes ?? '',
       });
@@ -40,7 +38,7 @@ export function useClientMutations(refetch: () => Promise<void>) {
   const closeDialog = () => {
     setIsDialogOpen(false);
     setEditingClient(null);
-    form.reset({ ufv_solarz: '', prioridade: 5, observacoes: '' });
+    form.reset({ prioridade: 5, observacoes: '' });
   };
 
   const onSubmit = async (data: ClienteEditableForm) => {

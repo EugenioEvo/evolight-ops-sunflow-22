@@ -176,6 +176,7 @@ Deno.serve(async (req) => {
       `SELECT id, nome, nome_empresa, documento, email,
               telefone_celular, telefone_comercial,
               logradouro, numero_end, complemento, bairro, cidade, uf, cep, pais,
+              atrasos_recebimentos,
               data_alteracao
        FROM pessoas
        WHERE LOWER(perfis) LIKE '%cliente%'
@@ -255,6 +256,32 @@ Deno.serve(async (req) => {
       const empresa = cli.name ?? "(sem nome)";
       const cnpjCpf = norm(primeiraPlanta?.cliente_cpf);
 
+      // Status agregado de UFVs
+      const ufvStatuses = plantas
+        .map((p) => norm(p.status_status)?.toLowerCase())
+        .filter((s): s is string => !!s);
+      let ufvResumo: string;
+      if (plantas.length === 0) {
+        ufvResumo = "SEM_UFV";
+      } else if (
+        ufvStatuses.some((s) =>
+          ["alerta", "alarme", "offline", "falha", "erro", "down", "critico"].some((k) => s.includes(k))
+        )
+      ) {
+        ufvResumo = "ALERTA";
+      } else {
+        ufvResumo = "OK";
+      }
+
+      // Status financeiro CA: usa o pior caso entre os CAs vinculados
+      let totalAtraso = 0;
+      for (const caId of linkedCaIds) {
+        const ca = caById.get(caId);
+        const v = numOrNull(ca?.atrasos_recebimentos);
+        if (v && v > 0) totalAtraso += v;
+      }
+      const statusFinanceiro = totalAtraso > 0 ? "INADIMPLENTE" : "OK";
+
       const clientePayload = {
         solarz_customer_id: szId,
         origem: "solarz",
@@ -268,6 +295,9 @@ Deno.serve(async (req) => {
         longitude: numOrNull(primeiraPlanta?.endereco_longitude),
         telefones_unificados: joinLines(telefonesLines),
         enderecos_unificados: joinLines(enderecosLines),
+        atrasos_recebimentos: totalAtraso > 0 ? totalAtraso : null,
+        status_financeiro_ca: statusFinanceiro,
+        ufv_status_resumo: ufvResumo,
         sync_source_updated_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
@@ -346,6 +376,8 @@ Deno.serve(async (req) => {
       const empresa =
         norm(ca.nome_empresa) ?? norm(ca.nome) ?? "(sem nome)";
       const cnpjCpf = norm(ca.documento);
+      const atrasoOrfao = numOrNull(ca.atrasos_recebimentos);
+      const statusFinanceiroOrfao = (atrasoOrfao ?? 0) > 0 ? "INADIMPLENTE" : "OK";
 
       // Busca cliente existente para esse CA (via cliente_conta_azul_ids)
       const { data: existingLink } = await supabase
@@ -358,7 +390,6 @@ Deno.serve(async (req) => {
 
       if (existingLink?.cliente_id) {
         clienteUuid = existingLink.cliente_id;
-        // Atualiza dados do cliente órfão (não toca em campos preservados)
         await supabase
           .from("clientes")
           .update({
@@ -384,6 +415,9 @@ Deno.serve(async (req) => {
                 .filter(Boolean)
                 .join(", ")}`,
             ]),
+            atrasos_recebimentos: atrasoOrfao && atrasoOrfao > 0 ? atrasoOrfao : null,
+            status_financeiro_ca: statusFinanceiroOrfao,
+            ufv_status_resumo: "SEM_UFV",
             sync_source_updated_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           })
@@ -415,6 +449,9 @@ Deno.serve(async (req) => {
                 .filter(Boolean)
                 .join(", ")}`,
             ]),
+            atrasos_recebimentos: atrasoOrfao && atrasoOrfao > 0 ? atrasoOrfao : null,
+            status_financeiro_ca: statusFinanceiroOrfao,
+            ufv_status_resumo: "SEM_UFV",
             sync_source_updated_at: new Date().toISOString(),
           })
           .select("id")
