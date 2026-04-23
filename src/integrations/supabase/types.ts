@@ -1612,6 +1612,7 @@ export type Database = {
           status: Database["public"]["Enums"]["ticket_status"]
           tecnico_responsavel_id: string | null
           titulo: string
+          ufv_nome: string | null
           updated_at: string
         }
         Insert: {
@@ -1641,6 +1642,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["ticket_status"]
           tecnico_responsavel_id?: string | null
           titulo: string
+          ufv_nome?: string | null
           updated_at?: string
         }
         Update: {
@@ -1670,6 +1672,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["ticket_status"]
           tecnico_responsavel_id?: string | null
           titulo?: string
+          ufv_nome?: string | null
           updated_at?: string
         }
         Relationships: [
