@@ -72,7 +72,7 @@ serve(async (req) => {
           cidade,
           estado,
           cep,
-          ufv_solarz,
+          cliente_ufvs(nome),
           profiles(nome, email, telefone)
         )
       `)
