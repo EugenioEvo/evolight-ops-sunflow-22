@@ -127,6 +127,7 @@ export function SyncClientesButton({ onSyncComplete }: { onSyncComplete?: () => 
   if (!isStaff) return null;
 
   const handleSync = async () => {
+    let hasInProgressRun = false;
     setRunning(true);
     toast.loading("Sincronização iniciada — pode levar alguns segundos...", { id: "sync-clientes" });
     try {
@@ -145,6 +146,7 @@ export function SyncClientesButton({ onSyncComplete }: { onSyncComplete?: () => 
     } catch (e) {
       const runs = await fetchHistory();
       const inProgressRun = runs[0] && isRunInProgress(runs[0]) ? runs[0] : null;
+      hasInProgressRun = Boolean(inProgressRun);
 
       if (inProgressRun) {
         setTrackedRunId(inProgressRun.id);
@@ -157,7 +159,7 @@ export function SyncClientesButton({ onSyncComplete }: { onSyncComplete?: () => 
         });
       }
     } finally {
-      setRunning(Boolean(inProgressRun));
+      setRunning(hasInProgressRun);
     }
   };
 
