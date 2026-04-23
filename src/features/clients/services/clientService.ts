@@ -11,8 +11,10 @@ import { PAGE_SIZE } from '../types';
 
 const SELECT_BASE = `
   id, empresa, cnpj_cpf, endereco, cidade, estado, cep,
-  origem, solarz_customer_id, sem_solarz, ufv_solarz, prioridade,
-  telefones_unificados, enderecos_unificados, sync_source_updated_at,
+  origem, solarz_customer_id, sem_solarz, prioridade, observacoes,
+  telefones_unificados, enderecos_unificados,
+  atrasos_recebimentos, status_financeiro_ca, ufv_status_resumo,
+  sync_source_updated_at,
   created_at, updated_at, profile_id,
   profiles!clientes_profile_id_fkey(id, nome, email, telefone),
   cliente_ufvs(id, solarz_ufv_id, nome, endereco, cidade, estado, cep, potencia_kwp, status),
@@ -36,11 +38,13 @@ function mapRow(row: any): Cliente {
     origem: row.origem ?? null,
     solarz_customer_id: row.solarz_customer_id ?? null,
     sem_solarz: row.sem_solarz ?? null,
-    ufv_solarz: row.ufv_solarz ?? null,
     prioridade: row.prioridade ?? null,
-    observacoes: null, // observações não são persistidas no schema atual
+    observacoes: row.observacoes ?? null,
     telefones_unificados: row.telefones_unificados ?? null,
     enderecos_unificados: row.enderecos_unificados ?? null,
+    atrasos_recebimentos: row.atrasos_recebimentos != null ? Number(row.atrasos_recebimentos) : null,
+    status_financeiro_ca: row.status_financeiro_ca ?? null,
+    ufv_status_resumo: row.ufv_status_resumo ?? null,
     sync_source_updated_at: row.sync_source_updated_at ?? null,
     created_at: row.created_at ?? null,
     updated_at: row.updated_at ?? null,
@@ -101,7 +105,6 @@ export const createClientService = (client?: AppSupabaseClient) => {
             `empresa.ilike.${term}`,
             `cnpj_cpf.ilike.${term}`,
             `cidade.ilike.${term}`,
-            `ufv_solarz.ilike.${term}`,
             `solarz_customer_id.ilike.${term}`,
           ].join(','),
         );
@@ -126,8 +129,8 @@ export const createClientService = (client?: AppSupabaseClient) => {
       const { error } = await db
         .from('clientes')
         .update({
-          ufv_solarz: data.ufv_solarz?.trim() ? data.ufv_solarz.trim() : null,
           prioridade: data.prioridade ?? 5,
+          observacoes: data.observacoes?.trim() ? data.observacoes.trim() : null,
         })
         .eq('id', clienteId);
       if (error) throw error;

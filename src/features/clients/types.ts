@@ -8,18 +8,20 @@ export const ESTADOS_BR = [
 
 // Editable fields only (managed in Lovable, not synced from external sources)
 export const clienteEditableSchema = z.object({
-  ufv_solarz: z.string().trim().max(120).optional().or(z.literal('')),
   prioridade: z
     .number({ invalid_type_error: 'Informe um número' })
     .int('Use um número inteiro')
-    .min(0, 'Prioridade deve ser maior ou igual a 0')
-    .max(99, 'Prioridade muito alta'),
+    .min(1, 'Prioridade mínima é 1')
+    .max(5, 'Prioridade máxima é 5'),
   observacoes: z.string().max(2000).optional().or(z.literal('')),
 });
 
 export type ClienteEditableForm = z.infer<typeof clienteEditableSchema>;
 
 export type ClienteOrigem = 'solarz' | 'conta_azul' | 'manual' | string;
+
+export type StatusFinanceiroCA = 'OK' | 'INADIMPLENTE' | string;
+export type UfvStatusResumo = 'OK' | 'ALERTA' | 'SEM_UFV' | string;
 
 export interface ClienteUFV {
   id: string;
@@ -52,11 +54,13 @@ export interface Cliente {
   origem: ClienteOrigem | null;
   solarz_customer_id: string | null;
   sem_solarz: boolean | null;
-  ufv_solarz: string | null;
   prioridade: number | null;
   observacoes: string | null;
   telefones_unificados: string | null;
   enderecos_unificados: string | null;
+  atrasos_recebimentos: number | null;
+  status_financeiro_ca: StatusFinanceiroCA | null;
+  ufv_status_resumo: UfvStatusResumo | null;
   sync_source_updated_at: string | null;
   created_at: string | null;
   updated_at: string | null;
