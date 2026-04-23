@@ -54,6 +54,8 @@ async function openMysql(prefix: string) {
 }
 
 // ─── main ─────────────────────────────────────────────────────────────────
+const HARD_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutos
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -64,6 +66,17 @@ Deno.serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     { auth: { persistSession: false } },
   );
+
+  // Lê body (opcional) para identificar origem do disparo
+  let triggeredBy: "manual" | "cron" = "manual";
+  try {
+    const body = await req.clone().json().catch(() => null);
+    if (body && (body.triggered_by === "pg_cron" || body.triggered_by === "cron")) {
+      triggeredBy = "cron";
+    }
+  } catch {
+    // body opcional
+  }
 
   // Auth: aceita JWT staff OU service-role (cron). Se vier JWT, valida role.
   const authHeader = req.headers.get("Authorization") ?? "";
@@ -91,10 +104,22 @@ Deno.serve(async (req) => {
     }
   }
 
+  // Limpa runs travadas anteriores (mais de 5min em "running") para evitar lixo
+  await supabase
+    .from("sync_runs")
+    .update({
+      status: "error",
+      finished_at: new Date().toISOString(),
+      error: "Run abortada — substituída por nova execução (timeout anterior).",
+    })
+    .eq("source", "clientes-external")
+    .eq("status", "running")
+    .lt("started_at", new Date(Date.now() - HARD_TIMEOUT_MS).toISOString());
+
   // Cria run
   const { data: runRow, error: runErr } = await supabase
     .from("sync_runs")
-    .insert({ source: "clientes-external", status: "running" })
+    .insert({ source: "clientes-external", status: "running", triggered_by: triggeredBy })
     .select("id")
     .single();
   if (runErr || !runRow) {
@@ -114,13 +139,23 @@ Deno.serve(async (req) => {
   const errors: string[] = [];
 
   // ─── Hard timeout (5 minutes) ─────────────────────────────────────────
-  // Se a sync passar de 5min, abortamos e marcamos a run como erro.
-  // Evita runs eternamente "running" travando o histórico/UI.
-  const HARD_TIMEOUT_MS = 5 * 60 * 1000;
+  // Promise.race garante que QUALQUER await trava (ex: MySQL handshake)
+  // será interrompido. checkTimeout() é mantido como guard adicional entre
+  // iterações pesadas.
   let timedOut = false;
-  const timeoutHandle = setTimeout(() => {
-    timedOut = true;
-  }, HARD_TIMEOUT_MS);
+  let timeoutHandle: number | undefined;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutHandle = setTimeout(() => {
+      timedOut = true;
+      reject(
+        new Error(
+          `Timeout: sincronização excedeu ${HARD_TIMEOUT_MS / 60000} minutos e foi abortada.`,
+        ),
+      );
+    }, HARD_TIMEOUT_MS) as unknown as number;
+  });
+  const withTimeout = <T,>(p: Promise<T>): Promise<T> =>
+    Promise.race([p, timeoutPromise]) as Promise<T>;
   const checkTimeout = () => {
     if (timedOut) {
       throw new Error(
