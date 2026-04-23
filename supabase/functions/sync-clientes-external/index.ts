@@ -113,6 +113,22 @@ Deno.serve(async (req) => {
   let rowsUpserted = 0;
   const errors: string[] = [];
 
+  // ─── Hard timeout (5 minutes) ─────────────────────────────────────────
+  // Se a sync passar de 5min, abortamos e marcamos a run como erro.
+  // Evita runs eternamente "running" travando o histórico/UI.
+  const HARD_TIMEOUT_MS = 5 * 60 * 1000;
+  let timedOut = false;
+  const timeoutHandle = setTimeout(() => {
+    timedOut = true;
+  }, HARD_TIMEOUT_MS);
+  const checkTimeout = () => {
+    if (timedOut) {
+      throw new Error(
+        `Timeout: sincronização excedeu ${HARD_TIMEOUT_MS / 60000} minutos e foi abortada.`,
+      );
+    }
+  };
+
   try {
     // 1) Conexões em paralelo
     [szConn, caConn, dpConn] = await Promise.all([
@@ -120,6 +136,7 @@ Deno.serve(async (req) => {
       openMysql("CONTA_AZUL"),
       openMysql("DEPARA"),
     ]);
+    checkTimeout();
 
     // 2) De-Para → mapas
     const [dpRows] = await dpConn.query<any[]>(
