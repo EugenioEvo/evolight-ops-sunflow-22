@@ -170,7 +170,7 @@ const VisualizarOS = () => {
             </div>
             {ticket.clientes?.ufv_solarz && (
               <div>
-                <p className="text-sm text-muted-foreground">UFV/SolarZ</p>
+                <p className="text-sm text-muted-foreground">Usina(s)</p>
                 <span className="inline-block px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded text-sm font-medium">
                   {ticket.clientes.ufv_solarz}
                 </span>

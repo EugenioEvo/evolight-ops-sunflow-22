@@ -48,7 +48,7 @@ export const StepIdentification = ({ formData, updateFormData, availableTechnici
         </div>
         {formData.ufv_solarz && (
           <div className="space-y-2">
-            <Label className="text-muted-foreground">UFV/SolarZ</Label>
+            <Label className="text-muted-foreground">Usina(s)</Label>
             <Input value={formData.ufv_solarz} disabled className="bg-amber-50 border-amber-200 text-amber-800" />
           </div>
         )}
