@@ -23,6 +23,7 @@ type SyncRun = {
   rows_read: number;
   rows_upserted: number;
   error: string | null;
+  triggered_by: string | null;
 };
 
 const STAFF_ROLES = ["admin", "engenharia", "supervisao"] as const;
@@ -49,7 +50,7 @@ export function SyncClientesButton({ onSyncComplete }: { onSyncComplete?: () => 
   const fetchHistory = async () => {
     const { data } = await supabase
       .from("sync_runs")
-      .select("id, source, status, started_at, finished_at, rows_read, rows_upserted, error")
+      .select("id, source, status, started_at, finished_at, rows_read, rows_upserted, error, triggered_by")
       .eq("source", "clientes-external")
       .order("started_at", { ascending: false })
       .limit(20);
@@ -207,7 +208,7 @@ export function SyncClientesButton({ onSyncComplete }: { onSyncComplete?: () => 
             {history.map((r) => (
               <div key={r.id} className="border rounded-md p-3 text-sm">
                 <div className="flex items-center justify-between flex-wrap gap-2">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <Badge
                       variant={
                         r.status === "success"
@@ -220,6 +221,16 @@ export function SyncClientesButton({ onSyncComplete }: { onSyncComplete?: () => 
                       }
                     >
                       {r.status}
+                    </Badge>
+                    <Badge
+                      variant="outline"
+                      className={
+                        r.triggered_by === "cron"
+                          ? "border-primary/40 text-primary"
+                          : "border-muted-foreground/40 text-muted-foreground"
+                      }
+                    >
+                      {r.triggered_by === "cron" ? "CRON" : "MANUAL"}
                     </Badge>
                     <span className="text-muted-foreground">
                       {new Date(r.started_at).toLocaleString("pt-BR")}
