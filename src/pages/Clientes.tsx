@@ -2,6 +2,8 @@ import { Building2, Search, Star } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { Pagination } from '@/components/Pagination';
 import { useClientData } from '@/features/clients/hooks/useClientData';
 import { useClientMutations } from '@/features/clients/hooks/useClientMutations';
@@ -20,6 +22,8 @@ export default function Clientes() {
     pageSize,
     totalCount,
     totalPages,
+    includeInactive,
+    setIncludeInactive,
     refetch,
   } = useClientData();
 
@@ -56,6 +60,16 @@ export default function Clientes() {
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10"
           />
+        </div>
+        <div className="flex items-center gap-2">
+          <Switch
+            id="show-inactive"
+            checked={includeInactive}
+            onCheckedChange={setIncludeInactive}
+          />
+          <Label htmlFor="show-inactive" className="text-sm cursor-pointer">
+            Mostrar removidos
+          </Label>
         </div>
         <Badge variant="outline" className="text-sm flex items-center gap-1">
           <Star className="h-3 w-3" />
