@@ -178,8 +178,8 @@ Deno.serve(async (req) => {
               logradouro, numero_end, complemento, bairro, cidade, uf, cep, pais,
               data_alteracao
        FROM pessoas
-       WHERE perfis ILIKE '%cliente%'
-         AND lower(ativo) IN ('true','1','sim')`,
+       WHERE LOWER(perfis) LIKE '%cliente%'
+         AND LOWER(ativo) IN ('true','1','sim')`,
     );
     rowsRead += caRows.length;
 
