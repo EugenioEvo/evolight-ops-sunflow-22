@@ -550,6 +550,64 @@ Deno.serve(async (req) => {
       if (linkErr) errors.push(`ca-link-orphan/${caId}: ${linkErr.message}`);
     }
 
+    // ─── 6.5) Saneamento: soft-delete de clientes que sumiram das origens ──
+    let rowsDeactivated = 0;
+    try {
+      // 6.5a) Solarz: marca ativo=false em quem não veio mais na sync
+      // (apenas registros com solarz_customer_id NÃO NULO e que não estão na lista vista)
+      const seenSzArr = Array.from(seenSolarzIds);
+      const { data: szDeact, error: szDeactErr } = await supabase
+        .from("clientes")
+        .update({ ativo: false, updated_at: new Date().toISOString() })
+        .eq("origem", "solarz")
+        .eq("ativo", true)
+        .not("solarz_customer_id", "is", null)
+        .not(
+          "solarz_customer_id",
+          "in",
+          seenSzArr.length > 0
+            ? `(${seenSzArr.map((s) => `"${s.replace(/"/g, '""')}"`).join(",")})`
+            : "(NULL)",
+        )
+        .select("id");
+      if (szDeactErr) {
+        errors.push(`saneamento-solarz: ${szDeactErr.message}`);
+      } else {
+        rowsDeactivated += szDeact?.length ?? 0;
+      }
+
+      // 6.5b) Conta Azul órfãos: precisa olhar pelo conta_azul_customer_id da tabela auxiliar
+      // Buscamos todos os cliente_id de origem='conta_azul' ativos cujo CA sumiu
+      const { data: caActiveLinks } = await supabase
+        .from("cliente_conta_azul_ids")
+        .select("cliente_id, conta_azul_customer_id, clientes!inner(id, origem, ativo)")
+        .eq("clientes.origem", "conta_azul")
+        .eq("clientes.ativo", true);
+
+      const orphanClienteIds = new Set<string>();
+      for (const link of caActiveLinks ?? []) {
+        if (!seenCaIds.has(String(link.conta_azul_customer_id))) {
+          orphanClienteIds.add(String(link.cliente_id));
+        }
+      }
+      if (orphanClienteIds.size > 0) {
+        const { data: caDeact, error: caDeactErr } = await supabase
+          .from("clientes")
+          .update({ ativo: false, updated_at: new Date().toISOString() })
+          .in("id", Array.from(orphanClienteIds))
+          .select("id");
+        if (caDeactErr) {
+          errors.push(`saneamento-ca: ${caDeactErr.message}`);
+        } else {
+          rowsDeactivated += caDeact?.length ?? 0;
+        }
+      }
+    } catch (sanErr) {
+      errors.push(
+        `saneamento: ${sanErr instanceof Error ? sanErr.message : String(sanErr)}`,
+      );
+    }
+
     // 7) Encerra run
     const finalStatus = errors.length === 0 ? "success" : "partial";
     await supabase
@@ -559,7 +617,11 @@ Deno.serve(async (req) => {
         finished_at: new Date().toISOString(),
         rows_read: rowsRead,
         rows_upserted: rowsUpserted,
-        error: errors.length ? errors.slice(0, 50).join(" | ") : null,
+        error: errors.length
+          ? errors.slice(0, 50).join(" | ")
+          : rowsDeactivated > 0
+            ? `Saneamento: ${rowsDeactivated} cliente(s) marcado(s) como inativo(s).`
+            : null,
       })
       .eq("id", runId);
 
@@ -569,6 +631,7 @@ Deno.serve(async (req) => {
         status: finalStatus,
         rows_read: rowsRead,
         rows_upserted: rowsUpserted,
+        rows_deactivated: rowsDeactivated,
         errors_count: errors.length,
         sample_errors: errors.slice(0, 10),
       }),
