@@ -149,7 +149,7 @@ export const TicketForm = ({
               />
               
               <FormItem>
-                <FormLabel>UFV/SolarZ</FormLabel>
+                <FormLabel>Usina</FormLabel>
                 <Select 
                   value={selectedUfvSolarzForm}
                   onValueChange={(value) => {
@@ -165,7 +165,7 @@ export const TicketForm = ({
                   }}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione UFV/SolarZ" />
+                    <SelectValue placeholder="Selecione a usina" />
                   </SelectTrigger>
                   <SelectContent>
                     {ufvSolarzListForForm.map((ufv) => (

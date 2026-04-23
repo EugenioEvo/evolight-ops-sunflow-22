@@ -177,7 +177,7 @@ export const TicketCard = ({
               </Badge>
               {ticket.clientes?.ufv_solarz && (
                 <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-xs">
-                  UFV/SolarZ: {ticket.clientes.ufv_solarz}
+                  Usina: {ticket.clientes.ufv_solarz}
                 </Badge>
               )}
             </CardDescription>

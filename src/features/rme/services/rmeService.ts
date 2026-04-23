@@ -12,10 +12,18 @@ export const createRmeService = (client?: AppSupabaseClient) => {
       const { data, error } = await db
         .from('rme_relatorios')
         .select(`*, aprovado_por, data_aprovacao, observacoes_aprovacao,
-          tickets!inner(titulo, numero_ticket, endereco_servico, clientes!inner(empresa, endereco, ufv_solarz)),
+          tickets!inner(titulo, numero_ticket, endereco_servico, clientes!inner(empresa, endereco, cliente_ufvs(nome))),
           tecnicos!inner(profiles!inner(nome))`)
         .order('created_at', { ascending: false });
       if (error) throw error;
+      // Derive legacy ufv_solarz field from cliente_ufvs.nome list
+      (data || []).forEach((r: any) => {
+        if (r.tickets?.clientes) {
+          const ufvs = Array.isArray(r.tickets.clientes.cliente_ufvs) ? r.tickets.clientes.cliente_ufvs : [];
+          const names = ufvs.map((u: any) => u?.nome).filter(Boolean);
+          r.tickets.clientes.ufv_solarz = names.length ? names.join(', ') : null;
+        }
+      });
       return data || [];
     },
 

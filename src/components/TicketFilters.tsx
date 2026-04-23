@@ -58,10 +58,10 @@ const TicketFilters = ({
       {ufvSolarzOptions.length > 0 && onUfvSolarzChange && (
         <Select value={selectedUfvSolarz} onValueChange={onUfvSolarzChange}>
           <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="UFV/SolarZ" />
+            <SelectValue placeholder="Usina" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="todos">Todos UFV/SolarZ</SelectItem>
+            <SelectItem value="todos">Todas as usinas</SelectItem>
             {ufvSolarzOptions.map((ufv) => (
               <SelectItem key={ufv} value={ufv}>
                 {ufv}

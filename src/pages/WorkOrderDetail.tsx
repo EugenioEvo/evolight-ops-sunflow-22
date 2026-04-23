@@ -198,7 +198,7 @@ const WorkOrderDetail = () => {
               <div><p className="text-sm text-muted-foreground">Cliente</p><p className="font-medium mt-1">{workOrder.tickets.clientes?.empresa}</p></div>
               <div><p className="text-sm text-muted-foreground">Prioridade</p><div className="flex items-center gap-1 mt-1"><Star className="h-4 w-4 text-blue-600" /><span className="font-medium">P{workOrder.tickets.clientes?.prioridade ?? 5}</span></div></div>
               {workOrder.tickets.clientes?.ufv_solarz && (
-                <div><p className="text-sm text-muted-foreground">UFV/SolarZ</p><Badge variant="outline" className="mt-1 bg-amber-50 text-amber-700 border-amber-200">{workOrder.tickets.clientes.ufv_solarz}</Badge></div>
+                <div><p className="text-sm text-muted-foreground">Usina(s)</p><Badge variant="outline" className="mt-1 bg-amber-50 text-amber-700 border-amber-200">{workOrder.tickets.clientes.ufv_solarz}</Badge></div>
               )}
             </div>
             {workOrder.site_name && <div><p className="text-sm text-muted-foreground">Usina</p><div className="flex items-center gap-2 mt-1"><MapPin className="h-4 w-4 text-muted-foreground" /><span className="font-medium">{workOrder.site_name}</span></div></div>}

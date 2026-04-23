@@ -200,13 +200,19 @@ const RMEWizard = () => {
         return;
       }
 
-      const { data, error } = await supabase.from("ordens_servico").select("id, numero_os, site_name, ticket_id, tickets(id, endereco_servico, clientes(empresa, ufv_solarz))").eq("id", workOrderId).single();
+      const { data, error } = await supabase.from("ordens_servico").select("id, numero_os, site_name, ticket_id, tickets(id, endereco_servico, clientes(empresa, cliente_ufvs(nome)))").eq("id", workOrderId).single();
       if (error) throw error;
-      setWorkOrder(data as unknown as WorkOrderInfo);
-      const clienteNome = (data.tickets as any)?.clientes?.empresa || "";
-      setFormData(prev => ({ ...prev, ordem_servico_id: data.id, ticket_id: data.ticket_id, site_name: data.site_name || "", client_name: clienteNome, address: (data.tickets as any)?.endereco_servico || "", ufv_solarz: (data.tickets as any)?.clientes?.ufv_solarz || "", nome_cliente_assinatura: prev.nome_cliente_assinatura || clienteNome }));
-      setCurrentTicketId(data.ticket_id);
-      await loadGroupContext(data.ticket_id);
+      const anyData: any = data;
+      if (anyData?.tickets?.clientes) {
+        const ufvs = Array.isArray(anyData.tickets.clientes.cliente_ufvs) ? anyData.tickets.clientes.cliente_ufvs : [];
+        const names = ufvs.map((u: any) => u?.nome).filter(Boolean);
+        anyData.tickets.clientes.ufv_solarz = names.length ? names.join(', ') : null;
+      }
+      setWorkOrder(anyData as unknown as WorkOrderInfo);
+      const clienteNome = anyData?.tickets?.clientes?.empresa || "";
+      setFormData(prev => ({ ...prev, ordem_servico_id: anyData.id, ticket_id: anyData.ticket_id, site_name: anyData.site_name || "", client_name: clienteNome, address: anyData?.tickets?.endereco_servico || "", ufv_solarz: anyData?.tickets?.clientes?.ufv_solarz || "", nome_cliente_assinatura: prev.nome_cliente_assinatura || clienteNome }));
+      setCurrentTicketId(anyData.ticket_id);
+      await loadGroupContext(anyData.ticket_id);
     } catch (error: any) {
       toast({ title: "Erro ao carregar OS", description: error.message, variant: "destructive" });
       navigate("/work-orders");
@@ -216,7 +222,7 @@ const RMEWizard = () => {
   const loadExistingRME = async (rmeId: string) => {
     try {
       setLoading(true);
-      const { data, error } = await supabase.from("rme_relatorios").select("*, tecnicos(id, profiles(nome)), ordens_servico(id, numero_os, site_name, ticket_id, tickets(id, endereco_servico, clientes(empresa, ufv_solarz)))").eq("id", rmeId).single();
+      const { data, error } = await supabase.from("rme_relatorios").select("*, tecnicos(id, profiles(nome)), ordens_servico(id, numero_os, site_name, ticket_id, tickets(id, endereco_servico, clientes(empresa, cliente_ufvs(nome))))").eq("id", rmeId).single();
       if (error) throw error;
       const os = data.ordens_servico as any;
       const tecnico = data.tecnicos as any;
