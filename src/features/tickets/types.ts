@@ -35,6 +35,7 @@ export interface TicketWithRelations {
   observacoes: string | null;
   anexos: string[] | null;
   cliente_id: string;
+  ufv_nome: string | null;
   tecnico_responsavel_id: string | null;
   created_by: string;
   created_at: string;
@@ -46,12 +47,15 @@ export interface TicketWithRelations {
   can_create_rme: boolean | null;
   clientes: {
     empresa: string | null;
+    cnpj_cpf: string | null;
     endereco: string | null;
     cidade: string | null;
     estado: string | null;
     cep: string | null;
     ufv_solarz: string | null;
     prioridade: number | null;
+    status_financeiro_ca: string | null;
+    atrasos_recebimentos: number | null;
     profiles: { nome: string; email: string } | null;
   } | null;
   ordens_servico: Array<{
@@ -75,6 +79,16 @@ export interface TicketWithRelations {
   } | null;
 }
 
+/** UFV individual de um cliente, exposta para selects de ticket */
+export interface TicketClienteUFV {
+  id: string;
+  nome: string;
+  endereco: string | null;
+  cidade: string | null;
+  estado: string | null;
+  cep: string | null;
+}
+
 /** Cliente row as returned by ticketService.loadClientes() */
 export interface TicketCliente {
   id: string;
@@ -84,8 +98,13 @@ export interface TicketCliente {
   estado: string | null;
   cep: string | null;
   cnpj_cpf: string | null;
+  /** Lista achatada (string concatenada) das UFVs — mantida por compatibilidade com filtros existentes. */
   ufv_solarz: string | null;
+  /** UFVs cadastradas do cliente (lista estruturada para o select dependente). */
+  ufvs: TicketClienteUFV[];
   prioridade: number | null;
+  status_financeiro_ca: string | null;
+  atrasos_recebimentos: number | null;
   profiles: { nome: string; email: string; telefone: string | null } | null;
 }
 

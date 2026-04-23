@@ -10,7 +10,7 @@ export const createTicketService = (client?: AppSupabaseClient) => {
     async loadAll(): Promise<TicketWithRelations[]> {
       const { data, error } = await db
         .from('tickets')
-        .select(`*, ordens_servico(numero_os, id, pdf_url, aceite_tecnico, motivo_recusa, tecnico_id, data_programada, tecnicos:tecnico_id(profiles(nome, email)), rme_relatorios(id, status)), clientes(empresa, endereco, cidade, estado, cep, prioridade, cliente_ufvs(nome), profiles(nome, email)), prestadores:tecnico_responsavel_id(id, nome, email)`)
+        .select(`*, ordens_servico(numero_os, id, pdf_url, aceite_tecnico, motivo_recusa, tecnico_id, data_programada, tecnicos:tecnico_id(profiles(nome, email)), rme_relatorios(id, status)), clientes(empresa, cnpj_cpf, endereco, cidade, estado, cep, prioridade, status_financeiro_ca, atrasos_recebimentos, cliente_ufvs(nome), profiles(nome, email)), prestadores:tecnico_responsavel_id(id, nome, email)`)
         .order('created_at', { ascending: false });
       if (error) throw error;
       // Derive ufv_solarz (legacy field name) from related cliente_ufvs.nome list
@@ -27,13 +27,27 @@ export const createTicketService = (client?: AppSupabaseClient) => {
     async loadClientes(): Promise<TicketCliente[]> {
       const { data, error } = await db
         .from('clientes')
-        .select(`id, empresa, endereco, cidade, estado, cep, cnpj_cpf, prioridade, cliente_ufvs(nome), profiles(nome, email, telefone)`);
+        .select(`id, empresa, endereco, cidade, estado, cep, cnpj_cpf, prioridade, status_financeiro_ca, atrasos_recebimentos, cliente_ufvs(id, nome, endereco, cidade, estado, cep), profiles(nome, email, telefone)`);
       if (error) throw error;
-      // Derive ufv_solarz from related cliente_ufvs.nome list
+      // Map UFVs into a structured list and keep the legacy `ufv_solarz` string for filters
       const rows = (data || []).map((c: any) => {
-        const ufvs = Array.isArray(c.cliente_ufvs) ? c.cliente_ufvs : [];
-        const names = ufvs.map((u: any) => u?.nome).filter(Boolean);
-        return { ...c, ufv_solarz: names.length ? names.join(', ') : null };
+        const rawUfvs = Array.isArray(c.cliente_ufvs) ? c.cliente_ufvs : [];
+        const ufvs = rawUfvs
+          .filter((u: any) => u?.nome)
+          .map((u: any) => ({
+            id: u.id,
+            nome: u.nome,
+            endereco: u.endereco ?? null,
+            cidade: u.cidade ?? null,
+            estado: u.estado ?? null,
+            cep: u.cep ?? null,
+          }));
+        const names = ufvs.map((u: any) => u.nome);
+        return {
+          ...c,
+          ufvs,
+          ufv_solarz: names.length ? names.join(', ') : null,
+        };
       });
       return rows as unknown as TicketCliente[];
     },
