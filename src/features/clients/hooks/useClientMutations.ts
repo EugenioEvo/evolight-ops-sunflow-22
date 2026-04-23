@@ -1,63 +1,71 @@
-import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { toast } from "sonner";
-import { useErrorHandler } from "@/hooks/useErrorHandler";
-import { clientService } from "../services/clientService";
-import { clienteSchema, type ClienteForm, type Cliente } from "../types";
+import { useEffect, useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { toast } from 'sonner';
+import { useErrorHandler } from '@/hooks/useErrorHandler';
+import { clientService } from '../services/clientService';
+import { clienteEditableSchema, type Cliente, type ClienteEditableForm } from '../types';
 
-export function useClientMutations(fetchClientes: () => Promise<void>) {
+export function useClientMutations(refetch: () => Promise<void>) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Cliente | null>(null);
+  const [saving, setSaving] = useState(false);
   const { handleError } = useErrorHandler();
 
-  const form = useForm<ClienteForm>({
-    resolver: zodResolver(clienteSchema),
+  const form = useForm<ClienteEditableForm>({
+    resolver: zodResolver(clienteEditableSchema),
     defaultValues: {
-      empresa: '', cnpj_cpf: '', endereco: '', cidade: '', estado: 'SP',
-      cep: '', telefone: '', email: '', ufv_solarz: '', prioridade: 5, observacoes: ''
-    }
+      ufv_solarz: '',
+      prioridade: 5,
+      observacoes: '',
+    },
   });
 
-  const onSubmit = async (data: ClienteForm) => {
-    try {
-      if (editingClient) {
-        await clientService.update(editingClient.id, editingClient.profile?.id, data);
-        toast.success('Cliente atualizado com sucesso!');
-      } else {
-        await clientService.create(data);
-        toast.success('Cliente adicionado com sucesso!');
-      }
-      setIsDialogOpen(false);
-      setEditingClient(null);
-      form.reset();
-      fetchClientes();
-    } catch (error) {
-      handleError(error, { fallbackMessage: 'Erro ao salvar cliente' });
+  // Sync form with the selected client whenever the dialog target changes.
+  useEffect(() => {
+    if (editingClient) {
+      form.reset({
+        ufv_solarz: editingClient.ufv_solarz ?? '',
+        prioridade: editingClient.prioridade ?? 5,
+        observacoes: editingClient.observacoes ?? '',
+      });
     }
-  };
+  }, [editingClient, form]);
 
-  const handleEdit = (cliente: Cliente) => {
+  const openClient = (cliente: Cliente) => {
     setEditingClient(cliente);
-    form.reset({
-      empresa: cliente.empresa, cnpj_cpf: cliente.cnpj_cpf, endereco: cliente.endereco,
-      cidade: cliente.cidade, estado: cliente.estado, cep: cliente.cep,
-      telefone: cliente.telefone, email: cliente.email,
-      ufv_solarz: cliente.ufv_solarz || '', prioridade: cliente.prioridade ?? 5,
-      observacoes: cliente.observacoes
-    });
     setIsDialogOpen(true);
   };
 
-  const handleDelete = async (id: string) => {
+  const closeDialog = () => {
+    setIsDialogOpen(false);
+    setEditingClient(null);
+    form.reset({ ufv_solarz: '', prioridade: 5, observacoes: '' });
+  };
+
+  const onSubmit = async (data: ClienteEditableForm) => {
+    if (!editingClient) return;
+    setSaving(true);
     try {
-      await clientService.delete(id);
-      toast.success('Cliente removido com sucesso!');
-      fetchClientes();
+      await clientService.updateEditable(editingClient.id, data);
+      toast.success('Cliente atualizado com sucesso.');
+      closeDialog();
+      await refetch();
     } catch (error) {
-      handleError(error, { fallbackMessage: 'Erro ao remover cliente' });
+      handleError(error, { fallbackMessage: 'Erro ao salvar alterações' });
+    } finally {
+      setSaving(false);
     }
   };
 
-  return { form, isDialogOpen, setIsDialogOpen, editingClient, setEditingClient, onSubmit, handleEdit, handleDelete };
+  return {
+    form,
+    saving,
+    isDialogOpen,
+    setIsDialogOpen,
+    editingClient,
+    openClient,
+    closeDialog,
+    onSubmit,
+  };
 }
