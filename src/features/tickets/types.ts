@@ -4,6 +4,7 @@ export const ticketSchema = z.object({
   titulo: z.string().min(1, 'Título é obrigatório'),
   descricao: z.string().min(1, 'Descrição é obrigatória'),
   cliente_id: z.string().uuid('Selecione um cliente'),
+  ufv_nome: z.string().optional().or(z.literal('')),
   equipamento_tipo: z.enum(['painel_solar', 'inversor', 'controlador_carga', 'bateria', 'cabeamento', 'estrutura', 'monitoramento', 'outros']),
   prioridade: z.enum(['baixa', 'media', 'alta', 'critica']),
   endereco_servico: z.string().min(1, 'Endereço do serviço é obrigatório'),
