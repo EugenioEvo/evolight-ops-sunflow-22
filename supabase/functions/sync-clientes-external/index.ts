@@ -415,6 +415,7 @@ Deno.serve(async (req) => {
 
       // 5b) IDs Conta Azul vinculados
       for (const caId of linkedCaIds) {
+        seenCaIds.add(caId);
         const ca = caById.get(caId);
         const { error: caErr } = await supabase
           .from("cliente_conta_azul_ids")
