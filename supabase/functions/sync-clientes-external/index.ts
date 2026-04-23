@@ -349,6 +349,7 @@ Deno.serve(async (req) => {
       const clientePayload = {
         solarz_customer_id: szId,
         origem: "solarz",
+        ativo: true,
         empresa,
         cnpj_cpf: cnpjCpf,
         endereco: norm(primeiraPlanta?.endereco_logradouro),
