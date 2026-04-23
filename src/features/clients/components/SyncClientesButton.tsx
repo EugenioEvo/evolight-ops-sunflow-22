@@ -58,9 +58,10 @@ export function SyncClientesButton({ onSyncComplete }: { onSyncComplete?: () => 
     return runs;
   };
 
+  const latestRun = useMemo(() => history[0] ?? null, [history]);
   const activeRun = useMemo(
-    () => history.find((run) => isRunInProgress(run)) ?? null,
-    [history],
+    () => (latestRun && isRunInProgress(latestRun) ? latestRun : null),
+    [latestRun],
   );
 
   useEffect(() => {
@@ -143,7 +144,7 @@ export function SyncClientesButton({ onSyncComplete }: { onSyncComplete?: () => 
       onSyncComplete?.();
     } catch (e) {
       const runs = await fetchHistory();
-      const inProgressRun = runs.find((run) => isRunInProgress(run));
+      const inProgressRun = runs[0] && isRunInProgress(runs[0]) ? runs[0] : null;
 
       if (inProgressRun) {
         setTrackedRunId(inProgressRun.id);
@@ -156,13 +157,11 @@ export function SyncClientesButton({ onSyncComplete }: { onSyncComplete?: () => 
         });
       }
     } finally {
-      if (!activeRun) {
-        setRunning(false);
-      }
+      setRunning(Boolean(inProgressRun));
     }
   };
 
-  const latest = activeRun ?? history[0];
+  const latest = activeRun ?? latestRun;
 
   return (
     <div className="flex items-center gap-2">
