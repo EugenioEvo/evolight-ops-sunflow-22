@@ -210,6 +210,7 @@ Deno.serve(async (req) => {
 
     // ─── 5) Upsert clientes Solarz ─────────────────────────────────────────
     for (const [szId, cli] of szClientes) {
+      checkTimeout();
       const plantas =
         (cli.name && plantasByClienteNome.get(cli.name.toLowerCase())) || [];
       const primeiraPlanta = plantas[0];
