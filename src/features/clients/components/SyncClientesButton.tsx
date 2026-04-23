@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -26,12 +26,23 @@ type SyncRun = {
 };
 
 const STAFF_ROLES = ["admin", "engenharia", "supervisao"] as const;
+const RUN_POLL_INTERVAL_MS = 5000;
+const RUN_STALE_MS = 10 * 60 * 1000;
+
+const isRunInProgress = (run?: SyncRun) => {
+  if (!run || run.status !== "running") return false;
+  return Date.now() - new Date(run.started_at).getTime() < RUN_STALE_MS;
+};
+
+const buildRunSummary = (run: SyncRun) =>
+  `${run.rows_upserted} registros atualizados (${run.rows_read} lidos)`;
 
 export function SyncClientesButton({ onSyncComplete }: { onSyncComplete?: () => void }) {
   const { profile } = useAuth();
   const [running, setRunning] = useState(false);
   const [history, setHistory] = useState<SyncRun[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [trackedRunId, setTrackedRunId] = useState<string | null>(null);
 
   const isStaff = profile?.roles?.some((r) => STAFF_ROLES.includes(r as any)) ?? false;
 
@@ -42,8 +53,15 @@ export function SyncClientesButton({ onSyncComplete }: { onSyncComplete?: () => 
       .eq("source", "clientes-external")
       .order("started_at", { ascending: false })
       .limit(20);
-    if (data) setHistory(data as SyncRun[]);
+    const runs = (data as SyncRun[]) ?? [];
+    setHistory(runs);
+    return runs;
   };
+
+  const activeRun = useMemo(
+    () => history.find((run) => isRunInProgress(run)) ?? null,
+    [history],
+  );
 
   useEffect(() => {
     if (!isStaff) return;
@@ -63,6 +81,48 @@ export function SyncClientesButton({ onSyncComplete }: { onSyncComplete?: () => 
     };
   }, [isStaff]);
 
+  useEffect(() => {
+    setRunning(Boolean(activeRun));
+  }, [activeRun]);
+
+  useEffect(() => {
+    if (!isStaff || !activeRun) return;
+
+    const interval = window.setInterval(() => {
+      fetchHistory();
+    }, RUN_POLL_INTERVAL_MS);
+
+    return () => window.clearInterval(interval);
+  }, [activeRun, isStaff]);
+
+  useEffect(() => {
+    if (!trackedRunId) return;
+
+    const trackedRun = history.find((run) => run.id === trackedRunId);
+    if (!trackedRun || trackedRun.status === "running") return;
+
+    if (trackedRun.status === "success") {
+      toast.success(`Sincronização concluída: ${buildRunSummary(trackedRun)}.`, {
+        id: "sync-clientes",
+      });
+      onSyncComplete?.();
+    } else if (trackedRun.status === "partial") {
+      toast.error(
+        `Sincronização parcial: ${buildRunSummary(trackedRun)}${
+          trackedRun.error ? `. ${trackedRun.error}` : ""
+        }`,
+        { id: "sync-clientes" },
+      );
+      onSyncComplete?.();
+    } else {
+      toast.error(`Falha na sincronização: ${trackedRun.error ?? "erro desconhecido"}`, {
+        id: "sync-clientes",
+      });
+    }
+
+    setTrackedRunId(null);
+  }, [history, onSyncComplete, trackedRunId]);
+
   if (!isStaff) return null;
 
   const handleSync = async () => {
@@ -72,23 +132,37 @@ export function SyncClientesButton({ onSyncComplete }: { onSyncComplete?: () => 
       const { data, error } = await supabase.functions.invoke("sync-clientes-external");
       if (error) throw error;
       const summary = data as { rows_read: number; rows_upserted: number; status: string; errors_count: number };
+      await fetchHistory();
       toast.success(
         `Sincronização ${summary.status}: ${summary.rows_upserted} registros atualizados (${summary.rows_read} lidos)${
           summary.errors_count ? `, ${summary.errors_count} erros` : ""
         }.`,
         { id: "sync-clientes" },
       );
+      setTrackedRunId(null);
       onSyncComplete?.();
     } catch (e) {
-      toast.error(`Falha na sincronização: ${e instanceof Error ? e.message : String(e)}`, {
-        id: "sync-clientes",
-      });
+      const runs = await fetchHistory();
+      const inProgressRun = runs.find((run) => isRunInProgress(run));
+
+      if (inProgressRun) {
+        setTrackedRunId(inProgressRun.id);
+        toast.loading("Sincronização iniciada e ainda processando. Vou atualizar quando finalizar.", {
+          id: "sync-clientes",
+        });
+      } else {
+        toast.error(`Falha na sincronização: ${e instanceof Error ? e.message : String(e)}`, {
+          id: "sync-clientes",
+        });
+      }
     } finally {
-      setRunning(false);
+      if (!activeRun) {
+        setRunning(false);
+      }
     }
   };
 
-  const latest = history[0];
+  const latest = activeRun ?? history[0];
 
   return (
     <div className="flex items-center gap-2">
