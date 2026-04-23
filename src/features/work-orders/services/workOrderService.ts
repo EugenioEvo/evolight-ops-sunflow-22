@@ -10,15 +10,22 @@ export const createWorkOrderService = (client?: AppSupabaseClient) => {
     async loadAll(): Promise<WorkOrder[]> {
       const { data, error } = await db
         .from("ordens_servico")
-        .select(`*, tickets(id, titulo, status, prioridade, endereco_servico, clientes(empresa, ufv_solarz, prioridade)), rme_relatorios(id, status)`)
+        .select(`*, tickets(id, titulo, status, prioridade, endereco_servico, clientes(empresa, prioridade, cliente_ufvs(nome))), rme_relatorios(id, status)`)
         .order("data_emissao", { ascending: false });
       if (error) throw error;
 
-      const rows = (data || []).map((os) => ({
-        ...os,
-        work_type: Array.isArray(os.work_type) ? os.work_type as string[] : [],
-        rme_relatorios: Array.isArray(os.rme_relatorios) ? os.rme_relatorios : os.rme_relatorios ? [os.rme_relatorios] : [],
-      })) as WorkOrder[];
+      const rows = (data || []).map((os: any) => {
+        if (os.tickets?.clientes) {
+          const ufvs = Array.isArray(os.tickets.clientes.cliente_ufvs) ? os.tickets.clientes.cliente_ufvs : [];
+          const names = ufvs.map((u: any) => u?.nome).filter(Boolean);
+          os.tickets.clientes.ufv_solarz = names.length ? names.join(', ') : null;
+        }
+        return {
+          ...os,
+          work_type: Array.isArray(os.work_type) ? os.work_type as string[] : [],
+          rme_relatorios: Array.isArray(os.rme_relatorios) ? os.rme_relatorios : os.rme_relatorios ? [os.rme_relatorios] : [],
+        };
+      }) as WorkOrder[];
 
       // Sibling RME enrichment: when an OS has no RME of its own but a sibling OS
       // (same ticket_id) has one, surface that RME so the status badge reflects the
@@ -77,15 +84,21 @@ export const createWorkOrderService = (client?: AppSupabaseClient) => {
     async loadDetail(id: string): Promise<WorkOrderDetailData | null> {
       const { data, error } = await db
         .from('ordens_servico')
-        .select(`*, tickets!inner(id, titulo, descricao, status, prioridade, endereco_servico, data_inicio_execucao, data_conclusao, prestadores:tecnico_responsavel_id(id, nome), clientes(empresa, endereco, cidade, estado, ufv_solarz, prioridade)), rme_relatorios(id, status, created_at, data_execucao, start_time, end_time)`)
+        .select(`*, tickets!inner(id, titulo, descricao, status, prioridade, endereco_servico, data_inicio_execucao, data_conclusao, prestadores:tecnico_responsavel_id(id, nome), clientes(empresa, endereco, cidade, estado, prioridade, cliente_ufvs(nome))), rme_relatorios(id, status, created_at, data_execucao, start_time, end_time)`)
         .eq('id', id)
         .maybeSingle();
       if (error) throw error;
       if (!data) return null;
+      const anyData: any = data;
+      if (anyData.tickets?.clientes) {
+        const ufvs = Array.isArray(anyData.tickets.clientes.cliente_ufvs) ? anyData.tickets.clientes.cliente_ufvs : [];
+        const names = ufvs.map((u: any) => u?.nome).filter(Boolean);
+        anyData.tickets.clientes.ufv_solarz = names.length ? names.join(', ') : null;
+      }
       return {
-        ...data,
-        work_type: Array.isArray(data.work_type) ? data.work_type as string[] : [],
-        rme_relatorios: Array.isArray(data.rme_relatorios) ? data.rme_relatorios : data.rme_relatorios ? [data.rme_relatorios] : [],
+        ...anyData,
+        work_type: Array.isArray(anyData.work_type) ? anyData.work_type as string[] : [],
+        rme_relatorios: Array.isArray(anyData.rme_relatorios) ? anyData.rme_relatorios : anyData.rme_relatorios ? [anyData.rme_relatorios] : [],
       } as WorkOrderDetailData;
     },
 

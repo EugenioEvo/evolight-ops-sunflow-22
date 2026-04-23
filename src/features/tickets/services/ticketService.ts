@@ -10,18 +10,32 @@ export const createTicketService = (client?: AppSupabaseClient) => {
     async loadAll(): Promise<TicketWithRelations[]> {
       const { data, error } = await db
         .from('tickets')
-        .select(`*, ordens_servico(numero_os, id, pdf_url, aceite_tecnico, motivo_recusa, tecnico_id, data_programada, tecnicos:tecnico_id(profiles(nome, email)), rme_relatorios(id, status)), clientes(empresa, endereco, cidade, estado, cep, ufv_solarz, prioridade, profiles(nome, email)), prestadores:tecnico_responsavel_id(id, nome, email)`)
+        .select(`*, ordens_servico(numero_os, id, pdf_url, aceite_tecnico, motivo_recusa, tecnico_id, data_programada, tecnicos:tecnico_id(profiles(nome, email)), rme_relatorios(id, status)), clientes(empresa, endereco, cidade, estado, cep, prioridade, cliente_ufvs(nome), profiles(nome, email)), prestadores:tecnico_responsavel_id(id, nome, email)`)
         .order('created_at', { ascending: false });
       if (error) throw error;
+      // Derive ufv_solarz (legacy field name) from related cliente_ufvs.nome list
+      (data || []).forEach((t: any) => {
+        if (t.clientes) {
+          const ufvs = Array.isArray(t.clientes.cliente_ufvs) ? t.clientes.cliente_ufvs : [];
+          const names = ufvs.map((u: any) => u?.nome).filter(Boolean);
+          t.clientes.ufv_solarz = names.length ? names.join(', ') : null;
+        }
+      });
       return (data || []) as unknown as TicketWithRelations[];
     },
 
     async loadClientes(): Promise<TicketCliente[]> {
       const { data, error } = await db
         .from('clientes')
-        .select(`id, empresa, endereco, cidade, estado, cep, cnpj_cpf, ufv_solarz, prioridade, profiles(nome, email, telefone)`);
+        .select(`id, empresa, endereco, cidade, estado, cep, cnpj_cpf, prioridade, cliente_ufvs(nome), profiles(nome, email, telefone)`);
       if (error) throw error;
-      return (data || []) as unknown as TicketCliente[];
+      // Derive ufv_solarz from related cliente_ufvs.nome list
+      const rows = (data || []).map((c: any) => {
+        const ufvs = Array.isArray(c.cliente_ufvs) ? c.cliente_ufvs : [];
+        const names = ufvs.map((u: any) => u?.nome).filter(Boolean);
+        return { ...c, ufv_solarz: names.length ? names.join(', ') : null };
+      });
+      return rows as unknown as TicketCliente[];
     },
 
     async loadPrestadores(): Promise<TicketPrestador[]> {
