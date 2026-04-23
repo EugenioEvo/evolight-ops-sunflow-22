@@ -1506,6 +1506,7 @@ export type Database = {
           source: string
           started_at: string
           status: string
+          triggered_by: string
         }
         Insert: {
           created_at?: string
@@ -1518,6 +1519,7 @@ export type Database = {
           source: string
           started_at?: string
           status?: string
+          triggered_by?: string
         }
         Update: {
           created_at?: string
@@ -1530,6 +1532,7 @@ export type Database = {
           source?: string
           started_at?: string
           status?: string
+          triggered_by?: string
         }
         Relationships: []
       }
