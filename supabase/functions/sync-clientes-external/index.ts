@@ -376,6 +376,8 @@ Deno.serve(async (req) => {
       const empresa =
         norm(ca.nome_empresa) ?? norm(ca.nome) ?? "(sem nome)";
       const cnpjCpf = norm(ca.documento);
+      const atrasoOrfao = numOrNull(ca.atrasos_recebimentos);
+      const statusFinanceiroOrfao = (atrasoOrfao ?? 0) > 0 ? "INADIMPLENTE" : "OK";
 
       // Busca cliente existente para esse CA (via cliente_conta_azul_ids)
       const { data: existingLink } = await supabase
@@ -388,7 +390,6 @@ Deno.serve(async (req) => {
 
       if (existingLink?.cliente_id) {
         clienteUuid = existingLink.cliente_id;
-        // Atualiza dados do cliente órfão (não toca em campos preservados)
         await supabase
           .from("clientes")
           .update({
@@ -414,6 +415,9 @@ Deno.serve(async (req) => {
                 .filter(Boolean)
                 .join(", ")}`,
             ]),
+            atrasos_recebimentos: atrasoOrfao && atrasoOrfao > 0 ? atrasoOrfao : null,
+            status_financeiro_ca: statusFinanceiroOrfao,
+            ufv_status_resumo: "SEM_UFV",
             sync_source_updated_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           })
@@ -445,6 +449,9 @@ Deno.serve(async (req) => {
                 .filter(Boolean)
                 .join(", ")}`,
             ]),
+            atrasos_recebimentos: atrasoOrfao && atrasoOrfao > 0 ? atrasoOrfao : null,
+            status_financeiro_ca: statusFinanceiroOrfao,
+            ufv_status_resumo: "SEM_UFV",
             sync_source_updated_at: new Date().toISOString(),
           })
           .select("id")
