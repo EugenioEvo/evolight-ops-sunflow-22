@@ -6,40 +6,74 @@ export const ESTADOS_BR = [
   'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
 ] as const;
 
-export const clienteSchema = z.object({
-  empresa: z.string().min(2, "Nome da empresa deve ter pelo menos 2 caracteres"),
-  cnpj_cpf: z.string()
-    .min(11, "CNPJ/CPF deve ter pelo menos 11 dígitos")
-    .refine(val => {
-      const digits = val.replace(/\D/g, '');
-      return digits.length === 11 || digits.length === 14;
-    }, "CNPJ deve ter 14 dígitos ou CPF 11 dígitos"),
-  endereco: z.string().min(5, "Endereço é obrigatório"),
-  cidade: z.string().min(2, "Cidade é obrigatória"),
-  estado: z.enum(ESTADOS_BR, { errorMap: () => ({ message: "Selecione um estado válido" }) }),
-  cep: z.string()
-    .min(8, "CEP é obrigatório")
-    .refine(val => /^\d{5}-?\d{3}$/.test(val.replace(/\D/g, '').replace(/(\d{5})(\d{3})/, '$1-$2')), "CEP inválido (formato: 00000-000)"),
-  telefone: z.string()
-    .optional()
-    .refine(val => !val || /^\(?\d{2}\)?\s?\d{4,5}-?\d{4}$/.test(val), "Telefone inválido (formato: (00) 00000-0000)"),
-  email: z.string().email("Email inválido").optional().or(z.literal("")),
-  ufv_solarz: z.string().optional(),
-  prioridade: z.number().int().min(0, "Prioridade deve ser maior ou igual a 0").optional(),
-  observacoes: z.string().optional(),
+// Editable fields only (managed in Lovable, not synced from external sources)
+export const clienteEditableSchema = z.object({
+  ufv_solarz: z.string().trim().max(120).optional().or(z.literal('')),
+  prioridade: z
+    .number({ invalid_type_error: 'Informe um número' })
+    .int('Use um número inteiro')
+    .min(0, 'Prioridade deve ser maior ou igual a 0')
+    .max(99, 'Prioridade muito alta'),
+  observacoes: z.string().max(2000).optional().or(z.literal('')),
 });
 
-export type ClienteForm = z.infer<typeof clienteSchema>;
+export type ClienteEditableForm = z.infer<typeof clienteEditableSchema>;
 
-export interface Cliente extends ClienteForm {
+export type ClienteOrigem = 'solarz' | 'conta_azul' | 'manual' | string;
+
+export interface ClienteUFV {
   id: string;
+  solarz_ufv_id: string;
+  nome: string | null;
+  endereco: string | null;
+  cidade: string | null;
+  estado: string | null;
+  cep: string | null;
+  potencia_kwp: number | null;
+  status: string | null;
+}
+
+export interface ClienteContaAzulId {
+  id: string;
+  conta_azul_customer_id: string;
+  nome_fiscal: string | null;
+  cnpj_cpf: string | null;
+  email: string | null;
+}
+
+export interface Cliente {
+  id: string;
+  empresa: string;
+  cnpj_cpf: string | null;
+  endereco: string | null;
+  cidade: string | null;
+  estado: string | null;
+  cep: string | null;
+  origem: ClienteOrigem | null;
+  solarz_customer_id: string | null;
+  sem_solarz: boolean | null;
+  ufv_solarz: string | null;
+  prioridade: number | null;
+  observacoes: string | null;
+  telefones_unificados: string | null;
+  enderecos_unificados: string | null;
+  sync_source_updated_at: string | null;
+  created_at: string | null;
+  updated_at: string | null;
   status: 'ativo' | 'inativo';
-  ufv_solarz?: string;
-  prioridade?: number;
   profile?: {
     id: string;
     nome: string;
     email: string;
-    telefone?: string;
-  };
+    telefone: string | null;
+  } | null;
+  ufvs: ClienteUFV[];
+  conta_azul_ids: ClienteContaAzulId[];
 }
+
+export interface PagedClientes {
+  rows: Cliente[];
+  total: number;
+}
+
+export const PAGE_SIZE = 20;

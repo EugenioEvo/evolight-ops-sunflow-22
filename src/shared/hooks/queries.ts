@@ -14,11 +14,15 @@ export const queryKeys = {
   ticketPrestadores: ['ticket-prestadores'] as const,
 } as const;
 
-/** Clientes — changes infrequently */
-export function useClientesQuery() {
+/**
+ * Clientes (paginated). The clients page now uses paged data, so this hook
+ * loads only the first page for shared selectors. Pass a larger pageSize when
+ * a select/dropdown needs more options.
+ */
+export function useClientesQuery(pageSize: number = 200) {
   return useQuery({
-    queryKey: queryKeys.clientes,
-    queryFn: () => clientService.fetchAll(),
+    queryKey: [...queryKeys.clientes, 'page-1', pageSize] as const,
+    queryFn: async () => (await clientService.fetchPage({ page: 1, pageSize })).rows,
     staleTime: 1000 * 60 * 10, // 10 min
   });
 }
