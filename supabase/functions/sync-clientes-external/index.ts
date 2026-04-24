@@ -241,12 +241,18 @@ Deno.serve(async (req) => {
     rowsRead += szPlantasRows.length;
 
     const plantasByClienteNome = new Map<string, any[]>();
+    const plantasByClienteCpf = new Map<string, any[]>();
     for (const p of szPlantasRows) {
-      const cliNome = norm(p.cliente_nome);
-      if (!cliNome) continue;
-      const key = cliNome.toLowerCase();
-      if (!plantasByClienteNome.has(key)) plantasByClienteNome.set(key, []);
-      plantasByClienteNome.get(key)!.push(p);
+      const cliNome = normName(p.cliente_nome);
+      if (cliNome) {
+        if (!plantasByClienteNome.has(cliNome)) plantasByClienteNome.set(cliNome, []);
+        plantasByClienteNome.get(cliNome)!.push(p);
+      }
+      const cliCpf = normDoc(p.cliente_cpf);
+      if (cliCpf) {
+        if (!plantasByClienteCpf.has(cliCpf)) plantasByClienteCpf.set(cliCpf, []);
+        plantasByClienteCpf.get(cliCpf)!.push(p);
+      }
     }
 
     // 4) Conta Azul: pessoas (clientes ativos)
