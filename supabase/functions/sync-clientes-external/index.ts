@@ -516,13 +516,22 @@ Deno.serve(async (req) => {
         if (caErr) errors.push(`ca-link/${caId}: ${caErr.message}`);
         else rowsUpserted++;
       }
+
+      szProcessed++;
+      if (szProcessed % 100 === 0) {
+        ts(`STEP 5: progresso ${szProcessed}/${szClientes.size} clientes Solarz processados`);
+      }
     }
+    ts(`STEP 5: concluído (${szProcessed} clientes Solarz processados)`);
 
     // ─── 6) Conta Azul órfãos (sem solarz no De-Para) ───────────────────────
+    let caOrfaosProcessed = 0;
+    ts(`STEP 6: processando órfãos CA (total candidatos: ${caById.size})`);
     for (const [caId, ca] of caById) {
       checkTimeout();
       if (caToSz.has(caId)) continue; // já tratado acima
       seenCaIds.add(caId);
+      caOrfaosProcessed++;
 
       const empresa =
         norm(ca.nome_empresa) ?? norm(ca.nome) ?? "(sem nome)";
