@@ -51,6 +51,7 @@ const normDoc = (v: unknown): string | null => {
 };
 
 async function openMysql(prefix: string) {
+  const t0 = Date.now();
   const host = Deno.env.get(`${prefix}_MYSQL_HOST`);
   const port = Number(Deno.env.get(`${prefix}_MYSQL_PORT`) ?? "3306");
   const user = Deno.env.get(`${prefix}_MYSQL_USER`);
@@ -59,16 +60,25 @@ async function openMysql(prefix: string) {
   if (!host || !user || !password || !database) {
     throw new Error(`Secrets do MySQL ${prefix} incompletos`);
   }
-  return await mysql.createConnection({
-    host,
-    port,
-    user,
-    password,
-    database,
-    connectTimeout: 30_000,
-    // longtext UTF-8
-    charset: "utf8mb4",
-  });
+  console.log(`[sync] [${prefix}] conectando em ${host}:${port}/${database} ...`);
+  try {
+    const conn = await mysql.createConnection({
+      host,
+      port,
+      user,
+      password,
+      database,
+      connectTimeout: 30_000,
+      // longtext UTF-8
+      charset: "utf8mb4",
+    });
+    console.log(`[sync] [${prefix}] conectado em ${Date.now() - t0}ms`);
+    return conn;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`[sync] [${prefix}] FALHA na conexão após ${Date.now() - t0}ms: ${msg}`);
+    throw new Error(`Conexão MySQL ${prefix} falhou: ${msg}`);
+  }
 }
 
 // ─── main ─────────────────────────────────────────────────────────────────
