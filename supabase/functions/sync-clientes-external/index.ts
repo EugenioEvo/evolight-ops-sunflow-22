@@ -31,6 +31,24 @@ const joinLines = (lines: (string | null | undefined)[]): string | null => {
   const filtered = lines.map((l) => l?.trim()).filter((l): l is string => !!l);
   return filtered.length ? filtered.join("\n") : null;
 };
+// Normaliza nome para matching: trim, lowercase, remove acentos e colapsa espaços
+const normName = (v: unknown): string | null => {
+  const s = norm(v);
+  if (!s) return null;
+  return s
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+};
+// Normaliza CPF/CNPJ removendo tudo que não é dígito
+const normDoc = (v: unknown): string | null => {
+  const s = norm(v);
+  if (!s) return null;
+  const digits = s.replace(/\D/g, "");
+  return digits.length ? digits : null;
+};
 
 async function openMysql(prefix: string) {
   const host = Deno.env.get(`${prefix}_MYSQL_HOST`);
