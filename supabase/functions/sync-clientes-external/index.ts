@@ -641,8 +641,10 @@ Deno.serve(async (req) => {
         );
       if (linkErr) errors.push(`ca-link-orphan/${caId}: ${linkErr.message}`);
     }
+    ts(`STEP 6: concluído (${caOrfaosProcessed} órfãos CA processados)`);
 
     // ─── 6.5) Saneamento: soft-delete de clientes que sumiram das origens ──
+    ts(`STEP 6.5: saneamento — vistos: ${seenSolarzIds.size} SZ, ${seenCaIds.size} CA`);
     let rowsDeactivated = 0;
     try {
       // 6.5a) Solarz: marca ativo=false em quem não veio mais na sync
@@ -702,6 +704,7 @@ Deno.serve(async (req) => {
 
     // 7) Encerra run
     const finalStatus = errors.length === 0 ? "success" : "partial";
+    ts(`STEP 7: finalizando — status=${finalStatus}, rows_upserted=${rowsUpserted}, errors=${errors.length}, deactivated=${rowsDeactivated}`);
     await supabase
       .from("sync_runs")
       .update({
