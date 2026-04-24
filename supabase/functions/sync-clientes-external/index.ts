@@ -281,8 +281,24 @@ Deno.serve(async (req) => {
     for (const [szId, cli] of szClientes) {
       checkTimeout();
       seenSolarzIds.add(szId);
-      const plantas =
-        (cli.name && plantasByClienteNome.get(cli.name.toLowerCase())) || [];
+
+      // 1) Tenta match por nome normalizado
+      const cliNomeKey = normName(cli.name);
+      let plantas = (cliNomeKey && plantasByClienteNome.get(cliNomeKey)) || [];
+
+      // 2) Fallback: tenta match por CPF/CNPJ de algum CA vinculado
+      if (plantas.length === 0) {
+        const linkedCaIdsForLookup = Array.from(szToCa.get(szId) ?? []);
+        for (const caId of linkedCaIdsForLookup) {
+          const ca = caById.get(caId);
+          const cpf = normDoc(ca?.documento);
+          if (cpf && plantasByClienteCpf.has(cpf)) {
+            plantas = plantasByClienteCpf.get(cpf)!;
+            break;
+          }
+        }
+      }
+
       const primeiraPlanta = plantas[0];
 
       // Telefones unificados
