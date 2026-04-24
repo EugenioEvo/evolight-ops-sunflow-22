@@ -82,141 +82,70 @@ async function openMysql(prefix: string) {
 }
 
 // ─── main ─────────────────────────────────────────────────────────────────
-const HARD_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutos
+const HARD_TIMEOUT_MS = 10 * 60 * 1000;
+const BATCH_SIZE = 100;
 
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+const jsonResponse = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
 
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    { auth: { persistSession: false } },
-  );
+const chunk = <T,>(items: T[], size = BATCH_SIZE) => {
+  const result: T[][] = [];
+  for (let i = 0; i < items.length; i += size) result.push(items.slice(i, i + size));
+  return result;
+};
 
-  // Lê body (opcional) para identificar origem do disparo
-  let triggeredBy: "manual" | "cron" = "manual";
-  try {
-    const body = await req.clone().json().catch(() => null);
-    if (body && (body.triggered_by === "pg_cron" || body.triggered_by === "cron")) {
-      triggeredBy = "cron";
-    }
-  } catch {
-    // body opcional
-  }
-
-  // Auth: aceita JWT staff OU service-role (cron). Se vier JWT, valida role.
-  const authHeader = req.headers.get("Authorization") ?? "";
-  const isServiceRole = authHeader.includes(
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "__none__",
-  );
-
-  if (!isServiceRole) {
-    const token = authHeader.replace("Bearer ", "");
-    const { data: userData, error: userErr } = await supabase.auth.getUser(token);
-    if (userErr || !userData?.user) {
-      return new Response(
-        JSON.stringify({ error: "Não autenticado" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
-    const { data: isStaff } = await supabase.rpc("is_staff", {
-      _user_id: userData.user.id,
-    });
-    if (!isStaff) {
-      return new Response(
-        JSON.stringify({ error: "Apenas staff pode disparar a sincronização" }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
-  }
-
-  // Limpa runs travadas anteriores (mais de 5min em "running") para evitar lixo
-  await supabase
-    .from("sync_runs")
-    .update({
-      status: "error",
-      finished_at: new Date().toISOString(),
-      error: "Run abortada — substituída por nova execução (timeout anterior).",
-    })
-    .eq("source", "clientes-external")
-    .eq("status", "running")
-    .lt("started_at", new Date(Date.now() - HARD_TIMEOUT_MS).toISOString());
-
-  // Cria run
-  const { data: runRow, error: runErr } = await supabase
-    .from("sync_runs")
-    .insert({ source: "clientes-external", status: "running", triggered_by: triggeredBy })
-    .select("id")
-    .single();
-  if (runErr || !runRow) {
-    return new Response(
-      JSON.stringify({ error: "Falha ao registrar sync_run", details: runErr?.message }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
-  }
-  const runId = runRow.id as string;
-
+async function processSync(
+  supabase: ReturnType<typeof createClient>,
+  runId: string,
+) {
   let szConn: Awaited<ReturnType<typeof openMysql>> | null = null;
   let caConn: Awaited<ReturnType<typeof openMysql>> | null = null;
   let dpConn: Awaited<ReturnType<typeof openMysql>> | null = null;
 
   let rowsRead = 0;
   let rowsUpserted = 0;
+  let rowsDeactivated = 0;
   const errors: string[] = [];
-
-  // Conjuntos para saneamento (soft-delete) ao final
   const seenSolarzIds = new Set<string>();
   const seenCaIds = new Set<string>();
 
-  // ─── Hard timeout (5 minutes) ─────────────────────────────────────────
-  // Promise.race garante que QUALQUER await trava (ex: MySQL handshake)
-  // será interrompido. checkTimeout() é mantido como guard adicional entre
-  // iterações pesadas.
   let timedOut = false;
   let timeoutHandle: number | undefined;
   const timeoutPromise = new Promise<never>((_, reject) => {
     timeoutHandle = setTimeout(() => {
       timedOut = true;
-      reject(
-        new Error(
-          `Timeout: sincronização excedeu ${HARD_TIMEOUT_MS / 60000} minutos e foi abortada.`,
-        ),
-      );
+      reject(new Error(`Timeout: sincronização excedeu ${HARD_TIMEOUT_MS / 60000} minutos e foi abortada.`));
     }, HARD_TIMEOUT_MS) as unknown as number;
   });
-  const withTimeout = <T,>(p: Promise<T>): Promise<T> =>
-    Promise.race([p, timeoutPromise]) as Promise<T>;
+  const withTimeout = <T,>(p: Promise<T>): Promise<T> => Promise.race([p, timeoutPromise]) as Promise<T>;
   const checkTimeout = () => {
     if (timedOut) {
-      throw new Error(
-        `Timeout: sincronização excedeu ${HARD_TIMEOUT_MS / 60000} minutos e foi abortada.`,
-      );
+      throw new Error(`Timeout: sincronização excedeu ${HARD_TIMEOUT_MS / 60000} minutos e foi abortada.`);
     }
   };
 
   const t0 = Date.now();
-  const ts = (label: string) => console.log(`[sync] [run=${runId}] ${label} (+${Date.now() - t0}ms)`);
+  const syncRun = async (fields: Record<string, unknown>) => {
+    await supabase.from("sync_runs").update(fields).eq("id", runId);
+  };
+  const logStep = async (label: string) => {
+    console.log(`[sync] [run=${runId}] ${label} (+${Date.now() - t0}ms)`);
+    await syncRun({ last_sync_cursor: label, rows_read: rowsRead, rows_upserted: rowsUpserted });
+  };
 
   try {
-    ts("STEP 1: abrindo conexões MySQL (paralelo)");
-    // 1) Conexões em paralelo (com hard-timeout)
+    await logStep("STEP 1: abrindo conexões MySQL (paralelo)");
     [szConn, caConn, dpConn] = await withTimeout(
-      Promise.all([
-        openMysql("SOLARZ"),
-        openMysql("CONTA_AZUL"),
-        openMysql("DEPARA"),
-      ]),
+      Promise.all([openMysql("SOLARZ"), openMysql("CONTA_AZUL"), openMysql("DEPARA")]),
     );
     checkTimeout();
-    ts("STEP 1: conexões abertas");
+    await logStep("STEP 1: conexões abertas");
 
-    // 2) De-Para → mapas
-    ts("STEP 2: lendo dedupe_clientes (DEPARA)");
-    const [dpRows] = await withTimeout(
-      dpConn.query<any[]>("SELECT cliente_sz, id_ca FROM dedupe_clientes"),
-    );
+    await logStep("STEP 2: lendo dedupe_clientes (DEPARA)");
+    const [dpRows] = await withTimeout(dpConn.query<any[]>("SELECT cliente_sz, id_ca FROM dedupe_clientes"));
     const szToCa = new Map<string, Set<string>>();
     const caToSz = new Map<string, string>();
     for (const r of dpRows) {
@@ -228,27 +157,21 @@ Deno.serve(async (req) => {
       caToSz.set(ca, sz);
     }
     rowsRead += dpRows.length;
-    ts(`STEP 2: dedupe_clientes lido (${dpRows.length} linhas)`);
+    await logStep(`STEP 2: dedupe_clientes lido (${dpRows.length} linhas)`);
 
-    // 3) Solarz: clientes (dedupe por id) + plantas (agrupadas por cliente_nome)
-    ts("STEP 3a: lendo sz_clientes");
-    const [szClientesRows] = await withTimeout(
-      szConn.query<any[]>("SELECT id, name, email FROM sz_clientes"),
-    );
+    await logStep("STEP 3a: lendo sz_clientes");
+    const [szClientesRows] = await withTimeout(szConn.query<any[]>("SELECT id, name, email FROM sz_clientes"));
     rowsRead += szClientesRows.length;
-    ts(`STEP 3a: sz_clientes lido (${szClientesRows.length} linhas)`);
+    await logStep(`STEP 3a: sz_clientes lido (${szClientesRows.length} linhas)`);
 
-    const szClientes = new Map<
-      string,
-      { id: string; name: string | null; email: string | null }
-    >();
+    const szClientes = new Map<string, { id: string; name: string | null; email: string | null }>();
     for (const r of szClientesRows) {
       const id = norm(r.id);
       if (!id || szClientes.has(id)) continue;
       szClientes.set(id, { id, name: norm(r.name), email: norm(r.email) });
     }
 
-    ts("STEP 3b: lendo sz_plantas_infos");
+    await logStep("STEP 3b: lendo sz_plantas_infos");
     const [szPlantasRows] = await withTimeout(
       szConn.query<any[]>(
         `SELECT id, name, cliente_cpf, cliente_nome, cliente_telefone,
@@ -259,7 +182,7 @@ Deno.serve(async (req) => {
       ),
     );
     rowsRead += szPlantasRows.length;
-    ts(`STEP 3b: sz_plantas_infos lido (${szPlantasRows.length} linhas)`);
+    await logStep(`STEP 3b: sz_plantas_infos lido (${szPlantasRows.length} linhas)`);
 
     const plantasByClienteNome = new Map<string, any[]>();
     const plantasByClienteCpf = new Map<string, any[]>();
@@ -276,8 +199,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 4) Conta Azul: pessoas (clientes ativos)
-    ts("STEP 4: lendo pessoas (CONTA_AZUL)");
+    await logStep("STEP 4: lendo pessoas (CONTA_AZUL)");
     const [caRows] = await withTimeout(
       caConn.query<any[]>(
         `SELECT id, nome, nome_empresa, documento, email,
@@ -291,7 +213,7 @@ Deno.serve(async (req) => {
       ),
     );
     rowsRead += caRows.length;
-    ts(`STEP 4: pessoas lido (${caRows.length} linhas)`);
+    await logStep(`STEP 4: pessoas lido (${caRows.length} linhas)`);
 
     const caById = new Map<string, any>();
     for (const r of caRows) {
@@ -300,23 +222,18 @@ Deno.serve(async (req) => {
       caById.set(id, r);
     }
 
-    // ─── 5) Upsert clientes Solarz ─────────────────────────────────────────
-    ts(`STEP 5: upsert de ${szClientes.size} clientes Solarz`);
+    const solarzDrafts: Array<{ solarzId: string; payload: Record<string, unknown>; plantas: any[]; linkedCaIds: string[] }> = [];
     let szProcessed = 0;
     for (const [szId, cli] of szClientes) {
       checkTimeout();
       seenSolarzIds.add(szId);
 
-      // 1) Tenta match por nome normalizado
       const cliNomeKey = normName(cli.name);
       let plantas = (cliNomeKey && plantasByClienteNome.get(cliNomeKey)) || [];
-
-      // 2) Fallback: tenta match por CPF/CNPJ de algum CA vinculado
       if (plantas.length === 0) {
         const linkedCaIdsForLookup = Array.from(szToCa.get(szId) ?? []);
         for (const caId of linkedCaIdsForLookup) {
-          const ca = caById.get(caId);
-          const cpf = normDoc(ca?.documento);
+          const cpf = normDoc(caById.get(caId)?.documento);
           if (cpf && plantasByClienteCpf.has(cpf)) {
             plantas = plantasByClienteCpf.get(cpf)!;
             break;
@@ -324,9 +241,10 @@ Deno.serve(async (req) => {
         }
       }
 
+      const linkedCaIds = Array.from(szToCa.get(szId) ?? []);
+      linkedCaIds.forEach((caId) => seenCaIds.add(caId));
       const primeiraPlanta = plantas[0];
 
-      // Telefones unificados
       const telefonesLines: string[] = [];
       const szPhones = new Set<string>();
       for (const p of plantas) {
@@ -335,27 +253,19 @@ Deno.serve(async (req) => {
       }
       for (const t of szPhones) telefonesLines.push(`Solarz: ${t}`);
 
-      // Endereços unificados (todas as UFVs)
       const enderecosLines: string[] = [];
       for (const p of plantas) {
-        const log = norm(p.endereco_logradouro);
-        const bai = norm(p.endereco_bairro);
-        const cid = norm(p.endereco_cidade);
-        const uf = norm(p.endereco_siglaEstado);
-        const cep = norm(p.endereco_cep);
-        const partes = [log, bai, cid && uf ? `${cid}/${uf}` : cid ?? uf, cep]
-          .filter(Boolean)
-          .join(", ");
-        if (partes) {
-          const nomeUfv = norm(p.name);
-          enderecosLines.push(
-            `Solarz${nomeUfv ? ` (${nomeUfv})` : ""}: ${partes}`,
-          );
-        }
+        const partes = [
+          norm(p.endereco_logradouro),
+          norm(p.endereco_bairro),
+          norm(p.endereco_cidade) && norm(p.endereco_siglaEstado)
+            ? `${norm(p.endereco_cidade)}/${norm(p.endereco_siglaEstado)}`
+            : norm(p.endereco_cidade) ?? norm(p.endereco_siglaEstado),
+          norm(p.endereco_cep),
+        ].filter(Boolean).join(", ");
+        if (partes) enderecosLines.push(`Solarz${norm(p.name) ? ` (${norm(p.name)})` : ""}: ${partes}`);
       }
 
-      // Adiciona telefones/endereços do(s) Conta Azul vinculado(s)
-      const linkedCaIds = Array.from(szToCa.get(szId) ?? []);
       for (const caId of linkedCaIds) {
         const ca = caById.get(caId);
         if (!ca) continue;
@@ -363,292 +273,240 @@ Deno.serve(async (req) => {
         const com = norm(ca.telefone_comercial);
         if (cel) telefonesLines.push(`CA cel: ${cel}`);
         if (com) telefonesLines.push(`CA com: ${com}`);
-        const log = norm(ca.logradouro);
-        const num = norm(ca.numero_end);
-        const comp = norm(ca.complemento);
-        const bai = norm(ca.bairro);
-        const cid = norm(ca.cidade);
-        const uf = norm(ca.uf);
-        const cep = norm(ca.cep);
         const linha = [
-          [log, num].filter(Boolean).join(", "),
-          comp,
-          bai,
-          cid && uf ? `${cid}/${uf}` : cid ?? uf,
-          cep,
-        ]
-          .filter(Boolean)
-          .join(", ");
+          [norm(ca.logradouro), norm(ca.numero_end)].filter(Boolean).join(", "),
+          norm(ca.complemento),
+          norm(ca.bairro),
+          norm(ca.cidade) && norm(ca.uf) ? `${norm(ca.cidade)}/${norm(ca.uf)}` : norm(ca.cidade) ?? norm(ca.uf),
+          norm(ca.cep),
+        ].filter(Boolean).join(", ");
         if (linha) enderecosLines.push(`CA: ${linha}`);
       }
 
-      // Primeiro CA vinculado (usado como fallback para campos que a Solarz não traz)
       const primeiroCa = linkedCaIds.length > 0 ? caById.get(linkedCaIds[0]) : null;
+      const ufvStatuses = plantas.map((p) => norm(p.status_status)?.toLowerCase()).filter((s): s is string => !!s);
+      const totalAtraso = linkedCaIds.reduce((sum, caId) => {
+        const current = numOrNull(caById.get(caId)?.atrasos_recebimentos);
+        return current && current > 0 ? sum + current : sum;
+      }, 0);
 
-      const empresa =
-        cli.name ??
-        norm(primeiroCa?.nome_empresa) ??
-        norm(primeiroCa?.nome) ??
-        "(sem nome)";
-      const cnpjCpf =
-        norm(primeiraPlanta?.cliente_cpf) ?? norm(primeiroCa?.documento);
+      solarzDrafts.push({
+        solarzId: szId,
+        plantas,
+        linkedCaIds,
+        payload: {
+          solarz_customer_id: szId,
+          origem: "solarz",
+          ativo: true,
+          empresa: cli.name ?? norm(primeiroCa?.nome_empresa) ?? norm(primeiroCa?.nome) ?? "(sem nome)",
+          cnpj_cpf: norm(primeiraPlanta?.cliente_cpf) ?? norm(primeiroCa?.documento),
+          endereco: norm(primeiraPlanta?.endereco_logradouro) ?? norm(primeiroCa?.logradouro),
+          cidade: norm(primeiraPlanta?.endereco_cidade) ?? norm(primeiroCa?.cidade),
+          estado: norm(primeiraPlanta?.endereco_siglaEstado) ?? norm(primeiroCa?.uf),
+          cep: norm(primeiraPlanta?.endereco_cep) ?? norm(primeiroCa?.cep),
+          latitude: numOrNull(primeiraPlanta?.endereco_latitude),
+          longitude: numOrNull(primeiraPlanta?.endereco_longitude),
+          telefones_unificados: joinLines(telefonesLines),
+          enderecos_unificados: joinLines(enderecosLines),
+          atrasos_recebimentos: totalAtraso > 0 ? totalAtraso : null,
+          status_financeiro_ca: totalAtraso > 0 ? "INADIMPLENTE" : "OK",
+          ufv_status_resumo:
+            plantas.length === 0
+              ? "SEM_UFV"
+              : ufvStatuses.some((s) => ["alerta", "alarme", "offline", "falha", "erro", "down", "critico"].some((k) => s.includes(k)))
+                ? "ALERTA"
+                : "OK",
+          sync_source_updated_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+      });
 
-      // Endereço principal: prioriza Solarz (planta), fallback CA
-      const enderecoPrincipal =
-        norm(primeiraPlanta?.endereco_logradouro) ?? norm(primeiroCa?.logradouro);
-      const cidadePrincipal =
-        norm(primeiraPlanta?.endereco_cidade) ?? norm(primeiroCa?.cidade);
-      const estadoPrincipal =
-        norm(primeiraPlanta?.endereco_siglaEstado) ?? norm(primeiroCa?.uf);
-      const cepPrincipal =
-        norm(primeiraPlanta?.endereco_cep) ?? norm(primeiroCa?.cep);
+      szProcessed++;
+      if (szProcessed % 100 === 0) await logStep(`STEP 5: preparo ${szProcessed}/${szClientes.size} clientes Solarz`);
+    }
+    await logStep(`STEP 5: payloads Solarz preparados (${szProcessed} clientes)`);
 
-      // Status agregado de UFVs
-      const ufvStatuses = plantas
-        .map((p) => norm(p.status_status)?.toLowerCase())
-        .filter((s): s is string => !!s);
-      let ufvResumo: string;
-      if (plantas.length === 0) {
-        ufvResumo = "SEM_UFV";
-      } else if (
-        ufvStatuses.some((s) =>
-          ["alerta", "alarme", "offline", "falha", "erro", "down", "critico"].some((k) => s.includes(k))
-        )
-      ) {
-        ufvResumo = "ALERTA";
-      } else {
-        ufvResumo = "OK";
+    const solarzIdToClienteId = new Map<string, string>();
+    for (const batch of chunk(solarzDrafts, BATCH_SIZE)) {
+      checkTimeout();
+      const { data, error } = await supabase
+        .from("clientes")
+        .upsert(batch.map((item) => item.payload), { onConflict: "solarz_customer_id" })
+        .select("id, solarz_customer_id");
+      if (error) {
+        errors.push(`clientes-solarz-batch: ${error.message}`);
+        continue;
+      }
+      for (const row of data ?? []) {
+        if (row.solarz_customer_id) solarzIdToClienteId.set(String(row.solarz_customer_id), String(row.id));
+      }
+      rowsUpserted += data?.length ?? 0;
+    }
+    await logStep(`STEP 5: clientes Solarz persistidos (${solarzIdToClienteId.size})`);
+
+    const ufvPayloads: Record<string, unknown>[] = [];
+    const caLinkPayloadsById = new Map<string, Record<string, unknown>>();
+    for (const draft of solarzDrafts) {
+      const clienteUuid = solarzIdToClienteId.get(draft.solarzId);
+      if (!clienteUuid) {
+        errors.push(`solarz/${draft.solarzId}: cliente não retornou no upsert em lote`);
+        continue;
       }
 
-      // Status financeiro CA: usa o pior caso entre os CAs vinculados
-      let totalAtraso = 0;
-      for (const caId of linkedCaIds) {
+      for (const p of draft.plantas) {
+        const ufvId = norm(p.id);
+        if (!ufvId) continue;
+        ufvPayloads.push({
+          cliente_id: clienteUuid,
+          solarz_ufv_id: ufvId,
+          nome: norm(p.name),
+          endereco: [norm(p.endereco_logradouro), norm(p.endereco_bairro)].filter(Boolean).join(", ") || null,
+          cidade: norm(p.endereco_cidade),
+          estado: norm(p.endereco_siglaEstado),
+          cep: norm(p.endereco_cep),
+          latitude: numOrNull(p.endereco_latitude),
+          longitude: numOrNull(p.endereco_longitude),
+          potencia_kwp: numOrNull(p.installedPower),
+          status: norm(p.status_status),
+          updated_at: new Date().toISOString(),
+        });
+      }
+
+      for (const caId of draft.linkedCaIds) {
         const ca = caById.get(caId);
-        const v = numOrNull(ca?.atrasos_recebimentos);
-        if (v && v > 0) totalAtraso += v;
+        caLinkPayloadsById.set(caId, {
+          cliente_id: clienteUuid,
+          conta_azul_customer_id: caId,
+          nome_fiscal: norm(ca?.nome) ?? norm(ca?.nome_empresa),
+          cnpj_cpf: norm(ca?.documento),
+          email: norm(ca?.email),
+          updated_at: new Date().toISOString(),
+        });
       }
-      const statusFinanceiro = totalAtraso > 0 ? "INADIMPLENTE" : "OK";
+    }
 
+    for (const batch of chunk(ufvPayloads, 200)) {
+      checkTimeout();
+      const { error } = await supabase.from("cliente_ufvs").upsert(batch, { onConflict: "solarz_ufv_id" });
+      if (error) errors.push(`ufv-batch: ${error.message}`);
+      else rowsUpserted += batch.length;
+    }
+    for (const batch of chunk(Array.from(caLinkPayloadsById.values()), 200)) {
+      checkTimeout();
+      const { error } = await supabase.from("cliente_conta_azul_ids").upsert(batch, { onConflict: "conta_azul_customer_id" });
+      if (error) errors.push(`ca-link-batch: ${error.message}`);
+      else rowsUpserted += batch.length;
+    }
+    await logStep(`STEP 5: UFVs (${ufvPayloads.length}) e vínculos CA (${caLinkPayloadsById.size}) persistidos`);
+
+    const orphanCaIds = Array.from(caById.keys()).filter((caId) => !caToSz.has(caId));
+    await logStep(`STEP 6: processando órfãos CA (total candidatos: ${orphanCaIds.length})`);
+
+    const existingOrphanLinkMap = new Map<string, string>();
+    for (const batch of chunk(orphanCaIds, 200)) {
+      checkTimeout();
+      const { data, error } = await supabase
+        .from("cliente_conta_azul_ids")
+        .select("cliente_id, conta_azul_customer_id")
+        .in("conta_azul_customer_id", batch);
+      if (error) {
+        errors.push(`ca-orphan-links: ${error.message}`);
+        continue;
+      }
+      for (const row of data ?? []) existingOrphanLinkMap.set(String(row.conta_azul_customer_id), String(row.cliente_id));
+    }
+
+    const orphanExistingPayloads: Record<string, unknown>[] = [];
+    const orphanLinkPayloads: Record<string, unknown>[] = [];
+    const orphanNewPayloads: Array<{ caId: string; clientePayload: Record<string, unknown>; linkPayload: Record<string, unknown> }> = [];
+
+    let orphanPrepared = 0;
+    for (const caId of orphanCaIds) {
+      checkTimeout();
+      seenCaIds.add(caId);
+      const ca = caById.get(caId);
+      const atrasoOrfao = numOrNull(ca?.atrasos_recebimentos);
       const clientePayload = {
-        solarz_customer_id: szId,
-        origem: "solarz",
         ativo: true,
-        empresa,
-        cnpj_cpf: cnpjCpf,
-        endereco: enderecoPrincipal,
-        cidade: cidadePrincipal,
-        estado: estadoPrincipal,
-        cep: cepPrincipal,
-        latitude: numOrNull(primeiraPlanta?.endereco_latitude),
-        longitude: numOrNull(primeiraPlanta?.endereco_longitude),
-        telefones_unificados: joinLines(telefonesLines),
-        enderecos_unificados: joinLines(enderecosLines),
-        atrasos_recebimentos: totalAtraso > 0 ? totalAtraso : null,
-        status_financeiro_ca: statusFinanceiro,
-        ufv_status_resumo: ufvResumo,
+        empresa: norm(ca?.nome_empresa) ?? norm(ca?.nome) ?? "(sem nome)",
+        cnpj_cpf: norm(ca?.documento),
+        endereco: norm(ca?.logradouro),
+        cidade: norm(ca?.cidade),
+        estado: norm(ca?.uf),
+        cep: norm(ca?.cep),
+        telefones_unificados: joinLines([
+          norm(ca?.telefone_celular) ? `CA cel: ${ca.telefone_celular}` : null,
+          norm(ca?.telefone_comercial) ? `CA com: ${ca.telefone_comercial}` : null,
+        ]),
+        enderecos_unificados: joinLines([
+          `CA: ${[
+            norm(ca?.logradouro),
+            norm(ca?.numero_end),
+            norm(ca?.bairro),
+            norm(ca?.cidade),
+            norm(ca?.uf),
+            norm(ca?.cep),
+          ].filter(Boolean).join(", ")}`,
+        ]),
+        atrasos_recebimentos: atrasoOrfao && atrasoOrfao > 0 ? atrasoOrfao : null,
+        status_financeiro_ca: (atrasoOrfao ?? 0) > 0 ? "INADIMPLENTE" : "OK",
+        ufv_status_resumo: "SEM_UFV",
         sync_source_updated_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
 
-      const { data: upserted, error: upErr } = await supabase
-        .from("clientes")
-        .upsert(clientePayload, { onConflict: "solarz_customer_id" })
-        .select("id")
-        .single();
+      const linkPayload = {
+        conta_azul_customer_id: caId,
+        nome_fiscal: norm(ca?.nome) ?? norm(ca?.nome_empresa),
+        cnpj_cpf: norm(ca?.documento),
+        email: norm(ca?.email),
+        updated_at: new Date().toISOString(),
+      };
 
-      if (upErr || !upserted) {
-        errors.push(`solarz/${szId}: ${upErr?.message ?? "upsert vazio"}`);
+      const existingClienteId = existingOrphanLinkMap.get(caId);
+      if (existingClienteId) {
+        orphanExistingPayloads.push({ id: existingClienteId, origem: "conta_azul", ...clientePayload });
+        orphanLinkPayloads.push({ cliente_id: existingClienteId, ...linkPayload });
+      } else {
+        orphanNewPayloads.push({
+          caId,
+          clientePayload: { origem: "conta_azul", ...clientePayload },
+          linkPayload,
+        });
+      }
+
+      orphanPrepared++;
+      if (orphanPrepared % 100 === 0) await logStep(`STEP 6: preparo ${orphanPrepared}/${orphanCaIds.length} órfãos CA`);
+    }
+
+    for (const batch of chunk(orphanExistingPayloads, BATCH_SIZE)) {
+      checkTimeout();
+      const { data, error } = await supabase.from("clientes").upsert(batch, { onConflict: "id" }).select("id");
+      if (error) errors.push(`ca-orphan-existing-batch: ${error.message}`);
+      else rowsUpserted += data?.length ?? batch.length;
+    }
+
+    for (const orphan of orphanNewPayloads) {
+      checkTimeout();
+      const { data, error } = await supabase.from("clientes").insert(orphan.clientePayload).select("id").single();
+      if (error || !data) {
+        errors.push(`ca-orphan/${orphan.caId}: ${error?.message ?? "insert vazio"}`);
         continue;
       }
+      orphanLinkPayloads.push({ cliente_id: String(data.id), ...orphan.linkPayload });
       rowsUpserted++;
-      const clienteUuid = upserted.id as string;
-
-      // 5a) UFVs — upsert por solarz_ufv_id
-      for (const p of plantas) {
-        const ufvId = norm(p.id);
-        if (!ufvId) continue;
-        const partesEnd = [
-          norm(p.endereco_logradouro),
-          norm(p.endereco_bairro),
-        ]
-          .filter(Boolean)
-          .join(", ");
-        const { error: ufvErr } = await supabase
-          .from("cliente_ufvs")
-          .upsert(
-            {
-              cliente_id: clienteUuid,
-              solarz_ufv_id: ufvId,
-              nome: norm(p.name),
-              endereco: partesEnd || null,
-              cidade: norm(p.endereco_cidade),
-              estado: norm(p.endereco_siglaEstado),
-              cep: norm(p.endereco_cep),
-              latitude: numOrNull(p.endereco_latitude),
-              longitude: numOrNull(p.endereco_longitude),
-              potencia_kwp: numOrNull(p.installedPower),
-              status: norm(p.status_status),
-              updated_at: new Date().toISOString(),
-            },
-            { onConflict: "solarz_ufv_id" },
-          );
-        if (ufvErr) errors.push(`ufv/${ufvId}: ${ufvErr.message}`);
-        else rowsUpserted++;
-      }
-
-      // 5b) IDs Conta Azul vinculados
-      for (const caId of linkedCaIds) {
-        seenCaIds.add(caId);
-        const ca = caById.get(caId);
-        const { error: caErr } = await supabase
-          .from("cliente_conta_azul_ids")
-          .upsert(
-            {
-              cliente_id: clienteUuid,
-              conta_azul_customer_id: caId,
-              nome_fiscal: norm(ca?.nome) ?? norm(ca?.nome_empresa),
-              cnpj_cpf: norm(ca?.documento),
-              email: norm(ca?.email),
-              updated_at: new Date().toISOString(),
-            },
-            { onConflict: "conta_azul_customer_id" },
-          );
-        if (caErr) errors.push(`ca-link/${caId}: ${caErr.message}`);
-        else rowsUpserted++;
-      }
-
-      szProcessed++;
-      if (szProcessed % 100 === 0) {
-        ts(`STEP 5: progresso ${szProcessed}/${szClientes.size} clientes Solarz processados`);
-      }
     }
-    ts(`STEP 5: concluído (${szProcessed} clientes Solarz processados)`);
 
-    // ─── 6) Conta Azul órfãos (sem solarz no De-Para) ───────────────────────
-    let caOrfaosProcessed = 0;
-    ts(`STEP 6: processando órfãos CA (total candidatos: ${caById.size})`);
-    for (const [caId, ca] of caById) {
+    for (const batch of chunk(orphanLinkPayloads, 200)) {
       checkTimeout();
-      if (caToSz.has(caId)) continue; // já tratado acima
-      seenCaIds.add(caId);
-      caOrfaosProcessed++;
-
-      const empresa =
-        norm(ca.nome_empresa) ?? norm(ca.nome) ?? "(sem nome)";
-      const cnpjCpf = norm(ca.documento);
-      const atrasoOrfao = numOrNull(ca.atrasos_recebimentos);
-      const statusFinanceiroOrfao = (atrasoOrfao ?? 0) > 0 ? "INADIMPLENTE" : "OK";
-
-      // Busca cliente existente para esse CA (via cliente_conta_azul_ids)
-      const { data: existingLink } = await supabase
-        .from("cliente_conta_azul_ids")
-        .select("cliente_id")
-        .eq("conta_azul_customer_id", caId)
-        .maybeSingle();
-
-      let clienteUuid: string;
-
-      if (existingLink?.cliente_id) {
-        clienteUuid = existingLink.cliente_id;
-        await supabase
-          .from("clientes")
-          .update({
-            empresa,
-            cnpj_cpf: cnpjCpf,
-            ativo: true,
-            endereco: norm(ca.logradouro),
-            cidade: norm(ca.cidade),
-            estado: norm(ca.uf),
-            cep: norm(ca.cep),
-            telefones_unificados: joinLines([
-              norm(ca.telefone_celular) ? `CA cel: ${ca.telefone_celular}` : null,
-              norm(ca.telefone_comercial) ? `CA com: ${ca.telefone_comercial}` : null,
-            ]),
-            enderecos_unificados: joinLines([
-              `CA: ${[
-                norm(ca.logradouro),
-                norm(ca.numero_end),
-                norm(ca.bairro),
-                norm(ca.cidade),
-                norm(ca.uf),
-                norm(ca.cep),
-              ]
-                .filter(Boolean)
-                .join(", ")}`,
-            ]),
-            atrasos_recebimentos: atrasoOrfao && atrasoOrfao > 0 ? atrasoOrfao : null,
-            status_financeiro_ca: statusFinanceiroOrfao,
-            ufv_status_resumo: "SEM_UFV",
-            sync_source_updated_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", clienteUuid);
-      } else {
-        const { data: created, error: createErr } = await supabase
-          .from("clientes")
-          .insert({
-            origem: "conta_azul",
-            ativo: true,
-            empresa,
-            cnpj_cpf: cnpjCpf,
-            endereco: norm(ca.logradouro),
-            cidade: norm(ca.cidade),
-            estado: norm(ca.uf),
-            cep: norm(ca.cep),
-            telefones_unificados: joinLines([
-              norm(ca.telefone_celular) ? `CA cel: ${ca.telefone_celular}` : null,
-              norm(ca.telefone_comercial) ? `CA com: ${ca.telefone_comercial}` : null,
-            ]),
-            enderecos_unificados: joinLines([
-              `CA: ${[
-                norm(ca.logradouro),
-                norm(ca.numero_end),
-                norm(ca.bairro),
-                norm(ca.cidade),
-                norm(ca.uf),
-                norm(ca.cep),
-              ]
-                .filter(Boolean)
-                .join(", ")}`,
-            ]),
-            atrasos_recebimentos: atrasoOrfao && atrasoOrfao > 0 ? atrasoOrfao : null,
-            status_financeiro_ca: statusFinanceiroOrfao,
-            ufv_status_resumo: "SEM_UFV",
-            sync_source_updated_at: new Date().toISOString(),
-          })
-          .select("id")
-          .single();
-        if (createErr || !created) {
-          errors.push(`ca-orphan/${caId}: ${createErr?.message ?? "insert vazio"}`);
-          continue;
-        }
-        clienteUuid = created.id as string;
-      }
-      rowsUpserted++;
-
-      const { error: linkErr } = await supabase
-        .from("cliente_conta_azul_ids")
-        .upsert(
-          {
-            cliente_id: clienteUuid,
-            conta_azul_customer_id: caId,
-            nome_fiscal: norm(ca.nome) ?? norm(ca.nome_empresa),
-            cnpj_cpf: cnpjCpf,
-            email: norm(ca.email),
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: "conta_azul_customer_id" },
-        );
-      if (linkErr) errors.push(`ca-link-orphan/${caId}: ${linkErr.message}`);
+      const { error } = await supabase.from("cliente_conta_azul_ids").upsert(batch, { onConflict: "conta_azul_customer_id" });
+      if (error) errors.push(`ca-link-orphan-batch: ${error.message}`);
+      else rowsUpserted += batch.length;
     }
-    ts(`STEP 6: concluído (${caOrfaosProcessed} órfãos CA processados)`);
+    await logStep(`STEP 6: concluído (${orphanCaIds.length} órfãos CA; novos=${orphanNewPayloads.length}, existentes=${orphanExistingPayloads.length})`);
 
-    // ─── 6.5) Saneamento: soft-delete de clientes que sumiram das origens ──
-    ts(`STEP 6.5: saneamento — vistos: ${seenSolarzIds.size} SZ, ${seenCaIds.size} CA`);
-    let rowsDeactivated = 0;
+    await logStep(`STEP 6.5: saneamento — vistos: ${seenSolarzIds.size} SZ, ${seenCaIds.size} CA`);
     try {
-      // 6.5a) Solarz: marca ativo=false em quem não veio mais na sync
-      // (apenas registros com solarz_customer_id NÃO NULO e que não estão na lista vista)
       const seenSzArr = Array.from(seenSolarzIds);
       const { data: szDeact, error: szDeactErr } = await supabase
         .from("clientes")
@@ -659,101 +517,140 @@ Deno.serve(async (req) => {
         .not(
           "solarz_customer_id",
           "in",
-          seenSzArr.length > 0
-            ? `(${seenSzArr.map((s) => `"${s.replace(/"/g, '""')}"`).join(",")})`
-            : "(NULL)",
+          seenSzArr.length > 0 ? `(${seenSzArr.map((s) => `"${s.replace(/"/g, '""')}"`).join(",")})` : "(NULL)",
         )
         .select("id");
-      if (szDeactErr) {
-        errors.push(`saneamento-solarz: ${szDeactErr.message}`);
-      } else {
-        rowsDeactivated += szDeact?.length ?? 0;
-      }
+      if (szDeactErr) errors.push(`saneamento-solarz: ${szDeactErr.message}`);
+      else rowsDeactivated += szDeact?.length ?? 0;
 
-      // 6.5b) Conta Azul órfãos: precisa olhar pelo conta_azul_customer_id da tabela auxiliar
-      // Buscamos todos os cliente_id de origem='conta_azul' ativos cujo CA sumiu
-      const { data: caActiveLinks } = await supabase
+      const { data: caActiveLinks, error: caActiveLinksErr } = await supabase
         .from("cliente_conta_azul_ids")
         .select("cliente_id, conta_azul_customer_id, clientes!inner(id, origem, ativo)")
         .eq("clientes.origem", "conta_azul")
         .eq("clientes.ativo", true);
-
-      const orphanClienteIds = new Set<string>();
-      for (const link of caActiveLinks ?? []) {
-        if (!seenCaIds.has(String(link.conta_azul_customer_id))) {
-          orphanClienteIds.add(String(link.cliente_id));
-        }
-      }
-      if (orphanClienteIds.size > 0) {
-        const { data: caDeact, error: caDeactErr } = await supabase
-          .from("clientes")
-          .update({ ativo: false, updated_at: new Date().toISOString() })
-          .in("id", Array.from(orphanClienteIds))
-          .select("id");
-        if (caDeactErr) {
-          errors.push(`saneamento-ca: ${caDeactErr.message}`);
-        } else {
-          rowsDeactivated += caDeact?.length ?? 0;
+      if (caActiveLinksErr) {
+        errors.push(`saneamento-ca-links: ${caActiveLinksErr.message}`);
+      } else {
+        const orphanClienteIds = Array.from(
+          new Set(
+            (caActiveLinks ?? [])
+              .filter((link) => !seenCaIds.has(String(link.conta_azul_customer_id)))
+              .map((link) => String(link.cliente_id)),
+          ),
+        );
+        if (orphanClienteIds.length > 0) {
+          const { data: caDeact, error: caDeactErr } = await supabase
+            .from("clientes")
+            .update({ ativo: false, updated_at: new Date().toISOString() })
+            .in("id", orphanClienteIds)
+            .select("id");
+          if (caDeactErr) errors.push(`saneamento-ca: ${caDeactErr.message}`);
+          else rowsDeactivated += caDeact?.length ?? 0;
         }
       }
     } catch (sanErr) {
-      errors.push(
-        `saneamento: ${sanErr instanceof Error ? sanErr.message : String(sanErr)}`,
-      );
+      errors.push(`saneamento: ${sanErr instanceof Error ? sanErr.message : String(sanErr)}`);
     }
 
-    // 7) Encerra run
     const finalStatus = errors.length === 0 ? "success" : "partial";
-    ts(`STEP 7: finalizando — status=${finalStatus}, rows_upserted=${rowsUpserted}, errors=${errors.length}, deactivated=${rowsDeactivated}`);
-    await supabase
-      .from("sync_runs")
-      .update({
-        status: finalStatus,
-        finished_at: new Date().toISOString(),
-        rows_read: rowsRead,
-        rows_upserted: rowsUpserted,
-        error: errors.length
-          ? errors.slice(0, 50).join(" | ")
-          : rowsDeactivated > 0
-            ? `Saneamento: ${rowsDeactivated} cliente(s) marcado(s) como inativo(s).`
-            : null,
-      })
-      .eq("id", runId);
-
-    return new Response(
-      JSON.stringify({
-        run_id: runId,
-        status: finalStatus,
-        rows_read: rowsRead,
-        rows_upserted: rowsUpserted,
-        rows_deactivated: rowsDeactivated,
-        errors_count: errors.length,
-        sample_errors: errors.slice(0, 10),
-      }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
+    await logStep(`STEP 7: finalizando — status=${finalStatus}, rows_upserted=${rowsUpserted}, errors=${errors.length}, deactivated=${rowsDeactivated}`);
+    await syncRun({
+      status: finalStatus,
+      finished_at: new Date().toISOString(),
+      rows_read: rowsRead,
+      rows_upserted: rowsUpserted,
+      last_sync_cursor: rowsDeactivated > 0 ? `saneamento:${rowsDeactivated}` : "finished",
+      error: errors.length
+        ? errors.slice(0, 50).join(" | ")
+        : rowsDeactivated > 0
+          ? `Saneamento: ${rowsDeactivated} cliente(s) marcado(s) como inativo(s).`
+          : null,
+    });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    await supabase
-      .from("sync_runs")
-      .update({
-        status: "error",
-        finished_at: new Date().toISOString(),
-        rows_read: rowsRead,
-        rows_upserted: rowsUpserted,
-        error: msg,
-      })
-      .eq("id", runId);
-    return new Response(
-      JSON.stringify({ run_id: runId, error: msg }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
+    await syncRun({
+      status: "error",
+      finished_at: new Date().toISOString(),
+      rows_read: rowsRead,
+      rows_upserted: rowsUpserted,
+      last_sync_cursor: "failed",
+      error: msg,
+    });
+    console.error(`[sync] [run=${runId}] erro fatal: ${msg}`);
   } finally {
     clearTimeout(timeoutHandle);
-    await Promise.allSettled([
-      szConn?.end(),
-      caConn?.end(),
-      dpConn?.end(),
-    ]);
+    await Promise.allSettled([szConn?.end(), caConn?.end(), dpConn?.end()]);
   }
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  const supabase = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    { auth: { persistSession: false } },
+  );
+
+  let triggeredBy: "manual" | "cron" = "manual";
+  try {
+    const body = await req.clone().json().catch(() => null);
+    if (body && (body.triggered_by === "pg_cron" || body.triggered_by === "cron")) triggeredBy = "cron";
+  } catch {
+    // body opcional
+  }
+
+  const authHeader = req.headers.get("Authorization") ?? "";
+  const token = authHeader.replace("Bearer ", "").trim();
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ?? "";
+  const isServiceRole = !!token && token === serviceRoleKey;
+  const isCronCall = triggeredBy === "cron" && !!token && token === anonKey;
+
+  if (!isServiceRole && !isCronCall) {
+    const { data: userData, error: userErr } = await supabase.auth.getUser(token);
+    if (userErr || !userData?.user) return jsonResponse({ error: "Não autenticado" }, 401);
+    const { data: isStaff } = await supabase.rpc("is_staff", { _user_id: userData.user.id });
+    if (!isStaff) return jsonResponse({ error: "Apenas staff pode disparar a sincronização" }, 403);
+  }
+
+  await supabase
+    .from("sync_runs")
+    .update({
+      status: "error",
+      finished_at: new Date().toISOString(),
+      error: "Run abortada — substituída por nova execução (timeout anterior).",
+      last_sync_cursor: "stale-replaced",
+    })
+    .eq("source", "clientes-external")
+    .eq("status", "running")
+    .lt("started_at", new Date(Date.now() - HARD_TIMEOUT_MS).toISOString());
+
+  const { data: activeRun } = await supabase
+    .from("sync_runs")
+    .select("id, started_at")
+    .eq("source", "clientes-external")
+    .eq("status", "running")
+    .order("started_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (activeRun?.id) {
+    return jsonResponse({ run_id: activeRun.id, status: "running", reused: true }, 202);
+  }
+
+  const { data: runRow, error: runErr } = await supabase
+    .from("sync_runs")
+    .insert({ source: "clientes-external", status: "running", triggered_by: triggeredBy, last_sync_cursor: "queued" })
+    .select("id")
+    .single();
+  if (runErr || !runRow) return jsonResponse({ error: "Falha ao registrar sync_run", details: runErr?.message }, 500);
+
+  const runId = String(runRow.id);
+  const backgroundTask = processSync(supabase, runId);
+  const edgeRuntime = (globalThis as { EdgeRuntime?: { waitUntil: (promise: Promise<unknown>) => void } }).EdgeRuntime;
+  if (edgeRuntime?.waitUntil) edgeRuntime.waitUntil(backgroundTask);
+  else await backgroundTask;
+
+  return jsonResponse({ run_id: runId, status: "running", accepted: true }, 202);
 });
