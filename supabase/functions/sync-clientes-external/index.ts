@@ -196,7 +196,11 @@ Deno.serve(async (req) => {
     }
   };
 
+  const t0 = Date.now();
+  const ts = (label: string) => console.log(`[sync] [run=${runId}] ${label} (+${Date.now() - t0}ms)`);
+
   try {
+    ts("STEP 1: abrindo conexões MySQL (paralelo)");
     // 1) Conexões em paralelo (com hard-timeout)
     [szConn, caConn, dpConn] = await withTimeout(
       Promise.all([
@@ -206,8 +210,10 @@ Deno.serve(async (req) => {
       ]),
     );
     checkTimeout();
+    ts("STEP 1: conexões abertas");
 
     // 2) De-Para → mapas
+    ts("STEP 2: lendo dedupe_clientes (DEPARA)");
     const [dpRows] = await withTimeout(
       dpConn.query<any[]>("SELECT cliente_sz, id_ca FROM dedupe_clientes"),
     );
@@ -222,12 +228,15 @@ Deno.serve(async (req) => {
       caToSz.set(ca, sz);
     }
     rowsRead += dpRows.length;
+    ts(`STEP 2: dedupe_clientes lido (${dpRows.length} linhas)`);
 
     // 3) Solarz: clientes (dedupe por id) + plantas (agrupadas por cliente_nome)
+    ts("STEP 3a: lendo sz_clientes");
     const [szClientesRows] = await withTimeout(
       szConn.query<any[]>("SELECT id, name, email FROM sz_clientes"),
     );
     rowsRead += szClientesRows.length;
+    ts(`STEP 3a: sz_clientes lido (${szClientesRows.length} linhas)`);
 
     const szClientes = new Map<
       string,
@@ -239,6 +248,7 @@ Deno.serve(async (req) => {
       szClientes.set(id, { id, name: norm(r.name), email: norm(r.email) });
     }
 
+    ts("STEP 3b: lendo sz_plantas_infos");
     const [szPlantasRows] = await withTimeout(
       szConn.query<any[]>(
         `SELECT id, name, cliente_cpf, cliente_nome, cliente_telefone,
@@ -249,6 +259,7 @@ Deno.serve(async (req) => {
       ),
     );
     rowsRead += szPlantasRows.length;
+    ts(`STEP 3b: sz_plantas_infos lido (${szPlantasRows.length} linhas)`);
 
     const plantasByClienteNome = new Map<string, any[]>();
     const plantasByClienteCpf = new Map<string, any[]>();
@@ -266,6 +277,7 @@ Deno.serve(async (req) => {
     }
 
     // 4) Conta Azul: pessoas (clientes ativos)
+    ts("STEP 4: lendo pessoas (CONTA_AZUL)");
     const [caRows] = await withTimeout(
       caConn.query<any[]>(
         `SELECT id, nome, nome_empresa, documento, email,
@@ -279,6 +291,7 @@ Deno.serve(async (req) => {
       ),
     );
     rowsRead += caRows.length;
+    ts(`STEP 4: pessoas lido (${caRows.length} linhas)`);
 
     const caById = new Map<string, any>();
     for (const r of caRows) {
@@ -288,6 +301,8 @@ Deno.serve(async (req) => {
     }
 
     // ─── 5) Upsert clientes Solarz ─────────────────────────────────────────
+    ts(`STEP 5: upsert de ${szClientes.size} clientes Solarz`);
+    let szProcessed = 0;
     for (const [szId, cli] of szClientes) {
       checkTimeout();
       seenSolarzIds.add(szId);
