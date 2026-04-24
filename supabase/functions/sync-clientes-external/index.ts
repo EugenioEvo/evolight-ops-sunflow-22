@@ -51,6 +51,7 @@ const normDoc = (v: unknown): string | null => {
 };
 
 async function openMysql(prefix: string) {
+  const t0 = Date.now();
   const host = Deno.env.get(`${prefix}_MYSQL_HOST`);
   const port = Number(Deno.env.get(`${prefix}_MYSQL_PORT`) ?? "3306");
   const user = Deno.env.get(`${prefix}_MYSQL_USER`);
@@ -59,16 +60,25 @@ async function openMysql(prefix: string) {
   if (!host || !user || !password || !database) {
     throw new Error(`Secrets do MySQL ${prefix} incompletos`);
   }
-  return await mysql.createConnection({
-    host,
-    port,
-    user,
-    password,
-    database,
-    connectTimeout: 30_000,
-    // longtext UTF-8
-    charset: "utf8mb4",
-  });
+  console.log(`[sync] [${prefix}] conectando em ${host}:${port}/${database} ...`);
+  try {
+    const conn = await mysql.createConnection({
+      host,
+      port,
+      user,
+      password,
+      database,
+      connectTimeout: 30_000,
+      // longtext UTF-8
+      charset: "utf8mb4",
+    });
+    console.log(`[sync] [${prefix}] conectado em ${Date.now() - t0}ms`);
+    return conn;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`[sync] [${prefix}] FALHA na conexão após ${Date.now() - t0}ms: ${msg}`);
+    throw new Error(`Conexão MySQL ${prefix} falhou: ${msg}`);
+  }
 }
 
 // ─── main ─────────────────────────────────────────────────────────────────
@@ -186,7 +196,11 @@ Deno.serve(async (req) => {
     }
   };
 
+  const t0 = Date.now();
+  const ts = (label: string) => console.log(`[sync] [run=${runId}] ${label} (+${Date.now() - t0}ms)`);
+
   try {
+    ts("STEP 1: abrindo conexões MySQL (paralelo)");
     // 1) Conexões em paralelo (com hard-timeout)
     [szConn, caConn, dpConn] = await withTimeout(
       Promise.all([
@@ -196,8 +210,10 @@ Deno.serve(async (req) => {
       ]),
     );
     checkTimeout();
+    ts("STEP 1: conexões abertas");
 
     // 2) De-Para → mapas
+    ts("STEP 2: lendo dedupe_clientes (DEPARA)");
     const [dpRows] = await withTimeout(
       dpConn.query<any[]>("SELECT cliente_sz, id_ca FROM dedupe_clientes"),
     );
@@ -212,12 +228,15 @@ Deno.serve(async (req) => {
       caToSz.set(ca, sz);
     }
     rowsRead += dpRows.length;
+    ts(`STEP 2: dedupe_clientes lido (${dpRows.length} linhas)`);
 
     // 3) Solarz: clientes (dedupe por id) + plantas (agrupadas por cliente_nome)
+    ts("STEP 3a: lendo sz_clientes");
     const [szClientesRows] = await withTimeout(
       szConn.query<any[]>("SELECT id, name, email FROM sz_clientes"),
     );
     rowsRead += szClientesRows.length;
+    ts(`STEP 3a: sz_clientes lido (${szClientesRows.length} linhas)`);
 
     const szClientes = new Map<
       string,
@@ -229,6 +248,7 @@ Deno.serve(async (req) => {
       szClientes.set(id, { id, name: norm(r.name), email: norm(r.email) });
     }
 
+    ts("STEP 3b: lendo sz_plantas_infos");
     const [szPlantasRows] = await withTimeout(
       szConn.query<any[]>(
         `SELECT id, name, cliente_cpf, cliente_nome, cliente_telefone,
@@ -239,6 +259,7 @@ Deno.serve(async (req) => {
       ),
     );
     rowsRead += szPlantasRows.length;
+    ts(`STEP 3b: sz_plantas_infos lido (${szPlantasRows.length} linhas)`);
 
     const plantasByClienteNome = new Map<string, any[]>();
     const plantasByClienteCpf = new Map<string, any[]>();
@@ -256,6 +277,7 @@ Deno.serve(async (req) => {
     }
 
     // 4) Conta Azul: pessoas (clientes ativos)
+    ts("STEP 4: lendo pessoas (CONTA_AZUL)");
     const [caRows] = await withTimeout(
       caConn.query<any[]>(
         `SELECT id, nome, nome_empresa, documento, email,
@@ -269,6 +291,7 @@ Deno.serve(async (req) => {
       ),
     );
     rowsRead += caRows.length;
+    ts(`STEP 4: pessoas lido (${caRows.length} linhas)`);
 
     const caById = new Map<string, any>();
     for (const r of caRows) {
@@ -278,6 +301,8 @@ Deno.serve(async (req) => {
     }
 
     // ─── 5) Upsert clientes Solarz ─────────────────────────────────────────
+    ts(`STEP 5: upsert de ${szClientes.size} clientes Solarz`);
+    let szProcessed = 0;
     for (const [szId, cli] of szClientes) {
       checkTimeout();
       seenSolarzIds.add(szId);
@@ -491,13 +516,22 @@ Deno.serve(async (req) => {
         if (caErr) errors.push(`ca-link/${caId}: ${caErr.message}`);
         else rowsUpserted++;
       }
+
+      szProcessed++;
+      if (szProcessed % 100 === 0) {
+        ts(`STEP 5: progresso ${szProcessed}/${szClientes.size} clientes Solarz processados`);
+      }
     }
+    ts(`STEP 5: concluído (${szProcessed} clientes Solarz processados)`);
 
     // ─── 6) Conta Azul órfãos (sem solarz no De-Para) ───────────────────────
+    let caOrfaosProcessed = 0;
+    ts(`STEP 6: processando órfãos CA (total candidatos: ${caById.size})`);
     for (const [caId, ca] of caById) {
       checkTimeout();
       if (caToSz.has(caId)) continue; // já tratado acima
       seenCaIds.add(caId);
+      caOrfaosProcessed++;
 
       const empresa =
         norm(ca.nome_empresa) ?? norm(ca.nome) ?? "(sem nome)";
@@ -607,8 +641,10 @@ Deno.serve(async (req) => {
         );
       if (linkErr) errors.push(`ca-link-orphan/${caId}: ${linkErr.message}`);
     }
+    ts(`STEP 6: concluído (${caOrfaosProcessed} órfãos CA processados)`);
 
     // ─── 6.5) Saneamento: soft-delete de clientes que sumiram das origens ──
+    ts(`STEP 6.5: saneamento — vistos: ${seenSolarzIds.size} SZ, ${seenCaIds.size} CA`);
     let rowsDeactivated = 0;
     try {
       // 6.5a) Solarz: marca ativo=false em quem não veio mais na sync
@@ -668,6 +704,7 @@ Deno.serve(async (req) => {
 
     // 7) Encerra run
     const finalStatus = errors.length === 0 ? "success" : "partial";
+    ts(`STEP 7: finalizando — status=${finalStatus}, rows_upserted=${rowsUpserted}, errors=${errors.length}, deactivated=${rowsDeactivated}`);
     await supabase
       .from("sync_runs")
       .update({

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
 import { notificationService } from '@/shared/services/notificationService';
@@ -55,9 +56,25 @@ export const useWorkOrderDetail = (service = defaultService) => {
   const [actionLoading, setActionLoading] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
   const [workOrder, setWorkOrder] = useState<WorkOrderDetailData | null>(null);
+  const [isRmeResponsavel, setIsRmeResponsavel] = useState(false);
 
   const canManageOS = profile?.role === 'admin' || profile?.role === 'engenharia' || profile?.role === 'supervisao';
-  const canCreateRME = profile?.role === 'tecnico_campo' || canManageOS;
+  // Staff podem criar/editar RME para qualquer OS. Técnicos só se forem o responsável do ticket.
+  // Isso evita retrabalho: técnicos não-responsáveis nem iniciam o RME.
+  const canCreateRME = canManageOS || (profile?.role === 'tecnico_campo' && isRmeResponsavel);
+
+  const loadResponsavel = async (ticketId: string) => {
+    try {
+      const { data } = await supabase.rpc('get_ticket_rme_group_context', { p_ticket_id: ticketId });
+      const responsavelEmail = (data as any)?.[0]?.responsavel_email as string | undefined;
+      setIsRmeResponsavel(
+        !!responsavelEmail && !!profile?.email && responsavelEmail.toLowerCase() === profile.email.toLowerCase()
+      );
+    } catch (e) {
+      console.warn('loadResponsavel failed', e);
+      setIsRmeResponsavel(false);
+    }
+  };
 
   const loadWorkOrder = async () => {
     try {
@@ -65,6 +82,7 @@ export const useWorkOrderDetail = (service = defaultService) => {
       const data = await service.loadDetail(id!);
       if (!data) { toast.error('OS não encontrada'); navigate('/work-orders'); return; }
       setWorkOrder(data);
+      if (data.tickets?.id) await loadResponsavel(data.tickets.id);
     } catch (error) {
       handleError(error, { fallbackMessage: 'Erro ao carregar OS' });
     } finally {
@@ -181,12 +199,19 @@ export const useWorkOrderDetail = (service = defaultService) => {
 
   const handleCreateRME = () => {
     if (!workOrder) return;
+    // Bloqueia início: técnicos não-responsáveis não podem nem abrir o wizard.
+    // Visualizar RME existente (já criado pelo responsável) continua liberado.
+    if (!hasRME && !canCreateRME) {
+      toast.error('Apenas o técnico responsável pode iniciar o preenchimento do RME.');
+      return;
+    }
     if (hasRME) navigate(`/rme-wizard/${workOrder.rme_relatorios[0].id}`);
     else navigate(`/rme-wizard/new?os=${workOrder.id}`);
   };
 
   return {
     workOrder, loading, actionLoading, sendingEmail, canManageOS, canCreateRME,
+    isRmeResponsavel,
     hasRME, isRMECompleted, isRMEApproved, isRMELocked, rmeStatus,
     currentStatus: getCurrentStatus(),
     handleStartExecution, handleCompleteOS, handleSendEmail, handleDownloadPDF, handleCreateRME,

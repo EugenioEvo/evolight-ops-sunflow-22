@@ -208,6 +208,23 @@ const RMEWizard = () => {
         const names = ufvs.map((u: any) => u?.nome).filter(Boolean);
         anyData.tickets.clientes.ufv_solarz = names.length ? names.join(', ') : null;
       }
+
+      // Guard: somente o técnico responsável (ou staff) pode iniciar um novo RME.
+      // Técnicos da equipe sem responsabilidade ficam bloqueados na origem.
+      const { data: ctx } = await supabase.rpc("get_ticket_rme_group_context", { p_ticket_id: anyData.ticket_id });
+      const responsavelEmail = (ctx as any)?.[0]?.responsavel_email as string | undefined;
+      const isResp = !!responsavelEmail && !!profile?.email && responsavelEmail.toLowerCase() === profile.email.toLowerCase();
+      const isStaff = profile?.role === "admin" || profile?.role === "engenharia" || profile?.role === "supervisao";
+      if (!isResp && !isStaff) {
+        toast({
+          title: "Início do RME restrito",
+          description: "Apenas o técnico responsável pode iniciar o preenchimento. Aguarde o responsável criar o RME para colaborar.",
+          variant: "destructive",
+        });
+        navigate(`/work-orders/${workOrderId}`, { replace: true });
+        return;
+      }
+
       setWorkOrder(anyData as unknown as WorkOrderInfo);
       const clienteNome = anyData?.tickets?.clientes?.empresa || "";
       setFormData(prev => ({ ...prev, ordem_servico_id: anyData.id, ticket_id: anyData.ticket_id, site_name: anyData.site_name || "", client_name: clienteNome, address: anyData?.tickets?.endereco_servico || "", ufv_solarz: anyData?.tickets?.clientes?.ufv_solarz || "", nome_cliente_assinatura: prev.nome_cliente_assinatura || clienteNome }));
