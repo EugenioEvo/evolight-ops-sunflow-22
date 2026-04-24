@@ -357,8 +357,26 @@ Deno.serve(async (req) => {
         if (linha) enderecosLines.push(`CA: ${linha}`);
       }
 
-      const empresa = cli.name ?? "(sem nome)";
-      const cnpjCpf = norm(primeiraPlanta?.cliente_cpf);
+      // Primeiro CA vinculado (usado como fallback para campos que a Solarz não traz)
+      const primeiroCa = linkedCaIds.length > 0 ? caById.get(linkedCaIds[0]) : null;
+
+      const empresa =
+        cli.name ??
+        norm(primeiroCa?.nome_empresa) ??
+        norm(primeiroCa?.nome) ??
+        "(sem nome)";
+      const cnpjCpf =
+        norm(primeiraPlanta?.cliente_cpf) ?? norm(primeiroCa?.documento);
+
+      // Endereço principal: prioriza Solarz (planta), fallback CA
+      const enderecoPrincipal =
+        norm(primeiraPlanta?.endereco_logradouro) ?? norm(primeiroCa?.logradouro);
+      const cidadePrincipal =
+        norm(primeiraPlanta?.endereco_cidade) ?? norm(primeiroCa?.cidade);
+      const estadoPrincipal =
+        norm(primeiraPlanta?.endereco_siglaEstado) ?? norm(primeiroCa?.uf);
+      const cepPrincipal =
+        norm(primeiraPlanta?.endereco_cep) ?? norm(primeiroCa?.cep);
 
       // Status agregado de UFVs
       const ufvStatuses = plantas
@@ -392,10 +410,10 @@ Deno.serve(async (req) => {
         ativo: true,
         empresa,
         cnpj_cpf: cnpjCpf,
-        endereco: norm(primeiraPlanta?.endereco_logradouro),
-        cidade: norm(primeiraPlanta?.endereco_cidade),
-        estado: norm(primeiraPlanta?.endereco_siglaEstado),
-        cep: norm(primeiraPlanta?.endereco_cep),
+        endereco: enderecoPrincipal,
+        cidade: cidadePrincipal,
+        estado: estadoPrincipal,
+        cep: cepPrincipal,
         latitude: numOrNull(primeiraPlanta?.endereco_latitude),
         longitude: numOrNull(primeiraPlanta?.endereco_longitude),
         telefones_unificados: joinLines(telefonesLines),
