@@ -31,6 +31,24 @@ const joinLines = (lines: (string | null | undefined)[]): string | null => {
   const filtered = lines.map((l) => l?.trim()).filter((l): l is string => !!l);
   return filtered.length ? filtered.join("\n") : null;
 };
+// Normaliza nome para matching: trim, lowercase, remove acentos e colapsa espaços
+const normName = (v: unknown): string | null => {
+  const s = norm(v);
+  if (!s) return null;
+  return s
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+};
+// Normaliza CPF/CNPJ removendo tudo que não é dígito
+const normDoc = (v: unknown): string | null => {
+  const s = norm(v);
+  if (!s) return null;
+  const digits = s.replace(/\D/g, "");
+  return digits.length ? digits : null;
+};
 
 async function openMysql(prefix: string) {
   const host = Deno.env.get(`${prefix}_MYSQL_HOST`);
@@ -223,12 +241,18 @@ Deno.serve(async (req) => {
     rowsRead += szPlantasRows.length;
 
     const plantasByClienteNome = new Map<string, any[]>();
+    const plantasByClienteCpf = new Map<string, any[]>();
     for (const p of szPlantasRows) {
-      const cliNome = norm(p.cliente_nome);
-      if (!cliNome) continue;
-      const key = cliNome.toLowerCase();
-      if (!plantasByClienteNome.has(key)) plantasByClienteNome.set(key, []);
-      plantasByClienteNome.get(key)!.push(p);
+      const cliNome = normName(p.cliente_nome);
+      if (cliNome) {
+        if (!plantasByClienteNome.has(cliNome)) plantasByClienteNome.set(cliNome, []);
+        plantasByClienteNome.get(cliNome)!.push(p);
+      }
+      const cliCpf = normDoc(p.cliente_cpf);
+      if (cliCpf) {
+        if (!plantasByClienteCpf.has(cliCpf)) plantasByClienteCpf.set(cliCpf, []);
+        plantasByClienteCpf.get(cliCpf)!.push(p);
+      }
     }
 
     // 4) Conta Azul: pessoas (clientes ativos)
@@ -257,8 +281,24 @@ Deno.serve(async (req) => {
     for (const [szId, cli] of szClientes) {
       checkTimeout();
       seenSolarzIds.add(szId);
-      const plantas =
-        (cli.name && plantasByClienteNome.get(cli.name.toLowerCase())) || [];
+
+      // 1) Tenta match por nome normalizado
+      const cliNomeKey = normName(cli.name);
+      let plantas = (cliNomeKey && plantasByClienteNome.get(cliNomeKey)) || [];
+
+      // 2) Fallback: tenta match por CPF/CNPJ de algum CA vinculado
+      if (plantas.length === 0) {
+        const linkedCaIdsForLookup = Array.from(szToCa.get(szId) ?? []);
+        for (const caId of linkedCaIdsForLookup) {
+          const ca = caById.get(caId);
+          const cpf = normDoc(ca?.documento);
+          if (cpf && plantasByClienteCpf.has(cpf)) {
+            plantas = plantasByClienteCpf.get(cpf)!;
+            break;
+          }
+        }
+      }
+
       const primeiraPlanta = plantas[0];
 
       // Telefones unificados
@@ -317,8 +357,26 @@ Deno.serve(async (req) => {
         if (linha) enderecosLines.push(`CA: ${linha}`);
       }
 
-      const empresa = cli.name ?? "(sem nome)";
-      const cnpjCpf = norm(primeiraPlanta?.cliente_cpf);
+      // Primeiro CA vinculado (usado como fallback para campos que a Solarz não traz)
+      const primeiroCa = linkedCaIds.length > 0 ? caById.get(linkedCaIds[0]) : null;
+
+      const empresa =
+        cli.name ??
+        norm(primeiroCa?.nome_empresa) ??
+        norm(primeiroCa?.nome) ??
+        "(sem nome)";
+      const cnpjCpf =
+        norm(primeiraPlanta?.cliente_cpf) ?? norm(primeiroCa?.documento);
+
+      // Endereço principal: prioriza Solarz (planta), fallback CA
+      const enderecoPrincipal =
+        norm(primeiraPlanta?.endereco_logradouro) ?? norm(primeiroCa?.logradouro);
+      const cidadePrincipal =
+        norm(primeiraPlanta?.endereco_cidade) ?? norm(primeiroCa?.cidade);
+      const estadoPrincipal =
+        norm(primeiraPlanta?.endereco_siglaEstado) ?? norm(primeiroCa?.uf);
+      const cepPrincipal =
+        norm(primeiraPlanta?.endereco_cep) ?? norm(primeiroCa?.cep);
 
       // Status agregado de UFVs
       const ufvStatuses = plantas
@@ -352,10 +410,10 @@ Deno.serve(async (req) => {
         ativo: true,
         empresa,
         cnpj_cpf: cnpjCpf,
-        endereco: norm(primeiraPlanta?.endereco_logradouro),
-        cidade: norm(primeiraPlanta?.endereco_cidade),
-        estado: norm(primeiraPlanta?.endereco_siglaEstado),
-        cep: norm(primeiraPlanta?.endereco_cep),
+        endereco: enderecoPrincipal,
+        cidade: cidadePrincipal,
+        estado: estadoPrincipal,
+        cep: cepPrincipal,
         latitude: numOrNull(primeiraPlanta?.endereco_latitude),
         longitude: numOrNull(primeiraPlanta?.endereco_longitude),
         telefones_unificados: joinLines(telefonesLines),
