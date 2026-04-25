@@ -97,6 +97,47 @@ const chunk = <T,>(items: T[], size = BATCH_SIZE) => {
   return result;
 };
 
+const ZERO_UUID = "00000000-0000-0000-0000-000000000000";
+
+type SolarzDraft = {
+  solarzId: string;
+  payload: Record<string, unknown>;
+  plantas: any[];
+  linkedCaIds: string[];
+};
+
+const mergeDuplicateSolarzDrafts = (drafts: SolarzDraft[], errors: string[]) => {
+  const byDoc = new Map<string, SolarzDraft>();
+  const merged: SolarzDraft[] = [];
+
+  for (const draft of drafts) {
+    const docKey = normDoc(draft.payload.cnpj_cpf);
+    if (!docKey) {
+      merged.push(draft);
+      continue;
+    }
+
+    const existing = byDoc.get(docKey);
+    if (!existing) {
+      byDoc.set(docKey, draft);
+      merged.push(draft);
+      continue;
+    }
+
+    const seenPlantIds = new Set(existing.plantas.map((p) => norm(p.id)).filter(Boolean));
+    for (const planta of draft.plantas) {
+      const plantaId = norm(planta.id);
+      if (!plantaId || seenPlantIds.has(plantaId)) continue;
+      existing.plantas.push(planta);
+      seenPlantIds.add(plantaId);
+    }
+    existing.linkedCaIds = Array.from(new Set([...existing.linkedCaIds, ...draft.linkedCaIds]));
+    errors.push(`dedupe-solarz-doc/${docKey}: Solarz ${draft.solarzId} mesclado em ${existing.solarzId}`);
+  }
+
+  return merged;
+};
+
 async function processSync(
   supabase: ReturnType<typeof createClient>,
   runId: string,
@@ -222,7 +263,7 @@ async function processSync(
       caById.set(id, r);
     }
 
-    const solarzDrafts: Array<{ solarzId: string; payload: Record<string, unknown>; plantas: any[]; linkedCaIds: string[] }> = [];
+    const solarzDrafts: SolarzDraft[] = [];
     let szProcessed = 0;
     for (const [szId, cli] of szClientes) {
       checkTimeout();
@@ -326,8 +367,20 @@ async function processSync(
     }
     await logStep(`STEP 5: payloads Solarz preparados (${szProcessed} clientes)`);
 
+    const dedupedSolarzDrafts = mergeDuplicateSolarzDrafts(solarzDrafts, errors);
+    await logStep(`STEP 5: payloads Solarz saneados (${solarzDrafts.length} => ${dedupedSolarzDrafts.length})`);
+
+    await logStep("STEP 5: limpando tabelas de clientes antes da carga completa");
+    const { error: clearCaLinksError } = await supabase.from("cliente_conta_azul_ids").delete().neq("id", ZERO_UUID);
+    if (clearCaLinksError) throw new Error(`limpeza cliente_conta_azul_ids falhou: ${clearCaLinksError.message}`);
+    const { error: clearUfvsError } = await supabase.from("cliente_ufvs").delete().neq("id", ZERO_UUID);
+    if (clearUfvsError) throw new Error(`limpeza cliente_ufvs falhou: ${clearUfvsError.message}`);
+    const { error: clearClientesError } = await supabase.from("clientes").delete().neq("id", ZERO_UUID);
+    if (clearClientesError) throw new Error(`limpeza clientes falhou: ${clearClientesError.message}`);
+    await logStep("STEP 5: limpeza concluída");
+
     const solarzIdToClienteId = new Map<string, string>();
-    for (const batch of chunk(solarzDrafts, BATCH_SIZE)) {
+    for (const batch of chunk(dedupedSolarzDrafts, BATCH_SIZE)) {
       checkTimeout();
       const { data, error } = await supabase
         .from("clientes")
@@ -346,7 +399,7 @@ async function processSync(
 
     const ufvPayloads: Record<string, unknown>[] = [];
     const caLinkPayloadsById = new Map<string, Record<string, unknown>>();
-    for (const draft of solarzDrafts) {
+    for (const draft of dedupedSolarzDrafts) {
       const clienteUuid = solarzIdToClienteId.get(draft.solarzId);
       if (!clienteUuid) {
         errors.push(`solarz/${draft.solarzId}: cliente não retornou no upsert em lote`);
@@ -402,21 +455,7 @@ async function processSync(
     const orphanCaIds = Array.from(caById.keys()).filter((caId) => !caToSz.has(caId));
     await logStep(`STEP 6: processando órfãos CA (total candidatos: ${orphanCaIds.length})`);
 
-    const existingOrphanLinkMap = new Map<string, string>();
-    for (const batch of chunk(orphanCaIds, 200)) {
-      checkTimeout();
-      const { data, error } = await supabase
-        .from("cliente_conta_azul_ids")
-        .select("cliente_id, conta_azul_customer_id")
-        .in("conta_azul_customer_id", batch);
-      if (error) {
-        errors.push(`ca-orphan-links: ${error.message}`);
-        continue;
-      }
-      for (const row of data ?? []) existingOrphanLinkMap.set(String(row.conta_azul_customer_id), String(row.cliente_id));
-    }
-
-    const orphanExistingPayloads: Record<string, unknown>[] = [];
+    const docsAlreadyLoaded = new Set(dedupedSolarzDrafts.map((draft) => normDoc(draft.payload.cnpj_cpf)).filter((doc): doc is string => !!doc));
     const orphanLinkPayloads: Record<string, unknown>[] = [];
     const orphanNewPayloads: Array<{ caId: string; clientePayload: Record<string, unknown>; linkPayload: Record<string, unknown> }> = [];
 
@@ -463,27 +502,21 @@ async function processSync(
         updated_at: new Date().toISOString(),
       };
 
-      const existingClienteId = existingOrphanLinkMap.get(caId);
-      if (existingClienteId) {
-        orphanExistingPayloads.push({ id: existingClienteId, origem: "conta_azul", ...clientePayload });
-        orphanLinkPayloads.push({ cliente_id: existingClienteId, ...linkPayload });
-      } else {
-        orphanNewPayloads.push({
-          caId,
-          clientePayload: { origem: "conta_azul", ...clientePayload },
-          linkPayload,
-        });
+      const docKey = normDoc(clientePayload.cnpj_cpf);
+      if (docKey && docsAlreadyLoaded.has(docKey)) {
+        errors.push(`ca-orphan/${caId}: ignorado por documento duplicado (${docKey}) já carregado via Solarz`);
+        continue;
       }
+      if (docKey) docsAlreadyLoaded.add(docKey);
+
+      orphanNewPayloads.push({
+        caId,
+        clientePayload: { origem: "conta_azul", ...clientePayload },
+        linkPayload,
+      });
 
       orphanPrepared++;
       if (orphanPrepared % 100 === 0) await logStep(`STEP 6: preparo ${orphanPrepared}/${orphanCaIds.length} órfãos CA`);
-    }
-
-    for (const batch of chunk(orphanExistingPayloads, BATCH_SIZE)) {
-      checkTimeout();
-      const { data, error } = await supabase.from("clientes").upsert(batch, { onConflict: "id" }).select("id");
-      if (error) errors.push(`ca-orphan-existing-batch: ${error.message}`);
-      else rowsUpserted += data?.length ?? batch.length;
     }
 
     for (const orphan of orphanNewPayloads) {
@@ -503,7 +536,7 @@ async function processSync(
       if (error) errors.push(`ca-link-orphan-batch: ${error.message}`);
       else rowsUpserted += batch.length;
     }
-    await logStep(`STEP 6: concluído (${orphanCaIds.length} órfãos CA; novos=${orphanNewPayloads.length}, existentes=${orphanExistingPayloads.length})`);
+    await logStep(`STEP 6: concluído (${orphanCaIds.length} órfãos CA; novos=${orphanNewPayloads.length})`);
 
     await logStep(`STEP 6.5: saneamento — vistos: ${seenSolarzIds.size} SZ, ${seenCaIds.size} CA`);
     try {
