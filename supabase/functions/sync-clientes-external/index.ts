@@ -405,20 +405,70 @@ async function processSync(
     const dedupedSolarzDrafts = mergeDuplicateSolarzDrafts(solarzDrafts, errors);
     await logStep(`STEP 5: payloads Solarz saneados (${solarzDrafts.length} => ${dedupedSolarzDrafts.length})`);
 
+    await logStep("STEP 5: carregando índice local por documento");
+    const existingClienteByDoc = await fetchClientesByNormalizedDoc(supabase);
+    await logStep(`STEP 5: índice local por documento carregado (${existingClienteByDoc.size})`);
+
     // NOTE: não fazemos truncate/delete físico — tickets/equipamentos/OS têm FK para clientes.
     // Estratégia: upsert idempotente por solarz_customer_id e conta_azul_customer_id;
     // o STEP 6.5 marca como ativo=false os que sumiram da origem (soft-delete).
     // Garantimos reativação automática de quem volta a aparecer ao incluir ativo=true no payload.
 
     const solarzIdToClienteId = new Map<string, string>();
-    for (const batch of chunk(dedupedSolarzDrafts, BATCH_SIZE)) {
+    const solarzInsertDrafts: SolarzDraft[] = [];
+    for (const draft of dedupedSolarzDrafts) {
+      const docKey = normDoc(draft.payload.cnpj_cpf);
+      const existingByDoc = docKey ? existingClienteByDoc.get(docKey) : null;
+
+      if (existingByDoc && existingByDoc.solarz_customer_id !== draft.solarzId) {
+        const { error } = await supabase
+          .from("clientes")
+          .update(draft.payload)
+          .eq("id", existingByDoc.id);
+
+        if (error) {
+          errors.push(`clientes-solarz-doc-update/${draft.solarzId}/${docKey}: ${error.message}`);
+          continue;
+        }
+
+        solarzIdToClienteId.set(draft.solarzId, existingByDoc.id);
+        rowsUpserted++;
+        errors.push(`clientes-solarz-doc-match/${draft.solarzId}: reaproveitado cliente existente por documento ${docKey}`);
+      } else {
+        solarzInsertDrafts.push(draft);
+      }
+    }
+
+    for (const batch of chunk(solarzInsertDrafts, BATCH_SIZE)) {
       checkTimeout();
       const { data, error } = await supabase
         .from("clientes")
         .upsert(batch.map((item) => item.payload), { onConflict: "solarz_customer_id" })
         .select("id, solarz_customer_id");
       if (error) {
-        errors.push(`clientes-solarz-batch: ${error.message}`);
+        if (isDuplicateDocError(error.message)) {
+          for (const item of batch) {
+            const docKey = normDoc(item.payload.cnpj_cpf);
+            if (!docKey) {
+              errors.push(`clientes-solarz/${item.solarzId}: duplicate doc sem documento normalizado`);
+              continue;
+            }
+            const refreshedByDoc = await fetchClientesByNormalizedDoc(supabase);
+            const existingByDoc = refreshedByDoc.get(docKey);
+            if (!existingByDoc) {
+              errors.push(`clientes-solarz/${item.solarzId}: duplicate doc ${docKey}, mas cliente local não localizado`);
+              continue;
+            }
+            const { error: updateErr } = await supabase.from("clientes").update(item.payload).eq("id", existingByDoc.id);
+            if (updateErr) errors.push(`clientes-solarz-doc-retry/${item.solarzId}/${docKey}: ${updateErr.message}`);
+            else {
+              solarzIdToClienteId.set(item.solarzId, existingByDoc.id);
+              rowsUpserted++;
+            }
+          }
+        } else {
+          errors.push(`clientes-solarz-batch: ${error.message}`);
+        }
         continue;
       }
       for (const row of data ?? []) {
