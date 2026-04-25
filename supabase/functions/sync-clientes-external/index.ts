@@ -106,6 +106,41 @@ type SolarzDraft = {
   linkedCaIds: string[];
 };
 
+type ClienteDocRow = {
+  id: string;
+  cnpj_cpf: string | null;
+  solarz_customer_id: string | null;
+};
+
+const isDuplicateDocError = (message: string | undefined) =>
+  !!message && message.includes("clientes_doc_normalized_uniq");
+
+async function fetchClientesByNormalizedDoc(
+  supabase: ReturnType<typeof createClient>,
+) {
+  const byDoc = new Map<string, ClienteDocRow>();
+  const PAGE_SIZE = 1000;
+
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from("clientes")
+      .select("id, cnpj_cpf, solarz_customer_id")
+      .not("cnpj_cpf", "is", null)
+      .range(from, from + PAGE_SIZE - 1);
+
+    if (error) throw new Error(`lookup-clientes-docs: ${error.message}`);
+
+    for (const row of data ?? []) {
+      const docKey = normDoc(row.cnpj_cpf);
+      if (docKey && !byDoc.has(docKey)) byDoc.set(docKey, row as ClienteDocRow);
+    }
+
+    if (!data || data.length < PAGE_SIZE) break;
+  }
+
+  return byDoc;
+}
+
 const mergeDuplicateSolarzDrafts = (drafts: SolarzDraft[], errors: string[]) => {
   const byDoc = new Map<string, SolarzDraft>();
   const merged: SolarzDraft[] = [];
