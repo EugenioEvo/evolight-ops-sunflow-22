@@ -263,7 +263,7 @@ async function processSync(
       caById.set(id, r);
     }
 
-    const solarzDrafts: Array<{ solarzId: string; payload: Record<string, unknown>; plantas: any[]; linkedCaIds: string[] }> = [];
+    const solarzDrafts: SolarzDraft[] = [];
     let szProcessed = 0;
     for (const [szId, cli] of szClientes) {
       checkTimeout();
@@ -367,8 +367,20 @@ async function processSync(
     }
     await logStep(`STEP 5: payloads Solarz preparados (${szProcessed} clientes)`);
 
+    const dedupedSolarzDrafts = mergeDuplicateSolarzDrafts(solarzDrafts, errors);
+    await logStep(`STEP 5: payloads Solarz saneados (${solarzDrafts.length} => ${dedupedSolarzDrafts.length})`);
+
+    await logStep("STEP 5: limpando tabelas de clientes antes da carga completa");
+    const { error: clearCaLinksError } = await supabase.from("cliente_conta_azul_ids").delete().neq("id", ZERO_UUID);
+    if (clearCaLinksError) throw new Error(`limpeza cliente_conta_azul_ids falhou: ${clearCaLinksError.message}`);
+    const { error: clearUfvsError } = await supabase.from("cliente_ufvs").delete().neq("id", ZERO_UUID);
+    if (clearUfvsError) throw new Error(`limpeza cliente_ufvs falhou: ${clearUfvsError.message}`);
+    const { error: clearClientesError } = await supabase.from("clientes").delete().neq("id", ZERO_UUID);
+    if (clearClientesError) throw new Error(`limpeza clientes falhou: ${clearClientesError.message}`);
+    await logStep("STEP 5: limpeza concluída");
+
     const solarzIdToClienteId = new Map<string, string>();
-    for (const batch of chunk(solarzDrafts, BATCH_SIZE)) {
+    for (const batch of chunk(dedupedSolarzDrafts, BATCH_SIZE)) {
       checkTimeout();
       const { data, error } = await supabase
         .from("clientes")
