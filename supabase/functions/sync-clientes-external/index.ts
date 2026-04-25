@@ -370,14 +370,10 @@ async function processSync(
     const dedupedSolarzDrafts = mergeDuplicateSolarzDrafts(solarzDrafts, errors);
     await logStep(`STEP 5: payloads Solarz saneados (${solarzDrafts.length} => ${dedupedSolarzDrafts.length})`);
 
-    await logStep("STEP 5: limpando tabelas de clientes antes da carga completa");
-    const { error: clearCaLinksError } = await supabase.from("cliente_conta_azul_ids").delete().neq("id", ZERO_UUID);
-    if (clearCaLinksError) throw new Error(`limpeza cliente_conta_azul_ids falhou: ${clearCaLinksError.message}`);
-    const { error: clearUfvsError } = await supabase.from("cliente_ufvs").delete().neq("id", ZERO_UUID);
-    if (clearUfvsError) throw new Error(`limpeza cliente_ufvs falhou: ${clearUfvsError.message}`);
-    const { error: clearClientesError } = await supabase.from("clientes").delete().neq("id", ZERO_UUID);
-    if (clearClientesError) throw new Error(`limpeza clientes falhou: ${clearClientesError.message}`);
-    await logStep("STEP 5: limpeza concluída");
+    // NOTE: não fazemos truncate/delete físico — tickets/equipamentos/OS têm FK para clientes.
+    // Estratégia: upsert idempotente por solarz_customer_id e conta_azul_customer_id;
+    // o STEP 6.5 marca como ativo=false os que sumiram da origem (soft-delete).
+    // Garantimos reativação automática de quem volta a aparecer ao incluir ativo=true no payload.
 
     const solarzIdToClienteId = new Map<string, string>();
     for (const batch of chunk(dedupedSolarzDrafts, BATCH_SIZE)) {
