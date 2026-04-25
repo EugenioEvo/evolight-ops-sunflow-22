@@ -723,48 +723,75 @@ async function processSync(
     }
     await logStep(`STEP 6: concluído (${orphanCaIds.length} órfãos CA; novos=${orphanNewPayloads.length})`);
 
-    await logStep(`STEP 6.5: saneamento — vistos: ${seenSolarzIds.size} SZ, ${seenCaIds.size} CA`);
+    await logStep(`STEP 6.5: saneamento universal — vistos: ${seenSolarzIds.size} SZ, ${seenCaIds.size} CA`);
     try {
-      const seenSzArr = Array.from(seenSolarzIds);
-      const { data: szDeact, error: szDeactErr } = await supabase
-        .from("clientes")
-        .update({ ativo: false, updated_at: new Date().toISOString() })
-        .eq("origem", "solarz")
-        .eq("ativo", true)
-        .not("solarz_customer_id", "is", null)
-        .not(
-          "solarz_customer_id",
-          "in",
-          seenSzArr.length > 0 ? `(${seenSzArr.map((s) => `"${s.replace(/"/g, '""')}"`).join(",")})` : "(NULL)",
-        )
-        .select("id");
-      if (szDeactErr) errors.push(`saneamento-solarz: ${szDeactErr.message}`);
-      else rowsDeactivated += szDeact?.length ?? 0;
+      // Estratégia universal: um cliente é considerado VIVO se:
+      //  (a) tem solarz_customer_id que apareceu nesta execução, OU
+      //  (b) tem ao menos um link em cliente_conta_azul_ids cujo conta_azul_customer_id apareceu nesta execução.
+      // Qualquer outro cliente ativo é "fantasma" (resíduo de execuções antigas) e deve ser desativado.
 
-      const { data: caActiveLinks, error: caActiveLinksErr } = await supabase
-        .from("cliente_conta_azul_ids")
-        .select("cliente_id, conta_azul_customer_id, clientes!inner(id, origem, ativo)")
-        .eq("clientes.origem", "conta_azul")
-        .eq("clientes.ativo", true);
-      if (caActiveLinksErr) {
-        errors.push(`saneamento-ca-links: ${caActiveLinksErr.message}`);
-      } else {
-        const orphanClienteIds = Array.from(
-          new Set(
-            (caActiveLinks ?? [])
-              .filter((link) => !seenCaIds.has(String(link.conta_azul_customer_id)))
-              .map((link) => String(link.cliente_id)),
-          ),
-        );
-        if (orphanClienteIds.length > 0) {
-          const { data: caDeact, error: caDeactErr } = await supabase
-            .from("clientes")
-            .update({ ativo: false, updated_at: new Date().toISOString() })
-            .in("id", orphanClienteIds)
-            .select("id");
-          if (caDeactErr) errors.push(`saneamento-ca: ${caDeactErr.message}`);
-          else rowsDeactivated += caDeact?.length ?? 0;
+      // 1) Carregar todos os clientes ativos (id, solarz_customer_id) em páginas para evitar limite de 1000.
+      const aliveClienteIds = new Set<string>();
+      const allActiveIds: string[] = [];
+      const PAGE = 1000;
+      let offset = 0;
+      while (true) {
+        checkTimeout();
+        const { data: page, error: pageErr } = await supabase
+          .from("clientes")
+          .select("id, solarz_customer_id")
+          .eq("ativo", true)
+          .order("id", { ascending: true })
+          .range(offset, offset + PAGE - 1);
+        if (pageErr) {
+          errors.push(`saneamento-load/${offset}: ${pageErr.message}`);
+          break;
         }
+        const rows = page ?? [];
+        for (const row of rows) {
+          allActiveIds.push(String(row.id));
+          const sz = row.solarz_customer_id != null ? String(row.solarz_customer_id) : null;
+          if (sz && seenSolarzIds.has(sz)) aliveClienteIds.add(String(row.id));
+        }
+        if (rows.length < PAGE) break;
+        offset += PAGE;
+      }
+      await logStep(`STEP 6.5: ${allActiveIds.length} clientes ativos carregados; ${aliveClienteIds.size} vivos por Solarz até agora`);
+
+      // 2) Para os ativos restantes, marcar como vivos os que têm ao menos um link CA visto nesta execução.
+      const candidatesForCaCheck = allActiveIds.filter((id) => !aliveClienteIds.has(id));
+      for (const batch of chunk(candidatesForCaCheck, 500)) {
+        checkTimeout();
+        const { data: caLinks, error: caLinksErr } = await supabase
+          .from("cliente_conta_azul_ids")
+          .select("cliente_id, conta_azul_customer_id")
+          .in("cliente_id", batch);
+        if (caLinksErr) {
+          errors.push(`saneamento-ca-lookup: ${caLinksErr.message}`);
+          continue;
+        }
+        for (const link of caLinks ?? []) {
+          const caId = String(link.conta_azul_customer_id);
+          if (seenCaIds.has(caId)) aliveClienteIds.add(String(link.cliente_id));
+        }
+      }
+      await logStep(`STEP 6.5: ${aliveClienteIds.size} clientes vivos após cruzar com CA`);
+
+      // 3) Desativar todos os ativos que não estão na lista de vivos.
+      const ghosts = allActiveIds.filter((id) => !aliveClienteIds.has(id));
+      await logStep(`STEP 6.5: ${ghosts.length} clientes fantasmas a desativar`);
+      for (const batch of chunk(ghosts, 200)) {
+        checkTimeout();
+        const { data: deact, error: deactErr } = await supabase
+          .from("clientes")
+          .update({ ativo: false, updated_at: new Date().toISOString() })
+          .in("id", batch)
+          .select("id");
+        if (deactErr) {
+          errors.push(`saneamento-deactivate: ${deactErr.message}`);
+          continue;
+        }
+        rowsDeactivated += deact?.length ?? 0;
       }
     } catch (sanErr) {
       errors.push(`saneamento: ${sanErr instanceof Error ? sanErr.message : String(sanErr)}`);
