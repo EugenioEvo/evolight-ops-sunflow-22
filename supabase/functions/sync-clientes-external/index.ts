@@ -115,6 +115,23 @@ type ClienteDocRow = {
 const isDuplicateDocError = (message: string | undefined) =>
   !!message && message.includes("clientes_doc_normalized_uniq");
 
+const isDuplicateSolarzError = (message: string | undefined) =>
+  !!message && message.includes("clientes_solarz_customer_id_key");
+
+async function fetchClienteBySolarzId(
+  supabase: ReturnType<typeof createClient>,
+  solarzId: string,
+) {
+  const { data, error } = await supabase
+    .from("clientes")
+    .select("id, cnpj_cpf, solarz_customer_id")
+    .eq("solarz_customer_id", solarzId)
+    .maybeSingle();
+
+  if (error) throw new Error(`lookup-cliente-solarz/${solarzId}: ${error.message}`);
+  return data as ClienteDocRow | null;
+}
+
 async function fetchClientesByNormalizedDoc(
   supabase: ReturnType<typeof createClient>,
 ) {
