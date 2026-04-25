@@ -626,7 +626,27 @@ async function processSync(
 
       const docKey = normDoc(clientePayload.cnpj_cpf);
       if (docKey && docsAlreadyLoaded.has(docKey)) {
-        errors.push(`ca-orphan/${caId}: ignorado por documento duplicado (${docKey}) já carregado via Solarz`);
+        const existingByDoc = existingClienteByDoc.get(docKey);
+        if (existingByDoc) {
+          orphanLinkPayloads.push({ cliente_id: existingByDoc.id, ...linkPayload });
+        } else {
+          console.warn(`[sync] [run=${runId}] CA órfão ${caId} ignorado por documento ${docKey} já carregado via Solarz nesta execução`);
+        }
+        continue;
+      }
+      const existingByDoc = docKey ? existingClienteByDoc.get(docKey) : null;
+      if (existingByDoc) {
+        const updatePayload = existingByDoc.solarz_customer_id
+          ? { ativo: true, updated_at: new Date().toISOString() }
+          : { origem: "conta_azul", ...clientePayload };
+        const { error: updErr } = await supabase.from("clientes").update(updatePayload).eq("id", existingByDoc.id);
+        if (updErr) {
+          errors.push(`ca-orphan-doc-update/${caId}/${docKey}: ${updErr.message}`);
+          continue;
+        }
+        orphanLinkPayloads.push({ cliente_id: existingByDoc.id, ...linkPayload });
+        rowsUpserted++;
+        if (docKey) docsAlreadyLoaded.add(docKey);
         continue;
       }
       if (docKey) docsAlreadyLoaded.add(docKey);
