@@ -97,6 +97,47 @@ const chunk = <T,>(items: T[], size = BATCH_SIZE) => {
   return result;
 };
 
+const ZERO_UUID = "00000000-0000-0000-0000-000000000000";
+
+type SolarzDraft = {
+  solarzId: string;
+  payload: Record<string, unknown>;
+  plantas: any[];
+  linkedCaIds: string[];
+};
+
+const mergeDuplicateSolarzDrafts = (drafts: SolarzDraft[], errors: string[]) => {
+  const byDoc = new Map<string, SolarzDraft>();
+  const merged: SolarzDraft[] = [];
+
+  for (const draft of drafts) {
+    const docKey = normDoc(draft.payload.cnpj_cpf);
+    if (!docKey) {
+      merged.push(draft);
+      continue;
+    }
+
+    const existing = byDoc.get(docKey);
+    if (!existing) {
+      byDoc.set(docKey, draft);
+      merged.push(draft);
+      continue;
+    }
+
+    const seenPlantIds = new Set(existing.plantas.map((p) => norm(p.id)).filter(Boolean));
+    for (const planta of draft.plantas) {
+      const plantaId = norm(planta.id);
+      if (!plantaId || seenPlantIds.has(plantaId)) continue;
+      existing.plantas.push(planta);
+      seenPlantIds.add(plantaId);
+    }
+    existing.linkedCaIds = Array.from(new Set([...existing.linkedCaIds, ...draft.linkedCaIds]));
+    errors.push(`dedupe-solarz-doc/${docKey}: Solarz ${draft.solarzId} mesclado em ${existing.solarzId}`);
+  }
+
+  return merged;
+};
+
 async function processSync(
   supabase: ReturnType<typeof createClient>,
   runId: string,
