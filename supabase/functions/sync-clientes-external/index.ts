@@ -370,14 +370,10 @@ async function processSync(
     const dedupedSolarzDrafts = mergeDuplicateSolarzDrafts(solarzDrafts, errors);
     await logStep(`STEP 5: payloads Solarz saneados (${solarzDrafts.length} => ${dedupedSolarzDrafts.length})`);
 
-    await logStep("STEP 5: limpando tabelas de clientes antes da carga completa");
-    const { error: clearCaLinksError } = await supabase.from("cliente_conta_azul_ids").delete().neq("id", ZERO_UUID);
-    if (clearCaLinksError) throw new Error(`limpeza cliente_conta_azul_ids falhou: ${clearCaLinksError.message}`);
-    const { error: clearUfvsError } = await supabase.from("cliente_ufvs").delete().neq("id", ZERO_UUID);
-    if (clearUfvsError) throw new Error(`limpeza cliente_ufvs falhou: ${clearUfvsError.message}`);
-    const { error: clearClientesError } = await supabase.from("clientes").delete().neq("id", ZERO_UUID);
-    if (clearClientesError) throw new Error(`limpeza clientes falhou: ${clearClientesError.message}`);
-    await logStep("STEP 5: limpeza concluída");
+    // NOTE: não fazemos truncate/delete físico — tickets/equipamentos/OS têm FK para clientes.
+    // Estratégia: upsert idempotente por solarz_customer_id e conta_azul_customer_id;
+    // o STEP 6.5 marca como ativo=false os que sumiram da origem (soft-delete).
+    // Garantimos reativação automática de quem volta a aparecer ao incluir ativo=true no payload.
 
     const solarzIdToClienteId = new Map<string, string>();
     for (const batch of chunk(dedupedSolarzDrafts, BATCH_SIZE)) {
@@ -519,15 +515,48 @@ async function processSync(
       if (orphanPrepared % 100 === 0) await logStep(`STEP 6: preparo ${orphanPrepared}/${orphanCaIds.length} órfãos CA`);
     }
 
-    for (const orphan of orphanNewPayloads) {
+    // Para órfãos CA, primeiro verificamos se já existe link → reaproveita cliente_id (evita duplicar a cada sync).
+    const orphanCaIdList = orphanNewPayloads.map((o) => o.caId);
+    const existingLinkByCaId = new Map<string, string>(); // caId → cliente_id existente
+    for (const batch of chunk(orphanCaIdList, 200)) {
       checkTimeout();
-      const { data, error } = await supabase.from("clientes").insert(orphan.clientePayload).select("id").single();
-      if (error || !data) {
-        errors.push(`ca-orphan/${orphan.caId}: ${error?.message ?? "insert vazio"}`);
+      const { data, error } = await supabase
+        .from("cliente_conta_azul_ids")
+        .select("conta_azul_customer_id, cliente_id")
+        .in("conta_azul_customer_id", batch);
+      if (error) {
+        errors.push(`ca-orphan-lookup: ${error.message}`);
         continue;
       }
-      orphanLinkPayloads.push({ cliente_id: String(data.id), ...orphan.linkPayload });
-      rowsUpserted++;
+      for (const row of data ?? []) {
+        existingLinkByCaId.set(String(row.conta_azul_customer_id), String(row.cliente_id));
+      }
+    }
+
+    for (const orphan of orphanNewPayloads) {
+      checkTimeout();
+      const existingClienteId = existingLinkByCaId.get(orphan.caId);
+      if (existingClienteId) {
+        // Atualiza cliente já vinculado (preserva FK com tickets/OS).
+        const { error: updErr } = await supabase
+          .from("clientes")
+          .update(orphan.clientePayload)
+          .eq("id", existingClienteId);
+        if (updErr) {
+          errors.push(`ca-orphan-update/${orphan.caId}: ${updErr.message}`);
+          continue;
+        }
+        orphanLinkPayloads.push({ cliente_id: existingClienteId, ...orphan.linkPayload });
+        rowsUpserted++;
+      } else {
+        const { data, error } = await supabase.from("clientes").insert(orphan.clientePayload).select("id").single();
+        if (error || !data) {
+          errors.push(`ca-orphan-insert/${orphan.caId}: ${error?.message ?? "insert vazio"}`);
+          continue;
+        }
+        orphanLinkPayloads.push({ cliente_id: String(data.id), ...orphan.linkPayload });
+        rowsUpserted++;
+      }
     }
 
     for (const batch of chunk(orphanLinkPayloads, 200)) {
