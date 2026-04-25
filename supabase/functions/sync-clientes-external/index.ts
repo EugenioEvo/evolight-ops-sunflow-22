@@ -399,7 +399,7 @@ async function processSync(
 
     const ufvPayloads: Record<string, unknown>[] = [];
     const caLinkPayloadsById = new Map<string, Record<string, unknown>>();
-    for (const draft of solarzDrafts) {
+    for (const draft of dedupedSolarzDrafts) {
       const clienteUuid = solarzIdToClienteId.get(draft.solarzId);
       if (!clienteUuid) {
         errors.push(`solarz/${draft.solarzId}: cliente não retornou no upsert em lote`);
@@ -455,21 +455,7 @@ async function processSync(
     const orphanCaIds = Array.from(caById.keys()).filter((caId) => !caToSz.has(caId));
     await logStep(`STEP 6: processando órfãos CA (total candidatos: ${orphanCaIds.length})`);
 
-    const existingOrphanLinkMap = new Map<string, string>();
-    for (const batch of chunk(orphanCaIds, 200)) {
-      checkTimeout();
-      const { data, error } = await supabase
-        .from("cliente_conta_azul_ids")
-        .select("cliente_id, conta_azul_customer_id")
-        .in("conta_azul_customer_id", batch);
-      if (error) {
-        errors.push(`ca-orphan-links: ${error.message}`);
-        continue;
-      }
-      for (const row of data ?? []) existingOrphanLinkMap.set(String(row.conta_azul_customer_id), String(row.cliente_id));
-    }
-
-    const orphanExistingPayloads: Record<string, unknown>[] = [];
+    const docsAlreadyLoaded = new Set(dedupedSolarzDrafts.map((draft) => normDoc(draft.payload.cnpj_cpf)).filter((doc): doc is string => !!doc));
     const orphanLinkPayloads: Record<string, unknown>[] = [];
     const orphanNewPayloads: Array<{ caId: string; clientePayload: Record<string, unknown>; linkPayload: Record<string, unknown> }> = [];
 
@@ -516,27 +502,21 @@ async function processSync(
         updated_at: new Date().toISOString(),
       };
 
-      const existingClienteId = existingOrphanLinkMap.get(caId);
-      if (existingClienteId) {
-        orphanExistingPayloads.push({ id: existingClienteId, origem: "conta_azul", ...clientePayload });
-        orphanLinkPayloads.push({ cliente_id: existingClienteId, ...linkPayload });
-      } else {
-        orphanNewPayloads.push({
-          caId,
-          clientePayload: { origem: "conta_azul", ...clientePayload },
-          linkPayload,
-        });
+      const docKey = normDoc(clientePayload.cnpj_cpf);
+      if (docKey && docsAlreadyLoaded.has(docKey)) {
+        errors.push(`ca-orphan/${caId}: ignorado por documento duplicado (${docKey}) já carregado via Solarz`);
+        continue;
       }
+      if (docKey) docsAlreadyLoaded.add(docKey);
+
+      orphanNewPayloads.push({
+        caId,
+        clientePayload: { origem: "conta_azul", ...clientePayload },
+        linkPayload,
+      });
 
       orphanPrepared++;
       if (orphanPrepared % 100 === 0) await logStep(`STEP 6: preparo ${orphanPrepared}/${orphanCaIds.length} órfãos CA`);
-    }
-
-    for (const batch of chunk(orphanExistingPayloads, BATCH_SIZE)) {
-      checkTimeout();
-      const { data, error } = await supabase.from("clientes").upsert(batch, { onConflict: "id" }).select("id");
-      if (error) errors.push(`ca-orphan-existing-batch: ${error.message}`);
-      else rowsUpserted += data?.length ?? batch.length;
     }
 
     for (const orphan of orphanNewPayloads) {
@@ -556,7 +536,7 @@ async function processSync(
       if (error) errors.push(`ca-link-orphan-batch: ${error.message}`);
       else rowsUpserted += batch.length;
     }
-    await logStep(`STEP 6: concluído (${orphanCaIds.length} órfãos CA; novos=${orphanNewPayloads.length}, existentes=${orphanExistingPayloads.length})`);
+    await logStep(`STEP 6: concluído (${orphanCaIds.length} órfãos CA; novos=${orphanNewPayloads.length})`);
 
     await logStep(`STEP 6.5: saneamento — vistos: ${seenSolarzIds.size} SZ, ${seenCaIds.size} CA`);
     try {
