@@ -697,6 +697,16 @@ async function processSync(
       } else {
         const { data, error } = await supabase.from("clientes").insert(orphan.clientePayload).select("id").single();
         if (error || !data) {
+          const docKey = normDoc(orphan.clientePayload.cnpj_cpf);
+          if (isDuplicateDocError(error?.message) && docKey) {
+            const refreshedByDoc = await fetchClientesByNormalizedDoc(supabase);
+            const existingByDoc = refreshedByDoc.get(docKey);
+            if (existingByDoc) {
+              orphanLinkPayloads.push({ cliente_id: existingByDoc.id, ...orphan.linkPayload });
+              rowsUpserted++;
+              continue;
+            }
+          }
           errors.push(`ca-orphan-insert/${orphan.caId}: ${error?.message ?? "insert vazio"}`);
           continue;
         }
