@@ -444,13 +444,28 @@ async function processSync(
           .eq("id", existingByDoc.id);
 
         if (error) {
-          errors.push(`clientes-solarz-doc-update/${draft.solarzId}/${docKey}: ${error.message}`);
-          continue;
+          if (isDuplicateSolarzError(error.message)) {
+            const payloadWithoutSolarzId = { ...draft.payload };
+            delete payloadWithoutSolarzId.solarz_customer_id;
+            const { error: fallbackErr } = await supabase
+              .from("clientes")
+              .update(payloadWithoutSolarzId)
+              .eq("id", existingByDoc.id);
+
+            if (fallbackErr) {
+              errors.push(`clientes-solarz-doc-update/${draft.solarzId}/${docKey}: ${fallbackErr.message}`);
+              continue;
+            }
+
+            console.warn(`[sync] [run=${runId}] Solarz ${draft.solarzId} reaproveitou cliente ${existingByDoc.id} por doc ${docKey}, sem sobrescrever solarz_customer_id conflitante`);
+          } else {
+            errors.push(`clientes-solarz-doc-update/${draft.solarzId}/${docKey}: ${error.message}`);
+            continue;
+          }
         }
 
         solarzIdToClienteId.set(draft.solarzId, existingByDoc.id);
         rowsUpserted++;
-        errors.push(`clientes-solarz-doc-match/${draft.solarzId}: reaproveitado cliente existente por documento ${docKey}`);
       } else {
         solarzInsertDrafts.push(draft);
       }
@@ -477,7 +492,16 @@ async function processSync(
               continue;
             }
             const { error: updateErr } = await supabase.from("clientes").update(item.payload).eq("id", existingByDoc.id);
-            if (updateErr) errors.push(`clientes-solarz-doc-retry/${item.solarzId}/${docKey}: ${updateErr.message}`);
+            if (updateErr && isDuplicateSolarzError(updateErr.message)) {
+              const payloadWithoutSolarzId = { ...item.payload };
+              delete payloadWithoutSolarzId.solarz_customer_id;
+              const { error: fallbackErr } = await supabase.from("clientes").update(payloadWithoutSolarzId).eq("id", existingByDoc.id);
+              if (fallbackErr) errors.push(`clientes-solarz-doc-retry/${item.solarzId}/${docKey}: ${fallbackErr.message}`);
+              else {
+                solarzIdToClienteId.set(item.solarzId, existingByDoc.id);
+                rowsUpserted++;
+              }
+            } else if (updateErr) errors.push(`clientes-solarz-doc-retry/${item.solarzId}/${docKey}: ${updateErr.message}`);
             else {
               solarzIdToClienteId.set(item.solarzId, existingByDoc.id);
               rowsUpserted++;
