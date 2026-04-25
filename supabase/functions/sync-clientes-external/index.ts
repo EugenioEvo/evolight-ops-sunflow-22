@@ -115,6 +115,23 @@ type ClienteDocRow = {
 const isDuplicateDocError = (message: string | undefined) =>
   !!message && message.includes("clientes_doc_normalized_uniq");
 
+const isDuplicateSolarzError = (message: string | undefined) =>
+  !!message && message.includes("clientes_solarz_customer_id_key");
+
+async function fetchClienteBySolarzId(
+  supabase: ReturnType<typeof createClient>,
+  solarzId: string,
+) {
+  const { data, error } = await supabase
+    .from("clientes")
+    .select("id, cnpj_cpf, solarz_customer_id")
+    .eq("solarz_customer_id", solarzId)
+    .maybeSingle();
+
+  if (error) throw new Error(`lookup-cliente-solarz/${solarzId}: ${error.message}`);
+  return data as ClienteDocRow | null;
+}
+
 async function fetchClientesByNormalizedDoc(
   supabase: ReturnType<typeof createClient>,
 ) {
@@ -427,13 +444,28 @@ async function processSync(
           .eq("id", existingByDoc.id);
 
         if (error) {
-          errors.push(`clientes-solarz-doc-update/${draft.solarzId}/${docKey}: ${error.message}`);
-          continue;
+          if (isDuplicateSolarzError(error.message)) {
+            const payloadWithoutSolarzId = { ...draft.payload };
+            delete payloadWithoutSolarzId.solarz_customer_id;
+            const { error: fallbackErr } = await supabase
+              .from("clientes")
+              .update(payloadWithoutSolarzId)
+              .eq("id", existingByDoc.id);
+
+            if (fallbackErr) {
+              errors.push(`clientes-solarz-doc-update/${draft.solarzId}/${docKey}: ${fallbackErr.message}`);
+              continue;
+            }
+
+            console.warn(`[sync] [run=${runId}] Solarz ${draft.solarzId} reaproveitou cliente ${existingByDoc.id} por doc ${docKey}, sem sobrescrever solarz_customer_id conflitante`);
+          } else {
+            errors.push(`clientes-solarz-doc-update/${draft.solarzId}/${docKey}: ${error.message}`);
+            continue;
+          }
         }
 
         solarzIdToClienteId.set(draft.solarzId, existingByDoc.id);
         rowsUpserted++;
-        errors.push(`clientes-solarz-doc-match/${draft.solarzId}: reaproveitado cliente existente por documento ${docKey}`);
       } else {
         solarzInsertDrafts.push(draft);
       }
@@ -460,7 +492,16 @@ async function processSync(
               continue;
             }
             const { error: updateErr } = await supabase.from("clientes").update(item.payload).eq("id", existingByDoc.id);
-            if (updateErr) errors.push(`clientes-solarz-doc-retry/${item.solarzId}/${docKey}: ${updateErr.message}`);
+            if (updateErr && isDuplicateSolarzError(updateErr.message)) {
+              const payloadWithoutSolarzId = { ...item.payload };
+              delete payloadWithoutSolarzId.solarz_customer_id;
+              const { error: fallbackErr } = await supabase.from("clientes").update(payloadWithoutSolarzId).eq("id", existingByDoc.id);
+              if (fallbackErr) errors.push(`clientes-solarz-doc-retry/${item.solarzId}/${docKey}: ${fallbackErr.message}`);
+              else {
+                solarzIdToClienteId.set(item.solarzId, existingByDoc.id);
+                rowsUpserted++;
+              }
+            } else if (updateErr) errors.push(`clientes-solarz-doc-retry/${item.solarzId}/${docKey}: ${updateErr.message}`);
             else {
               solarzIdToClienteId.set(item.solarzId, existingByDoc.id);
               rowsUpserted++;
@@ -585,7 +626,27 @@ async function processSync(
 
       const docKey = normDoc(clientePayload.cnpj_cpf);
       if (docKey && docsAlreadyLoaded.has(docKey)) {
-        errors.push(`ca-orphan/${caId}: ignorado por documento duplicado (${docKey}) já carregado via Solarz`);
+        const existingByDoc = existingClienteByDoc.get(docKey);
+        if (existingByDoc) {
+          orphanLinkPayloads.push({ cliente_id: existingByDoc.id, ...linkPayload });
+        } else {
+          console.warn(`[sync] [run=${runId}] CA órfão ${caId} ignorado por documento ${docKey} já carregado via Solarz nesta execução`);
+        }
+        continue;
+      }
+      const existingByDoc = docKey ? existingClienteByDoc.get(docKey) : null;
+      if (existingByDoc) {
+        const updatePayload = existingByDoc.solarz_customer_id
+          ? { ativo: true, updated_at: new Date().toISOString() }
+          : { origem: "conta_azul", ...clientePayload };
+        const { error: updErr } = await supabase.from("clientes").update(updatePayload).eq("id", existingByDoc.id);
+        if (updErr) {
+          errors.push(`ca-orphan-doc-update/${caId}/${docKey}: ${updErr.message}`);
+          continue;
+        }
+        orphanLinkPayloads.push({ cliente_id: existingByDoc.id, ...linkPayload });
+        rowsUpserted++;
+        if (docKey) docsAlreadyLoaded.add(docKey);
         continue;
       }
       if (docKey) docsAlreadyLoaded.add(docKey);
@@ -636,6 +697,16 @@ async function processSync(
       } else {
         const { data, error } = await supabase.from("clientes").insert(orphan.clientePayload).select("id").single();
         if (error || !data) {
+          const docKey = normDoc(orphan.clientePayload.cnpj_cpf);
+          if (isDuplicateDocError(error?.message) && docKey) {
+            const refreshedByDoc = await fetchClientesByNormalizedDoc(supabase);
+            const existingByDoc = refreshedByDoc.get(docKey);
+            if (existingByDoc) {
+              orphanLinkPayloads.push({ cliente_id: existingByDoc.id, ...orphan.linkPayload });
+              rowsUpserted++;
+              continue;
+            }
+          }
           errors.push(`ca-orphan-insert/${orphan.caId}: ${error?.message ?? "insert vazio"}`);
           continue;
         }
