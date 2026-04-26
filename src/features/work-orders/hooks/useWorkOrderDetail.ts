@@ -197,7 +197,7 @@ export const useWorkOrderDetail = (service = defaultService) => {
     }
   };
 
-  const handleCreateRME = () => {
+  const handleCreateRME = async () => {
     if (!workOrder) return;
     // Bloqueia início: técnicos não-responsáveis não podem nem abrir o wizard.
     // Visualizar RME existente (já criado pelo responsável) continua liberado.
@@ -205,8 +205,25 @@ export const useWorkOrderDetail = (service = defaultService) => {
       toast.error('Apenas o técnico responsável pode iniciar o preenchimento do RME.');
       return;
     }
-    if (hasRME) navigate(`/rme-wizard/${workOrder.rme_relatorios[0].id}`);
-    else navigate(`/rme-wizard/new?os=${workOrder.id}`);
+    if (hasRME) {
+      navigate(`/rme-wizard/${workOrder.rme_relatorios[0].id}`);
+      return;
+    }
+    // GUARD (BUG 2): apenas 1 RME por ticket. Se uma OS-irmã já tem RME,
+    // redireciona para ele em vez de criar duplicata.
+    const { data: ticketRme } = await supabase
+      .from('rme_relatorios')
+      .select('id')
+      .eq('ticket_id', workOrder.tickets.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (ticketRme?.id) {
+      toast.info('Este ticket já possui um RME. Apenas um RME por ticket é permitido.');
+      navigate(`/rme-wizard/${ticketRme.id}`);
+      return;
+    }
+    navigate(`/rme-wizard/new?os=${workOrder.id}`);
   };
 
   return {
