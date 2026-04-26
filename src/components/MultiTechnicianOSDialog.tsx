@@ -530,6 +530,41 @@ export const MultiTechnicianOSDialog = ({
               );
             })}
 
+          {/* Add-mode (item 4): permitir trocar Técnico Responsável.
+              Reatribui RMEs em rascunho/rejeitado/pendente; mantém aprovados intactos. */}
+          {isAddMode && (
+            <div className="space-y-2">
+              <Label htmlFor="responsavel-add">Técnico Responsável</Label>
+              <Select
+                value={tecnicoResponsavelId}
+                onValueChange={setTecnicoResponsavelId}
+                disabled={responsavelOptions.length === 0}
+              >
+                <SelectTrigger id="responsavel-add">
+                  <SelectValue placeholder="Escolha o responsável" />
+                </SelectTrigger>
+                <SelectContent>
+                  {responsavelOptions.map(p => (
+                    <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {responsavelChanged ? (
+                <Alert variant="default" className="py-2">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription className="text-xs">
+                    Trocando o Técnico Responsável: a titularidade de todos os RMEs em <strong>rascunho, rejeitado ou pendente</strong> será transferida.
+                    RMEs já <strong>aprovados</strong> permanecem com o técnico original.
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Você pode também apenas trocar o responsável (sem adicionar novos técnicos).
+                </p>
+              )}
+            </div>
+          )}
+
           {/* Tipo / Responsável / Descrição — apenas no modo "gerar OS" inicial */}
           {!isAddMode && (
             <>
