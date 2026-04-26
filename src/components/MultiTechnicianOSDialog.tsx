@@ -243,13 +243,55 @@ export const MultiTechnicianOSDialog = ({
     try {
       const effectiveTicketId = await ensureTicketId();
 
-      // For ticket-based mode: ensure ticket carries the chosen Técnico Responsável
-      // (skip in add-mode: don't overwrite the existing responsável)
-      if (!isStandalone && !isAddMode) {
+      // Ticket-based: garante que o ticket carregue o Técnico Responsável escolhido.
+      // Inclui add-mode (item 4): se o usuário trocou o responsável, propagamos.
+      const shouldUpdateTicketResponsavel = !isStandalone && (
+        !isAddMode || responsavelChanged
+      );
+      if (shouldUpdateTicketResponsavel) {
         await supabase
           .from('tickets')
           .update({ tecnico_responsavel_id: tecnicoResponsavelId })
           .eq('id', effectiveTicketId);
+      }
+
+      // Item 4 — Cascata da troca de responsável (apenas em add-mode):
+      // 1) Atualiza tecnico_responsavel_id em todas as OSs do ticket.
+      // 2) Reatribui RMEs em rascunho/rejeitado/pendente para o tecnico do novo responsável.
+      //    RMEs aprovados ficam intactos (regra de negócio).
+      if (isAddMode && responsavelChanged) {
+        try {
+          // 1) propaga em todas as OSs
+          await supabase
+            .from('ordens_servico')
+            .update({ tecnico_responsavel_id: tecnicoResponsavelId })
+            .eq('ticket_id', effectiveTicketId);
+
+          // 2) busca o tecnico_id do novo responsável (via prestador → email → tecnicos)
+          const { data: novoPrestador } = await supabase
+            .from('prestadores')
+            .select('email')
+            .eq('id', tecnicoResponsavelId)
+            .maybeSingle();
+          if (novoPrestador?.email) {
+            const { data: novoTecnico } = await supabase
+              .from('tecnicos')
+              .select('id, profiles!inner(email)')
+              .ilike('profiles.email', novoPrestador.email)
+              .maybeSingle();
+            if (novoTecnico?.id) {
+              await supabase
+                .from('rme_relatorios')
+                .update({ tecnico_id: novoTecnico.id })
+                .eq('ticket_id', effectiveTicketId)
+                .in('status', ['rascunho', 'rejeitado', 'pendente']);
+            }
+          }
+          toast.success('Técnico Responsável atualizado e RMEs em andamento reatribuídos.');
+        } catch (e: any) {
+          console.error('Erro ao propagar troca de responsável:', e);
+          toast.error('OSs criadas, mas houve falha ao reatribuir RMEs. Verifique manualmente.');
+        }
       }
 
       // Em add-mode geramos OS apenas para os técnicos NOVOS
@@ -266,7 +308,7 @@ export const MultiTechnicianOSDialog = ({
               inspetor_responsavel: 'TODOS',
               tipo_trabalho: formData.tipo_trabalho,
               tecnico_override_id: prestadorId,
-              tecnico_responsavel_id: isAddMode ? (ticket?.tecnico_responsavel_id || tecnicoResponsavelId) : tecnicoResponsavelId,
+              tecnico_responsavel_id: tecnicoResponsavelId,
               horas_previstas: horasTec,
             },
           });
@@ -279,8 +321,13 @@ export const MultiTechnicianOSDialog = ({
         }
       }
 
-      if (successCount > 0) {
-        toast.success(`${successCount} OS gerada(s) com sucesso!${errorCount > 0 ? ` ${errorCount} falha(s).` : ''}`);
+      // Em add-mode com apenas troca de responsável (sem novos técnicos),
+      // não houve geração de OS — mas a operação foi bem-sucedida.
+      const onlyResponsavelChange = isAddMode && responsavelChanged && newSelectedPrestadores.length === 0;
+      if (successCount > 0 || onlyResponsavelChange) {
+        if (successCount > 0) {
+          toast.success(`${successCount} OS gerada(s) com sucesso!${errorCount > 0 ? ` ${errorCount} falha(s).` : ''}`);
+        }
         onOpenChange(false);
         if (onSuccess) onSuccess();
       } else {
