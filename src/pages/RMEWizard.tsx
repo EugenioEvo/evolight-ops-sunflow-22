@@ -209,6 +209,25 @@ const RMEWizard = () => {
         anyData.tickets.clientes.ufv_solarz = names.length ? names.join(', ') : null;
       }
 
+      // GUARD (BUG 2): só pode existir UM RME por ticket. Se qualquer OS-irmã do mesmo
+      // ticket já tem RME (qualquer status), redirecionamos para colaboração no existente
+      // em vez de criar duplicata. RME é compartilhado entre as OSs do ticket.
+      const { data: ticketRme } = await supabase
+        .from("rme_relatorios")
+        .select("id, ordem_servico_id")
+        .eq("ticket_id", anyData.ticket_id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (ticketRme?.id) {
+        toast({
+          title: "RME já existe para este ticket",
+          description: "Já existe um RME vinculado a este ticket. Apenas um RME por ticket é permitido — você foi redirecionado para visualizá-lo.",
+        });
+        navigate(`/rme-wizard/${ticketRme.id}`, { replace: true });
+        return;
+      }
+
       // Guard: somente o técnico responsável (ou staff) pode iniciar um novo RME.
       // Técnicos da equipe sem responsabilidade ficam bloqueados na origem.
       const { data: ctx } = await supabase.rpc("get_ticket_rme_group_context", { p_ticket_id: anyData.ticket_id });
