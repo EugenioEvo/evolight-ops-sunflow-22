@@ -631,9 +631,14 @@ export const MultiTechnicianOSDialog = ({
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>Cancelar</Button>
           {isAddMode ? (
-            <Button onClick={handleSubmit} disabled={loading || newSelectedPrestadores.length === 0}>
+            <Button
+              onClick={handleSubmit}
+              disabled={loading || (newSelectedPrestadores.length === 0 && !responsavelChanged)}
+            >
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Adicionar {newSelectedPrestadores.length > 1 ? `${newSelectedPrestadores.length} técnicos` : 'técnico'}
+              {newSelectedPrestadores.length === 0 && responsavelChanged
+                ? 'Trocar Responsável'
+                : `Adicionar ${newSelectedPrestadores.length > 1 ? `${newSelectedPrestadores.length} técnicos` : 'técnico'}${responsavelChanged ? ' + trocar responsável' : ''}`}
             </Button>
           ) : (
             <Button onClick={handleSubmit} disabled={loading || selectedPrestadores.length === 0}>
