@@ -267,22 +267,10 @@ const WorkOrderDetail = () => {
               {actionLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <PlayCircle className="h-4 w-4 mr-2" />}Iniciar Execução
             </Button>
           )}
-          {currentStatus === "em_execucao" && canCreateRME && (
-            <>
-              <Button
-                variant="outline"
-                className="flex-1 h-12"
-                onClick={handleCreateRME}
-              >
-                {isRMELocked ? <Eye className="h-4 w-4 mr-2" /> : <Edit className="h-4 w-4 mr-2" />}
-                {isRMELocked ? 'Visualizar RME' : (hasRME ? (rmeStatus === 'rejeitado' ? 'Corrigir RME' : 'Editar RME') : 'Criar RME')}
-              </Button>
-              {isRMEApproved && canManageOS && (
-                <Button className="flex-1 h-12" onClick={handleCompleteOS} disabled={actionLoading}>
-                  {actionLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}Concluir OS
-                </Button>
-              )}
-            </>
+          {currentStatus === "em_execucao" && canCreateRME && isRMEApproved && canManageOS && (
+            <Button className="flex-1 h-12" onClick={handleCompleteOS} disabled={actionLoading}>
+              {actionLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}Concluir OS
+            </Button>
           )}
           {currentStatus === "concluida" && <Button variant="outline" className="flex-1 h-12" onClick={handleDownloadPDF}><Download className="h-4 w-4 mr-2" />Baixar PDF da OS</Button>}
         </div>
