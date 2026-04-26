@@ -134,6 +134,18 @@ serve(async (req) => {
 
     console.log(`Prestador: ${prestador.nome} (${prestador.email}), Técnico encontrado: ${tecnico?.id || 'nenhum'}`)
 
+    // GUARD: tecnico_id é obrigatório. Sem técnico vinculado (profiles+tecnicos),
+    // a OS aparece como "Não atribuído" no app. Rejeitamos a geração para forçar
+    // a criação do vínculo (cadastro do técnico) antes de seguir.
+    if (!tecnico?.id) {
+      return new Response(
+        JSON.stringify({
+          error: `O prestador "${prestador.nome}" não possui um técnico vinculado (profile/tecnicos). Conclua o cadastro de acesso antes de gerar a OS.`,
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     // Verificar se já existe OS para este ticket + este técnico específico
     if (tecnico) {
       const { data: existingOS } = await supabaseClient
