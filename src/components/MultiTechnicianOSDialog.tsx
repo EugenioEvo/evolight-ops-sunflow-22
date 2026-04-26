@@ -173,9 +173,19 @@ export const MultiTechnicianOSDialog = ({
     ? selectedPrestadores.filter(id => !alreadyAssignedPrestadorIds.includes(id))
     : selectedPrestadores;
 
+  // Detecta troca de Técnico Responsável (add-mode): permite salvar mesmo sem novos técnicos.
+  const responsavelChanged = isAddMode
+    && !!tecnicoResponsavelId
+    && !!ticket?.tecnico_responsavel_id
+    && tecnicoResponsavelId !== ticket.tecnico_responsavel_id;
+
   const validate = (): string | null => {
     if (isAddMode) {
-      if (newSelectedPrestadores.length === 0) return "Selecione ao menos um novo técnico para alocar";
+      // Em add-mode aceitamos: novos técnicos OU apenas troca de responsável
+      if (newSelectedPrestadores.length === 0 && !responsavelChanged) {
+        return "Selecione novos técnicos ou troque o Técnico Responsável";
+      }
+      if (!tecnicoResponsavelId) return "Selecione o Técnico Responsável";
     } else {
       if (selectedPrestadores.length === 0) return "Selecione ao menos um técnico";
       if (!tecnicoResponsavelId) return "Selecione o Técnico Responsável";
