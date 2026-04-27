@@ -262,7 +262,12 @@ export const TicketCard = ({
             </div>
             <div className="flex items-center gap-2">
               <Calendar className="h-4 w-4" />
-              <span>{new Date(ticket.data_abertura).toLocaleDateString('pt-BR')}</span>
+              <div className="flex flex-col">
+                <span className="text-xs text-muted-foreground">Abertura: {new Date(ticket.data_abertura).toLocaleDateString('pt-BR')}</span>
+                <span className="text-xs">
+                  Serviço: {ticket.data_servico ? new Date(ticket.data_servico + 'T00:00:00').toLocaleDateString('pt-BR') : <span className="text-muted-foreground italic">não agendada</span>}
+                </span>
+              </div>
             </div>
           </div>
 
