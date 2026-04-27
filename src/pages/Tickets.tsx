@@ -218,6 +218,7 @@ const Tickets = () => {
         ticketId={multiOSDialogTicket?.id || ''}
         ticket={multiOSDialogTicket}
         prestadores={prestadores.filter((p: any) => p.email && p.email.trim() !== '')}
+        addMode={addTechMode}
         alreadyAssignedPrestadorIds={
           addTechMode && multiOSDialogTicket?.ordens_servico
             ? Array.from(new Set(
