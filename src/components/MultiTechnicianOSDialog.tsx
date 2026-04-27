@@ -93,8 +93,10 @@ export const MultiTechnicianOSDialog = ({
     }
   }, [open]);
 
-  // Pre-select assigned tech (ticket-based mode) — pre-selects the already assigned ones
-  // when in "add mode" so the user clearly sees who is already allocated.
+  // Pre-select assigned tech (ticket-based mode) — runs only when the dialog
+  // transitions from closed → open. Avoids resetting user's choice on every
+  // re-render when parent re-creates the alreadyAssignedPrestadorIds array.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (open && !isStandalone) {
       if (isAddMode) {
@@ -105,7 +107,7 @@ export const MultiTechnicianOSDialog = ({
         setTecnicoResponsavelId(ticket.tecnico_responsavel_id);
       }
     }
-  }, [open, ticket, isStandalone, isAddMode, alreadyAssignedPrestadorIds]);
+  }, [open]);
 
   // Availability check — usa max(horas) entre os técnicos selecionados como janela
   useEffect(() => {
