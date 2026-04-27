@@ -70,6 +70,7 @@ export const MultiTechnicianOSDialog = ({
   const [loading, setLoading] = useState(false);
   const [selectedPrestadores, setSelectedPrestadores] = useState<string[]>([]);
   const [tecnicoResponsavelId, setTecnicoResponsavelId] = useState<string>("");
+  const [initialTecnicoResponsavelId, setInitialTecnicoResponsavelId] = useState<string>("");
   /** Horas previstas POR técnico (sempre por técnico — usado pelo BI Carga de Trabalho) */
   const [horasPorTecnico, setHorasPorTecnico] = useState<Record<string, number>>({});
   const [formData, setFormData] = useState({
@@ -92,6 +93,7 @@ export const MultiTechnicianOSDialog = ({
     if (!open) {
       setSelectedPrestadores([]);
       setTecnicoResponsavelId("");
+      setInitialTecnicoResponsavelId("");
       setHorasPorTecnico({});
       setFormData({ descricao_servicos: "MANUTENÇÃO", tipo_trabalho: [] });
       setStandaloneData({
@@ -110,11 +112,14 @@ export const MultiTechnicianOSDialog = ({
   useEffect(() => {
     if (open && !isStandalone) {
       if (isAddMode) {
+        const initialResponsavel = ticket?.tecnico_responsavel_id || assignedPrestadorIds[0] || "";
         setSelectedPrestadores([...assignedPrestadorIds]);
-        setTecnicoResponsavelId(ticket?.tecnico_responsavel_id || assignedPrestadorIds[0] || "");
+        setTecnicoResponsavelId(initialResponsavel);
+        setInitialTecnicoResponsavelId(initialResponsavel);
       } else if (ticket?.tecnico_responsavel_id) {
         setSelectedPrestadores([ticket.tecnico_responsavel_id]);
         setTecnicoResponsavelId(ticket.tecnico_responsavel_id);
+        setInitialTecnicoResponsavelId(ticket.tecnico_responsavel_id);
       }
     }
   }, [open]);
@@ -188,8 +193,7 @@ export const MultiTechnicianOSDialog = ({
   // Detecta troca de Técnico Responsável (add-mode): permite salvar mesmo sem novos técnicos.
   const responsavelChanged = isAddMode
     && !!tecnicoResponsavelId
-    && !!ticket?.tecnico_responsavel_id
-    && tecnicoResponsavelId !== ticket.tecnico_responsavel_id;
+    && tecnicoResponsavelId !== initialTecnicoResponsavelId;
 
   const validate = (): string | null => {
     if (isAddMode) {
