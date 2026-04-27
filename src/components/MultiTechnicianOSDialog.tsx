@@ -40,6 +40,8 @@ interface MultiTechnicianOSDialogProps {
   clientes?: ClienteOption[];
   /** IDs de prestadores já alocados (modo "adicionar técnicos"): aparecem marcados e desabilitados. */
   alreadyAssignedPrestadorIds?: string[];
+  /** Força o modo de adicionar/trocar responsável mesmo se a lista de alocados ainda estiver vazia por falha de mapeamento. */
+  addMode?: boolean;
   onSuccess?: () => void;
 }
 
@@ -51,11 +53,19 @@ export const MultiTechnicianOSDialog = ({
   prestadores,
   clientes = [],
   alreadyAssignedPrestadorIds = [],
+  addMode = false,
   onSuccess,
 }: MultiTechnicianOSDialogProps) => {
   const { user } = useAuth();
   const isStandalone = !ticketId;
-  const isAddMode = alreadyAssignedPrestadorIds.length > 0;
+  const isAddMode = addMode || alreadyAssignedPrestadorIds.length > 0;
+  const assignedPrestadorIds = useMemo(() => {
+    if (!isAddMode) return alreadyAssignedPrestadorIds;
+    return Array.from(new Set([
+      ...alreadyAssignedPrestadorIds,
+      ticket?.tecnico_responsavel_id,
+    ].filter(Boolean))) as string[];
+  }, [alreadyAssignedPrestadorIds, isAddMode, ticket?.tecnico_responsavel_id]);
 
   const [loading, setLoading] = useState(false);
   const [selectedPrestadores, setSelectedPrestadores] = useState<string[]>([]);
@@ -100,8 +110,8 @@ export const MultiTechnicianOSDialog = ({
   useEffect(() => {
     if (open && !isStandalone) {
       if (isAddMode) {
-        setSelectedPrestadores([...alreadyAssignedPrestadorIds]);
-        setTecnicoResponsavelId(ticket?.tecnico_responsavel_id || alreadyAssignedPrestadorIds[0] || "");
+        setSelectedPrestadores([...assignedPrestadorIds]);
+        setTecnicoResponsavelId(ticket?.tecnico_responsavel_id || assignedPrestadorIds[0] || "");
       } else if (ticket?.tecnico_responsavel_id) {
         setSelectedPrestadores([ticket.tecnico_responsavel_id]);
         setTecnicoResponsavelId(ticket.tecnico_responsavel_id);
@@ -152,7 +162,7 @@ export const MultiTechnicianOSDialog = ({
 
   const handleTogglePrestador = (prestadorId: string, checked: boolean) => {
     // Em modo "adicionar técnicos", os já alocados são fixos
-    if (isAddMode && alreadyAssignedPrestadorIds.includes(prestadorId)) return;
+    if (isAddMode && assignedPrestadorIds.includes(prestadorId)) return;
     const availability = availabilityMap.get(prestadorId);
     if (availability && !availability.available && checked) {
       toast.error("Este técnico possui conflito de agenda no horário selecionado");
@@ -172,7 +182,7 @@ export const MultiTechnicianOSDialog = ({
 
   // Técnicos que efetivamente serão alvo de geração: em add-mode, somente os NOVOS
   const newSelectedPrestadores = isAddMode
-    ? selectedPrestadores.filter(id => !alreadyAssignedPrestadorIds.includes(id))
+    ? selectedPrestadores.filter(id => !assignedPrestadorIds.includes(id))
     : selectedPrestadores;
 
   // Detecta troca de Técnico Responsável (add-mode): permite salvar mesmo sem novos técnicos.
