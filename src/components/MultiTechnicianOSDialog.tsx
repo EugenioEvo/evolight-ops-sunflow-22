@@ -453,7 +453,7 @@ export const MultiTechnicianOSDialog = ({
                       id={`tech-${prestador.id}`}
                       checked={isSelected}
                       onCheckedChange={(checked) => handleTogglePrestador(prestador.id, checked as boolean)}
-                      disabled={!!hasConflict || !hasEmail || (isAddMode && alreadyAssignedPrestadorIds.includes(prestador.id))}
+                      disabled={!!hasConflict || !hasEmail || (isAddMode && assignedPrestadorIds.includes(prestador.id))}
                     />
                     <label htmlFor={`tech-${prestador.id}`} className="flex-1 text-sm font-medium cursor-pointer flex items-center gap-2">
                       <span className={!hasEmail ? 'text-destructive' : ''}>{prestador.nome}</span>
@@ -462,7 +462,7 @@ export const MultiTechnicianOSDialog = ({
                           <AlertTriangle className="h-3 w-3 mr-1" />Sem email
                         </Badge>
                       )}
-                      {isAddMode && alreadyAssignedPrestadorIds.includes(prestador.id) && (
+                      {isAddMode && assignedPrestadorIds.includes(prestador.id) && (
                         <Badge variant="outline" className="text-[10px]">Já alocado</Badge>
                       )}
                     </label>
