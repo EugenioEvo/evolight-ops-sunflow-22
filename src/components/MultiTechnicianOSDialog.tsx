@@ -13,6 +13,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTechnicianAvailability } from "@/hooks/useTechnicianAvailability";
 import { toast } from "sonner";
 import { Loader2, AlertTriangle, CheckCircle, XCircle, Clock } from "lucide-react";
+import { computeScheduleEnd, formatScheduledWindow } from "@/utils/scheduleWindow";
 
 interface Prestador {
   id: string;
