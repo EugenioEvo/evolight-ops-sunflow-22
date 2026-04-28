@@ -200,7 +200,7 @@ const RMEWizard = () => {
         return;
       }
 
-      const { data, error } = await supabase.from("ordens_servico").select("id, numero_os, site_name, ticket_id, tickets(id, endereco_servico, clientes(empresa, cliente_ufvs(nome)))").eq("id", workOrderId).single();
+      const { data, error } = await supabase.from("ordens_servico").select("id, numero_os, site_name, ticket_id, hora_inicio, tickets(id, endereco_servico, data_inicio_execucao, clientes(empresa, cliente_ufvs(nome)))").eq("id", workOrderId).single();
       if (error) throw error;
       const anyData: any = data;
       if (anyData?.tickets?.clientes) {
@@ -246,7 +246,28 @@ const RMEWizard = () => {
 
       setWorkOrder(anyData as unknown as WorkOrderInfo);
       const clienteNome = anyData?.tickets?.clientes?.empresa || "";
-      setFormData(prev => ({ ...prev, ordem_servico_id: anyData.id, ticket_id: anyData.ticket_id, site_name: anyData.site_name || "", client_name: clienteNome, address: anyData?.tickets?.endereco_servico || "", ufv_solarz: anyData?.tickets?.clientes?.ufv_solarz || "", nome_cliente_assinatura: prev.nome_cliente_assinatura || clienteNome }));
+      // Pré-preencher data/hora de início vindo da execução da OS (auto)
+      const execStart = anyData?.tickets?.data_inicio_execucao
+        ? new Date(anyData.tickets.data_inicio_execucao)
+        : null;
+      const execStartDate = execStart ? execStart.toISOString().split("T")[0] : new Date().toISOString().split("T")[0];
+      const execStartTime = execStart
+        ? `${execStart.getHours().toString().padStart(2, "0")}:${execStart.getMinutes().toString().padStart(2, "0")}`
+        : (anyData?.hora_inicio || "08:00");
+      setFormData(prev => ({
+        ...prev,
+        ordem_servico_id: anyData.id,
+        ticket_id: anyData.ticket_id,
+        site_name: anyData.site_name || "",
+        client_name: clienteNome,
+        address: anyData?.tickets?.endereco_servico || "",
+        ufv_solarz: anyData?.tickets?.clientes?.ufv_solarz || "",
+        nome_cliente_assinatura: prev.nome_cliente_assinatura || clienteNome,
+        data_execucao: execStartDate,
+        data_fim_execucao: execStartDate,
+        start_time: execStartTime,
+        weekday: getWeekday(new Date(execStartDate + "T12:00:00")),
+      }));
       setCurrentTicketId(anyData.ticket_id);
       await loadGroupContext(anyData.ticket_id);
     } catch (error: any) {
@@ -258,22 +279,32 @@ const RMEWizard = () => {
   const loadExistingRME = async (rmeId: string) => {
     try {
       setLoading(true);
-      const { data, error } = await supabase.from("rme_relatorios").select("*, tecnicos(id, profiles(nome)), ordens_servico(id, numero_os, site_name, ticket_id, tickets(id, endereco_servico, clientes(empresa, cliente_ufvs(nome))))").eq("id", rmeId).single();
+      const { data, error } = await supabase.from("rme_relatorios").select("*, tecnicos(id, profiles(nome)), ordens_servico(id, numero_os, site_name, ticket_id, hora_inicio, tickets(id, endereco_servico, data_inicio_execucao, clientes(empresa, cliente_ufvs(nome))))").eq("id", rmeId).single();
       if (error) throw error;
       const os = data.ordens_servico as any;
       const tecnico = data.tecnicos as any;
       setWorkOrder(os);
       setTecnicoNome(tecnico?.profiles?.nome || "");
+      // Autoridade do início é a OS (data_inicio_execucao). RME espelha apenas.
+      const execStart = os?.tickets?.data_inicio_execucao
+        ? new Date(os.tickets.data_inicio_execucao)
+        : null;
+      const execStartDate = execStart
+        ? execStart.toISOString().split("T")[0]
+        : (data.data_execucao?.split("T")[0] || "");
+      const execStartTime = execStart
+        ? `${execStart.getHours().toString().padStart(2, "0")}:${execStart.getMinutes().toString().padStart(2, "0")}`
+        : (data.start_time || os?.hora_inicio || "08:00");
       setFormData({
         id: data.id, ordem_servico_id: data.ordem_servico_id, ticket_id: data.ticket_id, tecnico_id: data.tecnico_id,
-        data_execucao: data.data_execucao?.split("T")[0] || "",
-        data_fim_execucao: data.data_execucao?.split("T")[0] || "",
-        weekday: data.weekday || "",
+        data_execucao: execStartDate,
+        data_fim_execucao: (data as any).data_fim_execucao?.split?.("T")[0] || data.data_execucao?.split("T")[0] || execStartDate,
+        weekday: data.weekday || (execStartDate ? ["Domingo","Segunda","Terça","Quarta","Quinta","Sexta","Sábado"][new Date(execStartDate + "T12:00:00").getDay()] : ""),
         site_name: data.site_name || os?.site_name || "",
         collaboration: Array.isArray(data.collaboration) ? (data.collaboration as string[]) : [],
         micro_number: data.micro_number || "", inverter_number: data.inverter_number || "",
         service_type: Array.isArray(data.service_type) ? (data.service_type as string[]) : [],
-        shift: data.shift || "manha", start_time: data.start_time || "08:00", end_time: data.end_time || "17:00",
+        shift: data.shift || "manha", start_time: execStartTime, end_time: data.end_time || "17:00",
         images_posted: data.images_posted || false, modules_cleaned_qty: data.modules_cleaned_qty || 0, string_box_qty: data.string_box_qty || 0,
         condicoes_encontradas: data.condicoes_encontradas || "", servicos_executados: data.servicos_executados || "",
         materiais_utilizados: Array.isArray(data.materiais_utilizados) ? (data.materiais_utilizados as any[]) : [],

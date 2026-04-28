@@ -1,19 +1,47 @@
 import { z } from 'zod';
 
-export const ticketSchema = z.object({
-  titulo: z.string().min(1, 'Título é obrigatório'),
-  descricao: z.string().min(1, 'Descrição é obrigatória'),
-  cliente_id: z.string().uuid('Selecione um cliente'),
-  ufv_nome: z.string().optional().or(z.literal('')),
-  equipamento_tipo: z.enum(['painel_solar', 'inversor', 'controlador_carga', 'bateria', 'cabeamento', 'estrutura', 'monitoramento', 'outros']),
-  prioridade: z.enum(['baixa', 'media', 'alta', 'critica']),
-  endereco_servico: z.string().min(1, 'Endereço do serviço é obrigatório'),
-  data_servico: z.string().optional(),
-  data_vencimento: z.string().optional(),
-  horario_previsto_inicio: z.string().optional(),
-  observacoes: z.string().optional(),
-  anexos: z.array(z.string()).optional(),
-});
+export const ticketSchema = z
+  .object({
+    titulo: z.string().min(1, 'Título é obrigatório'),
+    descricao: z.string().min(1, 'Descrição é obrigatória'),
+    cliente_id: z.string().uuid('Selecione um cliente'),
+    ufv_nome: z.string().optional().or(z.literal('')),
+    equipamento_tipo: z.enum(['painel_solar', 'inversor', 'controlador_carga', 'bateria', 'cabeamento', 'estrutura', 'monitoramento', 'outros']),
+    prioridade: z.enum(['baixa', 'media', 'alta', 'critica']),
+    endereco_servico: z.string().min(1, 'Endereço do serviço é obrigatório'),
+    data_servico: z.string().optional(),
+    data_vencimento: z.string().optional(),
+    horario_previsto_inicio: z.string().optional(),
+    observacoes: z.string().optional(),
+    anexos: z.array(z.string()).optional(),
+  })
+  // Trava: data_servico não pode ser anterior a hoje (em edição também — usa a própria data já definida)
+  .superRefine((val, ctx) => {
+    if (val.data_servico) {
+      const hoje = new Date();
+      hoje.setHours(0, 0, 0, 0);
+      const ds = new Date(val.data_servico + 'T00:00:00');
+      if (ds < hoje) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['data_servico'],
+          message: 'A data de serviço não pode ser anterior a hoje',
+        });
+      }
+    }
+    // Trava: data_vencimento >= data_servico
+    if (val.data_servico && val.data_vencimento) {
+      const ds = new Date(val.data_servico + 'T00:00:00');
+      const dv = new Date(val.data_vencimento + 'T00:00:00');
+      if (dv < ds) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['data_vencimento'],
+          message: 'A data limite não pode ser anterior à data de serviço',
+        });
+      }
+    }
+  });
 
 export type TicketFormData = z.infer<typeof ticketSchema>;
 

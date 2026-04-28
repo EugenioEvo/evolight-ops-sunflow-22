@@ -13,6 +13,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTechnicianAvailability } from "@/hooks/useTechnicianAvailability";
 import { toast } from "sonner";
 import { Loader2, AlertTriangle, CheckCircle, XCircle, Clock } from "lucide-react";
+import { computeScheduleEnd, formatScheduledWindow } from "@/utils/scheduleWindow";
 
 interface Prestador {
   id: string;
@@ -212,6 +213,10 @@ export const MultiTechnicianOSDialog = ({
       if (!standaloneData.cliente_id) return "Selecione um cliente";
       if (!standaloneData.endereco_servico.trim()) return "Informe o endereço do serviço";
       if (!standaloneData.data_servico) return "Informe a data do serviço";
+      // Trava: data não pode ser anterior a hoje
+      const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+      const ds = new Date(standaloneData.data_servico + 'T00:00:00');
+      if (ds < hoje) return "A data do serviço não pode ser anterior a hoje";
     }
     return null;
   };
@@ -530,6 +535,38 @@ export const MultiTechnicianOSDialog = ({
               </div>
             </div>
           )}
+
+          {/* Preview do Horário Programado calculado pela janela útil */}
+          {hasDateInfo && selectedPrestadores.length > 0 && (() => {
+            const date = isStandalone ? standaloneData.data_servico : ticket?.data_servico;
+            const startTime = isStandalone ? standaloneData.horario_previsto_inicio : ticket?.horario_previsto_inicio;
+            const maxHoras = Math.max(1, ...selectedPrestadores.map(id => horasPorTecnico[id] || 1));
+            const sched = computeScheduleEnd(date, startTime, Math.round(maxHoras * 60));
+            const display = formatScheduledWindow(date, startTime, sched.endTime, sched.endDate);
+            return (
+              <div className="rounded-md border bg-muted/30 p-3 space-y-1">
+                <div className="flex items-center gap-2 text-sm">
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  <strong>Horário Programado:</strong> {display}
+                </div>
+                {sched.outOfWindowWarning && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400">
+                    ⚠ Hora de início fora da janela útil (09:00–12:00 / 14:00–17:00). Reprogramado para o próximo slot válido.
+                  </p>
+                )}
+                {sched.crossedDay && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400">
+                    ⚠ A duração ultrapassa a janela útil — o serviço se estende para o próximo dia útil.
+                  </p>
+                )}
+                {sched.weekendWarning && (
+                  <p className="text-xs text-destructive">
+                    ⚠ A data selecionada cai em fim de semana. O serviço foi automaticamente movido para a próxima segunda-feira.
+                  </p>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Conflict details */}
           {Array.from(availabilityMap.values())
