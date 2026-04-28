@@ -334,12 +334,7 @@ export const TicketCard = ({
                   <Button size="sm" variant="destructive" onClick={() => onReject(ticket.id)} disabled={loading} className="flex items-center gap-2">
                     <XCircle className="h-4 w-4" />Rejeitar
                   </Button>
-                  <Button size="sm" variant="outline" onClick={() => onEdit(ticket)}>Editar</Button>
-                  <CancelButton />
-                </>
-              )}
-
-              {ticket.status === 'aprovado' && (
+                  <Button size="sm" variant="outline" onClick={handleEditClick} disabled={hasApprovedRME} title={editBlockedReason || undefined}>Editar</Button>
                 <>
                   <Button size="sm" onClick={() => onGenerateOS(ticket)} className="flex items-center gap-2">
                     <FileText className="h-4 w-4" />Gerar Ordem de Serviço
