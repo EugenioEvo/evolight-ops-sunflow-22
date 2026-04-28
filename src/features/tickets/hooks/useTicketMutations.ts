@@ -50,6 +50,14 @@ export const useTicketMutations = (loadData: () => Promise<void>) => {
   };
 
   const updateTicket = async (editingTicket: TicketWithRelations, data: TicketFormData, technicianId: string | null, attachments: string[]) => {
+    // Trava: tickets com RME aprovado não podem ser reabertos/editados
+    const hasApprovedRME = (editingTicket.ordens_servico || []).some((os: any) =>
+      (os.rme_relatorios || []).some((r: any) => r.status === 'aprovado')
+    );
+    if (hasApprovedRME) {
+      toast.error('Edição bloqueada: este ticket possui RME aprovado e não pode ser reaberto.');
+      return;
+    }
     setLoading(true);
     try {
       const addressChanged =
