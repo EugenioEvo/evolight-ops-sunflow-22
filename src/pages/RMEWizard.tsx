@@ -298,7 +298,7 @@ const RMEWizard = () => {
       setFormData({
         id: data.id, ordem_servico_id: data.ordem_servico_id, ticket_id: data.ticket_id, tecnico_id: data.tecnico_id,
         data_execucao: execStartDate,
-        data_fim_execucao: data.data_fim_execucao?.split?.("T")[0] || data.data_execucao?.split("T")[0] || execStartDate,
+        data_fim_execucao: (data as any).data_fim_execucao?.split?.("T")[0] || data.data_execucao?.split("T")[0] || execStartDate,
         weekday: data.weekday || (execStartDate ? ["Domingo","Segunda","Terça","Quarta","Quinta","Sexta","Sábado"][new Date(execStartDate + "T12:00:00").getDay()] : ""),
         site_name: data.site_name || os?.site_name || "",
         collaboration: Array.isArray(data.collaboration) ? (data.collaboration as string[]) : [],
