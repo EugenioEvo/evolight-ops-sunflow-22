@@ -246,7 +246,28 @@ const RMEWizard = () => {
 
       setWorkOrder(anyData as unknown as WorkOrderInfo);
       const clienteNome = anyData?.tickets?.clientes?.empresa || "";
-      setFormData(prev => ({ ...prev, ordem_servico_id: anyData.id, ticket_id: anyData.ticket_id, site_name: anyData.site_name || "", client_name: clienteNome, address: anyData?.tickets?.endereco_servico || "", ufv_solarz: anyData?.tickets?.clientes?.ufv_solarz || "", nome_cliente_assinatura: prev.nome_cliente_assinatura || clienteNome }));
+      // Pré-preencher data/hora de início vindo da execução da OS (auto)
+      const execStart = anyData?.tickets?.data_inicio_execucao
+        ? new Date(anyData.tickets.data_inicio_execucao)
+        : null;
+      const execStartDate = execStart ? execStart.toISOString().split("T")[0] : new Date().toISOString().split("T")[0];
+      const execStartTime = execStart
+        ? `${execStart.getHours().toString().padStart(2, "0")}:${execStart.getMinutes().toString().padStart(2, "0")}`
+        : (anyData?.hora_inicio || "08:00");
+      setFormData(prev => ({
+        ...prev,
+        ordem_servico_id: anyData.id,
+        ticket_id: anyData.ticket_id,
+        site_name: anyData.site_name || "",
+        client_name: clienteNome,
+        address: anyData?.tickets?.endereco_servico || "",
+        ufv_solarz: anyData?.tickets?.clientes?.ufv_solarz || "",
+        nome_cliente_assinatura: prev.nome_cliente_assinatura || clienteNome,
+        data_execucao: execStartDate,
+        data_fim_execucao: execStartDate,
+        start_time: execStartTime,
+        weekday: getWeekday(new Date(execStartDate + "T12:00:00")),
+      }));
       setCurrentTicketId(anyData.ticket_id);
       await loadGroupContext(anyData.ticket_id);
     } catch (error: any) {
