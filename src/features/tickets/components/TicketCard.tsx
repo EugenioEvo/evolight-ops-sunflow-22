@@ -55,9 +55,15 @@ export const TicketCard = ({
   const isStaff = profile?.role === 'admin' || profile?.role === 'engenharia' || profile?.role === 'supervisao';
 
   // Trava: tickets com RME aprovado não podem ser reabertos/editados (evita "voltar" para 'aberto')
-  const hasApprovedRME = (ticket.ordens_servico || []).some((os: any) =>
-    (os.rme_relatorios || []).some((r: any) => r.status === 'aprovado')
-  );
+  // rme_relatorios pode vir como array OU objeto único dependendo do shape do join — normaliza
+  const hasApprovedRME = (ticket.ordens_servico || []).some((os: any) => {
+    const rmes = Array.isArray(os.rme_relatorios)
+      ? os.rme_relatorios
+      : os.rme_relatorios
+        ? [os.rme_relatorios]
+        : [];
+    return rmes.some((r: any) => r?.status === 'aprovado');
+  });
   const editBlockedReason = hasApprovedRME
     ? 'Este ticket possui RME aprovado e não pode ser reaberto/editado.'
     : '';
