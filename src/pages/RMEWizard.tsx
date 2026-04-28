@@ -200,7 +200,7 @@ const RMEWizard = () => {
         return;
       }
 
-      const { data, error } = await supabase.from("ordens_servico").select("id, numero_os, site_name, ticket_id, tickets(id, endereco_servico, clientes(empresa, cliente_ufvs(nome)))").eq("id", workOrderId).single();
+      const { data, error } = await supabase.from("ordens_servico").select("id, numero_os, site_name, ticket_id, hora_inicio, tickets(id, endereco_servico, data_inicio_execucao, clientes(empresa, cliente_ufvs(nome)))").eq("id", workOrderId).single();
       if (error) throw error;
       const anyData: any = data;
       if (anyData?.tickets?.clientes) {
