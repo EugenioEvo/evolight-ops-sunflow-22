@@ -213,6 +213,10 @@ export const MultiTechnicianOSDialog = ({
       if (!standaloneData.cliente_id) return "Selecione um cliente";
       if (!standaloneData.endereco_servico.trim()) return "Informe o endereço do serviço";
       if (!standaloneData.data_servico) return "Informe a data do serviço";
+      // Trava: data não pode ser anterior a hoje
+      const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+      const ds = new Date(standaloneData.data_servico + 'T00:00:00');
+      if (ds < hoje) return "A data do serviço não pode ser anterior a hoje";
     }
     return null;
   };
