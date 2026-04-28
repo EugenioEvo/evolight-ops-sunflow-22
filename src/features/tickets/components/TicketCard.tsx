@@ -54,6 +54,26 @@ export const TicketCard = ({
   const { toast } = useToast();
   const isStaff = profile?.role === 'admin' || profile?.role === 'engenharia' || profile?.role === 'supervisao';
 
+  // Trava: tickets com RME aprovado não podem ser reabertos/editados (evita "voltar" para 'aberto')
+  const hasApprovedRME = (ticket.ordens_servico || []).some((os: any) =>
+    (os.rme_relatorios || []).some((r: any) => r.status === 'aprovado')
+  );
+  const editBlockedReason = hasApprovedRME
+    ? 'Este ticket possui RME aprovado e não pode ser reaberto/editado.'
+    : '';
+
+  const handleEditClick = () => {
+    if (hasApprovedRME) {
+      toast({
+        title: 'Edição bloqueada',
+        description: editBlockedReason,
+        variant: 'destructive',
+      });
+      return;
+    }
+    onEdit(ticket);
+  };
+
   const navigate = useNavigate();
   const [rmeDialog, setRmeDialog] = useState<{ open: boolean; rme: any | null; loading: boolean }>({ open: false, rme: null, loading: false });
 
