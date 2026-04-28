@@ -285,16 +285,26 @@ const RMEWizard = () => {
       const tecnico = data.tecnicos as any;
       setWorkOrder(os);
       setTecnicoNome(tecnico?.profiles?.nome || "");
+      // Autoridade do início é a OS (data_inicio_execucao). RME espelha apenas.
+      const execStart = os?.tickets?.data_inicio_execucao
+        ? new Date(os.tickets.data_inicio_execucao)
+        : null;
+      const execStartDate = execStart
+        ? execStart.toISOString().split("T")[0]
+        : (data.data_execucao?.split("T")[0] || "");
+      const execStartTime = execStart
+        ? `${execStart.getHours().toString().padStart(2, "0")}:${execStart.getMinutes().toString().padStart(2, "0")}`
+        : (data.start_time || os?.hora_inicio || "08:00");
       setFormData({
         id: data.id, ordem_servico_id: data.ordem_servico_id, ticket_id: data.ticket_id, tecnico_id: data.tecnico_id,
-        data_execucao: data.data_execucao?.split("T")[0] || "",
-        data_fim_execucao: data.data_execucao?.split("T")[0] || "",
-        weekday: data.weekday || "",
+        data_execucao: execStartDate,
+        data_fim_execucao: data.data_fim_execucao?.split?.("T")[0] || data.data_execucao?.split("T")[0] || execStartDate,
+        weekday: data.weekday || (execStartDate ? ["Domingo","Segunda","Terça","Quarta","Quinta","Sexta","Sábado"][new Date(execStartDate + "T12:00:00").getDay()] : ""),
         site_name: data.site_name || os?.site_name || "",
         collaboration: Array.isArray(data.collaboration) ? (data.collaboration as string[]) : [],
         micro_number: data.micro_number || "", inverter_number: data.inverter_number || "",
         service_type: Array.isArray(data.service_type) ? (data.service_type as string[]) : [],
-        shift: data.shift || "manha", start_time: data.start_time || "08:00", end_time: data.end_time || "17:00",
+        shift: data.shift || "manha", start_time: execStartTime, end_time: data.end_time || "17:00",
         images_posted: data.images_posted || false, modules_cleaned_qty: data.modules_cleaned_qty || 0, string_box_qty: data.string_box_qty || 0,
         condicoes_encontradas: data.condicoes_encontradas || "", servicos_executados: data.servicos_executados || "",
         materiais_utilizados: Array.isArray(data.materiais_utilizados) ? (data.materiais_utilizados as any[]) : [],
