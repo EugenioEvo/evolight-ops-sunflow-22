@@ -87,9 +87,10 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
     const userId = claimsData.claims.sub;
-    const { data: roleData } = await supabase
-      .from('user_roles').select('role').eq('user_id', userId).maybeSingle();
-    if (!roleData || !['admin', 'engenharia', 'supervisao', 'tecnico_campo'].includes(roleData.role)) {
+    const { data: rolesData } = await supabase
+      .from('user_roles').select('role').eq('user_id', userId);
+    const userRoles = (rolesData || []).map((r: { role: string }) => r.role);
+    if (!userRoles.some((r: string) => ['admin', 'engenharia', 'supervisao', 'tecnico_campo'].includes(r))) {
       return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
