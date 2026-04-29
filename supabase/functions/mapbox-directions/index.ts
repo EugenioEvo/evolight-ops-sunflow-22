@@ -86,9 +86,10 @@ serve(async (req) => {
     }
     const userId = claimsData.claims.sub;
     const supabaseService = createClient(supabaseUrl, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
-    const { data: roleData } = await supabaseService
-      .from('user_roles').select('role').eq('user_id', userId).maybeSingle();
-    if (!roleData || !['admin', 'engenharia', 'supervisao', 'tecnico_campo'].includes(roleData.role)) {
+    const { data: rolesData } = await supabaseService
+      .from('user_roles').select('role').eq('user_id', userId);
+    const userRoles = (rolesData || []).map((r: { role: string }) => r.role);
+    if (!userRoles.some((r: string) => ['admin', 'engenharia', 'supervisao', 'tecnico_campo'].includes(r))) {
       return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: corsHeaders });
     }
 

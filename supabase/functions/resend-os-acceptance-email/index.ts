@@ -43,9 +43,10 @@ serve(async (req) => {
     }
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
-    const { data: roleData } = await supabase
-      .from('user_roles').select('role').eq('user_id', claims.claims.sub).maybeSingle()
-    if (!roleData || !['admin', 'engenharia', 'supervisao'].includes(roleData.role)) {
+    const { data: rolesData } = await supabase
+      .from('user_roles').select('role').eq('user_id', claims.claims.sub)
+    const userRoles = (rolesData || []).map((r: { role: string }) => r.role)
+    if (!userRoles.some((r: string) => ['admin', 'engenharia', 'supervisao'].includes(r))) {
       return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 

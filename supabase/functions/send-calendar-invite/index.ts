@@ -47,9 +47,10 @@ const handler = async (req: Request): Promise<Response> => {
     const { os_id, action }: CalendarInviteRequest = await req.json();
 
     // Authorization: staff OR the assigned technician of this OS may trigger the invite.
-    const { data: roleData } = await supabase
-      .from('user_roles').select('role').eq('user_id', userId).maybeSingle();
-    const isStaff = roleData && ['admin', 'engenharia', 'supervisao'].includes(roleData.role);
+    const { data: rolesData } = await supabase
+      .from('user_roles').select('role').eq('user_id', userId);
+    const userRoles = (rolesData || []).map((r: { role: string }) => r.role);
+    const isStaff = userRoles.some((r: string) => ['admin', 'engenharia', 'supervisao'].includes(r));
 
     let isAssignedTechnician = false;
     if (!isStaff && os_id) {
