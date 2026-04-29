@@ -35,9 +35,10 @@ const handler = async (req: Request): Promise<Response> => {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
     }
     const userId = claimsData.claims.sub;
-    const { data: roleData } = await createClient(supabaseUrl, supabaseServiceKey)
-      .from('user_roles').select('role').eq('user_id', userId).maybeSingle();
-    if (!roleData || !['admin', 'engenharia', 'supervisao'].includes(roleData.role)) {
+    const { data: rolesData } = await createClient(supabaseUrl, supabaseServiceKey)
+      .from('user_roles').select('role').eq('user_id', userId);
+    const userRoles = (rolesData || []).map((r: { role: string }) => r.role);
+    if (!userRoles.some((r: string) => ['admin', 'engenharia', 'supervisao'].includes(r))) {
       return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: corsHeaders });
     }
 
