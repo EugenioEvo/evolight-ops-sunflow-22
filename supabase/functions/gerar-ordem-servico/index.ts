@@ -42,10 +42,12 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
-    // SECURITY: Validate role - only staff can generate OS
-    const { data: roleData } = await supabaseClient
-      .from('user_roles').select('role').eq('user_id', user.id).maybeSingle()
-    if (!roleData || !['admin', 'engenharia', 'supervisao'].includes(roleData.role)) {
+    // SECURITY: Validate role - only staff can generate OS (multi-role aware)
+    const { data: rolesData } = await supabaseClient
+      .from('user_roles').select('role').eq('user_id', user.id)
+    const userRoles = (rolesData || []).map((r: { role: string }) => r.role)
+    const allowedRoles = ['admin', 'engenharia', 'supervisao']
+    if (!userRoles.some((r: string) => allowedRoles.includes(r))) {
       return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
