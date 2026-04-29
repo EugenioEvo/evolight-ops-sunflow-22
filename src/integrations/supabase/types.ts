@@ -1265,6 +1265,7 @@ export type Database = {
           created_at: string
           data_aprovacao: string | null
           data_execucao: string
+          data_fim_execucao: string | null
           data_preenchimento: string
           end_time: string | null
           equipamento_id: string | null
@@ -1306,6 +1307,7 @@ export type Database = {
           created_at?: string
           data_aprovacao?: string | null
           data_execucao: string
+          data_fim_execucao?: string | null
           data_preenchimento?: string
           end_time?: string | null
           equipamento_id?: string | null
@@ -1347,6 +1349,7 @@ export type Database = {
           created_at?: string
           data_aprovacao?: string | null
           data_execucao?: string
+          data_fim_execucao?: string | null
           data_preenchimento?: string
           end_time?: string | null
           equipamento_id?: string | null
