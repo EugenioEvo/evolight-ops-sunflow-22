@@ -138,7 +138,27 @@ const WorkOrderDetail = () => {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Horário Programado</p>
-                <div className="flex items-center gap-2 mt-1"><Clock className="h-4 w-4 text-muted-foreground" /><span className="font-medium">{workOrder.hora_inicio || "00:00"} - {workOrder.hora_fim || "00:00"}</span></div>
+                <div className="flex items-center gap-2 mt-1">
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium">
+                    {workOrder.hora_inicio || "00:00"} - {workOrder.hora_fim || "00:00"}
+                    {(() => {
+                      // Sufixo (dd/MM) quando o término ultrapassa o início (vira o dia)
+                      const hi = workOrder.hora_inicio, hf = workOrder.hora_fim
+                      if (!hi || !hf || !workOrder.data_programada) return null
+                      const [ih, im] = hi.split(':').map(Number)
+                      const [fh, fm] = hf.split(':').map(Number)
+                      if ((fh * 60 + fm) > (ih * 60 + im)) return null
+                      // Calcula próximo dia útil simples a partir de data_programada
+                      const d = new Date(workOrder.data_programada)
+                      d.setDate(d.getDate() + 1)
+                      while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + 1)
+                      const dd = String(d.getDate()).padStart(2, '0')
+                      const mm = String(d.getMonth() + 1).padStart(2, '0')
+                      return <span className="text-muted-foreground ml-1">({dd}/{mm})</span>
+                    })()}
+                  </span>
+                </div>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
