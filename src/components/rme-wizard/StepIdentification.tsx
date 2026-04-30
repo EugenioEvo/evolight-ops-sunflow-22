@@ -117,8 +117,21 @@ export const StepIdentification = ({ formData, updateFormData, availableTechnici
               <CommandList>
                 <CommandEmpty>Nenhum técnico encontrado.</CommandEmpty>
                 <CommandGroup>
-                  {availableTechnicians.map((tec) => {
+                {availableTechnicians.map((tec) => {
                     const checked = formData.collaboration.includes(tec.nome);
+                    const status = (tec as any).aceite_status as string | undefined;
+                    const statusLabel =
+                      status === "aprovado"
+                        ? "Aprovada"
+                        : status === "aceito"
+                        ? "Aceita"
+                        : status === "pendente"
+                        ? "Em aprovação"
+                        : null;
+                    const statusClass =
+                      status === "aprovado" || status === "aceito"
+                        ? "bg-green-500/10 text-green-700 border-green-200"
+                        : "bg-amber-500/10 text-amber-700 border-amber-200";
                     return (
                       <CommandItem
                         key={tec.id}
@@ -132,12 +145,17 @@ export const StepIdentification = ({ formData, updateFormData, availableTechnici
                             checked ? "opacity-100" : "opacity-0"
                           )}
                         />
-                        <div className="flex flex-col">
+                        <div className="flex flex-col flex-1">
                           <span>{tec.nome}</span>
                           {tec.email && (
                             <span className="text-xs text-muted-foreground">{tec.email}</span>
                           )}
                         </div>
+                        {statusLabel && (
+                          <span className={cn("ml-2 text-[10px] uppercase tracking-wide rounded-md border px-1.5 py-0.5", statusClass)}>
+                            {statusLabel}
+                          </span>
+                        )}
                       </CommandItem>
                     );
                   })}
