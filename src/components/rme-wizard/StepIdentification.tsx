@@ -103,7 +103,7 @@ export const StepIdentification = ({ formData, updateFormData, availableTechnici
               <span className="flex items-center gap-2 text-left truncate">
                 <Users className="h-4 w-4 shrink-0" />
                 {availableTechnicians.length === 0
-                  ? "Nenhum técnico aprovado neste ticket"
+                  ? "Nenhum técnico associado a este ticket"
                   : formData.collaboration.length === 0
                   ? "Selecione os técnicos presentes"
                   : `${formData.collaboration.length} selecionado(s)`}
