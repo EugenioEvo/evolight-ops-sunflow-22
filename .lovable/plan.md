@@ -1,72 +1,65 @@
-## Objetivo
+## Diagnóstico raiz (causa única para os 3 sintomas)
 
-Reorganizar a UI de campos de data/hora em **Tickets**, **OS** e **RME** para que:
-1. Campos **automáticos** apareçam como leitura (ou nem apareçam) — técnico só edita o que é manual.
-2. Travas de coerência impeçam datas/horários inválidos.
-3. Cálculo de "Horário Programado" da OS respeite a janela útil (09:00-12:00 e 14:00-17:00, seg-sex), com **virada de dia** automática quando a duração ultrapassa.
+`tickets.tecnico_responsavel_id` e `ordens_servico.tecnico_responsavel_id` armazenam **`prestadores.id`** (decisão arquitetural intencional, vide `useTechnicianScore`, `buildOSPDFData`, joins `prestadores:tecnico_responsavel_id`).
 
----
+Porém a função `get_ticket_rme_group_context` (e o trecho que resolve o e-mail do responsável) faz `LEFT JOIN tecnicos t ON t.id = rt.resp_tec_id` — comparando `tecnicos.id` com `prestadores.id`. Resultado: o JOIN nunca casa, `responsavel_email` vira NULL, e a comparação `responsavelEmail === profile.email` no `RMEWizard` falha. Isso explica:
 
-## Escopo por entidade
+- **OS59 (Diego)**: não consegue fechar RME — embora seja responsável real
+- **TK033 / OS50 (Hercules) [item anterior]**: mesmo bug
+- Qualquer técnico responsável é bloqueado no `handleFinalize`
 
-### Ticket (`TicketForm.tsx`)
-
-| Campo | Tipo hoje | Ação |
-|---|---|---|
-| `created_at` (a) | Auto | Já é auto. **Manter visível no card** como hoje. |
-| `data_servico` (b) | Manual | Manter input. Trava: ≥ hoje. |
-| `data_vencimento` (c) | Manual | Manter input. Trava: ≥ `data_servico`. |
-| `horario_previsto_inicio` (d) | Manual | Manter input (confirmado). Trava: dentro de 09:00-12:00 ou 14:00-17:00 (warning, não bloqueia). |
-
-**Novas validações Zod** no `ticketFormSchema`: refinements cruzando os 3 campos. Erros via `FormMessage`.
-
-### OS (`MultiTechnicianOSDialog.tsx` + `WorkOrderDetail.tsx`)
-
-| Campo | Origem | UI |
-|---|---|---|
-| `created_at` (e) | Auto | **Não exibir no card.** Visível apenas em detalhe (read-only). |
-| `data_programada` (f) = ticket.data_servico | Auto | Card: read-only, vindo do ticket. No dialog standalone continua editável (campo do ticket implícito). |
-| `hora_inicio`/`hora_fim` (g) | Auto = `horario_previsto_inicio` + duração computada | Card mostra `HH:MM - HH:MM (dd/MM/yy)` quando vira o dia. **Remover qualquer input manual** do dialog para esses campos. |
-| `data_inicio_execucao` (h) + hora (i) | Auto ao "Iniciar Execução" | Já é assim. Garantir que aparecem como read-only. |
-| `data_conclusao` (j) + hora (k) | Auto ao aprovar RME (vem de `rme.end_time`) | Já é assim no `WorkOrderDetail`. Manter. |
-
-**Cálculo de janela útil (novo helper `src/utils/scheduleWindow.ts`):**
-- Input: `data_servico` (YYYY-MM-DD), `hora_inicio` (HH:MM), `duracao_min`.
-- Distribui minutos nas janelas 09:00-12:00 e 14:00-17:00, seg-sex.
-- Pula sábados/domingos.
-- Retorna `{ endDate, endTime, crossedDay: boolean, weekendWarning: boolean }`.
-- Usado no `MultiTechnicianOSDialog` para preencher `hora_fim` ao gerar a OS, e no card/detalhe da OS para renderizar `08:40 - 15:00 (29/04/26)` quando `crossedDay`.
-
-**Edge function `gerar-ordem-servico`**: passar a calcular `hora_fim` (e `data_programada` final) usando esse helper em vez do `horas_previstas` simples — para consistência server-side.
-
-### RME (`StepServiceShift.tsx`)
-
-| Campo | Origem | UI |
-|---|---|---|
-| `data_execucao` (l-data) | Auto = `os.data_inicio_execucao` | **Read-only** (Input disabled). Botão de Calendar removido. |
-| `start_time` (l-hora) | Auto = hora de início da execução | **Read-only**. |
-| `data_fim_execucao` (m-data) | Manual | Manter editável. Trava: ≥ `data_execucao`. |
-| `end_time` (m-hora) | Manual | Manter editável. Trava: se `data_fim == data_execucao`, então `end_time > start_time`. |
-
-Pré-preencher `data_execucao` e `start_time` ao abrir o wizard via `useEffect` lendo `ordem_servico.data_inicio_execucao` (já existe no ticket linked).
+Isso **NÃO é dado órfão** — os 3 IDs "fantasmas" (`777d1943` Diego, `c67f5c32` Hercules, `7de4c21a` Weberson) existem em `prestadores`. Não há corrupção de dados.
 
 ---
 
-## Detalhes técnicos
+## Plano de execução
 
-**Arquivos editados:**
-- `src/utils/scheduleWindow.ts` *(novo)* — helper de janela útil + virada de dia.
-- `src/features/tickets/components/TicketForm.tsx` — refinements Zod e mensagens.
-- `src/components/MultiTechnicianOSDialog.tsx` — usar helper para preview do `hora_fim`, exibir aviso "vira para dd/MM" ou "cai em FDS", aplicar mesmas travas no modo standalone.
-- `src/features/work-orders/components/` (e `WorkOrderDetail.tsx`) — formatar exibição de "Horário Programado" com virada de dia.
-- `src/components/rme-wizard/StepServiceShift.tsx` — `data_execucao` e `start_time` como read-only; validações em `data_fim_execucao`/`end_time`.
-- `src/pages/RMEWizard.tsx` — pré-preencher data/hora de início vindo da OS.
-- `supabase/functions/gerar-ordem-servico/index.ts` — usar mesma lógica de janela ao persistir `hora_inicio`/`hora_fim`/`data_programada`.
+### 1. Fix raiz do RPC (resolve OS59 e qualquer caso futuro)
+Migration alterando `get_ticket_rme_group_context`: o JOIN para resolver `responsavel_email` passa por `prestadores` → `tecnicos.prestador_id` → `profiles`. Mantém compatibilidade com `tecnico_responsavel_id` que (por design) guarda `prestadores.id`.
 
-**Travas resumidas:**
-- Ticket: `data_servico ≥ today`, `data_vencimento ≥ data_servico`.
-- OS standalone: idem ticket.
-- RME: `data_fim_execucao ≥ data_execucao`; mesmo dia → `end_time > start_time`.
-- Janela útil: warning, nunca bloqueio (preferência confirmada).
+### 2. Caso OS65 / TK042 (Hercules)
+Adicionar Hercules como OS-irmã do TK042 mantendo Adrian. Hercules vira responsável (o ticket também). Disparar e-mail/calendar para Hercules via `gerar-ordem-servico`.
 
-**Sem mudança de schema** — todos os campos já existem.
+### 3. Caso RME OS53 (Weberson ausente)
+Confirmado: TK036 só tem 1 OS (Diego). Weberson nunca foi escalado nessa OS — não tem sibling. Se a intenção é registrar que ele participou em campo, posso adicioná-lo ao array `collaboration` do RME existente (715905ee). **Pergunta implícita já respondida com "sim, pode seguir"** → adiciono.
+
+### 4. Cascata ao trocar técnico (frontend)
+Em `MultiTechnicianOSDialog` e `useTicketMutations`: ao alterar Técnico Responsável ou adicionar/remover técnico do ticket, sincronizar:
+- `tickets.tecnico_responsavel_id`
+- `ordens_servico.tecnico_responsavel_id` em todas as OSs do ticket
+- `rme_relatorios.tecnico_id` somente para RMEs **ainda não aprovados** (status `rascunho`/`pendente`/`rejeitado`)
+
+Isso já é parcialmente feito hoje (linhas 280-288 do dialog) — vou consolidar e estender ao acréscimo/retirada.
+
+### 5. RME Wizard — Colaboradores Presentes inteligente
+- **Catálogo expandido**: trazer todos os técnicos do ticket com OS em `pendente`, `aceito` ou `aprovado` (hoje só `aceito`/`aprovado`). Editar `get_ticket_rme_group_context` para incluir pendentes, retornando também o status atual.
+- **Refresh ao entrar na etapa 1**: já existe via realtime; garantir refresh extra no `handleStepChange` para `currentStep === 1`.
+- **Reconciliação ao concluir RME**: em `handleFinalize`, antes de salvar:
+  - Para cada técnico marcado em `collaboration` cuja OS está `pendente` → forçar `aceite_tecnico='aceito'` + `aceite_at=now()` (e disparar mesma cadeia de notificações do aceite manual).
+  - Para cada técnico **não marcado** com OS `pendente` ou `aceito`/`aprovado` (exceto o próprio responsável) → forçar `aceite_tecnico='recusado'` com motivo "Técnico ausente conforme RME do responsável" + disparar notificação de recusa.
+
+### 6. Atualizar memória
+Documentar a decisão "tecnico_responsavel_id armazena prestadores.id" e o novo fluxo de reconciliação RME para evitar regressões.
+
+---
+
+## Arquivos a tocar
+
+```
+supabase/migrations/<new>.sql             (fix RPC + incluir pendentes)
+src/pages/RMEWizard.tsx                   (handleFinalize reconciliação + refresh step 1)
+src/components/rme-wizard/StepIdentification.tsx  (mostrar status na opção)
+src/components/MultiTechnicianOSDialog.tsx (cascata RME não-aprovado)
+src/features/tickets/hooks/useTicketMutations.ts (cascata simples de troca)
+.lovable/memory/os-rme/responsavel-id-prestador.md (NOVO)
+.lovable/memory/os-rme/wizard-reconciliacao-equipe.md (NOVO)
+```
+
+---
+
+## Operações de dados (via insert tool)
+
+1. OS65: criar OS adicional para Hercules no TK042 (preferível usar edge function `gerar-ordem-servico` para enviar e-mail/calendar — vou invocá-la pelo backend após confirmar payload).
+2. RME OS53: adicionar "Weberson da Silva Ferreira" ao array `collaboration`.
+
+Sem riscos colaterais: nenhum dado existente é apagado.
