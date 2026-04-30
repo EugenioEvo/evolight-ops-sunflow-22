@@ -65,6 +65,8 @@ export interface TechnicianOption {
   id: string; // tecnicos.id
   nome: string;
   email: string;
+  /** OS acceptance status for this technician on the current ticket: 'pendente' | 'aceito' | 'aprovado' */
+  aceite_status?: string;
 }
 
 const STEPS = [
