@@ -1811,6 +1811,7 @@ export type Database = {
       get_ticket_rme_group_context: {
         Args: { p_ticket_id: string }
         Returns: {
+          aceite_status: string
           email: string
           nome: string
           responsavel_email: string
