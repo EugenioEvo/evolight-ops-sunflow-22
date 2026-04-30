@@ -382,6 +382,71 @@ const RMEWizard = () => {
   const handleNext = async () => { const saved = await saveRME(false); if (saved && currentStep < STEPS.length) setCurrentStep(currentStep + 1); };
   const handlePrevious = () => { if (currentStep > 1) setCurrentStep(currentStep - 1); };
 
+  // Sempre que entrar (ou voltar) na etapa 1, atualiza os colaboradores disponíveis.
+  useEffect(() => {
+    if (currentStep === 1 && currentTicketId) {
+      loadGroupContext(currentTicketId);
+    }
+  }, [currentStep, currentTicketId]);
+
+  /**
+   * Reconciliação automática da equipe ao concluir o RME.
+   * Para cada técnico irmão (mesmo ticket) que NÃO seja o próprio responsável:
+   *  - se está marcado em `collaboration` → força aceite_tecnico='aceito'
+   *  - se NÃO está marcado → força aceite_tecnico='recusado' com motivo padrão
+   * Isso elimina OSs órfãs em "pendente" e registra ausências automaticamente.
+   */
+  const reconcileTeamFromCollaboration = async (ticketId: string): Promise<void> => {
+    const { data: siblingOS } = await supabase
+      .from("ordens_servico")
+      .select("id, tecnico_id, aceite_tecnico, tecnicos!inner(profile_id, profiles!inner(nome))")
+      .eq("ticket_id", ticketId);
+
+    if (!siblingOS || siblingOS.length === 0) return;
+
+    const collabSet = new Set(
+      formData.collaboration.map((n) => n.toLowerCase().trim())
+    );
+    const nowIso = new Date().toISOString();
+
+    for (const os of siblingOS as any[]) {
+      // Pula a OS do próprio responsável (que está fechando o RME)
+      if (tecnicoId && os.tecnico_id === tecnicoId) continue;
+      // Pula OSs já recusadas — decisão prévia do técnico não é sobrescrita.
+      if (os.aceite_tecnico === "recusado") continue;
+
+      const nome = (os.tecnicos?.profiles?.nome || "").toLowerCase().trim();
+      const presente = !!nome && collabSet.has(nome);
+
+      if (presente && os.aceite_tecnico !== "aceito" && os.aceite_tecnico !== "aprovado") {
+        await supabase
+          .from("ordens_servico")
+          .update({ aceite_tecnico: "aceito", aceite_at: nowIso })
+          .eq("id", os.id);
+      } else if (!presente && os.aceite_tecnico !== "aceito" && os.aceite_tecnico !== "aprovado") {
+        // Apenas pendentes viram recusado; já-aceitos não são alterados (técnico aceitou mas não compareceu — caso à parte).
+        await supabase
+          .from("ordens_servico")
+          .update({
+            aceite_tecnico: "recusado",
+            motivo_recusa: "Técnico ausente conforme RME conduzido pelo responsável.",
+            aceite_at: nowIso,
+          })
+          .eq("id", os.id);
+      } else if (!presente && (os.aceite_tecnico === "aceito" || os.aceite_tecnico === "aprovado")) {
+        // Aceitou mas não compareceu — também marca como recusado para liberar agenda e refletir realidade.
+        await supabase
+          .from("ordens_servico")
+          .update({
+            aceite_tecnico: "recusado",
+            motivo_recusa: "Técnico ausente em campo conforme RME do responsável.",
+            aceite_at: nowIso,
+          })
+          .eq("id", os.id);
+      }
+    }
+  };
+
   const handleFinalize = async () => {
     if (!isResponsavel) {
       toast({
@@ -395,21 +460,22 @@ const RMEWizard = () => {
       toast({ title: "Campo obrigatório", description: "Preencha a descrição do serviço realizado", variant: "destructive" });
       return;
     }
-    // Guard: cannot submit the RME while sibling OS on the same ticket are still undecided.
-    // Draft/auto-save remains allowed — only submission (rascunho → pendente) is blocked.
+
+    // Reconciliação: aprova/recusa OSs irmãs com base em quem foi marcado como colaborador.
     if (formData.ticket_id) {
-      const { myOrdersService } = await import('@/features/my-orders/services/myOrdersService');
-      const pendentes = await myOrdersService.getPendingAcceptanceSiblings(formData.ticket_id);
-      if (pendentes.length > 0) {
-        const nums = pendentes.map(p => p.numero_os).join(', ');
+      try {
+        await reconcileTeamFromCollaboration(formData.ticket_id);
+      } catch (e) {
+        console.warn("reconcileTeamFromCollaboration falhou:", e);
+        // Não bloqueia a submissão — apenas alerta.
         toast({
-          title: "Não é possível concluir o RME ainda",
-          description: `${pendentes.length} OS deste ticket ainda aguarda(m) aceite ou recusa do(s) técnico(s): ${nums}. Você pode continuar preenchendo e salvando como rascunho.`,
+          title: "Atenção",
+          description: "Não foi possível reconciliar automaticamente o status das OSs da equipe. Verifique manualmente.",
           variant: "destructive",
         });
-        return;
       }
     }
+
     const rmeId = await saveRME(true);
     if (rmeId) {
       const { notifyRMESubmitted } = await import('@/shared/services/notificationStrategies');
