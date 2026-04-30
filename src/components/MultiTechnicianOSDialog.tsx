@@ -280,6 +280,7 @@ export const MultiTechnicianOSDialog = ({
       // 1) Atualiza tecnico_responsavel_id em todas as OSs do ticket.
       // 2) Reatribui RMEs em rascunho/rejeitado/pendente para o tecnico do novo responsável.
       //    RMEs aprovados ficam intactos (regra de negócio).
+      // Cobre tanto adição/retirada de técnicos como troca explícita de responsável.
       if (isAddMode && responsavelChanged) {
         try {
           // 1) propaga em todas as OSs
@@ -288,25 +289,19 @@ export const MultiTechnicianOSDialog = ({
             .update({ tecnico_responsavel_id: tecnicoResponsavelId })
             .eq('ticket_id', effectiveTicketId);
 
-          // 2) busca o tecnico_id do novo responsável (via prestador → email → tecnicos)
-          const { data: novoPrestador } = await supabase
-            .from('prestadores')
-            .select('email')
-            .eq('id', tecnicoResponsavelId)
+          // 2) Resolver tecnico_id do novo responsável via FK direta tecnicos.prestador_id
+          //    (mais confiável do que matching por email, conforme memória tecnicos-prestadores-fk-link)
+          const { data: novoTecnico } = await supabase
+            .from('tecnicos')
+            .select('id')
+            .eq('prestador_id', tecnicoResponsavelId)
             .maybeSingle();
-          if (novoPrestador?.email) {
-            const { data: novoTecnico } = await supabase
-              .from('tecnicos')
-              .select('id, profiles!inner(email)')
-              .ilike('profiles.email', novoPrestador.email)
-              .maybeSingle();
-            if (novoTecnico?.id) {
-              await supabase
-                .from('rme_relatorios')
-                .update({ tecnico_id: novoTecnico.id })
-                .eq('ticket_id', effectiveTicketId)
-                .in('status', ['rascunho', 'rejeitado', 'pendente']);
-            }
+          if (novoTecnico?.id) {
+            await supabase
+              .from('rme_relatorios')
+              .update({ tecnico_id: novoTecnico.id })
+              .eq('ticket_id', effectiveTicketId)
+              .in('status', ['rascunho', 'rejeitado', 'pendente']);
           }
           toast.success('Técnico Responsável atualizado e RMEs em andamento reatribuídos.');
         } catch (e: any) {
