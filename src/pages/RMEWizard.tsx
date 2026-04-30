@@ -176,6 +176,7 @@ const RMEWizard = () => {
       id: row.tecnico_id,
       nome: row.nome || "Sem nome",
       email: row.email || "",
+      aceite_status: row.aceite_status || "pendente",
     }));
 
     setAvailableTechnicians(techs);
