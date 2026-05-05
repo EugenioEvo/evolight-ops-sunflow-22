@@ -195,7 +195,7 @@ const handler = async (req: Request): Promise<Response> => {
     const isReassignRemoved = action === "reassign_removed";
 
     // Preparar email - apenas para o técnico (sem cópia para o time)
-    const recipients = [tecnicoEmail];
+    const recipients = [tecnicoEmail, "oem@grupoevolight.com.br"];
     const actionText = action === "create" ? "agendada" : action === "update" ? "reagendada" : action === "rejection_reschedule" ? "reagendada após recusa" : action === "reassign_removed" ? "reatribuída" : "cancelada";
     const dataFormatada = dtStart ? dtStart.toLocaleDateString("pt-BR") : "Não definida";
     const horaFormatada = dtStart ? dtStart.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "";
