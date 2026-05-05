@@ -68,7 +68,7 @@ serve(async (req) => {
     const emailRes = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: 'SunFlow <oem@grupoevolight.com.br>', to: [creatorProfile.email], subject, html }),
+      body: JSON.stringify({ from: 'SunFlow <oem@grupoevolight.com.br>', to: [creatorProfile.email, 'oem@grupoevolight.com.br'], subject, html }),
     })
 
     if (!emailRes.ok) {
