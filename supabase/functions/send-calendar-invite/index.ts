@@ -180,7 +180,6 @@ const handler = async (req: Request): Promise<Response> => {
         `SEQUENCE:${sequence}`,
         `ORGANIZER;CN=${CONFIG.companyName}:mailto:${CONFIG.organizerEmail}`,
         `ATTENDEE;CN=${tecnicoNome};RSVP=TRUE:mailto:${tecnicoEmail}`,
-        `ATTENDEE;CN=Evolight O&M;RSVP=FALSE;PARTSTAT=ACCEPTED;ROLE=OPT-PARTICIPANT:mailto:oem@grupoevolight.com.br`,
         "BEGIN:VALARM",
         "TRIGGER:-PT60M",
         "ACTION:DISPLAY",
