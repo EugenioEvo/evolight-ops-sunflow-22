@@ -854,6 +854,90 @@ export type Database = {
         }
         Relationships: []
       }
+      obras: {
+        Row: {
+          cep: string | null
+          cidade: string | null
+          cliente_id: string | null
+          created_at: string
+          created_by: string | null
+          data_fim_prevista: string | null
+          data_fim_real: string | null
+          data_inicio_prevista: string | null
+          data_inicio_real: string | null
+          endereco: string | null
+          estado: string | null
+          id: string
+          latitude: number | null
+          longitude: number | null
+          nome: string
+          observacoes: string | null
+          potencia_kwp: number | null
+          responsavel_obra_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          cep?: string | null
+          cidade?: string | null
+          cliente_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_fim_prevista?: string | null
+          data_fim_real?: string | null
+          data_inicio_prevista?: string | null
+          data_inicio_real?: string | null
+          endereco?: string | null
+          estado?: string | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          nome: string
+          observacoes?: string | null
+          potencia_kwp?: number | null
+          responsavel_obra_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          cep?: string | null
+          cidade?: string | null
+          cliente_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_fim_prevista?: string | null
+          data_fim_real?: string | null
+          data_inicio_prevista?: string | null
+          data_inicio_real?: string | null
+          endereco?: string | null
+          estado?: string | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          nome?: string
+          observacoes?: string | null
+          potencia_kwp?: number | null
+          responsavel_obra_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "obras_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "obras_responsavel_obra_id_fkey"
+            columns: ["responsavel_obra_id"]
+            isOneToOne: false
+            referencedRelation: "prestadores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ordens_servico: {
         Row: {
           aceite_at: string | null
@@ -1149,6 +1233,310 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      rdo_atividades: {
+        Row: {
+          catalogo_id: string | null
+          created_at: string
+          descricao_livre: string | null
+          id: string
+          observacoes: string | null
+          percentual_avanco: number | null
+          quantidade: number
+          rdo_id: string
+          unidade: string | null
+        }
+        Insert: {
+          catalogo_id?: string | null
+          created_at?: string
+          descricao_livre?: string | null
+          id?: string
+          observacoes?: string | null
+          percentual_avanco?: number | null
+          quantidade?: number
+          rdo_id: string
+          unidade?: string | null
+        }
+        Update: {
+          catalogo_id?: string | null
+          created_at?: string
+          descricao_livre?: string | null
+          id?: string
+          observacoes?: string | null
+          percentual_avanco?: number | null
+          quantidade?: number
+          rdo_id?: string
+          unidade?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rdo_atividades_catalogo_id_fkey"
+            columns: ["catalogo_id"]
+            isOneToOne: false
+            referencedRelation: "rdo_atividades_catalogo"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rdo_atividades_rdo_id_fkey"
+            columns: ["rdo_id"]
+            isOneToOne: false
+            referencedRelation: "rdo_relatorios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rdo_atividades_catalogo: {
+        Row: {
+          ativo: boolean
+          categoria: string
+          created_at: string
+          id: string
+          item_key: string
+          label: string
+          sort_order: number | null
+          unidade: string
+        }
+        Insert: {
+          ativo?: boolean
+          categoria: string
+          created_at?: string
+          id?: string
+          item_key: string
+          label: string
+          sort_order?: number | null
+          unidade: string
+        }
+        Update: {
+          ativo?: boolean
+          categoria?: string
+          created_at?: string
+          id?: string
+          item_key?: string
+          label?: string
+          sort_order?: number | null
+          unidade?: string
+        }
+        Relationships: []
+      }
+      rdo_equipamentos: {
+        Row: {
+          created_at: string
+          id: string
+          nome: string
+          observacoes: string | null
+          quantidade: number
+          rdo_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nome: string
+          observacoes?: string | null
+          quantidade?: number
+          rdo_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nome?: string
+          observacoes?: string | null
+          quantidade?: number
+          rdo_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rdo_equipamentos_rdo_id_fkey"
+            columns: ["rdo_id"]
+            isOneToOne: false
+            referencedRelation: "rdo_relatorios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rdo_equipe: {
+        Row: {
+          created_at: string
+          funcao: string | null
+          horas_extras: number | null
+          horas_trabalhadas: number | null
+          id: string
+          observacoes: string | null
+          prestador_id: string
+          rdo_id: string
+        }
+        Insert: {
+          created_at?: string
+          funcao?: string | null
+          horas_extras?: number | null
+          horas_trabalhadas?: number | null
+          id?: string
+          observacoes?: string | null
+          prestador_id: string
+          rdo_id: string
+        }
+        Update: {
+          created_at?: string
+          funcao?: string | null
+          horas_extras?: number | null
+          horas_trabalhadas?: number | null
+          id?: string
+          observacoes?: string | null
+          prestador_id?: string
+          rdo_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rdo_equipe_prestador_id_fkey"
+            columns: ["prestador_id"]
+            isOneToOne: false
+            referencedRelation: "prestadores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rdo_equipe_rdo_id_fkey"
+            columns: ["rdo_id"]
+            isOneToOne: false
+            referencedRelation: "rdo_relatorios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rdo_evidencias: {
+        Row: {
+          created_at: string
+          descricao: string | null
+          id: string
+          rdo_id: string
+          storage_path: string
+          tipo: string
+        }
+        Insert: {
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          rdo_id: string
+          storage_path: string
+          tipo: string
+        }
+        Update: {
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          rdo_id?: string
+          storage_path?: string
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rdo_evidencias_rdo_id_fkey"
+            columns: ["rdo_id"]
+            isOneToOne: false
+            referencedRelation: "rdo_relatorios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rdo_relatorios: {
+        Row: {
+          aprovado_por: string | null
+          assinatura_aprovador: string | null
+          assinatura_responsavel: string | null
+          atrasos: string | null
+          clima: string | null
+          condicoes_canteiro: string | null
+          created_at: string
+          created_by: string | null
+          data_aprovacao: string | null
+          data_rdo: string
+          fotos_geral: string[] | null
+          horario_fim: string | null
+          horario_inicio: string | null
+          id: string
+          numero_rdo: string
+          obra_id: string
+          observacoes_aprovacao: string | null
+          observacoes_gerais: string | null
+          ocorrencias: string | null
+          pdf_url: string | null
+          responsavel_id: string
+          restricoes: string | null
+          status: string
+          temperatura_c: number | null
+          turno: string | null
+          updated_at: string
+        }
+        Insert: {
+          aprovado_por?: string | null
+          assinatura_aprovador?: string | null
+          assinatura_responsavel?: string | null
+          atrasos?: string | null
+          clima?: string | null
+          condicoes_canteiro?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_aprovacao?: string | null
+          data_rdo: string
+          fotos_geral?: string[] | null
+          horario_fim?: string | null
+          horario_inicio?: string | null
+          id?: string
+          numero_rdo: string
+          obra_id: string
+          observacoes_aprovacao?: string | null
+          observacoes_gerais?: string | null
+          ocorrencias?: string | null
+          pdf_url?: string | null
+          responsavel_id: string
+          restricoes?: string | null
+          status?: string
+          temperatura_c?: number | null
+          turno?: string | null
+          updated_at?: string
+        }
+        Update: {
+          aprovado_por?: string | null
+          assinatura_aprovador?: string | null
+          assinatura_responsavel?: string | null
+          atrasos?: string | null
+          clima?: string | null
+          condicoes_canteiro?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_aprovacao?: string | null
+          data_rdo?: string
+          fotos_geral?: string[] | null
+          horario_fim?: string | null
+          horario_inicio?: string | null
+          id?: string
+          numero_rdo?: string
+          obra_id?: string
+          observacoes_aprovacao?: string | null
+          observacoes_gerais?: string | null
+          ocorrencias?: string | null
+          pdf_url?: string | null
+          responsavel_id?: string
+          restricoes?: string | null
+          status?: string
+          temperatura_c?: number | null
+          turno?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rdo_relatorios_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rdo_relatorios_responsavel_id_fkey"
+            columns: ["responsavel_id"]
+            isOneToOne: false
+            referencedRelation: "prestadores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       responsaveis: {
         Row: {
@@ -1756,6 +2144,7 @@ export type Database = {
       cleanup_old_geocoding_cache: { Args: never; Returns: undefined }
       generate_presence_token: { Args: { p_os_id: string }; Returns: string }
       gerar_numero_os: { Args: never; Returns: string }
+      gerar_numero_rdo: { Args: never; Returns: string }
       gerar_numero_ticket: { Args: never; Returns: string }
       get_dashboard_stats: { Args: never; Returns: Json }
       get_rme_pendencias_insumos: {
@@ -1841,6 +2230,10 @@ export type Database = {
       mark_stale_clientes_sync_runs: { Args: never; Returns: undefined }
       mark_token_used: { Args: { p_token: string }; Returns: undefined }
       populate_rme_checklist: { Args: { p_rme_id: string }; Returns: undefined }
+      user_is_prestador: {
+        Args: { _prestador_id: string; _user_id: string }
+        Returns: boolean
+      }
       validate_presence_token: {
         Args: { p_os_id: string; p_token: string }
         Returns: boolean
