@@ -1855,6 +1855,8 @@ export type Database = {
         | "engenharia"
         | "supervisao"
         | "backoffice"
+        | "eletromecanico"
+        | "sup_eletromecanico"
       equipamento_tipo:
         | "painel_solar"
         | "inversor"
@@ -2017,6 +2019,8 @@ export const Constants = {
         "engenharia",
         "supervisao",
         "backoffice",
+        "eletromecanico",
+        "sup_eletromecanico",
       ],
       equipamento_tipo: [
         "painel_solar",
