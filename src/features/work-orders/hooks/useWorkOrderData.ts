@@ -65,13 +65,37 @@ export const useWorkOrderFilters = (workOrders: WorkOrder[]) => {
   const [currentPage, setCurrentPage] = useState(1);
 
   const filteredOrders = useMemo(() => {
+    const tokens = searchTerm
+      .toLowerCase()
+      .split(/\s+/)
+      .map((t) => t.trim())
+      .filter(Boolean);
+
     return workOrders.filter((os) => {
-      const matchesSearch =
-        searchTerm === "" ||
-        os.numero_os.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        os.tickets.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        os.tickets.clientes?.empresa?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        os.site_name?.toLowerCase().includes(searchTerm.toLowerCase());
+      let matchesSearch = true;
+      if (tokens.length > 0) {
+        const haystack = [
+          os.numero_os,
+          os.tickets?.titulo,
+          os.tickets?.status,
+          os.tickets?.prioridade,
+          os.tickets?.endereco_servico,
+          os.tickets?.clientes?.empresa,
+          os.tickets?.clientes?.ufv_solarz,
+          os.site_name,
+          os.servico_solicitado,
+          os.inspetor_responsavel,
+          os.notes,
+          os.aceite_tecnico,
+          os.motivo_recusa,
+          ...(os.work_type || []),
+          ...(os.equipe || []),
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        matchesSearch = tokens.every((t) => haystack.includes(t));
+      }
 
       const ticketStatus = os.tickets.status;
       const osStatus =
