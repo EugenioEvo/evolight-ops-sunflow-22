@@ -227,9 +227,9 @@ const WorkOrders = () => {
       <Card>
         <CardContent className="p-4">
           <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
+            <div className="relative flex-1 sm:min-w-[420px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Buscar por OS, título, cliente ou usina..." value={filters.searchTerm} onChange={(e) => filters.setSearchTerm(e.target.value)} className="pl-10" />
+              <Input placeholder="Buscar por OS, título, cliente, usina, endereço, equipe..." value={filters.searchTerm} onChange={(e) => filters.setSearchTerm(e.target.value)} className="pl-10 h-11 text-base" />
             </div>
             <Select value={filters.statusFilter} onValueChange={filters.setStatusFilter}>
               <SelectTrigger className="w-full sm:w-[160px]"><SelectValue placeholder="Status" /></SelectTrigger>
@@ -250,26 +250,6 @@ const WorkOrders = () => {
                 <SelectItem value="recusado">Recusada</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={filters.clienteFilter} onValueChange={filters.setClienteFilter}>
-              <SelectTrigger className="w-full sm:w-[200px]"><SelectValue placeholder="Cliente" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos clientes</SelectItem>
-                {clientes.map((c) => (
-                  <SelectItem key={c.id} value={c.empresa || c.id}>{c.empresa || "Sem nome"}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {ufvSolarzOptions.length > 0 && (
-              <Select value={filters.ufvSolarzFilter} onValueChange={filters.setUfvSolarzFilter}>
-                <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Usina" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas as usinas</SelectItem>
-                  {ufvSolarzOptions.map((ufv) => (
-                    <SelectItem key={ufv} value={ufv}>{ufv}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="outline" className="w-full sm:w-auto">
