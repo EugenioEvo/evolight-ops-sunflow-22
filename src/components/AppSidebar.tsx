@@ -97,7 +97,8 @@ export function AppSidebar() {
   const isTecnico = userRoles.includes('tecnico_campo');
   const isStaff = userRoles.some(r => STAFF.includes(r));
   const isBackoffice = userRoles.includes('backoffice');
-  const showCadastros = isStaff || isBackoffice || isTecnico;
+  const isSupEletro = userRoles.includes('sup_eletromecanico');
+  const showCadastros = isStaff || isBackoffice || isTecnico || isSupEletro;
 
   useEffect(() => {
     if (isStaff) {
