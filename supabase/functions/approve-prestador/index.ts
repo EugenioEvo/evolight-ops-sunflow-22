@@ -146,8 +146,9 @@ serve(async (req) => {
       await admin.from('user_roles').insert({ user_id: authUserId, role: body.role })
     }
 
-    // 4. If técnico, ensure tecnicos row (linked to prestador via FK — no more email matching)
-    if (body.role === 'tecnico_campo') {
+    // 4. Field roles (tecnico_campo, eletromecanico, sup_eletromecanico): ensure tecnicos row
+    //    linked to prestador via FK. `tecnicos` é a ponte prestador↔profile usada por RLS.
+    if (FIELD_ROLES.includes(body.role)) {
       const { data: existingTec } = await admin
         .from('tecnicos')
         .select('id, prestador_id')
