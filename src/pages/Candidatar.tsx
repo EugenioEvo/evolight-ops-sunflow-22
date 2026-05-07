@@ -165,8 +165,10 @@ const Candidatar = () => {
                   <Select value={form.categoria} onValueChange={v => update('categoria', v)}>
                     <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="tecnico">Técnico de Campo</SelectItem>
-                      <SelectItem value="supervisao">Supervisor</SelectItem>
+                      <SelectItem value="tecnico">Técnico de Campo (O&amp;M)</SelectItem>
+                      <SelectItem value="supervisao">Supervisor (O&amp;M)</SelectItem>
+                      <SelectItem value="eletromecanico">Eletromecânico (EPC)</SelectItem>
+                      <SelectItem value="sup_eletromecanico">Sup. Eletromecânico (EPC)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
