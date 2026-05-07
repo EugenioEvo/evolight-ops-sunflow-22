@@ -14,9 +14,18 @@ interface ApprovePrestadorDialogProps {
   onApproved: () => void;
 }
 
+type ApproveRole = 'tecnico_campo' | 'supervisao' | 'eletromecanico' | 'sup_eletromecanico';
+
+const CATEGORIA_TO_ROLE: Record<string, ApproveRole> = {
+  tecnico: 'tecnico_campo',
+  supervisao: 'supervisao',
+  eletromecanico: 'eletromecanico',
+  sup_eletromecanico: 'sup_eletromecanico',
+};
+
 export const ApprovePrestadorDialog = ({ open, onOpenChange, prestador, onApproved }: ApprovePrestadorDialogProps) => {
-  const defaultRole = prestador?.categoria === 'supervisao' ? 'supervisao' : 'tecnico_campo';
-  const [role, setRole] = useState<'tecnico_campo' | 'supervisao'>(defaultRole);
+  const defaultRole: ApproveRole = CATEGORIA_TO_ROLE[prestador?.categoria ?? ''] ?? 'tecnico_campo';
+  const [role, setRole] = useState<ApproveRole>(defaultRole);
   const [loading, setLoading] = useState(false);
 
   const handleConfirm = async () => {
