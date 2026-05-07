@@ -40,6 +40,9 @@ import Candidatar from "./pages/Candidatar";
 import Usuarios from "./pages/Usuarios";
 import Kits from "./pages/Kits";
 import BackofficeInsumos from "./pages/BackofficeInsumos";
+import Obras from "./pages/Obras";
+import RDO from "./pages/RDO";
+import GerenciarRDO from "./pages/GerenciarRDO";
 
 // Legacy /rme route → redirects to the unified Wizard, preserving ?os=
 const LegacyRMERedirect = () => {
