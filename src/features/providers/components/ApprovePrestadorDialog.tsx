@@ -14,9 +14,18 @@ interface ApprovePrestadorDialogProps {
   onApproved: () => void;
 }
 
+type ApproveRole = 'tecnico_campo' | 'supervisao' | 'eletromecanico' | 'sup_eletromecanico';
+
+const CATEGORIA_TO_ROLE: Record<string, ApproveRole> = {
+  tecnico: 'tecnico_campo',
+  supervisao: 'supervisao',
+  eletromecanico: 'eletromecanico',
+  sup_eletromecanico: 'sup_eletromecanico',
+};
+
 export const ApprovePrestadorDialog = ({ open, onOpenChange, prestador, onApproved }: ApprovePrestadorDialogProps) => {
-  const defaultRole = prestador?.categoria === 'supervisao' ? 'supervisao' : 'tecnico_campo';
-  const [role, setRole] = useState<'tecnico_campo' | 'supervisao'>(defaultRole);
+  const defaultRole: ApproveRole = CATEGORIA_TO_ROLE[prestador?.categoria ?? ''] ?? 'tecnico_campo';
+  const [role, setRole] = useState<ApproveRole>(defaultRole);
   const [loading, setLoading] = useState(false);
 
   const handleConfirm = async () => {
@@ -55,19 +64,33 @@ export const ApprovePrestadorDialog = ({ open, onOpenChange, prestador, onApprov
 
         <div className="py-4 space-y-3">
           <Label>Atribuir papel no sistema</Label>
-          <RadioGroup value={role} onValueChange={v => setRole(v as any)}>
+          <RadioGroup value={role} onValueChange={v => setRole(v as ApproveRole)}>
             <div className="flex items-center space-x-3 p-3 rounded-lg border min-h-[44px]">
               <RadioGroupItem value="tecnico_campo" id="r-tec" />
               <Label htmlFor="r-tec" className="flex-1 cursor-pointer">
-                <div className="font-medium">Técnico de Campo</div>
+                <div className="font-medium">Técnico de Campo (O&amp;M)</div>
                 <div className="text-xs text-muted-foreground">Recebe OS, executa serviço, preenche RME.</div>
               </Label>
             </div>
             <div className="flex items-center space-x-3 p-3 rounded-lg border min-h-[44px]">
               <RadioGroupItem value="supervisao" id="r-sup" />
               <Label htmlFor="r-sup" className="flex-1 cursor-pointer">
-                <div className="font-medium">Supervisor</div>
+                <div className="font-medium">Supervisor (O&amp;M)</div>
                 <div className="text-xs text-muted-foreground">Acesso completo: aprova RMEs, gerencia tickets, OS, agenda.</div>
+              </Label>
+            </div>
+            <div className="flex items-center space-x-3 p-3 rounded-lg border min-h-[44px]">
+              <RadioGroupItem value="eletromecanico" id="r-ele" />
+              <Label htmlFor="r-ele" className="flex-1 cursor-pointer">
+                <div className="font-medium">Eletromecânico (EPC)</div>
+                <div className="text-xs text-muted-foreground">Visualiza RDOs em que aparece como equipe.</div>
+              </Label>
+            </div>
+            <div className="flex items-center space-x-3 p-3 rounded-lg border min-h-[44px]">
+              <RadioGroupItem value="sup_eletromecanico" id="r-sup-ele" />
+              <Label htmlFor="r-sup-ele" className="flex-1 cursor-pointer">
+                <div className="font-medium">Sup. Eletromecânico (EPC)</div>
+                <div className="text-xs text-muted-foreground">Cria/edita RDOs e gerencia equipe da obra.</div>
               </Label>
             </div>
           </RadioGroup>

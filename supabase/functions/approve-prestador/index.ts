@@ -6,11 +6,17 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+type AppRole = 'tecnico_campo' | 'supervisao' | 'eletromecanico' | 'sup_eletromecanico'
+
 interface ApproveBody {
   prestador_id: string
-  role: 'tecnico_campo' | 'supervisao'
+  role: AppRole
   redirect_to?: string
 }
+
+const ALLOWED_ROLES: AppRole[] = ['tecnico_campo', 'supervisao', 'eletromecanico', 'sup_eletromecanico']
+// Roles operacionais de campo que precisam de registro em `tecnicos` (link prestador↔profile).
+const FIELD_ROLES: AppRole[] = ['tecnico_campo', 'eletromecanico', 'sup_eletromecanico']
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -53,7 +59,7 @@ serve(async (req) => {
     }
 
     const body = (await req.json()) as ApproveBody
-    if (!body?.prestador_id || !['tecnico_campo', 'supervisao'].includes(body.role)) {
+    if (!body?.prestador_id || !ALLOWED_ROLES.includes(body.role)) {
       return new Response(JSON.stringify({ error: 'Dados inválidos' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
@@ -140,8 +146,9 @@ serve(async (req) => {
       await admin.from('user_roles').insert({ user_id: authUserId, role: body.role })
     }
 
-    // 4. If técnico, ensure tecnicos row (linked to prestador via FK — no more email matching)
-    if (body.role === 'tecnico_campo') {
+    // 4. Field roles (tecnico_campo, eletromecanico, sup_eletromecanico): ensure tecnicos row
+    //    linked to prestador via FK. `tecnicos` é a ponte prestador↔profile usada por RLS.
+    if (FIELD_ROLES.includes(body.role)) {
       const { data: existingTec } = await admin
         .from('tecnicos')
         .select('id, prestador_id')
