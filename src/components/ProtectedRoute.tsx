@@ -20,7 +20,10 @@ export const ProtectedRoute = ({ children, roles }: ProtectedRouteProps) => {
   const isStaff = !!profile?.roles?.some((r) =>
     r === 'admin' || r === 'engenharia' || r === 'supervisao'
   );
-  const isTecnicoOnly = !!profile?.roles?.includes('tecnico_campo') && !isStaff;
+  const needsPrestadorApproval = !!profile?.roles?.some((r) =>
+    r === 'tecnico_campo' || r === 'eletromecanico' || r === 'sup_eletromecanico'
+  );
+  const isTecnicoOnly = needsPrestadorApproval && !isStaff;
 
   useEffect(() => {
     const checkApproval = async () => {
