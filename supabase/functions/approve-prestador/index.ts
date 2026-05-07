@@ -59,7 +59,7 @@ serve(async (req) => {
     }
 
     const body = (await req.json()) as ApproveBody
-    if (!body?.prestador_id || !['tecnico_campo', 'supervisao'].includes(body.role)) {
+    if (!body?.prestador_id || !ALLOWED_ROLES.includes(body.role)) {
       return new Response(JSON.stringify({ error: 'Dados inválidos' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
