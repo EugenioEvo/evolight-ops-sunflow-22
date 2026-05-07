@@ -155,6 +155,21 @@ const App = () => (
                                 <GerenciarRME />
                               </ProtectedRoute>
                             } />
+                            <Route path="/obras" element={
+                              <ProtectedRoute roles={['admin', 'engenharia', 'supervisao', 'sup_eletromecanico']}>
+                                <Obras />
+                              </ProtectedRoute>
+                            } />
+                            <Route path="/rdo" element={
+                              <ProtectedRoute roles={['admin', 'engenharia', 'supervisao', 'sup_eletromecanico', 'eletromecanico']}>
+                                <RDO />
+                              </ProtectedRoute>
+                            } />
+                            <Route path="/gerenciar-rdo" element={
+                              <ProtectedRoute roles={['admin', 'engenharia', 'supervisao']}>
+                                <GerenciarRDO />
+                              </ProtectedRoute>
+                            } />
                             <Route path="/relatorios" element={
                               <ProtectedRoute roles={['admin', 'engenharia', 'supervisao']}>
                                 <Relatorios />
