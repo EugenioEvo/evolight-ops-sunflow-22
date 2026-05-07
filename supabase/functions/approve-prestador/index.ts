@@ -6,11 +6,17 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+type AppRole = 'tecnico_campo' | 'supervisao' | 'eletromecanico' | 'sup_eletromecanico'
+
 interface ApproveBody {
   prestador_id: string
-  role: 'tecnico_campo' | 'supervisao'
+  role: AppRole
   redirect_to?: string
 }
+
+const ALLOWED_ROLES: AppRole[] = ['tecnico_campo', 'supervisao', 'eletromecanico', 'sup_eletromecanico']
+// Roles operacionais de campo que precisam de registro em `tecnicos` (link prestador↔profile).
+const FIELD_ROLES: AppRole[] = ['tecnico_campo', 'eletromecanico', 'sup_eletromecanico']
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
