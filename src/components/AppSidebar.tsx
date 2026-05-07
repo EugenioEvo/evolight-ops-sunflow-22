@@ -16,7 +16,9 @@ import {
   Monitor,
   ShieldAlert,
   PackageCheck,
-  Boxes
+  Boxes,
+  HardHat,
+  FileSpreadsheet
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
@@ -35,7 +37,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
-type Role = 'admin' | 'engenharia' | 'supervisao' | 'backoffice' | 'tecnico_campo' | 'cliente';
+type Role = 'admin' | 'engenharia' | 'supervisao' | 'backoffice' | 'sup_eletromecanico' | 'tecnico_campo' | 'eletromecanico' | 'cliente';
 
 interface NavItem {
   title: string;
@@ -47,23 +49,27 @@ interface NavItem {
 
 const STAFF: Role[] = ['admin', 'engenharia', 'supervisao'];
 const STAFF_BO: Role[] = [...STAFF, 'backoffice'];
+const ELETRO: Role[] = ['eletromecanico', 'sup_eletromecanico'];
 
 const mainItems: NavItem[] = [
-  { title: "Dashboard", url: "/", icon: Home, allow: [...STAFF_BO, 'tecnico_campo', 'cliente'] },
+  { title: "Dashboard", url: "/", icon: Home, allow: [...STAFF_BO, 'tecnico_campo', 'cliente', ...ELETRO] },
   { title: "Meu Painel", url: "/meu-painel", icon: User, allow: ['cliente'] },
   { title: "Tickets", url: "/tickets", icon: Package, allow: STAFF_BO },
   { title: "Ordens de Serviço", url: "/work-orders", icon: ClipboardList, allow: STAFF_BO },
   { title: "RME", url: "/rme", icon: BarChart3, allow: STAFF_BO },
+  { title: "RDO", url: "/rdo", icon: FileSpreadsheet, allow: [...STAFF, ...ELETRO] },
   { title: "Rotas", url: "/routes", icon: Route, allow: [...STAFF_BO, 'tecnico_campo'] },
   { title: "Agenda", url: "/agenda", icon: Calendar, allow: STAFF_BO },
   { title: "Carga de Trabalho", url: "/carga-trabalho", icon: TrendingUp, allow: STAFF },
   { title: "Confirmações", url: "/dashboard-presenca", icon: Monitor, allow: STAFF },
   { title: "Aprovar RMEs", url: "/gerenciar-rme", icon: CheckSquare, allow: STAFF },
+  { title: "Aprovar RDOs", url: "/gerenciar-rdo", icon: CheckSquare, allow: STAFF },
   { title: "Validar Insumos", url: "/backoffice/insumos", icon: PackageCheck, allow: [...STAFF, 'backoffice'] },
 ];
 
 const cadastroItems: NavItem[] = [
   { title: "Clientes", url: "/clientes", icon: Building2, allow: STAFF_BO },
+  { title: "Obras", url: "/obras", icon: HardHat, allow: [...STAFF, 'sup_eletromecanico'] },
   { title: "Prestadores", url: "/prestadores", icon: Users, allow: STAFF_BO },
   { title: "Usuários", url: "/usuarios", icon: User, allow: ['admin', 'engenharia'] },
   { title: "Equipamentos", url: "/equipamentos", icon: Zap, allow: STAFF_BO },
@@ -91,7 +97,8 @@ export function AppSidebar() {
   const isTecnico = userRoles.includes('tecnico_campo');
   const isStaff = userRoles.some(r => STAFF.includes(r));
   const isBackoffice = userRoles.includes('backoffice');
-  const showCadastros = isStaff || isBackoffice || isTecnico;
+  const isSupEletro = userRoles.includes('sup_eletromecanico');
+  const showCadastros = isStaff || isBackoffice || isTecnico || isSupEletro;
 
   useEffect(() => {
     if (isStaff) {

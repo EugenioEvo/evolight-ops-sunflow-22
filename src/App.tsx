@@ -40,6 +40,9 @@ import Candidatar from "./pages/Candidatar";
 import Usuarios from "./pages/Usuarios";
 import Kits from "./pages/Kits";
 import BackofficeInsumos from "./pages/BackofficeInsumos";
+import Obras from "./pages/Obras";
+import RDO from "./pages/RDO";
+import GerenciarRDO from "./pages/GerenciarRDO";
 
 // Legacy /rme route → redirects to the unified Wizard, preserving ?os=
 const LegacyRMERedirect = () => {
@@ -150,6 +153,21 @@ const App = () => (
                             <Route path="/gerenciar-rme" element={
                               <ProtectedRoute roles={['admin', 'engenharia', 'supervisao']}>
                                 <GerenciarRME />
+                              </ProtectedRoute>
+                            } />
+                            <Route path="/obras" element={
+                              <ProtectedRoute roles={['admin', 'engenharia', 'supervisao', 'sup_eletromecanico']}>
+                                <Obras />
+                              </ProtectedRoute>
+                            } />
+                            <Route path="/rdo" element={
+                              <ProtectedRoute roles={['admin', 'engenharia', 'supervisao', 'sup_eletromecanico', 'eletromecanico']}>
+                                <RDO />
+                              </ProtectedRoute>
+                            } />
+                            <Route path="/gerenciar-rdo" element={
+                              <ProtectedRoute roles={['admin', 'engenharia', 'supervisao']}>
+                                <GerenciarRDO />
                               </ProtectedRoute>
                             } />
                             <Route path="/relatorios" element={
