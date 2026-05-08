@@ -23,7 +23,7 @@ import { CLIMA_LABEL, CLIMA_OPTIONS, TURNO_LABEL, TURNO_OPTIONS } from '@/featur
 
 const STAFF_ROLES = ['admin', 'engenharia', 'supervisao'];
 
-function Hint({ children }: { children: React.ReactNode }) {
+function Hint({ children }: { children: ReactNode }) {
   return <p className="text-[11px] text-muted-foreground mt-1">{children}</p>;
 }
 
