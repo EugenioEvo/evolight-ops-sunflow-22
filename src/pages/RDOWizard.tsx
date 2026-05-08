@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, FileDown, Loader2, Plus, Save, Send, Trash2, Upload, X } from 'lucide-react';
+import { ArrowLeft, Camera, FileDown, Loader2, Plus, Save, Send, Trash2, Upload, X } from 'lucide-react';
 import { downloadRDOPDF } from '@/utils/generateRDOPDF';
 import SignatureCanvas from 'react-signature-canvas';
 import { toast } from 'sonner';
@@ -64,6 +64,9 @@ export default function RDOWizard() {
   const [ocorrencias, setOcorrencias] = useState<string>('');
   const [atrasos, setAtrasos] = useState<string>('');
   const [restricoes, setRestricoes] = useState<string>('');
+  const [horasParadasProg, setHorasParadasProg] = useState<string>('');
+  const [horasParadasNaoProg, setHorasParadasNaoProg] = useState<string>('');
+  const [tempLoading, setTempLoading] = useState(false);
 
   // Sections
   const [equipe, setEquipe] = useState<RDOEquipe[]>([]);
@@ -100,6 +103,8 @@ export default function RDOWizard() {
     setOcorrencias(r.ocorrencias ?? '');
     setAtrasos(r.atrasos ?? '');
     setRestricoes(r.restricoes ?? '');
+    setHorasParadasProg((r as any).horas_paradas_programadas != null ? String((r as any).horas_paradas_programadas) : '');
+    setHorasParadasNaoProg((r as any).horas_paradas_nao_programadas != null ? String((r as any).horas_paradas_nao_programadas) : '');
     setEquipe(r.equipe);
     setAtividades(r.atividades);
     setEquipamentos(r.equipamentos);
@@ -121,7 +126,38 @@ export default function RDOWizard() {
     ocorrencias: ocorrencias || null,
     atrasos: atrasos || null,
     restricoes: restricoes || null,
-  }), [obraId, dataRdo, turno, clima, temperatura, horarioInicio, horarioFim, condicoesCanteiro, observacoes, ocorrencias, atrasos, restricoes]);
+    horas_paradas_programadas: horasParadasProg ? Number(horasParadasProg) : null,
+    horas_paradas_nao_programadas: horasParadasNaoProg ? Number(horasParadasNaoProg) : null,
+  }), [obraId, dataRdo, turno, clima, temperatura, horarioInicio, horarioFim, condicoesCanteiro, observacoes, ocorrencias, atrasos, restricoes, horasParadasProg, horasParadasNaoProg]);
+
+  // Auto-fetch average temperature from Open-Meteo (free, no API key)
+  // when obra (with coords), data, início e fim estão preenchidos.
+  useEffect(() => {
+    if (readOnly) return;
+    const obra = (obrasQ.data ?? []).find((o) => o.id === obraId);
+    if (!obra?.latitude || !obra?.longitude) return;
+    if (!dataRdo || !horarioInicio || !horarioFim) return;
+    const sh = parseInt(horarioInicio.slice(0, 2), 10);
+    const eh = parseInt(horarioFim.slice(0, 2), 10);
+    if (Number.isNaN(sh) || Number.isNaN(eh) || eh < sh) return;
+
+    let cancelled = false;
+    setTempLoading(true);
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${obra.latitude}&longitude=${obra.longitude}&hourly=temperature_2m&start_date=${dataRdo}&end_date=${dataRdo}&timezone=America%2FSao_Paulo`;
+    fetch(url)
+      .then((r) => r.json())
+      .then((j) => {
+        if (cancelled) return;
+        const temps: number[] = j?.hourly?.temperature_2m ?? [];
+        const slice = temps.slice(sh, eh + 1).filter((t) => typeof t === 'number');
+        if (slice.length === 0) return;
+        const avg = slice.reduce((a, b) => a + b, 0) / slice.length;
+        setTemperatura(avg.toFixed(1));
+      })
+      .catch(() => { /* keep silent — fallback é manual */ })
+      .finally(() => { if (!cancelled) setTempLoading(false); });
+    return () => { cancelled = true; };
+  }, [obraId, dataRdo, horarioInicio, horarioFim, obrasQ.data, readOnly]);
 
   async function ensureDraftCreated(): Promise<string> {
     if (rdoId) return rdoId;
@@ -188,12 +224,18 @@ export default function RDOWizard() {
     }
   }
 
-  async function handleUploadEvidencia(file: File, tipo: 'antes' | 'depois' | 'ocorrencia' | 'epi') {
+  async function handleUploadEvidencias(files: FileList | null, tipo: 'antes' | 'depois' | 'ocorrencia' | 'epi') {
+    if (!files || files.length === 0) return;
     try {
       const id = await ensureDraftCreated();
-      await rdoService.uploadEvidencia(id, file, tipo);
+      const arr = Array.from(files);
+      let ok = 0;
+      for (const f of arr) {
+        try { await rdoService.uploadEvidencia(id, f, tipo); ok++; }
+        catch (e: any) { toast.error(`${f.name}: ${e?.message ?? 'falha'}`); }
+      }
       qc.invalidateQueries({ queryKey: ['rdo', id] });
-      toast.success('Evidência enviada');
+      if (ok > 0) toast.success(`${ok} evidência(s) enviada(s)`);
     } catch (e: any) {
       toast.error(e?.message ?? 'Falha ao enviar evidência');
     }
@@ -273,8 +315,20 @@ export default function RDOWizard() {
             </Select>
           </div>
           <div>
-            <Label>Temperatura (°C)</Label>
-            <Input type="number" step="0.1" value={temperatura} onChange={(e) => setTemperatura(e.target.value)} disabled={readOnly} />
+            <Label className="flex items-center gap-2">
+              Temperatura média (°C){tempLoading && <Loader2 className="h-3 w-3 animate-spin" />}
+            </Label>
+            <Input
+              type="number"
+              step="0.1"
+              value={temperatura}
+              readOnly
+              disabled
+              placeholder="Preenchida automaticamente"
+            />
+            <p className="text-[11px] text-muted-foreground mt-1">
+              Média horária Open-Meteo entre Início e Fim, baseada nas coordenadas da obra.
+            </p>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
@@ -285,6 +339,30 @@ export default function RDOWizard() {
               <Label>Fim</Label>
               <Input type="time" value={horarioFim} onChange={(e) => setHorarioFim(e.target.value)} disabled={readOnly} />
             </div>
+          </div>
+          <div>
+            <Label>Horas paradas — programadas</Label>
+            <Input
+              type="number"
+              step="0.25"
+              min={0}
+              value={horasParadasProg}
+              onChange={(e) => setHorasParadasProg(e.target.value)}
+              disabled={readOnly}
+              placeholder="Almoço, lanche, etc."
+            />
+          </div>
+          <div>
+            <Label>Horas paradas — não programadas</Label>
+            <Input
+              type="number"
+              step="0.25"
+              min={0}
+              value={horasParadasNaoProg}
+              onChange={(e) => setHorasParadasNaoProg(e.target.value)}
+              disabled={readOnly}
+              placeholder="Falta de material, descarga, etc."
+            />
           </div>
           <div className="md:col-span-2">
             <Label>Condições do canteiro</Label>
@@ -394,9 +472,16 @@ export default function RDOWizard() {
                   </div>
                   <div className="md:col-span-2">
                     <Label className="text-xs">% avanço</Label>
-                    <Input type="number" min={0} max={100} value={a.percentual_avanco ?? ''}
+                    <Input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={a.percentual_avanco ?? ''}
                       onChange={(e) => { const n = [...atividades]; n[i] = { ...a, percentual_avanco: e.target.value ? Number(e.target.value) : null }; setAtividades(n); }}
-                      disabled={readOnly} />
+                      disabled={readOnly || !!a.catalogo_id}
+                      placeholder={a.catalogo_id ? 'Auto (obra)' : ''}
+                      title={a.catalogo_id ? 'Calculado automaticamente a partir das metas da obra' : undefined}
+                    />
                   </div>
                 </div>
                 {!a.catalogo_id && (
@@ -473,14 +558,31 @@ export default function RDOWizard() {
             const labels: Record<string, string> = { antes: 'Antes', depois: 'Depois', ocorrencia: 'Ocorrências', epi: 'EPIs' };
             return (
               <div key={tipo} className="space-y-2">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
                   <Label>{labels[tipo]} ({evs.length})</Label>
                   {!readOnly && (
-                    <label className="cursor-pointer inline-flex items-center text-sm text-primary">
-                      <input type="file" accept="image/*" capture="environment" className="hidden"
-                        onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUploadEvidencia(f, tipo); e.currentTarget.value = ''; }} />
-                      <Upload className="h-4 w-4 mr-1" /> Enviar
-                    </label>
+                    <div className="flex items-center gap-2">
+                      <label className="cursor-pointer inline-flex items-center text-sm text-primary px-2 py-1 rounded border border-input hover:bg-accent">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          className="hidden"
+                          onChange={(e) => { handleUploadEvidencias(e.target.files, tipo); e.currentTarget.value = ''; }}
+                        />
+                        <Camera className="h-4 w-4 mr-1" /> Câmera
+                      </label>
+                      <label className="cursor-pointer inline-flex items-center text-sm text-primary px-2 py-1 rounded border border-input hover:bg-accent">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          className="hidden"
+                          onChange={(e) => { handleUploadEvidencias(e.target.files, tipo); e.currentTarget.value = ''; }}
+                        />
+                        <Upload className="h-4 w-4 mr-1" /> Upload
+                      </label>
+                    </div>
                   )}
                 </div>
                 {evs.length > 0 && (
@@ -506,8 +608,12 @@ export default function RDOWizard() {
             <div className="border-2 rounded-lg overflow-hidden bg-white">
               <SignatureCanvas ref={(r) => { sigRef.current = r; }} canvasProps={{ width: 600, height: 180, className: 'w-full' }} />
             </div>
-            <div className="flex gap-2">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
               <Button type="button" variant="outline" size="sm" onClick={() => sigRef.current?.clear()}>Limpar</Button>
+              <div className="text-right">
+                <p className="text-xs text-muted-foreground">Responsável pelo preenchimento</p>
+                <p className="text-sm font-medium">{profile?.nome ?? '—'}</p>
+              </div>
             </div>
           </CardContent>
         </Card>
