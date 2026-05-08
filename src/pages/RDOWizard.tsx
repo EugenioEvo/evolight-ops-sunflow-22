@@ -323,13 +323,18 @@ export default function RDOWizard() {
             </Select>
           </div>
           <div>
-            <Label>Clima</Label>
-            <Select value={clima} onValueChange={setClima} disabled={readOnly}>
-              <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+            <Label className="flex items-center gap-2">
+              Clima{tempLoading && <Loader2 className="h-3 w-3 animate-spin" />}
+            </Label>
+            <Select value={clima} onValueChange={setClima} disabled>
+              <SelectTrigger><SelectValue placeholder="Preenchido automaticamente" /></SelectTrigger>
               <SelectContent>
                 {CLIMA_OPTIONS.map((c) => <SelectItem key={c} value={c}>{CLIMA_LABEL[c]}</SelectItem>)}
               </SelectContent>
             </Select>
+            <p className="text-[11px] text-muted-foreground mt-1">
+              Inferido via Open-Meteo (códigos WMO) entre Início e Fim.
+            </p>
           </div>
           <div>
             <Label className="flex items-center gap-2">
