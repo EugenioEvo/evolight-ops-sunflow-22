@@ -23,6 +23,8 @@ export const obraSchema = z.object({
   data_fim_prevista: z.string().optional().or(z.literal('')),
   data_inicio_real: z.string().optional().or(z.literal('')),
   data_fim_real: z.string().optional().or(z.literal('')),
+  latitude: z.coerce.number().min(-90).max(90).optional().nullable(),
+  longitude: z.coerce.number().min(-180).max(180).optional().nullable(),
   potencia_kwp: z.coerce.number().nonnegative().optional().nullable(),
   status: z.enum(OBRA_STATUS).default('planejada'),
   observacoes: z.string().max(2000).optional().or(z.literal('')),

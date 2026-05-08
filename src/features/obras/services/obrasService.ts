@@ -15,6 +15,8 @@ function normalize(payload: ObraForm) {
     data_fim_prevista: empty(payload.data_fim_prevista) as string | null,
     data_inicio_real: empty(payload.data_inicio_real) as string | null,
     data_fim_real: empty(payload.data_fim_real) as string | null,
+    latitude: payload.latitude ?? null,
+    longitude: payload.longitude ?? null,
     potencia_kwp: payload.potencia_kwp ?? null,
     status: payload.status,
     observacoes: empty(payload.observacoes) as string | null,
