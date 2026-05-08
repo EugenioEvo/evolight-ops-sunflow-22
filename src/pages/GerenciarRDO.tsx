@@ -157,6 +157,17 @@ export default function GerenciarRDO() {
                           <Button size="sm" variant="outline" onClick={() => navigate(`/rdo/${r.id}`)} className="gap-1">
                             <Eye className="h-4 w-4" /> Ver
                           </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-1"
+                            onClick={async () => {
+                              const data = await rdoService.buildPDFData(r.id);
+                              if (data) await downloadRDOPDF(data);
+                            }}
+                          >
+                            <FileDown className="h-4 w-4" /> PDF
+                          </Button>
                           {r.status === 'pendente' && (
                             <>
                               <Button
