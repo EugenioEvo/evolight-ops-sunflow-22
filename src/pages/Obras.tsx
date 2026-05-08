@@ -88,10 +88,13 @@ export default function Obras() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button size="icon" variant="ghost" onClick={() => { setEditing(o); setOpen(true); }}>
+                        <Button size="icon" variant="ghost" onClick={() => navigate(`/obras/${o.id}`)} aria-label="Ver detalhes">
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button size="icon" variant="ghost" onClick={() => { setEditing(o); setOpen(true); }} aria-label="Editar">
                           <Pencil className="h-4 w-4" />
                         </Button>
-                        <Button size="icon" variant="ghost" onClick={() => setConfirmDelete(o)}>
+                        <Button size="icon" variant="ghost" onClick={() => setConfirmDelete(o)} aria-label="Remover">
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </TableCell>
