@@ -215,6 +215,24 @@ export default function RDOWizard() {
           </h1>
           <p className="text-sm text-muted-foreground">Status: <Badge variant="outline">{status}</Badge></p>
         </div>
+        {rdoId && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={async () => {
+              try {
+                const data = await rdoService.buildPDFData(rdoId);
+                if (data) await downloadRDOPDF(data);
+                else toast.error('Não foi possível gerar o PDF');
+              } catch (e: any) {
+                toast.error(e?.message ?? 'Falha ao gerar PDF');
+              }
+            }}
+          >
+            <FileDown className="h-4 w-4" /> Baixar PDF
+          </Button>
+        )}
       </div>
 
       {/* Identificação */}
