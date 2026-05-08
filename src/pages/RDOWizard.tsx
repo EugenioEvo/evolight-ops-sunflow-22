@@ -458,7 +458,8 @@ export default function RDOWizard() {
           </div>
           <div className="md:col-span-2">
             <Label>Condições do canteiro</Label>
-            <Textarea value={condicoesCanteiro} onChange={(e) => setCondicoesCanteiro(e.target.value)} rows={2} disabled={readOnly} />
+            <Textarea value={condicoesCanteiro} onChange={(e) => setCondicoesCanteiro(e.target.value)} rows={2} disabled={readOnly} placeholder="Ex.: piso úmido após chuva, área liberada, etc." />
+            <Hint>Estado físico e logístico do canteiro: limpeza, acesso, áreas bloqueadas, segurança.</Hint>
           </div>
         </CardContent>
       </Card>
