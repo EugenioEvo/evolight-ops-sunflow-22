@@ -558,14 +558,31 @@ export default function RDOWizard() {
             const labels: Record<string, string> = { antes: 'Antes', depois: 'Depois', ocorrencia: 'Ocorrências', epi: 'EPIs' };
             return (
               <div key={tipo} className="space-y-2">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
                   <Label>{labels[tipo]} ({evs.length})</Label>
                   {!readOnly && (
-                    <label className="cursor-pointer inline-flex items-center text-sm text-primary">
-                      <input type="file" accept="image/*" capture="environment" className="hidden"
-                        onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUploadEvidencia(f, tipo); e.currentTarget.value = ''; }} />
-                      <Upload className="h-4 w-4 mr-1" /> Enviar
-                    </label>
+                    <div className="flex items-center gap-2">
+                      <label className="cursor-pointer inline-flex items-center text-sm text-primary px-2 py-1 rounded border border-input hover:bg-accent">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          className="hidden"
+                          onChange={(e) => { handleUploadEvidencias(e.target.files, tipo); e.currentTarget.value = ''; }}
+                        />
+                        <Camera className="h-4 w-4 mr-1" /> Câmera
+                      </label>
+                      <label className="cursor-pointer inline-flex items-center text-sm text-primary px-2 py-1 rounded border border-input hover:bg-accent">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          className="hidden"
+                          onChange={(e) => { handleUploadEvidencias(e.target.files, tipo); e.currentTarget.value = ''; }}
+                        />
+                        <Upload className="h-4 w-4 mr-1" /> Upload
+                      </label>
+                    </div>
                   )}
                 </div>
                 {evs.length > 0 && (
