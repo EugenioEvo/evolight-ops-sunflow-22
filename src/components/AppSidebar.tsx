@@ -181,7 +181,7 @@ export function AppSidebar() {
         </div>
 
         <SidebarGroup>
-          <SidebarGroupLabel>Principal</SidebarGroupLabel>
+          <SidebarGroupLabel>RMEs</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {mainItems.filter(i => hasAnyRole(i.allow)).flatMap(item => {
@@ -208,6 +208,17 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {rdoItems.some(i => hasAnyRole(i.allow)) && (
+          <SidebarGroup>
+            <SidebarGroupLabel>RDOs</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {rdoItems.filter(i => hasAnyRole(i.allow)).map(item => renderItem(item))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
         {showCadastros && (
           <SidebarGroup>
