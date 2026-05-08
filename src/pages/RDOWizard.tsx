@@ -627,7 +627,11 @@ export default function RDOWizard() {
             ))}
         </CardContent>
       </Card>
+      </>
+      )}
 
+      {step === 3 && (
+      <>
       {/* Ocorrências */}
       <Card>
         <CardHeader><CardTitle className="text-base">Observações & ocorrências</CardTitle></CardHeader>
