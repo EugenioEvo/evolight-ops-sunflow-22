@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Loader2, Plus, Save, Send, Trash2, Upload, X } from 'lucide-react';
+import { ArrowLeft, FileDown, Loader2, Plus, Save, Send, Trash2, Upload, X } from 'lucide-react';
+import { downloadRDOPDF } from '@/utils/generateRDOPDF';
 import SignatureCanvas from 'react-signature-canvas';
 import { toast } from 'sonner';
 
