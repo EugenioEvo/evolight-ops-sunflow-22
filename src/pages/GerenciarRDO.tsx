@@ -2,7 +2,9 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CheckCircle, XCircle, Clock, Search, Eye, FileSpreadsheet } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, Search, Eye, FileSpreadsheet, FileDown } from 'lucide-react';
+import { rdoService } from '@/features/rdo/services/rdoService';
+import { downloadRDOPDF } from '@/utils/generateRDOPDF';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -154,6 +156,17 @@ export default function GerenciarRDO() {
                         <div className="flex justify-end gap-2">
                           <Button size="sm" variant="outline" onClick={() => navigate(`/rdo/${r.id}`)} className="gap-1">
                             <Eye className="h-4 w-4" /> Ver
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-1"
+                            onClick={async () => {
+                              const data = await rdoService.buildPDFData(r.id);
+                              if (data) await downloadRDOPDF(data);
+                            }}
+                          >
+                            <FileDown className="h-4 w-4" /> PDF
                           </Button>
                           {r.status === 'pendente' && (
                             <>
