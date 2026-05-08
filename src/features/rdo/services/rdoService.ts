@@ -285,6 +285,12 @@ export const rdoService = {
       .update({ status: 'pendente', assinatura_responsavel: assinatura })
       .eq('id', id);
     if (error) throw error;
+
+    // Fire-and-forget: notify staff (email + in-app)
+    supabase.functions
+      .invoke('send-rdo-submitted-email', { body: { rdo_id: id } })
+      .catch((e) => console.warn('send-rdo-submitted-email failed:', e));
+    notifyRDOStaffSubmitted(id).catch((e) => console.warn('notifyRDOStaffSubmitted failed:', e));
   },
 
   async remove(id: string) {
@@ -304,10 +310,12 @@ export const rdoService = {
       })
       .eq('id', id);
     if (error) throw error;
-    // Fire-and-forget email
     supabase.functions
       .invoke('send-rdo-decision-email', { body: { rdo_id: id, decision: 'aprovado', motivo: observacoes ?? '' } })
       .catch((e) => console.warn('send-rdo-decision-email approve failed:', e));
+    notifyRDOTeamDecision(id, 'aprovado', observacoes).catch((e) =>
+      console.warn('notifyRDOTeamDecision approve failed:', e),
+    );
   },
 
   async reject(id: string, motivo: string) {
@@ -325,5 +333,77 @@ export const rdoService = {
     supabase.functions
       .invoke('send-rdo-decision-email', { body: { rdo_id: id, decision: 'rejeitado', motivo } })
       .catch((e) => console.warn('send-rdo-decision-email reject failed:', e));
+    notifyRDOTeamDecision(id, 'rejeitado', motivo).catch((e) =>
+      console.warn('notifyRDOTeamDecision reject failed:', e),
+    );
   },
 };
+
+// ---------- In-app notification helpers ----------
+
+async function notifyRDOStaffSubmitted(rdoId: string) {
+  const { data: rdo } = await supabase
+    .from('rdo_relatorios')
+    .select('numero_rdo, obra_id')
+    .eq('id', rdoId)
+    .maybeSingle();
+  if (!rdo) return;
+
+  const { data: obra } = await supabase
+    .from('obras').select('nome').eq('id', (rdo as any).obra_id).maybeSingle();
+
+  const { data: staffRoles } = await supabase
+    .from('user_roles').select('user_id').in('role', ['admin', 'engenharia', 'supervisao']);
+  const userIds = Array.from(new Set((staffRoles || []).map((r: any) => r.user_id)));
+  if (userIds.length === 0) return;
+
+  const titulo = 'Novo RDO para aprovação';
+  const mensagem = `RDO ${(rdo as any).numero_rdo} (${(obra as any)?.nome ?? 'Obra'}) aguarda sua aprovação.`;
+  const rows = userIds.map((uid) => ({
+    user_id: uid, tipo: 'rdo_submetido', titulo, mensagem, link: '/gerenciar-rdo',
+  }));
+  await supabase.from('notificacoes').insert(rows);
+}
+
+async function notifyRDOTeamDecision(rdoId: string, decision: 'aprovado' | 'rejeitado', motivo?: string) {
+  const { data: rdo } = await supabase
+    .from('rdo_relatorios')
+    .select('numero_rdo, responsavel_id, obra_id')
+    .eq('id', rdoId)
+    .maybeSingle();
+  if (!rdo) return;
+
+  const { data: equipe } = await supabase
+    .from('rdo_equipe').select('prestador_id').eq('rdo_id', rdoId);
+
+  const prestadorIds = new Set<string>();
+  if ((rdo as any).responsavel_id) prestadorIds.add((rdo as any).responsavel_id);
+  for (const e of equipe || []) prestadorIds.add((e as any).prestador_id);
+  if (prestadorIds.size === 0) return;
+
+  // prestador → tecnico.profile_id → profile.user_id
+  const { data: tecs } = await supabase
+    .from('tecnicos')
+    .select('prestador_id, profiles!inner(user_id)')
+    .in('prestador_id', Array.from(prestadorIds));
+
+  const userIds = Array.from(new Set((tecs || [])
+    .map((t: any) => t.profiles?.user_id)
+    .filter(Boolean) as string[]));
+  if (userIds.length === 0) return;
+
+  const isApproved = decision === 'aprovado';
+  const titulo = isApproved ? 'RDO Aprovado' : 'RDO Rejeitado';
+  const motivoText = (motivo || '').trim();
+  const mensagem = isApproved
+    ? `O RDO ${(rdo as any).numero_rdo} foi aprovado.${motivoText ? ` Observações: ${motivoText}` : ''}`
+    : `O RDO ${(rdo as any).numero_rdo} foi rejeitado.${motivoText ? ` Motivo: ${motivoText}` : ''}`;
+
+  const rows = userIds.map((uid) => ({
+    user_id: uid,
+    tipo: isApproved ? 'rdo_aprovado' : 'rdo_rejeitado',
+    titulo, mensagem,
+    link: `/rdo/${rdoId}`,
+  }));
+  await supabase.from('notificacoes').insert(rows);
+}
