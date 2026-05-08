@@ -60,6 +60,7 @@ export default function RDOWizard() {
 
   const [rdoId, setRdoId] = useState<string | null>(isNew ? null : routeId!);
   const [saving, setSaving] = useState(false);
+  const [step, setStep] = useState<1 | 2 | 3>(1);
 
   // Header
   const [obraId, setObraId] = useState<string>('');
