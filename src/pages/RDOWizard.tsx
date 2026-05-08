@@ -709,20 +709,39 @@ export default function RDOWizard() {
           </CardContent>
         </Card>
       )}
+      </>
+      )}
 
       <Separator />
 
-      <div className="fixed bottom-0 left-0 right-0 bg-background border-t p-3 flex justify-end gap-2 z-30 sm:static sm:border-0 sm:p-0">
-        <Button variant="outline" onClick={handleSave} disabled={saving || readOnly} className="min-h-11">
-          {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-          Salvar rascunho
+      <div className="fixed bottom-0 left-0 right-0 bg-background border-t p-3 flex justify-between gap-2 z-30 sm:static sm:border-0 sm:p-0">
+        <Button
+          variant="outline"
+          onClick={() => setStep((s) => (s > 1 ? ((s - 1) as 1 | 2 | 3) : s))}
+          disabled={step === 1}
+          className="min-h-11"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" /> Voltar
         </Button>
-        {!readOnly && (
-          <Button onClick={handleSubmit} disabled={saving} className="min-h-11">
-            <Send className="h-4 w-4 mr-2" /> Enviar para aprovação
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleSave} disabled={saving || readOnly} className="min-h-11">
+            {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+            Salvar rascunho
           </Button>
-        )}
+          {step < 3 ? (
+            <Button onClick={handleNext} disabled={saving} className="min-h-11">
+              Próximo <ArrowRight className="h-4 w-4 ml-2" />
+            </Button>
+          ) : (
+            !readOnly && (
+              <Button onClick={handleSubmit} disabled={saving} className="min-h-11">
+                <Send className="h-4 w-4 mr-2" /> Enviar para aprovação
+              </Button>
+            )
+          )}
+        </div>
       </div>
+
     </div>
   );
 }
