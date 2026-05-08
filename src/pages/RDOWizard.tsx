@@ -126,7 +126,38 @@ export default function RDOWizard() {
     ocorrencias: ocorrencias || null,
     atrasos: atrasos || null,
     restricoes: restricoes || null,
-  }), [obraId, dataRdo, turno, clima, temperatura, horarioInicio, horarioFim, condicoesCanteiro, observacoes, ocorrencias, atrasos, restricoes]);
+    horas_paradas_programadas: horasParadasProg ? Number(horasParadasProg) : null,
+    horas_paradas_nao_programadas: horasParadasNaoProg ? Number(horasParadasNaoProg) : null,
+  }), [obraId, dataRdo, turno, clima, temperatura, horarioInicio, horarioFim, condicoesCanteiro, observacoes, ocorrencias, atrasos, restricoes, horasParadasProg, horasParadasNaoProg]);
+
+  // Auto-fetch average temperature from Open-Meteo (free, no API key)
+  // when obra (with coords), data, início e fim estão preenchidos.
+  useEffect(() => {
+    if (readOnly) return;
+    const obra = (obrasQ.data ?? []).find((o) => o.id === obraId);
+    if (!obra?.latitude || !obra?.longitude) return;
+    if (!dataRdo || !horarioInicio || !horarioFim) return;
+    const sh = parseInt(horarioInicio.slice(0, 2), 10);
+    const eh = parseInt(horarioFim.slice(0, 2), 10);
+    if (Number.isNaN(sh) || Number.isNaN(eh) || eh < sh) return;
+
+    let cancelled = false;
+    setTempLoading(true);
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${obra.latitude}&longitude=${obra.longitude}&hourly=temperature_2m&start_date=${dataRdo}&end_date=${dataRdo}&timezone=America%2FSao_Paulo`;
+    fetch(url)
+      .then((r) => r.json())
+      .then((j) => {
+        if (cancelled) return;
+        const temps: number[] = j?.hourly?.temperature_2m ?? [];
+        const slice = temps.slice(sh, eh + 1).filter((t) => typeof t === 'number');
+        if (slice.length === 0) return;
+        const avg = slice.reduce((a, b) => a + b, 0) / slice.length;
+        setTemperatura(avg.toFixed(1));
+      })
+      .catch(() => { /* keep silent — fallback é manual */ })
+      .finally(() => { if (!cancelled) setTempLoading(false); });
+    return () => { cancelled = true; };
+  }, [obraId, dataRdo, horarioInicio, horarioFim, obrasQ.data, readOnly]);
 
   async function ensureDraftCreated(): Promise<string> {
     if (rdoId) return rdoId;
