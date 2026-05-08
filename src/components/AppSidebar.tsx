@@ -71,6 +71,7 @@ const rdoItems: NavItem[] = [
   { title: "RDO", url: "/rdo", icon: FileSpreadsheet, allow: [...STAFF, ...ELETRO] },
   { title: "Aprovar RDOs", url: "/gerenciar-rdo", icon: CheckSquare, allow: STAFF },
   { title: "Obras", url: "/obras", icon: HardHat, allow: [...STAFF, 'sup_eletromecanico'] },
+  { title: "Catálogo de Atividades", url: "/obra-catalogo", icon: BookOpen, allow: ['admin'] },
 ];
 
 const cadastroItems: NavItem[] = [
