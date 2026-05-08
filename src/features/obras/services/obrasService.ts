@@ -54,12 +54,15 @@ export const obrasService = {
     }));
   },
 
-  async create(payload: ObraForm) {
+  async create(payload: ObraForm): Promise<{ id: string }> {
     const { data: userData } = await supabase.auth.getUser();
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('obras')
-      .insert([{ ...normalize(payload), created_by: userData.user?.id ?? null }]);
+      .insert([{ ...normalize(payload), created_by: userData.user?.id ?? null }])
+      .select('id')
+      .single();
     if (error) throw error;
+    return { id: (data as any).id };
   },
 
   async update(id: string, payload: ObraForm) {
