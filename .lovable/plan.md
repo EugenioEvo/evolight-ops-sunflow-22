@@ -1,89 +1,102 @@
-## Análise dos 6 itens
+# Plano de implementação
 
-Análise individual considerando custo, segurança e diretrizes do core (mobile-first, dark theme, RLS, sonner, design tokens, outer joins).
+## Parte A — RDO: wizard de 3 steps + evidências audiovisuais
 
-### Item 1 — Reorganização do menu lateral
-- **Custo:** baixo (1 arquivo). **Risco:** zero.
-- Renomear seção `Principal` → `RMEs` e criar nova seção `RDOs` agrupando `Dashboard RDO` (novo), `RDOs` (lista), `Aprovar RDOs` e `Obras` (mover de Cadastros).
+### A1. Refatorar `RDOWizard.tsx` em 3 steps (padrão RME)
+Criar `src/components/rdo-wizard/`:
+- `StepIdentificacao.tsx` — Obra, data, turno, horários, clima/temperatura (auto Open-Meteo, readonly), condições do canteiro, horas paradas (programadas/não programadas).
+- `StepExecucao.tsx` — Equipe (linhas com prestador + horas), atividades (catálogo/livre, com quantidade; % avanço continua greyed-out e calculado pela obra), equipamentos, ocorrências/atrasos/restrições.
+- `StepRevisao.tsx` — Evidências audiovisuais, observações gerais, assinatura do responsável + nome do usuário logado, resumo read-only dos steps anteriores, botão "Enviar para aprovação".
 
-### Item 2 — Métricas RDO (Dashboard dedicado em `/rdo/dashboard`)
-- **Eficiência:** uma única query agregada com `select` + `count` por status + agregação client-side de horas (já temos React Query com staleTime 10min).
-- **Segurança:** já protegido por RLS (`is_staff` + envolvidos).
-- **Conteúdo:** cards (RDOs do mês, pendentes, aprovados, rejeitados) + gráficos `recharts` (já usado no projeto): horas por obra (bar) e horas por prestador (bar). Filtro por período (mês corrente / 30d / 90d).
+Header com stepper (3 bolinhas) + footer fixo mobile (`Voltar` / `Salvar rascunho` / `Próximo`/`Enviar`). Auto-save por step usando `rdoService.upsertDraft` (ou equivalente). Validação por step com Zod parcial.
 
-### Item 3 — Página de detalhe da obra `/obras/:id`
-- Header com cliente dono, endereço completo, status, datas (prevista/real), kWp.
-- **Timeline de RDOs** (lista vertical por data, com badge de status) + link para o RDO.
-- **% avanço acumulado** = média ponderada de `rdo_atividades.percentual_avanco` dos RDOs aprovados (gráfico linear).
-- **Equipe alocada** = união distinta de `prestador_id` em `rdo_equipe` da obra, com horas totais.
-- **Galeria de fotos consolidadas** (lazy-load das `rdo_evidencias` + `fotos_geral` via signed URLs 1y, padrão do projeto).
-- Página `/obras` continua para CRUD; clicar na linha → detalhe.
+### A2. Helper text em cada campo de texto
+Adicionar `description` curta abaixo do label em todos os inputs/textareas (ex.: "Descreva resumidamente o estado do tempo no canteiro"). Padrão: `<p className="text-xs text-muted-foreground">…</p>` logo após o `FormLabel`.
 
-### Item 4 — Exposição da obra no portal do cliente (preparação)
-- **Estratégia:** entregar agora **somente a estrutura** (rota `/portal/obra/:id` reaproveitando o componente, com guard `cliente` + verificação de propriedade via `obras.cliente_id → clientes.profile_id → user_id`) e um flag `<ObraDetail mode="staff" | "cliente" />` que oculta seções sensíveis (custos futuros, observações internas, equipe). RLS de `obras` precisa de policy adicional para `cliente` ver apenas a própria obra. **Filtro fino de campos** fica para depois (conforme você indicou).
-- **Custo:** baixo, evita retrabalho. **Segurança:** RLS + checagem dupla na query.
+### A3. Evidências Audiovisuais (renomear + vídeos)
+- Renomear "Evidências Fotográficas" → "Evidências Audiovisuais" (UI + label).
+- `accept="image/*,video/*"`, `multiple`, suporte câmera (`capture="environment"`), galeria, upload arrastado, e gravação de vídeo (`capture` em input dedicado).
+- Salvar `tipo` em `rdo_evidencias` como `foto` ou `video` (já existe coluna `tipo`).
+- Preview: thumbnail para imagens, `<video controls>` para vídeos.
+- Bucket `rdo-evidences` aceitar `video/*` (verificar policies de storage; aumentar limite se necessário).
 
-### Item 5 — Multi-role operacional
-- **Boa notícia:** já temos infra de [Multi-role pontual](mem://auth/multi-role-pontual) (`user_roles` + `profile.roles[]`). Basta:
-  1. Garantir que a UI de cadastro de Usuários permita múltiplas roles para os 4 papéis operacionais (técnico O&M, eletromecânico, sup. O&M, sup. eletromecânico).
-  2. Revisar `useAuth` para que a "role principal" não esconda permissões secundárias (já é o caso, mas vou validar).
-  3. Sidebar e RLS já usam `.some()` / `has_role()`, então herdam automaticamente.
-- **Custo:** muito baixo se a infra já está pronta (validar + ajuste pontual em UsuariosPage).
+## Parte B — Obras (Nova/Editar Obra)
 
-### Item 6 — Catálogo de atividades em `/obra-catalogo`
-- CRUD simples sobre `rdo_atividades_catalogo` (label, item_key, unidade, categoria, sort_order, ativo). RLS já é admin-only.
-- **Falta:** coluna `type` mencionada não existe ainda → adicionar `tipo text` (ex: `instalacao | comissionamento | civil | eletrica | logistica`) via migration, mais filtro/agrupamento na UI.
-- Página acessível só para `admin`.
+### B1. Cliente como busca de texto (combobox)
+Substituir `<Select>` por `Command` (shadcn Combobox) com busca por `empresa`, `cnpj_cpf`, `cidade`. Permite limpar para "obra própria".
 
-### Aproveitamento de TODOs do core (token-baratos, encaixe natural)
-- ✅ **[TODO: Unify RME/OS pages](mem://tech-debt/unificacao-rme-os-pages)** — **NÃO incluir agora.** Mexer em RME/OS no mesmo PR de RDO aumenta superfície de regressão. Mantenho adiado.
-- ✅ **[TODO: Unify prestadores × tecnicos](mem://tech-debt/unificacao-prestadores-tecnicos)** — **NÃO incluir.** Mudança estrutural pesada; o item 5 já se beneficia da arquitetura atual sem precisar unificar tabelas.
-- ➕ **Encaixe natural:** ao tocar `UsuariosPage` (item 5), atualizar a UI para também mostrar/editar `tecnicos.especialidades` e `prestadores.categoria` em uma única tela — sem migration, custo marginal.
+### B2. Lat/Lng com geocoding automático + edição manual
+- Adicionar inputs `latitude` / `longitude` (numéricos, opcionais) na obra.
+- Botão "Buscar coordenadas" e auto-trigger (debounce) quando endereço+cidade+uf estiverem preenchidos, chamando edge function `geocode-address` (já existe — usa Google Maps).
+- Campos editáveis manualmente; mostrar mini-mapa Leaflet opcional ou só os números com link para Google Maps.
+- Persistir em `obras.latitude` / `obras.longitude` (colunas já existem).
 
----
+### B3. RDO usa lat/lng da obra para clima
+Em `StepIdentificacao` do RDO, ao carregar a obra:
+- Se `obra.latitude && obra.longitude` → usar diretamente no Open-Meteo.
+- Senão → fallback para geocode do endereço (comportamento atual) ou desabilitar com mensagem "Cadastre coordenadas na obra".
 
-## Plano de execução (fases independentes, deployáveis isoladamente)
+### B4. Tab "Metas do Catálogo" no modal de obra
+Converter `ObraFormDialog` em **Tabs** (`Dados`, `Metas`):
+- Tab **Metas**: lista `rdo_atividades_catalogo` agrupado por `categoria`. Para cada item: input de quantidade meta + unidade (readonly do catálogo).
+- Persistir em nova tabela `obra_metas_catalogo (obra_id, catalogo_id, quantidade_meta, unidade, observacoes)` com upsert.
+- Migration cria a tabela + RLS (staff manage; cliente/sup view).
 
-```text
-F1  Sidebar reorg + nova seção RDOs (1 arquivo)
-F2  Dashboard RDO em /rdo/dashboard (1 página + 1 hook agregador)
-F3  Detalhe da Obra em /obras/:id (modo staff)
-F4  Catálogo de atividades em /obra-catalogo (+ migration: coluna `tipo`)
-F5  Multi-role operacional (validação + ajuste UsuariosPage)
-F6  Portal: rota /portal/obra/:id reusando ObraDetail (mode=cliente) + RLS
+### B5. Página de status da obra (`ObraDetail`) — avanço por etapa
+Nova seção "Avanço por etapa":
+- Para cada item em `obra_metas_catalogo` da obra: somar `quantidade` em `rdo_atividades` (agrupado por `catalogo_id`) onde `rdo_id` ∈ RDOs **aprovados** dessa obra.
+- Mostrar barra de progresso: `(realizado / meta) * 100%`, badge com `realizado / meta unidade`.
+- Visualização também usada para preencher o `percentual_avanco` calculado (continua greyed-out no wizard).
+
+### B6. Helper text também em ObraFormDialog
+Pequenas descrições abaixo de cada label (ex.: "CEP no formato 00000-000", "Potência total instalada da usina em kWp").
+
+## Detalhes técnicos
+
+### Migration nova
+```sql
+CREATE TABLE public.obra_metas_catalogo (
+  id uuid PK default gen_random_uuid(),
+  obra_id uuid NOT NULL,
+  catalogo_id uuid NOT NULL,
+  quantidade_meta numeric NOT NULL DEFAULT 0,
+  unidade text,
+  observacoes text,
+  created_at, updated_at timestamptz default now(),
+  UNIQUE(obra_id, catalogo_id)
+);
+ALTER TABLE ... ENABLE RLS;
+-- Staff manage; cliente do obra view; sup_eletromecanico view
 ```
 
-### Detalhamento técnico
+### Storage
+Garantir bucket `rdo-evidences` com mime aceitos `image/*,video/*` e limite ~50MB (revisar policy existente).
 
-**F1 — Sidebar**
-- Novos grupos: `RMEs` (atual Principal renomeado, Dashboard ↔ Dashboard RME continua), `RDOs` (Dashboard, RDOs, Aprovar RDOs, Obras), `Operação` (Tickets, OS, Rotas, Agenda, Carga, Confirmações, Validar Insumos), `Cadastros`, `Sistema`. Usar `SidebarGroupLabel` + `Collapsible` (padrão shadcn).
+### Componentes novos
+```
+src/components/rdo-wizard/
+  StepIdentificacao.tsx
+  StepExecucao.tsx
+  StepRevisao.tsx
+  index.ts
+src/features/obras/
+  hooks/useObraMetas.ts
+  services/obraMetasService.ts
+  components/ObraMetasTab.tsx
+  components/ObraProgressoEtapas.tsx
+  components/ClienteCombobox.tsx
+  components/CoordsField.tsx
+```
 
-**F2 — Dashboard RDO** (`src/pages/DashboardRDO.tsx` + `useRDOMetrics.ts`)
-- Query única: `rdo_relatorios` joinado a `rdo_equipe (prestador_id, horas_trabalhadas, horas_extras)` e `obras (nome)`.
-- React Query, staleTime 10min, agregação no client (volume baixo).
-- Cards: total mês, pendentes, aprovados, rejeitados.
-- Charts (`recharts` BarChart): Horas por obra (top 10), Horas por prestador (top 10). Filtro de período.
+### Arquivos editados
+- `src/pages/RDOWizard.tsx` — vira shell com stepper + render do step ativo
+- `src/features/obras/components/ObraFormDialog.tsx` — Tabs + combobox + coords
+- `src/features/obras/types.ts` — adiciona `latitude`/`longitude` no schema
+- `src/features/obras/services/obrasService.ts` — normalize lat/lng
+- `src/pages/ObraDetail.tsx` — bloco "Avanço por etapa"
 
-**F3 — `ObraDetail`** (`src/pages/ObraDetail.tsx`)
-- Hooks: `useObra(id)`, `useRDOsByObra(id)`, `useObraStats(id)`.
-- Seções: Header / Timeline / Avanço (LineChart) / Equipe (table com horas) / Fotos (grid lazy com signed URLs 1y).
-- Reutilizar `signedUrl` helper já existente.
+### Fora de escopo
+- Não mudaremos o schema de `rdo_relatorios` nem `rdo_atividades`.
+- `percentual_avanco` continua calculado client-side a partir das metas (não persistido no item por enquanto).
 
-**F4 — Catálogo `/obra-catalogo`**
-- Migration: `ALTER TABLE rdo_atividades_catalogo ADD COLUMN tipo text;` (nullable).
-- Página com tabela editável (Dialog para create/edit), filtros por categoria/tipo/ativo. RLS já cobre admin.
-- Atualizar wizard RDO (etapa Atividades) para opcionalmente filtrar por tipo.
-
-**F5 — Multi-role**
-- Validar `useAuth` retorna `roles[]` corretamente. Ajustar `UsuariosPage` para `MultiSelect` de roles operacionais (já temos shadcn select). Sem migration.
-
-**F6 — Portal cliente (estrutura)**
-- Migration RLS: policy `Cliente vê própria obra` em `obras` (`EXISTS clientes JOIN profiles WHERE user_id=auth.uid()`), e leituras correspondentes em `rdo_relatorios`/`rdo_evidencias`/`rdo_equipe` quando obra pertence ao cliente.
-- Rota nova `/portal/obras` (lista das obras do cliente) e `/portal/obras/:id` (mesmo componente `ObraDetail` com prop `mode="cliente"` que já oculta blocos sensíveis — filtro fino fica para depois, conforme combinado).
-- Sidebar: adicionar item "Minhas Obras" no `Meu Painel` para `cliente`.
-
-### Garantias de qualidade
-- Toasts via `sonner`. Tokens semânticos do design system. Outer joins em joins de prestador/obra/cliente. Mobile-first (44px). RLS revisada por fase. PRs sequenciais, cada fase verificável isoladamente.
-
-### Ordem proposta
-F1 → F4 (migration leve) → F2 → F3 → F5 → F6. Confirme e seguimos por F1.
+Posso seguir com essa estrutura?
