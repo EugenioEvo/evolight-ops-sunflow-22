@@ -15,6 +15,8 @@ function normalize(payload: ObraForm) {
     data_fim_prevista: empty(payload.data_fim_prevista) as string | null,
     data_inicio_real: empty(payload.data_inicio_real) as string | null,
     data_fim_real: empty(payload.data_fim_real) as string | null,
+    latitude: payload.latitude ?? null,
+    longitude: payload.longitude ?? null,
     potencia_kwp: payload.potencia_kwp ?? null,
     status: payload.status,
     observacoes: empty(payload.observacoes) as string | null,
@@ -52,12 +54,15 @@ export const obrasService = {
     }));
   },
 
-  async create(payload: ObraForm) {
+  async create(payload: ObraForm): Promise<{ id: string }> {
     const { data: userData } = await supabase.auth.getUser();
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('obras')
-      .insert([{ ...normalize(payload), created_by: userData.user?.id ?? null }]);
+      .insert([{ ...normalize(payload), created_by: userData.user?.id ?? null }])
+      .select('id')
+      .single();
     if (error) throw error;
+    return { id: (data as any).id };
   },
 
   async update(id: string, payload: ObraForm) {

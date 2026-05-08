@@ -854,6 +854,39 @@ export type Database = {
         }
         Relationships: []
       }
+      obra_metas_catalogo: {
+        Row: {
+          catalogo_id: string
+          created_at: string
+          id: string
+          obra_id: string
+          observacoes: string | null
+          quantidade_meta: number
+          unidade: string | null
+          updated_at: string
+        }
+        Insert: {
+          catalogo_id: string
+          created_at?: string
+          id?: string
+          obra_id: string
+          observacoes?: string | null
+          quantidade_meta?: number
+          unidade?: string | null
+          updated_at?: string
+        }
+        Update: {
+          catalogo_id?: string
+          created_at?: string
+          id?: string
+          obra_id?: string
+          observacoes?: string | null
+          quantidade_meta?: number
+          unidade?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       obras: {
         Row: {
           cep: string | null
