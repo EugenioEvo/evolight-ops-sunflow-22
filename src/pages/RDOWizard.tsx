@@ -458,7 +458,11 @@ export default function RDOWizard() {
           </div>
         </CardContent>
       </Card>
+      </>
+      )}
 
+      {step === 2 && (
+      <>
       {/* Equipe */}
       <Card>
         <CardHeader>
