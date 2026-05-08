@@ -200,6 +200,8 @@ export const rdoService = {
     ocorrencias: string | null;
     atrasos: string | null;
     restricoes: string | null;
+    horas_paradas_programadas: number | null;
+    horas_paradas_nao_programadas: number | null;
     assinatura_responsavel: string | null;
   }>) {
     const { error } = await supabase.from('rdo_relatorios').update(patch).eq('id', id);
