@@ -24,5 +24,25 @@ export function useRDOMutations() {
     onError: (e: any) => toast.error(e?.message ?? 'Falha ao remover RDO'),
   });
 
-  return { remove };
+  const approve = useMutation({
+    mutationFn: ({ id, observacoes }: { id: string; observacoes?: string }) =>
+      rdoService.approve(id, observacoes),
+    onSuccess: () => {
+      toast.success('RDO aprovado. Equipe notificada por e-mail.');
+      qc.invalidateQueries({ queryKey: KEY });
+    },
+    onError: (e: any) => toast.error(e?.message ?? 'Falha ao aprovar RDO'),
+  });
+
+  const reject = useMutation({
+    mutationFn: ({ id, motivo }: { id: string; motivo: string }) =>
+      rdoService.reject(id, motivo),
+    onSuccess: () => {
+      toast.success('RDO rejeitado. Responsável notificado por e-mail.');
+      qc.invalidateQueries({ queryKey: KEY });
+    },
+    onError: (e: any) => toast.error(e?.message ?? 'Falha ao rejeitar RDO'),
+  });
+
+  return { remove, approve, reject };
 }
