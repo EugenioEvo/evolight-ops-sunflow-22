@@ -2237,6 +2237,10 @@ export type Database = {
         Args: { _prestador_id: string; _user_id: string }
         Returns: boolean
       }
+      user_owns_obra: {
+        Args: { _obra_id: string; _user_id: string }
+        Returns: boolean
+      }
       validate_presence_token: {
         Args: { p_os_id: string; p_token: string }
         Returns: boolean
