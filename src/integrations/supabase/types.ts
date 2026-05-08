@@ -1294,6 +1294,7 @@ export type Database = {
           item_key: string
           label: string
           sort_order: number | null
+          tipo: string | null
           unidade: string
         }
         Insert: {
@@ -1304,6 +1305,7 @@ export type Database = {
           item_key: string
           label: string
           sort_order?: number | null
+          tipo?: string | null
           unidade: string
         }
         Update: {
@@ -1314,6 +1316,7 @@ export type Database = {
           item_key?: string
           label?: string
           sort_order?: number | null
+          tipo?: string | null
           unidade?: string
         }
         Relationships: []
