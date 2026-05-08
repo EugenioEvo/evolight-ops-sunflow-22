@@ -608,8 +608,12 @@ export default function RDOWizard() {
             <div className="border-2 rounded-lg overflow-hidden bg-white">
               <SignatureCanvas ref={(r) => { sigRef.current = r; }} canvasProps={{ width: 600, height: 180, className: 'w-full' }} />
             </div>
-            <div className="flex gap-2">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
               <Button type="button" variant="outline" size="sm" onClick={() => sigRef.current?.clear()}>Limpar</Button>
+              <div className="text-right">
+                <p className="text-xs text-muted-foreground">Responsável pelo preenchimento</p>
+                <p className="text-sm font-medium">{profile?.nome ?? '—'}</p>
+              </div>
             </div>
           </CardContent>
         </Card>
