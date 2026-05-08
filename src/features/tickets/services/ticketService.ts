@@ -131,6 +131,25 @@ export const createTicketService = (client?: AppSupabaseClient) => {
       };
     },
 
+    /**
+     * Clear scheduling fields on the given OS ids so the slots are freed in
+     * the agenda. Must be called AFTER the calendar CANCEL notifications were
+     * dispatched, otherwise the ICS attachment is skipped (see cancel()).
+     */
+    async clearOSScheduling(osIds: string[]) {
+      if (!osIds.length) return;
+      const { error } = await db
+        .from('ordens_servico')
+        .update({
+          data_programada: null,
+          hora_inicio: null,
+          hora_fim: null,
+          duracao_estimada_min: null,
+        })
+        .in('id', osIds);
+      if (error) throw error;
+    },
+
     async approve(ticketId: string, profileId: string, observacoes?: string) {
       const { error: updateError } = await db.from('tickets').update({ status: 'aprovado' }).eq('id', ticketId);
       if (updateError) throw updateError;
