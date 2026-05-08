@@ -113,10 +113,10 @@ export const rdoService = {
     } as RDOFull;
   },
 
-  async listObrasAtivas(): Promise<{ id: string; nome: string; cidade: string | null; estado: string | null }[]> {
+  async listObrasAtivas(): Promise<{ id: string; nome: string; cidade: string | null; estado: string | null; latitude: number | null; longitude: number | null }[]> {
     const { data, error } = await supabase
       .from('obras')
-      .select('id, nome, cidade, estado')
+      .select('id, nome, cidade, estado, latitude, longitude')
       .in('status', ['planejada', 'em_execucao', 'pausada'])
       .order('nome');
     if (error) throw error;
