@@ -41,9 +41,12 @@ import Usuarios from "./pages/Usuarios";
 import Kits from "./pages/Kits";
 import BackofficeInsumos from "./pages/BackofficeInsumos";
 import Obras from "./pages/Obras";
+import ObraDetail from "./pages/ObraDetail";
+import ObraCatalogo from "./pages/ObraCatalogo";
 import RDO from "./pages/RDO";
 import RDOWizard from "./pages/RDOWizard";
 import GerenciarRDO from "./pages/GerenciarRDO";
+import DashboardRDO from "./pages/DashboardRDO";
 
 // Legacy /rme route → redirects to the unified Wizard, preserving ?os=
 const LegacyRMERedirect = () => {
@@ -161,9 +164,24 @@ const App = () => (
                                 <Obras />
                               </ProtectedRoute>
                             } />
+                            <Route path="/obras/:id" element={
+                              <ProtectedRoute roles={['admin', 'engenharia', 'supervisao', 'sup_eletromecanico']}>
+                                <ObraDetail mode="staff" />
+                              </ProtectedRoute>
+                            } />
+                            <Route path="/obra-catalogo" element={
+                              <ProtectedRoute roles={['admin']}>
+                                <ObraCatalogo />
+                              </ProtectedRoute>
+                            } />
                             <Route path="/rdo" element={
                               <ProtectedRoute roles={['admin', 'engenharia', 'supervisao', 'sup_eletromecanico', 'eletromecanico']}>
                                 <RDO />
+                              </ProtectedRoute>
+                            } />
+                            <Route path="/rdo/dashboard" element={
+                              <ProtectedRoute roles={['admin', 'engenharia', 'supervisao', 'sup_eletromecanico', 'eletromecanico']}>
+                                <DashboardRDO />
                               </ProtectedRoute>
                             } />
                             <Route path="/rdo/novo" element={
@@ -179,6 +197,11 @@ const App = () => (
                             <Route path="/gerenciar-rdo" element={
                               <ProtectedRoute roles={['admin', 'engenharia', 'supervisao']}>
                                 <GerenciarRDO />
+                              </ProtectedRoute>
+                            } />
+                            <Route path="/portal/obras/:id" element={
+                              <ProtectedRoute roles={['cliente']}>
+                                <ObraDetail mode="cliente" />
                               </ProtectedRoute>
                             } />
                             <Route path="/relatorios" element={

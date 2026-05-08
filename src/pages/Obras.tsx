@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Building2, Plus, Search, Pencil, Trash2 } from 'lucide-react';
+import { Building2, Plus, Search, Pencil, Trash2, Eye } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -20,6 +21,7 @@ const STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'outline' | 'dest
 };
 
 export default function Obras() {
+  const navigate = useNavigate();
   const { data: obras = [], isLoading } = useObrasQuery();
   const { remove } = useObraMutations();
   const [search, setSearch] = useState('');
@@ -86,10 +88,13 @@ export default function Obras() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button size="icon" variant="ghost" onClick={() => { setEditing(o); setOpen(true); }}>
+                        <Button size="icon" variant="ghost" onClick={() => navigate(`/obras/${o.id}`)} aria-label="Ver detalhes">
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button size="icon" variant="ghost" onClick={() => { setEditing(o); setOpen(true); }} aria-label="Editar">
                           <Pencil className="h-4 w-4" />
                         </Button>
-                        <Button size="icon" variant="ghost" onClick={() => setConfirmDelete(o)}>
+                        <Button size="icon" variant="ghost" onClick={() => setConfirmDelete(o)} aria-label="Remover">
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </TableCell>

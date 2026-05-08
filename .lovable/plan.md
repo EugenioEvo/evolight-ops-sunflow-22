@@ -1,161 +1,89 @@
+## Análise dos 6 itens
 
-## Visão geral
+Análise individual considerando custo, segurança e diretrizes do core (mobile-first, dark theme, RLS, sonner, design tokens, outer joins).
 
-Adicionar módulo RDO (Relatório Diário de Obra) para a frente EPC da Evolight, reaproveitando ao máximo a infraestrutura de RME (wizard, evidências, assinaturas, PDF, aprovação). RDO **não** se vincula a ticket/OS — vive em uma nova entidade **Obras**.
+### Item 1 — Reorganização do menu lateral
+- **Custo:** baixo (1 arquivo). **Risco:** zero.
+- Renomear seção `Principal` → `RMEs` e criar nova seção `RDOs` agrupando `Dashboard RDO` (novo), `RDOs` (lista), `Aprovar RDOs` e `Obras` (mover de Cadastros).
 
-## Crítica ao escopo proposto
+### Item 2 — Métricas RDO (Dashboard dedicado em `/rdo/dashboard`)
+- **Eficiência:** uma única query agregada com `select` + `count` por status + agregação client-side de horas (já temos React Query com staleTime 10min).
+- **Segurança:** já protegido por RLS (`is_staff` + envolvidos).
+- **Conteúdo:** cards (RDOs do mês, pendentes, aprovados, rejeitados) + gráficos `recharts` (já usado no projeto): horas por obra (bar) e horas por prestador (bar). Filtro por período (mês corrente / 30d / 90d).
 
-**Pontos para reforçar / ajustar:**
+### Item 3 — Página de detalhe da obra `/obras/:id`
+- Header com cliente dono, endereço completo, status, datas (prevista/real), kWp.
+- **Timeline de RDOs** (lista vertical por data, com badge de status) + link para o RDO.
+- **% avanço acumulado** = média ponderada de `rdo_atividades.percentual_avanco` dos RDOs aprovados (gráfico linear).
+- **Equipe alocada** = união distinta de `prestador_id` em `rdo_equipe` da obra, com horas totais.
+- **Galeria de fotos consolidadas** (lazy-load das `rdo_evidencias` + `fotos_geral` via signed URLs 1y, padrão do projeto).
+- Página `/obras` continua para CRUD; clicar na linha → detalhe.
 
-1. **Falta entidade "Obra"** — sem ela, não há agrupamento de RDOs, histórico de avanço físico, nem dashboard de progresso. Vamos criar `obras`.
-2. **Catálogo de atividades padronizadas** — para "Quantidade de Módulos Montados", "Estruturas Instaladas", etc. Sem catálogo, cada RDO vira texto livre e perde-se relatório consolidado. Proposta: tabela `rdo_atividades_catalogo` (item_key, label, unidade, categoria) — admin gerencia, sup.eletromecânico só preenche quantidade. Mais campos "Outros" em texto livre.
-3. **Constraint 1 RDO por obra/dia** — evita duplicidade quando múltiplos sup. eletromecânicos atuam na mesma obra. UNIQUE (`obra_id`, `data_rdo`).
-4. **Eletromecânico sem assinatura digital** — apenas marcado como presente. Sup.eletromecânico assina como responsável; aprovador (staff) assina ao aprovar.
-5. **Permissões cliente** — assumindo que cliente **não** vê RDO no portal (escopo interno). Confirmar depois se quiser expor.
-6. **Avanço físico acumulado** — derivar via VIEW somando quantidades por obra/atividade para dashboard. Não duplicar dado.
+### Item 4 — Exposição da obra no portal do cliente (preparação)
+- **Estratégia:** entregar agora **somente a estrutura** (rota `/portal/obra/:id` reaproveitando o componente, com guard `cliente` + verificação de propriedade via `obras.cliente_id → clientes.profile_id → user_id`) e um flag `<ObraDetail mode="staff" | "cliente" />` que oculta seções sensíveis (custos futuros, observações internas, equipe). RLS de `obras` precisa de policy adicional para `cliente` ver apenas a própria obra. **Filtro fino de campos** fica para depois (conforme você indicou).
+- **Custo:** baixo, evita retrabalho. **Segurança:** RLS + checagem dupla na query.
 
-## Modelo de dados (migrations)
+### Item 5 — Multi-role operacional
+- **Boa notícia:** já temos infra de [Multi-role pontual](mem://auth/multi-role-pontual) (`user_roles` + `profile.roles[]`). Basta:
+  1. Garantir que a UI de cadastro de Usuários permita múltiplas roles para os 4 papéis operacionais (técnico O&M, eletromecânico, sup. O&M, sup. eletromecânico).
+  2. Revisar `useAuth` para que a "role principal" não esconda permissões secundárias (já é o caso, mas vou validar).
+  3. Sidebar e RLS já usam `.some()` / `has_role()`, então herdam automaticamente.
+- **Custo:** muito baixo se a infra já está pronta (validar + ajuste pontual em UsuariosPage).
 
-```text
-app_role enum
-└── adicionar: 'eletromecanico', 'sup_eletromecanico'
+### Item 6 — Catálogo de atividades em `/obra-catalogo`
+- CRUD simples sobre `rdo_atividades_catalogo` (label, item_key, unidade, categoria, sort_order, ativo). RLS já é admin-only.
+- **Falta:** coluna `type` mencionada não existe ainda → adicionar `tipo text` (ex: `instalacao | comissionamento | civil | eletrica | logistica`) via migration, mais filtro/agrupamento na UI.
+- Página acessível só para `admin`.
 
-obras
-├── id, nome, cliente_id (FK clientes), endereco, cidade, estado, cep
-├── lat/lng, data_inicio_prevista, data_fim_prevista, data_inicio_real, data_fim_real
-├── potencia_kwp, status ('planejada'|'em_execucao'|'pausada'|'concluida'|'cancelada')
-├── responsavel_obra_id (FK prestadores — sup.eletromecânico líder)
-└── created_by, timestamps
+### Aproveitamento de TODOs do core (token-baratos, encaixe natural)
+- ✅ **[TODO: Unify RME/OS pages](mem://tech-debt/unificacao-rme-os-pages)** — **NÃO incluir agora.** Mexer em RME/OS no mesmo PR de RDO aumenta superfície de regressão. Mantenho adiado.
+- ✅ **[TODO: Unify prestadores × tecnicos](mem://tech-debt/unificacao-prestadores-tecnicos)** — **NÃO incluir.** Mudança estrutural pesada; o item 5 já se beneficia da arquitetura atual sem precisar unificar tabelas.
+- ➕ **Encaixe natural:** ao tocar `UsuariosPage` (item 5), atualizar a UI para também mostrar/editar `tecnicos.especialidades` e `prestadores.categoria` em uma única tela — sem migration, custo marginal.
 
-rdo_atividades_catalogo
-├── item_key, label, unidade (un, m, m², kg…), categoria, sort_order, is_default
-└── (gerenciado por admin)
+---
 
-rdo_relatorios
-├── numero_rdo (RDO000001 — função sequencial), obra_id, data_rdo
-├── turno, clima (sol/nublado/chuva/...), temperatura_c, condicoes_canteiro
-├── horario_inicio, horario_fim
-├── observacoes_gerais, ocorrencias, atrasos, restricoes
-├── responsavel_id (FK prestadores — sup.eletromecânico que preencheu)
-├── status ('rascunho'|'pendente'|'aprovado'|'rejeitado')
-├── aprovado_por, data_aprovacao, observacoes_aprovacao
-├── assinatura_responsavel, assinatura_aprovador
-├── fotos_geral (text[] — paths storage)
-├── pdf_url
-└── timestamps
-└── UNIQUE(obra_id, data_rdo) where status != 'cancelado'
-
-rdo_equipe
-├── rdo_id, prestador_id (eletromec. ou sup.eletromec.)
-├── funcao, horas_trabalhadas, horas_extras, observacoes
-└── UNIQUE(rdo_id, prestador_id)
-
-rdo_atividades
-├── rdo_id, catalogo_id (nullable), descricao_livre (nullable — para "outros")
-├── quantidade, unidade, percentual_avanco, observacoes
-└── CHECK (catalogo_id IS NOT NULL OR descricao_livre IS NOT NULL)
-
-rdo_equipamentos (mobilizados no dia)
-├── rdo_id, nome, quantidade, observacoes
-
-rdo_evidencias
-├── rdo_id, tipo ('antes'|'depois'|'ocorrencia'|'epi'), storage_path, descricao
-
-Storage bucket: rdo-evidences (privado, signed URLs 1 ano — padrão RME)
-```
-
-**RLS resumida:**
-- `obras`: staff CRUD; eletromecânico/sup.eletromecânico SELECT se está em `rdo_equipe` de algum RDO da obra OU é `responsavel_obra_id`.
-- `rdo_relatorios`: staff CRUD; sup.eletromecânico INSERT/UPDATE próprios em rascunho/rejeitado; eletromecânico SELECT apenas onde está em `rdo_equipe`.
-- `rdo_equipe/atividades/equipamentos/evidencias`: herdam visibilidade do RDO via EXISTS.
-- Aprovação só para staff (mesma `is_staff()` que aprova RME).
-
-**Função sequencial:** `gerar_numero_rdo()` espelhando `gerar_numero_os()`.
-
-## Frontend — estrutura
+## Plano de execução (fases independentes, deployáveis isoladamente)
 
 ```text
-src/features/rdo/
-├── types.ts (zod schemas por step)
-├── services/rdoService.ts, obrasService.ts
-├── hooks/useRDOData.ts, useRDOActions.ts, useObrasData.ts
-└── components/
-    ├── RDOCard.tsx
-    └── rdo-wizard/
-        ├── StepIdentification.tsx       (obra, data, turno, clima)
-        ├── StepEquipe.tsx                (multi-select prestadores eletromec.)
-        ├── StepAtividades.tsx            (catálogo + quantidade + "outros")
-        ├── StepEquipamentos.tsx          (opcional)
-        ├── StepEvidencias.tsx            (fotos antes/depois/ocorrência)
-        └── StepSignatures.tsx            (assinatura sup.eletromec.)
-
-src/pages/
-├── Obras.tsx                  (CRUD + lista, staff)
-├── ObraDetail.tsx             (timeline RDOs, dashboard avanço)
-├── RDO.tsx                    (lista — sup.eletromec vê próprios; staff vê todos)
-├── RDOWizard.tsx              (wizard auto-save padrão RME)
-└── GerenciarRDO.tsx           (aprovação — staff)
+F1  Sidebar reorg + nova seção RDOs (1 arquivo)
+F2  Dashboard RDO em /rdo/dashboard (1 página + 1 hook agregador)
+F3  Detalhe da Obra em /obras/:id (modo staff)
+F4  Catálogo de atividades em /obra-catalogo (+ migration: coluna `tipo`)
+F5  Multi-role operacional (validação + ajuste UsuariosPage)
+F6  Portal: rota /portal/obra/:id reusando ObraDetail (mode=cliente) + RLS
 ```
 
-**Sidebar (`AppSidebar.tsx`):**
+### Detalhamento técnico
 
-```text
-Cadastros: + Obras (allow: staff + sup_eletromecanico)
-Principal:
-  + RDO        (sup_eletromecanico, eletromecanico, staff)
-  + Aprovar RDOs (staff) — com badge de pendentes (espelho do RME)
-```
+**F1 — Sidebar**
+- Novos grupos: `RMEs` (atual Principal renomeado, Dashboard ↔ Dashboard RME continua), `RDOs` (Dashboard, RDOs, Aprovar RDOs, Obras), `Operação` (Tickets, OS, Rotas, Agenda, Carga, Confirmações, Validar Insumos), `Cadastros`, `Sistema`. Usar `SidebarGroupLabel` + `Collapsible` (padrão shadcn).
 
-**Rotas (`App.tsx`):** `/obras`, `/obras/:id`, `/rdo`, `/rdo/novo`, `/rdo/:id` (wizard), `/gerenciar-rdo`.
+**F2 — Dashboard RDO** (`src/pages/DashboardRDO.tsx` + `useRDOMetrics.ts`)
+- Query única: `rdo_relatorios` joinado a `rdo_equipe (prestador_id, horas_trabalhadas, horas_extras)` e `obras (nome)`.
+- React Query, staleTime 10min, agregação no client (volume baixo).
+- Cards: total mês, pendentes, aprovados, rejeitados.
+- Charts (`recharts` BarChart): Horas por obra (top 10), Horas por prestador (top 10). Filtro de período.
 
-**`useAuth`:** novas roles entram automaticamente em `profile.roles[]` e na prioridade (sugiro: `admin > engenharia > supervisao > backoffice > sup_eletromecanico > tecnico_campo > eletromecanico > cliente`).
+**F3 — `ObraDetail`** (`src/pages/ObraDetail.tsx`)
+- Hooks: `useObra(id)`, `useRDOsByObra(id)`, `useObraStats(id)`.
+- Seções: Header / Timeline / Avanço (LineChart) / Equipe (table com horas) / Fotos (grid lazy com signed URLs 1y).
+- Reutilizar `signedUrl` helper já existente.
 
-**`ProtectedRoute`:** eletromec./sup.eletromec. exigem aprovação igual ao `tecnico_campo` (passam por `Candidatar` → `approve-prestador`).
+**F4 — Catálogo `/obra-catalogo`**
+- Migration: `ALTER TABLE rdo_atividades_catalogo ADD COLUMN tipo text;` (nullable).
+- Página com tabela editável (Dialog para create/edit), filtros por categoria/tipo/ativo. RLS já cobre admin.
+- Atualizar wizard RDO (etapa Atividades) para opcionalmente filtrar por tipo.
 
-## Reaproveitamento da base de pessoas
+**F5 — Multi-role**
+- Validar `useAuth` retorna `roles[]` corretamente. Ajustar `UsuariosPage` para `MultiSelect` de roles operacionais (já temos shadcn select). Sem migration.
 
-- **`prestadores`** ganha mais valores na `categoria` ou em `especialidades` para distinguir eletromec. (alternativa: `categoria` permanece e a role já distingue — mais simples e é o caminho recomendado).
-- Edge function `approve-prestador` continua igual — só precisa criar a `app_role` correta baseada em campo escolhido na candidatura. Adicionar select de "Tipo de profissional" em `Candidatar.tsx` (Técnico O&M / Eletromecânico / Sup.Eletromecânico).
-- `tecnicos` table continua sendo o link `prestador↔profile`.
+**F6 — Portal cliente (estrutura)**
+- Migration RLS: policy `Cliente vê própria obra` em `obras` (`EXISTS clientes JOIN profiles WHERE user_id=auth.uid()`), e leituras correspondentes em `rdo_relatorios`/`rdo_evidencias`/`rdo_equipe` quando obra pertence ao cliente.
+- Rota nova `/portal/obras` (lista das obras do cliente) e `/portal/obras/:id` (mesmo componente `ObraDetail` com prop `mode="cliente"` que já oculta blocos sensíveis — filtro fino fica para depois, conforme combinado).
+- Sidebar: adicionar item "Minhas Obras" no `Meu Painel` para `cliente`.
 
-## PDF e notificações
+### Garantias de qualidade
+- Toasts via `sonner`. Tokens semânticos do design system. Outer joins em joins de prestador/obra/cliente. Mobile-first (44px). RLS revisada por fase. PRs sequenciais, cada fase verificável isoladamente.
 
-- `generateRDOPDF.ts` espelhando `generateRMEPDF.ts` (jspdf-autotable: cabeçalho obra, tabelas equipe/atividades/equipamentos, fotos em grid, assinaturas).
-- Edge functions novas:
-  - `send-rdo-submitted-email` — notifica staff aprovadores ao submeter
-  - `send-rdo-decision-email` — notifica responsável ao aprovar/rejeitar
-- Reutilizar `notificationService` para in-app.
-
-## Aprovação
-
-`GerenciarRDO.tsx` espelha `GerenciarRME.tsx`: lista filtrada por `status='pendente'`, modal de aprovação com observações + assinatura, transição `pendente → aprovado/rejeitado`. Rejeitado volta para `rascunho` editável pelo responsável.
-
-## Entrega faseada
-
-**Fase 1 — Schema & roles**
-- Migration: enum, tabelas, RLS, sequencial, catálogo seed.
-
-**Fase 2 — Cadastros**
-- Página Obras (CRUD), atualização `Candidatar` com tipo de profissional, sidebar.
-
-**Fase 3 — Wizard RDO + lista**
-- Wizard 5-6 steps com auto-save (padrão RME), página `/rdo`, geração PDF.
-
-**Fase 4 — Aprovação & notificações**
-- `/gerenciar-rdo`, edge functions de email, badge pendentes.
-
-**Fase 5 — Dashboard de obra (opcional, valida em separado)**
-- View de avanço acumulado, gráficos por atividade.
-
-## Memórias a registrar
-
-- `mem://rdo/architecture-overview` — entidade Obras + RDO standalone, paralelo ao RME.
-- `mem://rdo/wizard-structure` — steps e validações.
-- `mem://auth/roles-eletromecanicas` — eletromec. vs sup.eletromec.
-- `mem://rdo/single-rdo-per-obra-per-day` — UNIQUE constraint.
-
-## Confirmações antes de implementar
-
-1. **Catálogo de atividades inicial** — pode me passar 5-10 itens iniciais (ex: "Módulos montados [un]", "Estrutura metálica [m]", "Cabo CC lançado [m]") ou começo com lista genérica e você ajusta?
-2. **Cliente vê RDO?** Assumi que **não** (interno). Confirma?
-3. **`Obras.cliente_id`** obrigatório ou pode existir obra sem cliente cadastrado (obra própria)?
+### Ordem proposta
+F1 → F4 (migration leve) → F2 → F3 → F5 → F6. Confirme e seguimos por F1.

@@ -1294,6 +1294,7 @@ export type Database = {
           item_key: string
           label: string
           sort_order: number | null
+          tipo: string | null
           unidade: string
         }
         Insert: {
@@ -1304,6 +1305,7 @@ export type Database = {
           item_key: string
           label: string
           sort_order?: number | null
+          tipo?: string | null
           unidade: string
         }
         Update: {
@@ -1314,6 +1316,7 @@ export type Database = {
           item_key?: string
           label?: string
           sort_order?: number | null
+          tipo?: string | null
           unidade?: string
         }
         Relationships: []
@@ -2232,6 +2235,10 @@ export type Database = {
       populate_rme_checklist: { Args: { p_rme_id: string }; Returns: undefined }
       user_is_prestador: {
         Args: { _prestador_id: string; _user_id: string }
+        Returns: boolean
+      }
+      user_owns_obra: {
+        Args: { _obra_id: string; _user_id: string }
         Returns: boolean
       }
       validate_presence_token: {

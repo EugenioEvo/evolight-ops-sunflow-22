@@ -18,7 +18,8 @@ import {
   PackageCheck,
   Boxes,
   HardHat,
-  FileSpreadsheet
+  FileSpreadsheet,
+  BookOpen
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
@@ -57,19 +58,24 @@ const mainItems: NavItem[] = [
   { title: "Tickets", url: "/tickets", icon: Package, allow: STAFF_BO },
   { title: "Ordens de Serviço", url: "/work-orders", icon: ClipboardList, allow: STAFF_BO },
   { title: "RME", url: "/rme", icon: BarChart3, allow: STAFF_BO },
-  { title: "RDO", url: "/rdo", icon: FileSpreadsheet, allow: [...STAFF, ...ELETRO] },
   { title: "Rotas", url: "/routes", icon: Route, allow: [...STAFF_BO, 'tecnico_campo'] },
   { title: "Agenda", url: "/agenda", icon: Calendar, allow: STAFF_BO },
   { title: "Carga de Trabalho", url: "/carga-trabalho", icon: TrendingUp, allow: STAFF },
   { title: "Confirmações", url: "/dashboard-presenca", icon: Monitor, allow: STAFF },
   { title: "Aprovar RMEs", url: "/gerenciar-rme", icon: CheckSquare, allow: STAFF },
-  { title: "Aprovar RDOs", url: "/gerenciar-rdo", icon: CheckSquare, allow: STAFF },
   { title: "Validar Insumos", url: "/backoffice/insumos", icon: PackageCheck, allow: [...STAFF, 'backoffice'] },
+];
+
+const rdoItems: NavItem[] = [
+  { title: "Dashboard", url: "/rdo/dashboard", icon: Home, allow: [...STAFF, ...ELETRO] },
+  { title: "RDO", url: "/rdo", icon: FileSpreadsheet, allow: [...STAFF, ...ELETRO] },
+  { title: "Aprovar RDOs", url: "/gerenciar-rdo", icon: CheckSquare, allow: STAFF },
+  { title: "Obras", url: "/obras", icon: HardHat, allow: [...STAFF, 'sup_eletromecanico'] },
+  { title: "Catálogo de Atividades", url: "/obra-catalogo", icon: BookOpen, allow: ['admin'] },
 ];
 
 const cadastroItems: NavItem[] = [
   { title: "Clientes", url: "/clientes", icon: Building2, allow: STAFF_BO },
-  { title: "Obras", url: "/obras", icon: HardHat, allow: [...STAFF, 'sup_eletromecanico'] },
   { title: "Prestadores", url: "/prestadores", icon: Users, allow: STAFF_BO },
   { title: "Usuários", url: "/usuarios", icon: User, allow: ['admin', 'engenharia'] },
   { title: "Equipamentos", url: "/equipamentos", icon: Zap, allow: STAFF_BO },
@@ -177,7 +183,7 @@ export function AppSidebar() {
         </div>
 
         <SidebarGroup>
-          <SidebarGroupLabel>Principal</SidebarGroupLabel>
+          <SidebarGroupLabel>RMEs</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {mainItems.filter(i => hasAnyRole(i.allow)).flatMap(item => {
@@ -204,6 +210,17 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {rdoItems.some(i => hasAnyRole(i.allow)) && (
+          <SidebarGroup>
+            <SidebarGroupLabel>RDOs</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {rdoItems.filter(i => hasAnyRole(i.allow)).map(item => renderItem(item))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
         {showCadastros && (
           <SidebarGroup>
