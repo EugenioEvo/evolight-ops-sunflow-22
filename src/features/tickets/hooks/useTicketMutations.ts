@@ -177,6 +177,13 @@ export const useTicketMutations = (loadData: () => Promise<void>) => {
         })
       );
 
+      // Now that calendar CANCEL emails (with ICS) were dispatched, free the slots.
+      try {
+        await ticketService.clearOSScheduling(cancelledOS.map((os) => os.id));
+      } catch (e) {
+        console.warn('clearOSScheduling failed (non-blocking):', e);
+      }
+
       const cascadedMsg =
         cancelledOS.length > 0
           ? ` ${cancelledOS.length} OS vinculada(s) também foram canceladas.`
