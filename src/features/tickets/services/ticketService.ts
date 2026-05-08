@@ -109,18 +109,11 @@ export const createTicketService = (client?: AppSupabaseClient) => {
         return tStatus !== 'concluido' && tStatus !== 'cancelado';
       });
 
-      // 3) Clear scheduling fields on each cancellable OS so the slot is freed
-      if (cancellable.length > 0) {
-        await db
-          .from('ordens_servico')
-          .update({
-            data_programada: null,
-            hora_inicio: null,
-            hora_fim: null,
-            duracao_estimada_min: null,
-          })
-          .in('id', cancellable.map((os: any) => os.id));
-      }
+      // 3) Scheduling clearance is intentionally deferred to AFTER cancellation
+      //    notifications are dispatched (so send-calendar-invite still has
+      //    data_programada/hora_inicio/hora_fim to attach the ICS CANCEL).
+      //    The caller must invoke `clearOSScheduling(ids)` after the fan-out.
+
 
       // 4) Flip ticket → cancelado (cascades visually to all OS via getOSStatus)
       const { error: updErr } = await db
