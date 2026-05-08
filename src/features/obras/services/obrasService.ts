@@ -25,15 +25,31 @@ export const obrasService = {
   async fetchAll(): Promise<Obra[]> {
     const { data, error } = await supabase
       .from('obras')
-      .select('*, cliente:clientes(id, empresa), responsavel:prestadores!obras_responsavel_obra_id_fkey(id, nome)')
+      .select('*')
       .order('created_at', { ascending: false });
-    if (error) {
-      // fallback without FK alias if relation name differs
-      const fb = await supabase.from('obras').select('*').order('created_at', { ascending: false });
-      if (fb.error) throw fb.error;
-      return (fb.data || []) as Obra[];
-    }
-    return (data || []) as unknown as Obra[];
+    if (error) throw error;
+    const obras = (data || []) as Obra[];
+
+    const clienteIds = Array.from(new Set(obras.map((o) => o.cliente_id).filter(Boolean))) as string[];
+    const prestadorIds = Array.from(new Set(obras.map((o) => o.responsavel_obra_id).filter(Boolean))) as string[];
+
+    const [clientesRes, prestadoresRes] = await Promise.all([
+      clienteIds.length
+        ? supabase.from('clientes').select('id, empresa').in('id', clienteIds)
+        : Promise.resolve({ data: [], error: null } as const),
+      prestadorIds.length
+        ? supabase.from('prestadores').select('id, nome').in('id', prestadorIds)
+        : Promise.resolve({ data: [], error: null } as const),
+    ]);
+
+    const clienteMap = new Map((clientesRes.data || []).map((c: any) => [c.id, c]));
+    const prestadorMap = new Map((prestadoresRes.data || []).map((p: any) => [p.id, p]));
+
+    return obras.map((o) => ({
+      ...o,
+      cliente: o.cliente_id ? (clienteMap.get(o.cliente_id) as any) ?? null : null,
+      responsavel: o.responsavel_obra_id ? (prestadorMap.get(o.responsavel_obra_id) as any) ?? null : null,
+    }));
   },
 
   async create(payload: ObraForm) {
