@@ -41,9 +41,12 @@ import Usuarios from "./pages/Usuarios";
 import Kits from "./pages/Kits";
 import BackofficeInsumos from "./pages/BackofficeInsumos";
 import Obras from "./pages/Obras";
+import ObraDetail from "./pages/ObraDetail";
+import ObraCatalogo from "./pages/ObraCatalogo";
 import RDO from "./pages/RDO";
 import RDOWizard from "./pages/RDOWizard";
 import GerenciarRDO from "./pages/GerenciarRDO";
+import DashboardRDO from "./pages/DashboardRDO";
 
 // Legacy /rme route → redirects to the unified Wizard, preserving ?os=
 const LegacyRMERedirect = () => {
