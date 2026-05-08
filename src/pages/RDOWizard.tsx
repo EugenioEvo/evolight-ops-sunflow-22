@@ -23,6 +23,10 @@ import { CLIMA_LABEL, CLIMA_OPTIONS, TURNO_LABEL, TURNO_OPTIONS } from '@/featur
 
 const STAFF_ROLES = ['admin', 'engenharia', 'supervisao'];
 
+function Hint({ children }: { children: React.ReactNode }) {
+  return <p className="text-[11px] text-muted-foreground mt-1">{children}</p>;
+}
+
 function EvidenciaThumb({ path, onRemove }: { path: string; onRemove: () => void }) {
   const [url, setUrl] = useState<string | null>(null);
   useEffect(() => {
