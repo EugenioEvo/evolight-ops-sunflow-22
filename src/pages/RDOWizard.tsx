@@ -143,16 +143,33 @@ export default function RDOWizard() {
 
     let cancelled = false;
     setTempLoading(true);
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${obra.latitude}&longitude=${obra.longitude}&hourly=temperature_2m&start_date=${dataRdo}&end_date=${dataRdo}&timezone=America%2FSao_Paulo`;
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${obra.latitude}&longitude=${obra.longitude}&hourly=temperature_2m,weathercode&start_date=${dataRdo}&end_date=${dataRdo}&timezone=America%2FSao_Paulo`;
     fetch(url)
       .then((r) => r.json())
       .then((j) => {
         if (cancelled) return;
         const temps: number[] = j?.hourly?.temperature_2m ?? [];
-        const slice = temps.slice(sh, eh + 1).filter((t) => typeof t === 'number');
-        if (slice.length === 0) return;
-        const avg = slice.reduce((a, b) => a + b, 0) / slice.length;
-        setTemperatura(avg.toFixed(1));
+        const tslice = temps.slice(sh, eh + 1).filter((t) => typeof t === 'number');
+        if (tslice.length > 0) {
+          const avg = tslice.reduce((a, b) => a + b, 0) / tslice.length;
+          setTemperatura(avg.toFixed(1));
+        }
+        const codes: number[] = (j?.hourly?.weathercode ?? []).slice(sh, eh + 1);
+        if (codes.length > 0) {
+          // WMO weather code → CLIMA_OPTIONS
+          const cat = (c: number): 'ensolarado' | 'nublado' | 'chuvoso' | 'chuva_forte' => {
+            if (c === 0 || c === 1) return 'ensolarado';
+            if (c === 2 || c === 3 || c === 45 || c === 48) return 'nublado';
+            if (c === 65 || c === 82 || (c >= 95 && c <= 99)) return 'chuva_forte';
+            return 'chuvoso';
+          };
+          const counts: Record<string, number> = {};
+          codes.forEach((c) => { const k = cat(c); counts[k] = (counts[k] ?? 0) + 1; });
+          const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+          const dominant = entries[0][0];
+          const dominantShare = entries[0][1] / codes.length;
+          setClima(entries.length > 1 && dominantShare < 0.7 ? 'misto' : dominant);
+        }
       })
       .catch(() => { /* keep silent — fallback é manual */ })
       .finally(() => { if (!cancelled) setTempLoading(false); });
@@ -306,13 +323,18 @@ export default function RDOWizard() {
             </Select>
           </div>
           <div>
-            <Label>Clima</Label>
-            <Select value={clima} onValueChange={setClima} disabled={readOnly}>
-              <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+            <Label className="flex items-center gap-2">
+              Clima{tempLoading && <Loader2 className="h-3 w-3 animate-spin" />}
+            </Label>
+            <Select value={clima} onValueChange={setClima} disabled>
+              <SelectTrigger><SelectValue placeholder="Preenchido automaticamente" /></SelectTrigger>
               <SelectContent>
                 {CLIMA_OPTIONS.map((c) => <SelectItem key={c} value={c}>{CLIMA_LABEL[c]}</SelectItem>)}
               </SelectContent>
             </Select>
+            <p className="text-[11px] text-muted-foreground mt-1">
+              Inferido via Open-Meteo (códigos WMO) entre Início e Fim.
+            </p>
           </div>
           <div>
             <Label className="flex items-center gap-2">
