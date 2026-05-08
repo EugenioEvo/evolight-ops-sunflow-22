@@ -224,12 +224,18 @@ export default function RDOWizard() {
     }
   }
 
-  async function handleUploadEvidencia(file: File, tipo: 'antes' | 'depois' | 'ocorrencia' | 'epi') {
+  async function handleUploadEvidencias(files: FileList | null, tipo: 'antes' | 'depois' | 'ocorrencia' | 'epi') {
+    if (!files || files.length === 0) return;
     try {
       const id = await ensureDraftCreated();
-      await rdoService.uploadEvidencia(id, file, tipo);
+      const arr = Array.from(files);
+      let ok = 0;
+      for (const f of arr) {
+        try { await rdoService.uploadEvidencia(id, f, tipo); ok++; }
+        catch (e: any) { toast.error(`${f.name}: ${e?.message ?? 'falha'}`); }
+      }
       qc.invalidateQueries({ queryKey: ['rdo', id] });
-      toast.success('Evidência enviada');
+      if (ok > 0) toast.success(`${ok} evidência(s) enviada(s)`);
     } catch (e: any) {
       toast.error(e?.message ?? 'Falha ao enviar evidência');
     }
