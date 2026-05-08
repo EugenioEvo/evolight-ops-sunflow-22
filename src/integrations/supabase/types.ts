@@ -1454,6 +1454,8 @@ export type Database = {
           fotos_geral: string[] | null
           horario_fim: string | null
           horario_inicio: string | null
+          horas_paradas_nao_programadas: number | null
+          horas_paradas_programadas: number | null
           id: string
           numero_rdo: string
           obra_id: string
@@ -1482,6 +1484,8 @@ export type Database = {
           fotos_geral?: string[] | null
           horario_fim?: string | null
           horario_inicio?: string | null
+          horas_paradas_nao_programadas?: number | null
+          horas_paradas_programadas?: number | null
           id?: string
           numero_rdo: string
           obra_id: string
@@ -1510,6 +1514,8 @@ export type Database = {
           fotos_geral?: string[] | null
           horario_fim?: string | null
           horario_inicio?: string | null
+          horas_paradas_nao_programadas?: number | null
+          horas_paradas_programadas?: number | null
           id?: string
           numero_rdo?: string
           obra_id?: string
