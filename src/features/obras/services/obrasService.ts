@@ -42,8 +42,8 @@ export const obrasService = {
         : Promise.resolve({ data: [], error: null } as const),
     ]);
 
-    const clienteMap = new Map((clientesRes.data || []).map((c: any) => [c.id, c]));
-    const prestadorMap = new Map((prestadoresRes.data || []).map((p: any) => [p.id, p]));
+    const clienteMap = new Map<string, any>(((clientesRes.data || []) as any[]).map((c) => [c.id as string, c]));
+    const prestadorMap = new Map<string, any>(((prestadoresRes.data || []) as any[]).map((p) => [p.id as string, p]));
 
     return obras.map((o) => ({
       ...o,
