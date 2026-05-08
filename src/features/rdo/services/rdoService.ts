@@ -273,6 +273,81 @@ export const rdoService = {
     if (error) throw error;
   },
 
+  async buildPDFData(id: string): Promise<import('@/utils/generateRDOPDF').RDOPDFData | null> {
+    const full = await this.getById(id);
+    if (!full) return null;
+
+    // Resolve prestador names for equipe + responsavel
+    const prestadorIds = Array.from(new Set([
+      full.responsavel_id,
+      ...full.equipe.map((e) => e.prestador_id),
+    ].filter(Boolean))) as string[];
+
+    const presMap = new Map<string, string>();
+    if (prestadorIds.length) {
+      const { data } = await supabase.from('prestadores').select('id, nome').in('id', prestadorIds);
+      for (const p of (data || []) as any[]) presMap.set(p.id, p.nome);
+    }
+
+    // Resolve catalog labels for atividades
+    const catIds = Array.from(new Set(full.atividades.map((a) => a.catalogo_id).filter(Boolean))) as string[];
+    const catMap = new Map<string, { label: string; unidade: string }>();
+    if (catIds.length) {
+      const { data } = await supabase.from('rdo_atividades_catalogo').select('id, label, unidade').in('id', catIds);
+      for (const c of (data || []) as any[]) catMap.set(c.id, { label: c.label, unidade: c.unidade });
+    }
+
+    // Resolve signed URLs for evidencias
+    const evidencias = await Promise.all(
+      full.evidencias.map(async (ev) => ({
+        tipo: ev.tipo,
+        descricao: ev.descricao,
+        url: (await this.signedUrl(ev.storage_path)) ?? '',
+      })),
+    );
+
+    return {
+      numero_rdo: full.numero_rdo,
+      data_rdo: full.data_rdo,
+      status: full.status,
+      obra: full.obra ? { nome: full.obra.nome, cidade: full.obra.cidade, estado: full.obra.estado } : null,
+      responsavel: { nome: presMap.get(full.responsavel_id) ?? '—' },
+      turno: full.turno,
+      clima: full.clima,
+      temperatura_c: full.temperatura_c,
+      horario_inicio: full.horario_inicio,
+      horario_fim: full.horario_fim,
+      condicoes_canteiro: full.condicoes_canteiro,
+      observacoes_gerais: full.observacoes_gerais,
+      ocorrencias: full.ocorrencias,
+      atrasos: full.atrasos,
+      restricoes: full.restricoes,
+      observacoes_aprovacao: full.observacoes_aprovacao,
+      data_aprovacao: full.data_aprovacao,
+      equipe: full.equipe.map((e) => ({
+        nome: presMap.get(e.prestador_id) ?? '—',
+        funcao: e.funcao,
+        horas_trabalhadas: e.horas_trabalhadas,
+        horas_extras: e.horas_extras,
+      })),
+      atividades: full.atividades.map((a) => {
+        const cat = a.catalogo_id ? catMap.get(a.catalogo_id) : null;
+        return {
+          descricao: a.descricao_livre || cat?.label || '—',
+          quantidade: a.quantidade,
+          unidade: a.unidade || cat?.unidade || null,
+          percentual_avanco: a.percentual_avanco,
+        };
+      }),
+      equipamentos: full.equipamentos.map((eq) => ({
+        nome: eq.nome, quantidade: eq.quantidade, observacoes: eq.observacoes,
+      })),
+      evidencias,
+      assinatura_responsavel: (full as any).assinatura_responsavel ?? null,
+      assinatura_aprovador: (full as any).assinatura_aprovador ?? null,
+    };
+  },
+
   async signedUrl(path: string): Promise<string | null> {
     const { data, error } = await supabase.storage.from('rdo-evidences').createSignedUrl(path, 60 * 60 * 24 * 365);
     if (error) return null;
