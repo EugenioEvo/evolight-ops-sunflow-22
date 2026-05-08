@@ -466,9 +466,16 @@ export default function RDOWizard() {
                   </div>
                   <div className="md:col-span-2">
                     <Label className="text-xs">% avanço</Label>
-                    <Input type="number" min={0} max={100} value={a.percentual_avanco ?? ''}
+                    <Input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={a.percentual_avanco ?? ''}
                       onChange={(e) => { const n = [...atividades]; n[i] = { ...a, percentual_avanco: e.target.value ? Number(e.target.value) : null }; setAtividades(n); }}
-                      disabled={readOnly} />
+                      disabled={readOnly || !!a.catalogo_id}
+                      placeholder={a.catalogo_id ? 'Auto (obra)' : ''}
+                      title={a.catalogo_id ? 'Calculado automaticamente a partir das metas da obra' : undefined}
+                    />
                   </div>
                 </div>
                 {!a.catalogo_id && (
