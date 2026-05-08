@@ -29,9 +29,18 @@ function EvidenciaThumb({ path, onRemove }: { path: string; onRemove: () => void
     rdoService.signedUrl(path).then((u) => { if (active) setUrl(u); });
     return () => { active = false; };
   }, [path]);
+  const isVideo = /\.(mp4|webm|mov|m4v|ogg)$/i.test(path);
   return (
     <div className="relative group">
-      {url ? <img src={url} alt="" className="w-full h-24 object-cover rounded-md" /> : <div className="w-full h-24 bg-muted rounded-md animate-pulse" />}
+      {url ? (
+        isVideo ? (
+          <video src={url} controls className="w-full h-24 object-cover rounded-md bg-black" />
+        ) : (
+          <img src={url} alt="" className="w-full h-24 object-cover rounded-md" />
+        )
+      ) : (
+        <div className="w-full h-24 bg-muted rounded-md animate-pulse" />
+      )}
       <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100" onClick={onRemove}>
         <X className="h-3 w-3" />
       </Button>
@@ -573,7 +582,7 @@ export default function RDOWizard() {
 
       {/* Evidências */}
       <Card>
-        <CardHeader><CardTitle className="text-base">Evidências fotográficas</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-base">Evidências Audiovisuais</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           {(['antes', 'depois', 'ocorrencia', 'epi'] as const).map((tipo) => {
             const evs = (rdoQ.data?.evidencias ?? []).filter((e) => e.tipo === tipo);
@@ -583,25 +592,20 @@ export default function RDOWizard() {
                 <div className="flex items-center justify-between gap-2 flex-wrap">
                   <Label>{labels[tipo]} ({evs.length})</Label>
                   {!readOnly && (
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <label className="cursor-pointer inline-flex items-center text-sm text-primary px-2 py-1 rounded border border-input hover:bg-accent">
-                        <input
-                          type="file"
-                          accept="image/*"
-                          capture="environment"
-                          className="hidden"
-                          onChange={(e) => { handleUploadEvidencias(e.target.files, tipo); e.currentTarget.value = ''; }}
-                        />
-                        <Camera className="h-4 w-4 mr-1" /> Câmera
+                        <input type="file" accept="image/*" capture="environment" className="hidden"
+                          onChange={(e) => { handleUploadEvidencias(e.target.files, tipo); e.currentTarget.value = ''; }} />
+                        <Camera className="h-4 w-4 mr-1" /> Foto
                       </label>
                       <label className="cursor-pointer inline-flex items-center text-sm text-primary px-2 py-1 rounded border border-input hover:bg-accent">
-                        <input
-                          type="file"
-                          accept="image/*"
-                          multiple
-                          className="hidden"
-                          onChange={(e) => { handleUploadEvidencias(e.target.files, tipo); e.currentTarget.value = ''; }}
-                        />
+                        <input type="file" accept="video/*" capture="environment" className="hidden"
+                          onChange={(e) => { handleUploadEvidencias(e.target.files, tipo); e.currentTarget.value = ''; }} />
+                        <Camera className="h-4 w-4 mr-1" /> Vídeo
+                      </label>
+                      <label className="cursor-pointer inline-flex items-center text-sm text-primary px-2 py-1 rounded border border-input hover:bg-accent">
+                        <input type="file" accept="image/*,video/*" multiple className="hidden"
+                          onChange={(e) => { handleUploadEvidencias(e.target.files, tipo); e.currentTarget.value = ''; }} />
                         <Upload className="h-4 w-4 mr-1" /> Upload
                       </label>
                     </div>
