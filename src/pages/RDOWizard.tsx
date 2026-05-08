@@ -641,11 +641,27 @@ export default function RDOWizard() {
       <Card>
         <CardHeader><CardTitle className="text-base">Observações & ocorrências</CardTitle></CardHeader>
         <CardContent className="space-y-3">
-          <div><Label>Observações gerais</Label><Textarea rows={2} value={observacoes} onChange={(e) => setObservacoes(e.target.value)} disabled={readOnly} /></div>
+          <div>
+            <Label>Observações gerais</Label>
+            <Textarea rows={2} value={observacoes} onChange={(e) => setObservacoes(e.target.value)} disabled={readOnly} placeholder="Resumo do dia, decisões e pontos de atenção." />
+            <Hint>Use para registrar comentários gerais que não se encaixam nos outros campos.</Hint>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div><Label>Ocorrências</Label><Textarea rows={2} value={ocorrencias} onChange={(e) => setOcorrencias(e.target.value)} disabled={readOnly} /></div>
-            <div><Label>Atrasos</Label><Textarea rows={2} value={atrasos} onChange={(e) => setAtrasos(e.target.value)} disabled={readOnly} /></div>
-            <div><Label>Restrições</Label><Textarea rows={2} value={restricoes} onChange={(e) => setRestricoes(e.target.value)} disabled={readOnly} /></div>
+            <div>
+              <Label>Ocorrências</Label>
+              <Textarea rows={2} value={ocorrencias} onChange={(e) => setOcorrencias(e.target.value)} disabled={readOnly} placeholder="Acidentes, quase-acidentes, eventos atípicos." />
+              <Hint>Registre eventos relevantes ocorridos durante a jornada.</Hint>
+            </div>
+            <div>
+              <Label>Atrasos</Label>
+              <Textarea rows={2} value={atrasos} onChange={(e) => setAtrasos(e.target.value)} disabled={readOnly} placeholder="Início tardio, parada por chuva, espera de equipamento." />
+              <Hint>Causas e duração dos atrasos no avanço da obra.</Hint>
+            </div>
+            <div>
+              <Label>Restrições</Label>
+              <Textarea rows={2} value={restricoes} onChange={(e) => setRestricoes(e.target.value)} disabled={readOnly} placeholder="Falta de material, área bloqueada, pendência do cliente." />
+              <Hint>Bloqueios que dependem de terceiros para serem resolvidos.</Hint>
+            </div>
           </div>
         </CardContent>
       </Card>
