@@ -21,6 +21,7 @@ const STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'outline' | 'dest
 };
 
 export default function Obras() {
+  const navigate = useNavigate();
   const { data: obras = [], isLoading } = useObrasQuery();
   const { remove } = useObraMutations();
   const [search, setSearch] = useState('');
