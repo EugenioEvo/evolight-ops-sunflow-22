@@ -291,4 +291,39 @@ export const rdoService = {
     const { error } = await supabase.from('rdo_relatorios').delete().eq('id', id);
     if (error) throw error;
   },
+
+  async approve(id: string, observacoes?: string) {
+    const { data: userData } = await supabase.auth.getUser();
+    const { error } = await supabase
+      .from('rdo_relatorios')
+      .update({
+        status: 'aprovado',
+        aprovado_por: userData.user?.id ?? null,
+        data_aprovacao: new Date().toISOString(),
+        observacoes_aprovacao: observacoes ?? null,
+      })
+      .eq('id', id);
+    if (error) throw error;
+    // Fire-and-forget email
+    supabase.functions
+      .invoke('send-rdo-decision-email', { body: { rdo_id: id, decision: 'aprovado', motivo: observacoes ?? '' } })
+      .catch((e) => console.warn('send-rdo-decision-email approve failed:', e));
+  },
+
+  async reject(id: string, motivo: string) {
+    const { data: userData } = await supabase.auth.getUser();
+    const { error } = await supabase
+      .from('rdo_relatorios')
+      .update({
+        status: 'rejeitado',
+        aprovado_por: userData.user?.id ?? null,
+        data_aprovacao: new Date().toISOString(),
+        observacoes_aprovacao: motivo,
+      })
+      .eq('id', id);
+    if (error) throw error;
+    supabase.functions
+      .invoke('send-rdo-decision-email', { body: { rdo_id: id, decision: 'rejeitado', motivo } })
+      .catch((e) => console.warn('send-rdo-decision-email reject failed:', e));
+  },
 };
