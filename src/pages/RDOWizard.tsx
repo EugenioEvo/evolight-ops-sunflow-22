@@ -64,6 +64,9 @@ export default function RDOWizard() {
   const [ocorrencias, setOcorrencias] = useState<string>('');
   const [atrasos, setAtrasos] = useState<string>('');
   const [restricoes, setRestricoes] = useState<string>('');
+  const [horasParadasProg, setHorasParadasProg] = useState<string>('');
+  const [horasParadasNaoProg, setHorasParadasNaoProg] = useState<string>('');
+  const [tempLoading, setTempLoading] = useState(false);
 
   // Sections
   const [equipe, setEquipe] = useState<RDOEquipe[]>([]);
