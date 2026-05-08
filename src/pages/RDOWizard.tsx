@@ -309,8 +309,20 @@ export default function RDOWizard() {
             </Select>
           </div>
           <div>
-            <Label>Temperatura (°C)</Label>
-            <Input type="number" step="0.1" value={temperatura} onChange={(e) => setTemperatura(e.target.value)} disabled={readOnly} />
+            <Label className="flex items-center gap-2">
+              Temperatura média (°C){tempLoading && <Loader2 className="h-3 w-3 animate-spin" />}
+            </Label>
+            <Input
+              type="number"
+              step="0.1"
+              value={temperatura}
+              readOnly
+              disabled
+              placeholder="Preenchida automaticamente"
+            />
+            <p className="text-[11px] text-muted-foreground mt-1">
+              Média horária Open-Meteo entre Início e Fim, baseada nas coordenadas da obra.
+            </p>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
@@ -321,6 +333,30 @@ export default function RDOWizard() {
               <Label>Fim</Label>
               <Input type="time" value={horarioFim} onChange={(e) => setHorarioFim(e.target.value)} disabled={readOnly} />
             </div>
+          </div>
+          <div>
+            <Label>Horas paradas — programadas</Label>
+            <Input
+              type="number"
+              step="0.25"
+              min={0}
+              value={horasParadasProg}
+              onChange={(e) => setHorasParadasProg(e.target.value)}
+              disabled={readOnly}
+              placeholder="Almoço, lanche, etc."
+            />
+          </div>
+          <div>
+            <Label>Horas paradas — não programadas</Label>
+            <Input
+              type="number"
+              step="0.25"
+              min={0}
+              value={horasParadasNaoProg}
+              onChange={(e) => setHorasParadasNaoProg(e.target.value)}
+              disabled={readOnly}
+              placeholder="Falta de material, descarga, etc."
+            />
           </div>
           <div className="md:col-span-2">
             <Label>Condições do canteiro</Label>
