@@ -166,6 +166,16 @@ const App = () => (
                                 <RDO />
                               </ProtectedRoute>
                             } />
+                            <Route path="/rdo/novo" element={
+                              <ProtectedRoute roles={['admin', 'engenharia', 'supervisao', 'sup_eletromecanico']}>
+                                <RDOWizard />
+                              </ProtectedRoute>
+                            } />
+                            <Route path="/rdo/:id" element={
+                              <ProtectedRoute roles={['admin', 'engenharia', 'supervisao', 'sup_eletromecanico', 'eletromecanico']}>
+                                <RDOWizard />
+                              </ProtectedRoute>
+                            } />
                             <Route path="/gerenciar-rdo" element={
                               <ProtectedRoute roles={['admin', 'engenharia', 'supervisao']}>
                                 <GerenciarRDO />
