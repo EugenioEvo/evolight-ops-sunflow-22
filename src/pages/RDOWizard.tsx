@@ -273,6 +273,26 @@ export default function RDOWizard() {
     return <div className="flex items-center justify-center h-64"><Loader2 className="h-6 w-6 animate-spin" /></div>;
   }
 
+  const STEPS = [
+    { n: 1 as const, label: 'Identificação' },
+    { n: 2 as const, label: 'Execução' },
+    { n: 3 as const, label: 'Revisão & Envio' },
+  ];
+
+  async function handleNext() {
+    if (step === 1) {
+      if (!obraId) { toast.error('Selecione a obra'); return; }
+      if (!dataRdo) { toast.error('Informe a data'); return; }
+    }
+    if (step === 2) {
+      if (equipe.length === 0) { toast.error('Adicione pelo menos um membro à equipe'); return; }
+      if (atividades.length === 0) { toast.error('Adicione pelo menos uma atividade'); return; }
+    }
+    try { await handleSave(); } catch { /* toast já exibido */ }
+    setStep((s) => (s < 3 ? ((s + 1) as 1 | 2 | 3) : s));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
   return (
     <div className="container mx-auto p-4 sm:p-6 space-y-6 max-w-5xl pb-32">
       <div className="flex items-center gap-3">
@@ -304,6 +324,41 @@ export default function RDOWizard() {
           </Button>
         )}
       </div>
+
+      {/* Stepper */}
+      <div className="flex items-center justify-between gap-2 px-1">
+        {STEPS.map((s, idx) => {
+          const active = step === s.n;
+          const done = step > s.n;
+          return (
+            <div key={s.n} className="flex items-center flex-1 min-w-0">
+              <button
+                type="button"
+                onClick={() => setStep(s.n)}
+                className={cn(
+                  'flex items-center gap-2 px-2 py-1 rounded-md transition-colors min-w-0',
+                  active && 'text-foreground',
+                  !active && 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                <span className={cn(
+                  'h-7 w-7 rounded-full grid place-items-center text-xs font-semibold border',
+                  active && 'bg-primary text-primary-foreground border-primary',
+                  done && 'bg-emerald-500 text-white border-emerald-500',
+                  !active && !done && 'bg-muted border-border'
+                )}>
+                  {done ? <Check className="h-3.5 w-3.5" /> : s.n}
+                </span>
+                <span className="text-sm font-medium truncate">{s.label}</span>
+              </button>
+              {idx < STEPS.length - 1 && <div className="flex-1 h-px bg-border mx-2" />}
+            </div>
+          );
+        })}
+      </div>
+
+      {step === 1 && (
+      <>
 
       {/* Identificação */}
       <Card>
