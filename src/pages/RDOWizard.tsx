@@ -103,6 +103,8 @@ export default function RDOWizard() {
     setOcorrencias(r.ocorrencias ?? '');
     setAtrasos(r.atrasos ?? '');
     setRestricoes(r.restricoes ?? '');
+    setHorasParadasProg((r as any).horas_paradas_programadas != null ? String((r as any).horas_paradas_programadas) : '');
+    setHorasParadasNaoProg((r as any).horas_paradas_nao_programadas != null ? String((r as any).horas_paradas_nao_programadas) : '');
     setEquipe(r.equipe);
     setAtividades(r.atividades);
     setEquipamentos(r.equipamentos);
