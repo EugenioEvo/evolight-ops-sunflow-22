@@ -1,10 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
-import { Loader2, MapPin } from 'lucide-react';
+import { Loader2, MapPin, LocateFixed } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+
+interface ResolvedAddress {
+  endereco: string | null;
+  cidade: string | null;
+  estado: string | null;
+  cep: string | null;
+}
 
 interface Props {
   endereco?: string | null;
@@ -14,10 +21,12 @@ interface Props {
   latitude: number | null;
   longitude: number | null;
   onChange: (lat: number | null, lng: number | null) => void;
+  onAddressResolved?: (addr: ResolvedAddress) => void;
 }
 
-export function CoordsField({ endereco, cidade, estado, cep, latitude, longitude, onChange }: Props) {
+export function CoordsField({ endereco, cidade, estado, cep, latitude, longitude, onChange, onAddressResolved }: Props) {
   const [loading, setLoading] = useState(false);
+  const [reversing, setReversing] = useState(false);
   const [autoTriggered, setAutoTriggered] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -46,6 +55,28 @@ export function CoordsField({ endereco, cidade, estado, cep, latitude, longitude
     }
   }
 
+  async function reverseGeocode() {
+    if (latitude == null || longitude == null) {
+      toast.error('Informe latitude e longitude antes de buscar o endereço');
+      return;
+    }
+    if (!onAddressResolved) return;
+    setReversing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('reverse-geocode', {
+        body: { latitude, longitude },
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Falha na busca');
+      onAddressResolved(data.data as ResolvedAddress);
+      toast.success('Endereço preenchido a partir das coordenadas');
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Falha ao buscar endereço');
+    } finally {
+      setReversing(false);
+    }
+  }
+
   // Auto-trigger uma vez quando campos mínimos preenchidos e não há coords
   useEffect(() => {
     if (autoTriggered) return;
@@ -62,14 +93,22 @@ export function CoordsField({ endereco, cidade, estado, cep, latitude, longitude
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <Label className="flex items-center gap-2">
           <MapPin className="h-4 w-4" /> Coordenadas geográficas
         </Label>
-        <Button type="button" variant="outline" size="sm" onClick={geocode} disabled={loading}>
-          {loading ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <MapPin className="h-3 w-3 mr-1" />}
-          Buscar pelo endereço
-        </Button>
+        <div className="flex gap-2">
+          <Button type="button" variant="outline" size="sm" onClick={geocode} disabled={loading}>
+            {loading ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <MapPin className="h-3 w-3 mr-1" />}
+            Buscar pelo endereço
+          </Button>
+          {onAddressResolved && (
+            <Button type="button" variant="outline" size="sm" onClick={reverseGeocode} disabled={reversing}>
+              {reversing ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <LocateFixed className="h-3 w-3 mr-1" />}
+              Buscar endereço pelas coordenadas
+            </Button>
+          )}
+        </div>
       </div>
       <div className="grid grid-cols-2 gap-2">
         <div>
@@ -92,7 +131,7 @@ export function CoordsField({ endereco, cidade, estado, cep, latitude, longitude
         </div>
       </div>
       <p className="text-xs text-muted-foreground">
-        Resolvido automaticamente a partir do endereço (você pode ajustar manualmente). Usado pelo RDO para puxar clima e temperatura via Open-Meteo.
+        Resolvido automaticamente a partir do endereço — ou faça o caminho inverso preenchendo lat/lng e clicando em "Buscar endereço pelas coordenadas". Usado pelo RDO para puxar clima/temperatura via Open-Meteo.
       </p>
     </div>
   );
