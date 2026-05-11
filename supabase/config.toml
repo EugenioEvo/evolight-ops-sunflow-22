@@ -6,6 +6,9 @@ verify_jwt = true
 [functions.geocode-address]
 verify_jwt = true
 
+[functions.reverse-geocode]
+verify_jwt = true
+
 [functions.process-pending-geocoding]
 verify_jwt = false
 
