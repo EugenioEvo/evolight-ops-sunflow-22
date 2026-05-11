@@ -202,6 +202,12 @@ export function ObraFormDialog({ open, onOpenChange, obra }: Props) {
                             form.setValue('latitude', la, { shouldDirty: true });
                             form.setValue('longitude', lo, { shouldDirty: true });
                           }}
+                          onAddressResolved={(addr) => {
+                            if (addr.endereco) form.setValue('endereco', addr.endereco, { shouldDirty: true });
+                            if (addr.cidade) form.setValue('cidade', addr.cidade, { shouldDirty: true });
+                            if (addr.estado) form.setValue('estado', addr.estado, { shouldDirty: true });
+                            if (addr.cep) form.setValue('cep', addr.cep, { shouldDirty: true });
+                          }}
                         />
                       </FormControl>
                       <FormMessage />
