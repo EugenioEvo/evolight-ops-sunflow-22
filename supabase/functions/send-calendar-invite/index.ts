@@ -304,7 +304,7 @@ const handler = async (req: Request): Promise<Response> => {
         {
           filename: "convite.ics",
           content: icsContent,
-          content_type: 'text/calendar; charset="UTF-8"; method=REQUEST',
+          content_type: `text/calendar; charset="UTF-8"; method=${method}`,
         },
       ];
       emailPayload.headers = {
