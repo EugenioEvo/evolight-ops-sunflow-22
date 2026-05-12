@@ -167,8 +167,6 @@ export const MultiTechnicianOSDialog = ({
   );
 
   const handleTogglePrestador = (prestadorId: string, checked: boolean) => {
-    // Em modo "adicionar técnicos", os já alocados são fixos
-    if (isAddMode && assignedPrestadorIds.includes(prestadorId)) return;
     const availability = availabilityMap.get(prestadorId);
     if (availability && !availability.available && checked) {
       toast.error("Este técnico possui conflito de agenda no horário selecionado");
@@ -178,6 +176,12 @@ export const MultiTechnicianOSDialog = ({
       checked ? [...prev, prestadorId] : prev.filter(id => id !== prestadorId)
     );
   };
+
+  // Em add-mode, técnicos previamente alocados que o usuário desmarcou
+  const removedPrestadorIds = useMemo(
+    () => (isAddMode ? assignedPrestadorIds.filter(id => !selectedPrestadores.includes(id)) : []),
+    [isAddMode, assignedPrestadorIds, selectedPrestadores]
+  );
 
   const handleTipoTrabalhoChange = (tipo: string, checked: boolean) => {
     setFormData(prev => ({
