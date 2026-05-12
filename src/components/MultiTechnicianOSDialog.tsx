@@ -202,11 +202,15 @@ export const MultiTechnicianOSDialog = ({
 
   const validate = (): string | null => {
     if (isAddMode) {
-      // Em add-mode aceitamos: novos técnicos OU apenas troca de responsável
-      if (newSelectedPrestadores.length === 0 && !responsavelChanged) {
-        return "Selecione novos técnicos ou troque o Técnico Responsável";
+      // Em add-mode aceitamos: novos técnicos OU troca de responsável OU remoção de técnicos
+      if (newSelectedPrestadores.length === 0 && !responsavelChanged && removedPrestadorIds.length === 0) {
+        return "Selecione novos técnicos, remova alguém ou troque o Técnico Responsável";
       }
+      if (selectedPrestadores.length === 0) return "O ticket precisa ter ao menos um técnico alocado";
       if (!tecnicoResponsavelId) return "Selecione o Técnico Responsável";
+      if (removedPrestadorIds.includes(tecnicoResponsavelId)) {
+        return "O Técnico Responsável não pode ser removido. Troque o responsável antes.";
+      }
     } else {
       if (selectedPrestadores.length === 0) return "Selecione ao menos um técnico";
       if (!tecnicoResponsavelId) return "Selecione o Técnico Responsável";
