@@ -405,8 +405,8 @@ export const MultiTechnicianOSDialog = ({
 
       // Em add-mode com apenas troca de responsável (sem novos técnicos),
       // não houve geração de OS — mas a operação foi bem-sucedida.
-      const onlyResponsavelChange = isAddMode && responsavelChanged && newSelectedPrestadores.length === 0;
-      if (successCount > 0 || onlyResponsavelChange) {
+      const onlyMutateNoOS = isAddMode && newSelectedPrestadores.length === 0 && (responsavelChanged || removedCount > 0);
+      if (successCount > 0 || onlyMutateNoOS) {
         if (successCount > 0) {
           toast.success(`${successCount} OS gerada(s) com sucesso!${errorCount > 0 ? ` ${errorCount} falha(s).` : ''}`);
         }
