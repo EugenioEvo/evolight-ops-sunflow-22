@@ -750,12 +750,16 @@ export const MultiTechnicianOSDialog = ({
           {isAddMode ? (
             <Button
               onClick={handleSubmit}
-              disabled={loading || (newSelectedPrestadores.length === 0 && !responsavelChanged)}
+              disabled={loading || (newSelectedPrestadores.length === 0 && !responsavelChanged && removedPrestadorIds.length === 0)}
             >
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {newSelectedPrestadores.length === 0 && responsavelChanged
-                ? 'Trocar Responsável'
-                : `Adicionar ${newSelectedPrestadores.length > 1 ? `${newSelectedPrestadores.length} técnicos` : 'técnico'}${responsavelChanged ? ' + trocar responsável' : ''}`}
+              {(() => {
+                const parts: string[] = [];
+                if (newSelectedPrestadores.length > 0) parts.push(`Adicionar ${newSelectedPrestadores.length} técnico${newSelectedPrestadores.length > 1 ? 's' : ''}`);
+                if (removedPrestadorIds.length > 0) parts.push(`Remover ${removedPrestadorIds.length}`);
+                if (responsavelChanged) parts.push('Trocar responsável');
+                return parts.length ? parts.join(' + ') : 'Salvar alterações';
+              })()}
             </Button>
           ) : (
             <Button onClick={handleSubmit} disabled={loading || selectedPrestadores.length === 0}>
