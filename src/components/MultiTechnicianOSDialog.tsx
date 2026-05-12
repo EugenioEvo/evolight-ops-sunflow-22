@@ -272,6 +272,64 @@ export const MultiTechnicianOSDialog = ({
     try {
       const effectiveTicketId = await ensureTicketId();
 
+      // ───── Remoção de técnicos previamente alocados (deselect) ─────
+      // Para cada técnico desmarcado: dispara ICS CANCEL, notifica em-app
+      // e remove a OS associada. Bloqueia se houver RME vinculado.
+      let removedCount = 0;
+      if (removedPrestadorIds.length > 0) {
+        const { data: osRows, error: osErr } = await supabase
+          .from('ordens_servico')
+          .select('id, numero_os, tecnico_id, tecnicos!inner(id, prestador_id, profiles!inner(user_id, nome)), rme_relatorios(id)')
+          .eq('ticket_id', effectiveTicketId)
+          .in('tecnicos.prestador_id', removedPrestadorIds);
+        if (osErr) throw osErr;
+
+        const blocked = (osRows || []).find((os: any) => (os.rme_relatorios || []).length > 0);
+        if (blocked) {
+          toast.error(`Não é possível remover: a OS ${(blocked as any).numero_os} possui RME vinculado.`);
+          setLoading(false);
+          return;
+        }
+
+        for (const os of (osRows || []) as any[]) {
+          // 1) ICS CANCEL — cobre técnicos pendentes e aceitos (a edge function
+          //    só anexa o .ics se a OS tinha calendar_invite_sent_at)
+          try {
+            await supabase.functions.invoke('send-calendar-invite', {
+              body: { os_id: os.id, action: 'cancel' },
+            });
+          } catch (e) {
+            console.warn('send-calendar-invite cancel falhou:', e);
+          }
+
+          // 2) Notificação in-app ao técnico removido
+          const tecUserId = os.tecnicos?.profiles?.user_id;
+          if (tecUserId) {
+            await supabase.from('notificacoes').insert({
+              user_id: tecUserId,
+              tipo: 'os_cancelada',
+              titulo: 'Ordem de Serviço Cancelada',
+              mensagem: `Sua alocação à OS ${os.numero_os} foi removida pelo gestor.`,
+              link: '/minhas-os',
+            });
+          }
+
+          // 3) Limpar dependências e excluir a OS
+          await supabase.from('horas_previstas_os').delete().eq('ordem_servico_id', os.id);
+          const { error: delErr } = await supabase.from('ordens_servico').delete().eq('id', os.id);
+          if (delErr) {
+            console.error('Erro ao remover OS:', delErr);
+            toast.error(`Falha ao remover OS ${os.numero_os}: ${delErr.message}`);
+          } else {
+            removedCount++;
+          }
+        }
+
+        if (removedCount > 0) {
+          toast.success(`${removedCount} técnico(s) removido(s) — cancelamento enviado.`);
+        }
+      }
+
       // Ticket-based: garante que o ticket carregue o Técnico Responsável escolhido.
       // Inclui add-mode (item 4): se o usuário trocou o responsável, propagamos.
       const shouldUpdateTicketResponsavel = !isStandalone && (
