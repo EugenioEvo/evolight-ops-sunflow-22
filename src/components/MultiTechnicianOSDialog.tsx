@@ -167,8 +167,6 @@ export const MultiTechnicianOSDialog = ({
   );
 
   const handleTogglePrestador = (prestadorId: string, checked: boolean) => {
-    // Em modo "adicionar técnicos", os já alocados são fixos
-    if (isAddMode && assignedPrestadorIds.includes(prestadorId)) return;
     const availability = availabilityMap.get(prestadorId);
     if (availability && !availability.available && checked) {
       toast.error("Este técnico possui conflito de agenda no horário selecionado");
@@ -178,6 +176,12 @@ export const MultiTechnicianOSDialog = ({
       checked ? [...prev, prestadorId] : prev.filter(id => id !== prestadorId)
     );
   };
+
+  // Em add-mode, técnicos previamente alocados que o usuário desmarcou
+  const removedPrestadorIds = useMemo(
+    () => (isAddMode ? assignedPrestadorIds.filter(id => !selectedPrestadores.includes(id)) : []),
+    [isAddMode, assignedPrestadorIds, selectedPrestadores]
+  );
 
   const handleTipoTrabalhoChange = (tipo: string, checked: boolean) => {
     setFormData(prev => ({
@@ -198,11 +202,15 @@ export const MultiTechnicianOSDialog = ({
 
   const validate = (): string | null => {
     if (isAddMode) {
-      // Em add-mode aceitamos: novos técnicos OU apenas troca de responsável
-      if (newSelectedPrestadores.length === 0 && !responsavelChanged) {
-        return "Selecione novos técnicos ou troque o Técnico Responsável";
+      // Em add-mode aceitamos: novos técnicos OU troca de responsável OU remoção de técnicos
+      if (newSelectedPrestadores.length === 0 && !responsavelChanged && removedPrestadorIds.length === 0) {
+        return "Selecione novos técnicos, remova alguém ou troque o Técnico Responsável";
       }
+      if (selectedPrestadores.length === 0) return "O ticket precisa ter ao menos um técnico alocado";
       if (!tecnicoResponsavelId) return "Selecione o Técnico Responsável";
+      if (removedPrestadorIds.includes(tecnicoResponsavelId)) {
+        return "O Técnico Responsável não pode ser removido. Troque o responsável antes.";
+      }
     } else {
       if (selectedPrestadores.length === 0) return "Selecione ao menos um técnico";
       if (!tecnicoResponsavelId) return "Selecione o Técnico Responsável";
@@ -263,6 +271,64 @@ export const MultiTechnicianOSDialog = ({
 
     try {
       const effectiveTicketId = await ensureTicketId();
+
+      // ───── Remoção de técnicos previamente alocados (deselect) ─────
+      // Para cada técnico desmarcado: dispara ICS CANCEL, notifica em-app
+      // e remove a OS associada. Bloqueia se houver RME vinculado.
+      let removedCount = 0;
+      if (removedPrestadorIds.length > 0) {
+        const { data: osRows, error: osErr } = await supabase
+          .from('ordens_servico')
+          .select('id, numero_os, tecnico_id, tecnicos!inner(id, prestador_id, profiles!inner(user_id, nome)), rme_relatorios(id)')
+          .eq('ticket_id', effectiveTicketId)
+          .in('tecnicos.prestador_id', removedPrestadorIds);
+        if (osErr) throw osErr;
+
+        const blocked = (osRows || []).find((os: any) => (os.rme_relatorios || []).length > 0);
+        if (blocked) {
+          toast.error(`Não é possível remover: a OS ${(blocked as any).numero_os} possui RME vinculado.`);
+          setLoading(false);
+          return;
+        }
+
+        for (const os of (osRows || []) as any[]) {
+          // 1) ICS CANCEL — cobre técnicos pendentes e aceitos (a edge function
+          //    só anexa o .ics se a OS tinha calendar_invite_sent_at)
+          try {
+            await supabase.functions.invoke('send-calendar-invite', {
+              body: { os_id: os.id, action: 'cancel' },
+            });
+          } catch (e) {
+            console.warn('send-calendar-invite cancel falhou:', e);
+          }
+
+          // 2) Notificação in-app ao técnico removido
+          const tecUserId = os.tecnicos?.profiles?.user_id;
+          if (tecUserId) {
+            await supabase.from('notificacoes').insert({
+              user_id: tecUserId,
+              tipo: 'os_cancelada',
+              titulo: 'Ordem de Serviço Cancelada',
+              mensagem: `Sua alocação à OS ${os.numero_os} foi removida pelo gestor.`,
+              link: '/minhas-os',
+            });
+          }
+
+          // 3) Limpar dependências e excluir a OS
+          await supabase.from('horas_previstas_os').delete().eq('ordem_servico_id', os.id);
+          const { error: delErr } = await supabase.from('ordens_servico').delete().eq('id', os.id);
+          if (delErr) {
+            console.error('Erro ao remover OS:', delErr);
+            toast.error(`Falha ao remover OS ${os.numero_os}: ${delErr.message}`);
+          } else {
+            removedCount++;
+          }
+        }
+
+        if (removedCount > 0) {
+          toast.success(`${removedCount} técnico(s) removido(s) — cancelamento enviado.`);
+        }
+      }
 
       // Ticket-based: garante que o ticket carregue o Técnico Responsável escolhido.
       // Inclui add-mode (item 4): se o usuário trocou o responsável, propagamos.
@@ -339,8 +405,8 @@ export const MultiTechnicianOSDialog = ({
 
       // Em add-mode com apenas troca de responsável (sem novos técnicos),
       // não houve geração de OS — mas a operação foi bem-sucedida.
-      const onlyResponsavelChange = isAddMode && responsavelChanged && newSelectedPrestadores.length === 0;
-      if (successCount > 0 || onlyResponsavelChange) {
+      const onlyMutateNoOS = isAddMode && newSelectedPrestadores.length === 0 && (responsavelChanged || removedCount > 0);
+      if (successCount > 0 || onlyMutateNoOS) {
         if (successCount > 0) {
           toast.success(`${successCount} OS gerada(s) com sucesso!${errorCount > 0 ? ` ${errorCount} falha(s).` : ''}`);
         }
@@ -457,7 +523,7 @@ export const MultiTechnicianOSDialog = ({
                       id={`tech-${prestador.id}`}
                       checked={isSelected}
                       onCheckedChange={(checked) => handleTogglePrestador(prestador.id, checked as boolean)}
-                      disabled={!!hasConflict || !hasEmail || (isAddMode && assignedPrestadorIds.includes(prestador.id))}
+                      disabled={(!isSelected && (!!hasConflict || !hasEmail))}
                     />
                     <label htmlFor={`tech-${prestador.id}`} className="flex-1 text-sm font-medium cursor-pointer flex items-center gap-2">
                       <span className={!hasEmail ? 'text-destructive' : ''}>{prestador.nome}</span>
@@ -466,8 +532,11 @@ export const MultiTechnicianOSDialog = ({
                           <AlertTriangle className="h-3 w-3 mr-1" />Sem email
                         </Badge>
                       )}
-                      {isAddMode && assignedPrestadorIds.includes(prestador.id) && (
+                      {isAddMode && assignedPrestadorIds.includes(prestador.id) && isSelected && (
                         <Badge variant="outline" className="text-[10px]">Já alocado</Badge>
+                      )}
+                      {isAddMode && assignedPrestadorIds.includes(prestador.id) && !isSelected && (
+                        <Badge variant="destructive" className="text-[10px]">Será removido</Badge>
                       )}
                     </label>
                     <div className="flex-shrink-0">
@@ -681,12 +750,16 @@ export const MultiTechnicianOSDialog = ({
           {isAddMode ? (
             <Button
               onClick={handleSubmit}
-              disabled={loading || (newSelectedPrestadores.length === 0 && !responsavelChanged)}
+              disabled={loading || (newSelectedPrestadores.length === 0 && !responsavelChanged && removedPrestadorIds.length === 0)}
             >
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {newSelectedPrestadores.length === 0 && responsavelChanged
-                ? 'Trocar Responsável'
-                : `Adicionar ${newSelectedPrestadores.length > 1 ? `${newSelectedPrestadores.length} técnicos` : 'técnico'}${responsavelChanged ? ' + trocar responsável' : ''}`}
+              {(() => {
+                const parts: string[] = [];
+                if (newSelectedPrestadores.length > 0) parts.push(`Adicionar ${newSelectedPrestadores.length} técnico${newSelectedPrestadores.length > 1 ? 's' : ''}`);
+                if (removedPrestadorIds.length > 0) parts.push(`Remover ${removedPrestadorIds.length}`);
+                if (responsavelChanged) parts.push('Trocar responsável');
+                return parts.length ? parts.join(' + ') : 'Salvar alterações';
+              })()}
             </Button>
           ) : (
             <Button onClick={handleSubmit} disabled={loading || selectedPrestadores.length === 0}>
