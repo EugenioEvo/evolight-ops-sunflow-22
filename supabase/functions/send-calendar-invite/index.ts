@@ -162,17 +162,32 @@ const handler = async (req: Request): Promise<Response> => {
       const method = (action === "cancel" || action === "reassign_removed") ? "CANCEL" : "REQUEST";
       const status = (action === "cancel" || action === "reassign_removed") ? "CANCELLED" : "CONFIRMED";
 
+      // VTIMEZONE block for America/Sao_Paulo (BRT, UTC-3, no DST since 2019)
+      const vtimezone = [
+        "BEGIN:VTIMEZONE",
+        "TZID:America/Sao_Paulo",
+        "X-LIC-LOCATION:America/Sao_Paulo",
+        "BEGIN:STANDARD",
+        "DTSTART:19700101T000000",
+        "TZOFFSETFROM:-0300",
+        "TZOFFSETTO:-0300",
+        "TZNAME:BRT",
+        "END:STANDARD",
+        "END:VTIMEZONE",
+      ];
+
       icsContent = [
         "BEGIN:VCALENDAR",
         "VERSION:2.0",
         "PRODID:-//SunFlow//Agendamento OS//PT",
         `METHOD:${method}`,
         "CALSCALE:GREGORIAN",
+        ...vtimezone,
         "BEGIN:VEVENT",
         `UID:${uid}`,
         `DTSTAMP:${formatICalDateUTC(now)}`,
-        `DTSTART:${formatICalDate(dtStart)}`,
-        `DTEND:${formatICalDate(dtEnd)}`,
+        `DTSTART;TZID=America/Sao_Paulo:${formatICalDate(dtStart)}`,
+        `DTEND;TZID=America/Sao_Paulo:${formatICalDate(dtEnd)}`,
         `SUMMARY:${os.numero_os} - ${clienteNome}`,
         `DESCRIPTION:Ordem de Serviço\\n\\nCliente: ${clienteNome}\\nTécnico: ${tecnicoNome}\\nEndereço: ${endereco}\\n\\nDescrição: ${os.ticket.titulo}`,
         `LOCATION:${endereco}`,
