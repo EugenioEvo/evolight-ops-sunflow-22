@@ -162,7 +162,7 @@ const Candidatar = () => {
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Área de atuação *</Label>
-                  <Select value={form.categoria} onValueChange={v => update('categoria', v)}>
+                  <Select value={form.categoria || undefined} onValueChange={v => update('categoria', v)}>
                     <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="tecnico">Técnico de Campo (O&amp;M)</SelectItem>
@@ -174,7 +174,7 @@ const Candidatar = () => {
                 </div>
                 <div className="space-y-2">
                   <Label>Tempo de experiência</Label>
-                  <Select value={form.experiencia} onValueChange={v => update('experiencia', v)}>
+                  <Select value={form.experiencia || undefined} onValueChange={v => update('experiencia', v)}>
                     <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                     <SelectContent>
                       {experienciaOptions.map(e => <SelectItem key={e} value={e}>{e}</SelectItem>)}
