@@ -399,11 +399,14 @@ QR Code: ${ordemServico.qr_code}
       .update({ pdf_url: fileName })
       .eq('id', ordemServico.id)
 
-    // Atualizar status do ticket
-    await supabaseClient
-      .from('tickets')
-      .update({ status: 'ordem_servico_gerada' })
-      .eq('id', ticketId)
+    // Atualizar status do ticket — só promove se ainda estiver em 'aprovado'.
+    // Não rebaixa um ticket já 'em_execucao' (caso multi-técnico).
+    if (ticket.status === 'aprovado') {
+      await supabaseClient
+        .from('tickets')
+        .update({ status: 'ordem_servico_gerada' })
+        .eq('id', ticketId)
+    }
 
     // Enviar email de notificação ao técnico — agora com botões Aceitar / Recusar
     try {
