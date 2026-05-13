@@ -174,7 +174,7 @@ const Candidatar = () => {
                 </div>
                 <div className="space-y-2">
                   <Label>Tempo de experiência</Label>
-                  <Select value={form.experiencia} onValueChange={v => update('experiencia', v)}>
+                  <Select value={form.experiencia || undefined} onValueChange={v => update('experiencia', v)}>
                     <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                     <SelectContent>
                       {experienciaOptions.map(e => <SelectItem key={e} value={e}>{e}</SelectItem>)}
