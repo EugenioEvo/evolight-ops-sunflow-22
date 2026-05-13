@@ -177,10 +177,13 @@ serve(async (req) => {
       }
     }
 
-    // Validar status — aceitar 'aprovado' ou 'ordem_servico_gerada' (multi-técnico)
-    if (ticket.status !== 'aprovado' && ticket.status !== 'ordem_servico_gerada') {
+    // Validar status — aceita 'aprovado', 'ordem_servico_gerada' e 'em_execucao'.
+    // 'em_execucao' é necessário para suportar adição de novos técnicos (modal "+Técnico")
+    // depois que algum colega já aceitou sua OS e promoveu o ticket para execução.
+    const allowedTicketStatus = ['aprovado', 'ordem_servico_gerada', 'em_execucao']
+    if (!allowedTicketStatus.includes(ticket.status)) {
       return new Response(
-        JSON.stringify({ error: 'Apenas tickets aprovados ou com OS gerada podem gerar novas OS' }),
+        JSON.stringify({ error: `Status do ticket (${ticket.status}) não permite gerar novas OS` }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -396,11 +399,14 @@ QR Code: ${ordemServico.qr_code}
       .update({ pdf_url: fileName })
       .eq('id', ordemServico.id)
 
-    // Atualizar status do ticket
-    await supabaseClient
-      .from('tickets')
-      .update({ status: 'ordem_servico_gerada' })
-      .eq('id', ticketId)
+    // Atualizar status do ticket — só promove se ainda estiver em 'aprovado'.
+    // Não rebaixa um ticket já 'em_execucao' (caso multi-técnico).
+    if (ticket.status === 'aprovado') {
+      await supabaseClient
+        .from('tickets')
+        .update({ status: 'ordem_servico_gerada' })
+        .eq('id', ticketId)
+    }
 
     // Enviar email de notificação ao técnico — agora com botões Aceitar / Recusar
     try {
