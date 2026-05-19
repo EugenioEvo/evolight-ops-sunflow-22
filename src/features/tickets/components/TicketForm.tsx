@@ -565,7 +565,7 @@ export const TicketForm = ({
               return (
                 <div className="flex items-center gap-2 p-3 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 text-sm">
                   <Clock className="h-4 w-4 shrink-0" />
-                  <span>Horário fora da janela útil (09:00–12:00 / 14:00–17:00). A OS será reprogramada automaticamente para o próximo slot válido.</span>
+                  <span>Horário fora da janela útil (08:00–18:00). A OS será reprogramada automaticamente para o próximo slot válido.</span>
                 </div>
               );
             })()}
