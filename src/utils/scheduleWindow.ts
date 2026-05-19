@@ -1,11 +1,10 @@
 /**
  * Janela útil de execução de OS:
- *  - Manhã: 09:00 — 12:00
- *  - Tarde: 14:00 — 17:00
+ *  - Jornada: 08:00 — 18:00 (contínua)
  *  - Segunda a sexta-feira (sem trabalho em sábados/domingos)
  *
  * Dada uma data/hora de início e uma duração em minutos, distribui o tempo
- * pelas janelas válidas, virando para o próximo dia útil quando necessário.
+ * pela janela válida, virando para o próximo dia útil quando necessário.
  */
 
 export interface ScheduleWindowResult {
@@ -17,14 +16,12 @@ export interface ScheduleWindowResult {
   crossedDay: boolean;
   /** True se a data inicial cair em sábado/domingo. */
   weekendWarning: boolean;
-  /** True se a hora inicial estiver fora das janelas (09-12 / 14-17). */
+  /** True se a hora inicial estiver fora da janela (08-18). */
   outOfWindowWarning: boolean;
 }
 
-const MORNING_START = 9 * 60;
-const MORNING_END = 12 * 60;
-const AFTERNOON_START = 14 * 60;
-const AFTERNOON_END = 17 * 60;
+const DAY_START = 8 * 60;
+const DAY_END = 18 * 60;
 
 const isWeekend = (d: Date) => d.getDay() === 0 || d.getDay() === 6;
 
@@ -59,9 +56,9 @@ const toISODate = (d: Date): string => {
 };
 
 /**
- * Calcula o término da OS distribuindo `durationMin` nas janelas úteis.
+ * Calcula o término da OS distribuindo `durationMin` na janela útil 08-18.
  * Se a hora de início estiver fora da janela, ela é ancorada no próximo
- * slot válido (subindo para 09:00, 14:00 ou pulando para o dia seguinte).
+ * slot válido (subindo para 08:00 ou pulando para o dia seguinte).
  */
 export const computeScheduleEnd = (
   startDateISO: string,
@@ -82,33 +79,24 @@ export const computeScheduleEnd = (
   const weekendWarning = isWeekend(startDateObj);
 
   const startMin = toMinutes(startTimeHHMM);
-  const outOfWindowWarning = !(
-    (startMin >= MORNING_START && startMin < MORNING_END) ||
-    (startMin >= AFTERNOON_START && startMin < AFTERNOON_END)
-  );
+  const outOfWindowWarning = !(startMin >= DAY_START && startMin < DAY_END);
 
-  // Cursor de tempo: data + minutos restantes a alocar.
   let currentDate = new Date(startDateObj);
   let cursorMin = startMin;
   let remaining = durationMin;
   let crossedDay = false;
 
-  // Se cair em FDS, salta para próxima segunda mantendo a hora.
   if (isWeekend(currentDate)) {
     currentDate = nextBusinessDay(currentDate);
     crossedDay = true;
   }
 
-  // Ancora cursor no próximo slot válido se estiver fora da janela.
   const anchorToValidSlot = () => {
-    if (cursorMin < MORNING_START) {
-      cursorMin = MORNING_START;
-    } else if (cursorMin >= MORNING_END && cursorMin < AFTERNOON_START) {
-      cursorMin = AFTERNOON_START;
-    } else if (cursorMin >= AFTERNOON_END) {
-      // Vira para próximo dia útil 09:00.
+    if (cursorMin < DAY_START) {
+      cursorMin = DAY_START;
+    } else if (cursorMin >= DAY_END) {
       currentDate = nextBusinessDay(currentDate);
-      cursorMin = MORNING_START;
+      cursorMin = DAY_START;
       crossedDay = true;
     }
   };
@@ -116,16 +104,13 @@ export const computeScheduleEnd = (
   anchorToValidSlot();
 
   while (remaining > 0) {
-    // Quanto cabe no slot atual?
-    const slotEnd = cursorMin < MORNING_END ? MORNING_END : AFTERNOON_END;
-    const available = slotEnd - cursorMin;
-
+    const available = DAY_END - cursorMin;
     if (remaining <= available) {
       cursorMin += remaining;
       remaining = 0;
     } else {
       remaining -= available;
-      cursorMin = slotEnd;
+      cursorMin = DAY_END;
       anchorToValidSlot();
     }
   }
@@ -159,8 +144,5 @@ export const formatScheduledWindow = (
 
 export const isHHMMInBusinessWindow = (hhmm: string): boolean => {
   const m = toMinutes(hhmm);
-  return (
-    (m >= MORNING_START && m < MORNING_END) ||
-    (m >= AFTERNOON_START && m < AFTERNOON_END)
-  );
+  return m >= DAY_START && m < DAY_END;
 };
