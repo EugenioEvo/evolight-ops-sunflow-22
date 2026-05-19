@@ -615,7 +615,7 @@ export const MultiTechnicianOSDialog = ({
                 </div>
                 {sched.outOfWindowWarning && (
                   <p className="text-xs text-amber-600 dark:text-amber-400">
-                    ⚠ Hora de início fora da janela útil (09:00–12:00 / 14:00–17:00). Reprogramado para o próximo slot válido.
+                    ⚠ Hora de início fora da janela útil (08:00–18:00). Reprogramado para o próximo slot válido.
                   </p>
                 )}
                 {sched.crossedDay && (
