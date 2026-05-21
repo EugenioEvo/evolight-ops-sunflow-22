@@ -144,7 +144,7 @@ serve(async (req) => {
     }
 
     const email = body.email.toLowerCase().trim()
-    const redirectTo = body.redirect_to || `${APP_BASE_URL}/reset-password`
+    const redirectTo = body.redirect_to || `${resolveBaseUrl(req)}/reset-password`
 
     // 1. Find or create auth user (sem usar inviteUserByEmail → evita SMTP padrão do Supabase)
     let authUserId: string | null = null
