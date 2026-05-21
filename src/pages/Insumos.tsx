@@ -34,7 +34,7 @@ export default function Insumos() {
     insumoForm, saidaForm,
     isInsumoDialogOpen, setIsInsumoDialogOpen,
     isSaidaDialogOpen, setIsSaidaDialogOpen,
-    editingInsumo, selectedInsumo,
+    editingInsumo, setEditingInsumo, selectedInsumo,
     onSubmitInsumo, onSubmitSaida,
     handleEditInsumo, handleDeleteInsumo, handleSaida,
     isTecnico,
@@ -98,7 +98,7 @@ export default function Insumos() {
         {!isTecnico && (
           <Dialog open={isInsumoDialogOpen} onOpenChange={setIsInsumoDialogOpen}>
             <DialogTrigger asChild>
-              <Button><Plus className="h-4 w-4 mr-2" />Novo Insumo</Button>
+              <Button onClick={() => { setEditingInsumo(null); insumoForm.reset({ nome: "", categoria: "", unidade: "un", quantidade: 0, estoque_minimo: 10, estoque_critico: 5, localizacao: "Estoque", fornecedor: "", observacoes: "", retornavel: false }); }}><Plus className="h-4 w-4 mr-2" />Novo Insumo</Button>
             </DialogTrigger>
             <DialogContent className="max-w-2xl">
               <DialogHeader><DialogTitle>{editingInsumo ? "Editar Insumo" : "Novo Insumo"}</DialogTitle></DialogHeader>
