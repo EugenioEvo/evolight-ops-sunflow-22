@@ -22,9 +22,9 @@ export const useSupplyActions = (reload: () => void) => {
   const insumoForm = useForm<InsumoForm>({
     resolver: zodResolver(insumoSchema),
     defaultValues: {
-      nome: "", categoria: "", unidade: "unidade",
-      estoque_minimo: 10, estoque_critico: 5,
-      localizacao: "", fornecedor: "", observacoes: "", retornavel: false,
+      nome: "", categoria: "", unidade: "un",
+      quantidade: 0, estoque_minimo: 10, estoque_critico: 5,
+      localizacao: "Estoque", fornecedor: "", observacoes: "", retornavel: false,
     },
   });
 
