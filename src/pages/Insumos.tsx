@@ -504,6 +504,52 @@ export default function Insumos() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Detalhes do Insumo */}
+      <Dialog open={!!detailInsumo} onOpenChange={(o) => !o && setDetailInsumo(null)}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>{detailInsumo?.nome}</DialogTitle>
+          </DialogHeader>
+          {detailInsumo && (
+            <div className="space-y-4">
+              <div className="flex gap-2 flex-wrap text-sm">
+                <Badge variant="outline">{detailInsumo.categoria}</Badge>
+                {detailInsumo.retornavel && <Badge variant="secondary"><RotateCcw className="h-3 w-3 mr-1" />Retornável</Badge>}
+                <Badge>{detailInsumo.quantidade} {detailInsumo.unidade}</Badge>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
+                {detailInsumo.preco != null && <div>Preço médio: R$ {Number(detailInsumo.preco).toFixed(2)}</div>}
+                {detailInsumo.localizacao && <div>Local: {detailInsumo.localizacao}</div>}
+                {detailInsumo.fornecedor && <div>Fornecedor: {detailInsumo.fornecedor}</div>}
+                <div>Estoque mínimo: {detailInsumo.estoque_minimo}</div>
+                <div>Estoque crítico: {detailInsumo.estoque_critico}</div>
+              </div>
+              {detailInsumo.observacoes && (
+                <div className="text-sm"><span className="font-medium">Observações: </span>{detailInsumo.observacoes}</div>
+              )}
+              <div>
+                <h4 className="text-sm font-medium mb-2">Fotos e vídeos ({(detailInsumo.midias || []).length})</h4>
+                {(detailInsumo.midias || []).length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Nenhuma mídia anexada.</p>
+                ) : (
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {(detailInsumo.midias || []).map((m, i) => (
+                      <a key={m.path} href={m.url} target="_blank" rel="noreferrer" className="block aspect-square rounded-md overflow-hidden border bg-muted">
+                        {isVideo(m) ? (
+                          <video src={m.url} className="w-full h-full object-cover" muted playsInline preload="metadata" controls />
+                        ) : (
+                          <img src={m.url} alt={m.name || `mídia ${i + 1}`} className="w-full h-full object-cover" />
+                        )}
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
