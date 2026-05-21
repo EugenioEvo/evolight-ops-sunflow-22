@@ -1,6 +1,6 @@
 import type { AppSupabaseClient } from '@/shared/services/baseService';
 import { getClient } from '@/shared/services/baseService';
-import type { InsumoForm } from "../types";
+import type { InsumoForm, CompraForm, DevolucaoEvidencia, MinhaDevolucao } from "../types";
 
 export const createSupplyService = (client?: AppSupabaseClient) => {
   const db = getClient(client);
@@ -51,9 +51,46 @@ export const createSupplyService = (client?: AppSupabaseClient) => {
       if (error) throw error;
     },
 
-    async createDevolucao(data: { saida_id: string; quantidade: number; registrada_por: string; observacoes?: string }) {
-      const { error } = await (db as any).from('insumo_devolucoes').insert([data]);
+    async createDevolucao(data: {
+      saida_id: string;
+      quantidade: number;
+      registrada_por: string;
+      observacoes?: string;
+      evidencias?: DevolucaoEvidencia[];
+    }) {
+      const { error } = await (db as any).from('insumo_devolucoes').insert([{
+        saida_id: data.saida_id,
+        quantidade: data.quantidade,
+        registrada_por: data.registrada_por,
+        observacoes: data.observacoes ?? null,
+        evidencias: data.evidencias ?? [],
+      }]);
       if (error) throw error;
+    },
+
+    /** Upload de fotos/vídeos para evidência da devolução. Retorna array com URLs assinadas (1 ano). */
+    async uploadDevolucaoEvidencias(saidaId: string, files: File[]): Promise<DevolucaoEvidencia[]> {
+      const out: DevolucaoEvidencia[] = [];
+      for (const file of files) {
+        const ext = file.name.split('.').pop() || 'bin';
+        const name = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+        const path = `${saidaId}/${name}`;
+        const { error: upErr } = await (db as any).storage
+          .from('devolucao-evidencias')
+          .upload(path, file, { upsert: false, contentType: file.type });
+        if (upErr) throw upErr;
+        const { data: signed, error: sErr } = await (db as any).storage
+          .from('devolucao-evidencias')
+          .createSignedUrl(path, 60 * 60 * 24 * 365);
+        if (sErr) throw sErr;
+        out.push({
+          path,
+          url: signed?.signedUrl || '',
+          type: file.type.startsWith('video/') ? 'video' : 'image',
+          name: file.name,
+        });
+      }
+      return out;
     },
 
     async aprovarSaida(saidaId: string, aprovadoPor: string) {
@@ -113,6 +150,24 @@ export const createSupplyService = (client?: AppSupabaseClient) => {
       const { data, error } = await (db as any).rpc('get_tecnico_os_ativas', { p_tecnico_id: tecnicoId });
       if (error) throw error;
       return data || [];
+    },
+
+    async createCompra(data: CompraForm & { registrado_por: string }) {
+      const { error } = await (db as any).from('insumo_compras').insert([{
+        insumo_id: data.insumo_id,
+        quantidade: data.quantidade,
+        valor_unitario: data.valor_unitario,
+        fornecedor: data.fornecedor || null,
+        observacoes: data.observacoes || null,
+        registrado_por: data.registrado_por,
+      }]);
+      if (error) throw error;
+    },
+
+    async getMinhasDevolucoes(): Promise<MinhaDevolucao[]> {
+      const { data, error } = await (db as any).rpc('get_minhas_devolucoes');
+      if (error) throw error;
+      return (data as MinhaDevolucao[]) || [];
     },
   };
 };

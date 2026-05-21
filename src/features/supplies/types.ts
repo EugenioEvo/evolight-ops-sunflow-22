@@ -46,8 +46,17 @@ export const saidaSchema = z.object({
   observacoes: z.string().optional(),
 });
 
+export const compraSchema = z.object({
+  insumo_id: z.string().min(1),
+  quantidade: z.number().int().min(1, "Quantidade deve ser maior que zero"),
+  valor_unitario: z.number().min(0, "Valor inválido"),
+  fornecedor: z.string().optional().nullable(),
+  observacoes: z.string().optional().nullable(),
+});
+
 export type InsumoForm = z.infer<typeof insumoSchema>;
 export type SaidaForm = z.infer<typeof saidaSchema>;
+export type CompraForm = z.infer<typeof compraSchema>;
 
 export interface Insumo extends InsumoForm {
   id: string;
@@ -55,6 +64,13 @@ export interface Insumo extends InsumoForm {
   retornavel: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export interface DevolucaoEvidencia {
+  url: string;
+  path: string;
+  type: 'image' | 'video';
+  name: string;
 }
 
 export interface InsumoSaida {
@@ -90,8 +106,23 @@ export interface InsumoDevolucao {
   aprovado_at: string | null;
   observacoes: string | null;
   rejeitado_motivo: string | null;
+  evidencias?: DevolucaoEvidencia[];
   created_at: string;
   updated_at: string;
+}
+
+export interface MinhaDevolucao {
+  saida_id: string;
+  ordem_servico_id: string;
+  numero_os: string;
+  insumo_nome: string | null;
+  kit_nome: string | null;
+  quantidade: number;
+  quantidade_devolvida: number;
+  retornavel: boolean;
+  saida_status: string;
+  saida_created_at: string;
+  devolucoes: InsumoDevolucao[];
 }
 
 export interface Kit {
