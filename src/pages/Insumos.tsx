@@ -1,20 +1,25 @@
 import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useSearchParams } from "react-router-dom";
-import { Plus, Package, Wrench, Trash2, Edit, ArrowDownIcon, RotateCcw } from "lucide-react";
+import { Plus, Package, Wrench, Trash2, Edit, ArrowDownIcon, RotateCcw, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useSupplyData, useSupplyActions, getEstoqueStatus, UNIDADES_OPTIONS, LOCALIZACAO_OPTIONS } from "@/features/supplies";
+import { useSupplyData, useSupplyActions, getEstoqueStatus, UNIDADES_OPTIONS, LOCALIZACAO_OPTIONS, supplyService, compraSchema, type CompraForm, type Insumo } from "@/features/supplies";
+import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { useErrorHandler } from "@/hooks/useErrorHandler";
 
 const getCategoriaIcon = (categoria: string) =>
   ["inversores", "equipamentos_medicao", "ferramentas"].includes(categoria)
