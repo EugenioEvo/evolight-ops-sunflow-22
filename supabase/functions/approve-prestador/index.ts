@@ -246,11 +246,43 @@ serve(async (req) => {
       user_id: authUserId,
     }).eq('id', prestador.id)
 
+    // 6. Generate recovery link e enviar via Resend
+    const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
+      type: 'recovery',
+      email,
+      options: { redirectTo },
+    })
+
+    if (linkErr || !linkData?.properties?.action_link) {
+      return new Response(JSON.stringify({
+        success: true,
+        warning: `Prestador aprovado, mas falha ao gerar link: ${linkErr?.message || 'sem link'}`,
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 })
+    }
+
+    const actionLink = linkData.properties.action_link
+    const emailResult = await sendApprovalEmail({
+      to: email,
+      nome: prestador.nome,
+      role: body.role,
+      actionLink,
+      isNew: isNewUser,
+    })
+
+    if (emailResult.error) {
+      return new Response(JSON.stringify({
+        success: true,
+        warning: 'Prestador aprovado, mas o e-mail falhou.',
+        action_link: actionLink,
+        email_error: emailResult.error,
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 })
+    }
+
     return new Response(JSON.stringify({
       success: true,
-      message: existing
-        ? 'Conta já existente vinculada e role atribuída.'
-        : 'Convite enviado por e-mail. O prestador definirá a senha no primeiro acesso.'
+      message: isNewUser
+        ? 'Convite enviado por e-mail. O prestador definirá a senha no primeiro acesso.'
+        : 'Conta já existente vinculada e role atribuída. E-mail de acesso enviado.',
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
