@@ -349,6 +349,58 @@ export default function Insumos() {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Registrar Compra */}
+      <Dialog open={!!compraInsumo} onOpenChange={(o) => !o && setCompraInsumo(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Registrar Compra {compraInsumo && `— ${compraInsumo.nome}`}</DialogTitle>
+          </DialogHeader>
+          {compraInsumo && (
+            <Form {...compraForm}>
+              <form onSubmit={compraForm.handleSubmit(onSubmitCompra)} className="space-y-3">
+                <div className="rounded-md border p-3 text-xs text-muted-foreground bg-muted/30">
+                  Estoque atual: <strong>{compraInsumo.quantidade}</strong> {compraInsumo.unidade}
+                  {compraInsumo.preco != null && <> • Preço médio atual: <strong>R$ {Number(compraInsumo.preco).toFixed(2)}</strong></>}
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <FormField control={compraForm.control} name="quantidade" render={({ field }) => (
+                    <FormItem><FormLabel>Quantidade</FormLabel>
+                      <FormControl><Input type="number" min={1} {...field} onChange={(e) => field.onChange(parseInt(e.target.value) || 0)} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={compraForm.control} name="valor_unitario" render={({ field }) => (
+                    <FormItem><FormLabel>Valor unitário (R$)</FormLabel>
+                      <FormControl><Input type="number" step="0.01" min={0} {...field} onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                </div>
+                <FormField control={compraForm.control} name="fornecedor" render={({ field }) => (
+                  <FormItem><FormLabel>Fornecedor</FormLabel>
+                    <FormControl><Input {...field} value={field.value || ""} placeholder="Opcional — atualiza o fornecedor do insumo se preenchido" /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={compraForm.control} name="observacoes" render={({ field }) => (
+                  <FormItem><FormLabel>Observações</FormLabel>
+                    <FormControl><Textarea {...field} value={field.value || ""} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <div className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
+                  O preço médio será recalculado por <strong>média ponderada</strong> com o estoque atual.
+                </div>
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={() => setCompraInsumo(null)}>Cancelar</Button>
+                  <Button type="submit">Registrar Compra</Button>
+                </DialogFooter>
+              </form>
+            </Form>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
