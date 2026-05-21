@@ -124,7 +124,7 @@ export const useSupplyActions = (reload: () => void) => {
       insumo_id: insumo.id,
       quantidade: 1,
       tecnico_id: "",
-      ordem_servico_id: "",
+      ordens_servico_ids: [],
       observacoes: "",
     });
     setIsSaidaDialogOpen(true);
