@@ -24,7 +24,7 @@ export const useSupplyActions = (reload: () => void) => {
     defaultValues: {
       nome: "", categoria: "", unidade: "un",
       quantidade: 0, estoque_minimo: 10, estoque_critico: 5,
-      localizacao: "Estoque", fornecedor: "", observacoes: "", retornavel: false,
+      localizacao: "Estoque", fornecedor: "", observacoes: "", retornavel: false, midias: [],
     },
   });
 
