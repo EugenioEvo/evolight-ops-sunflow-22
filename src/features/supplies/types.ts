@@ -122,8 +122,20 @@ export interface InsumoDevolucao {
   updated_at: string;
 }
 
+export interface InsumoEntradaPendente {
+  id: string;
+  saida_id: string;
+  quantidade: number;
+  status: 'pendente_aprovacao' | 'aprovada' | 'rejeitada';
+  observacoes: string | null;
+  evidencias?: DevolucaoEvidencia[];
+  rejeitado_motivo: string | null;
+  created_at: string;
+}
+
 export interface MinhaDevolucao {
   saida_id: string;
+  lote_id: string;
   ordem_servico_id: string;
   numero_os: string;
   insumo_nome: string | null;
@@ -134,6 +146,7 @@ export interface MinhaDevolucao {
   saida_status: string;
   saida_created_at: string;
   devolucoes: InsumoDevolucao[];
+  entradas: InsumoEntradaPendente[];
 }
 
 export interface Kit {
