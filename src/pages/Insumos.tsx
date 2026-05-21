@@ -15,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useSupplyData, useSupplyActions, getEstoqueStatus, UNIDADES_OPTIONS, LOCALIZACAO_OPTIONS, supplyService, compraSchema, type CompraForm, type Insumo } from "@/features/supplies";
+import { useSupplyData, useSupplyActions, getEstoqueStatus, UNIDADES_OPTIONS, LOCALIZACAO_OPTIONS, supplyService, compraSchema, type CompraForm, type Insumo, type InsumoMidia } from "@/features/supplies";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
