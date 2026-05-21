@@ -82,7 +82,7 @@ export default function Insumos() {
     if (!osIdParam) return;
     saidaForm.reset({
       tipo: "insumo", insumo_id: undefined, kit_id: undefined,
-      quantidade: 1, tecnico_id: meuTecnicoId || "", ordem_servico_id: osIdParam, observacoes: "",
+      quantidade: 1, tecnico_id: meuTecnicoId || "", ordens_servico_ids: [osIdParam], observacoes: "",
     });
     setIsSaidaDialogOpen(true);
   }, [osIdParam, meuTecnicoId]);
