@@ -34,37 +34,44 @@ const handler = async (req: Request): Promise<Response> => {
     if (!authHeader?.startsWith('Bearer ')) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
     }
-    const supabaseAuth = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
-      global: { headers: { Authorization: authHeader } }
-    });
-    const { data: claimsData, error: claimsError } = await supabaseAuth.auth.getClaims(authHeader.replace('Bearer ', ''));
-    if (claimsError || !claimsData?.claims) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
-    }
-    const userId = claimsData.claims.sub;
+    const bearer = authHeader.replace('Bearer ', '').trim();
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const { os_id, action }: CalendarInviteRequest = await req.json();
 
-    // Authorization: staff OR the assigned technician of this OS may trigger the invite.
-    const { data: rolesData } = await supabase
-      .from('user_roles').select('role').eq('user_id', userId);
-    const userRoles = (rolesData || []).map((r: { role: string }) => r.role);
-    const isStaff = userRoles.some((r: string) => ['admin', 'engenharia', 'supervisao'].includes(r));
+    // Server-to-server bypass: chamadas com a service role key (ex.: os-acceptance-action)
+    // são confiáveis e pulam a checagem de papel/atribuição.
+    const isSystemCall = bearer === supabaseServiceKey;
 
-    let isAssignedTechnician = false;
-    if (!isStaff && os_id) {
-      const { data: osTech } = await supabase
-        .from('ordens_servico')
-        .select('tecnico_id, tecnicos!inner(profiles!inner(user_id))')
-        .eq('id', os_id)
-        .maybeSingle();
-      const techUserId = (osTech as any)?.tecnicos?.profiles?.user_id;
-      isAssignedTechnician = techUserId === userId;
-    }
+    if (!isSystemCall) {
+      const supabaseAuth = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
+        global: { headers: { Authorization: authHeader } }
+      });
+      const { data: claimsData, error: claimsError } = await supabaseAuth.auth.getClaims(bearer);
+      if (claimsError || !claimsData?.claims) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
+      }
+      const userId = claimsData.claims.sub;
 
-    if (!isStaff && !isAssignedTechnician) {
-      return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: corsHeaders });
+      const { data: rolesData } = await supabase
+        .from('user_roles').select('role').eq('user_id', userId);
+      const userRoles = (rolesData || []).map((r: { role: string }) => r.role);
+      const isStaff = userRoles.some((r: string) => ['admin', 'engenharia', 'supervisao'].includes(r));
+
+      let isAssignedTechnician = false;
+      if (!isStaff && os_id) {
+        const { data: osTech } = await supabase
+          .from('ordens_servico')
+          .select('tecnico_id, tecnicos!inner(profiles!inner(user_id))')
+          .eq('id', os_id)
+          .maybeSingle();
+        const techUserId = (osTech as any)?.tecnicos?.profiles?.user_id;
+        isAssignedTechnician = techUserId === userId;
+      }
+
+      if (!isStaff && !isAssignedTechnician) {
+        return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: corsHeaders });
+      }
     }
     
     console.log(`[send-calendar-invite] Action: ${action}, OS ID: ${os_id}`);
