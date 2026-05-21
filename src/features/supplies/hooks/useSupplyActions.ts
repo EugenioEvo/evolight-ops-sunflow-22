@@ -24,7 +24,7 @@ export const useSupplyActions = (reload: () => void) => {
     defaultValues: {
       nome: "", categoria: "", unidade: "un",
       quantidade: 0, estoque_minimo: 10, estoque_critico: 5,
-      localizacao: "Estoque", fornecedor: "", observacoes: "", retornavel: false,
+      localizacao: "Estoque", fornecedor: "", observacoes: "", retornavel: false, midias: [],
     },
   });
 
@@ -103,6 +103,7 @@ export const useSupplyActions = (reload: () => void) => {
       estoque_minimo: insumo.estoque_minimo, estoque_critico: insumo.estoque_critico,
       localizacao: insumo.localizacao || "Estoque", fornecedor: insumo.fornecedor || "", observacoes: insumo.observacoes || "",
       retornavel: !!insumo.retornavel,
+      midias: insumo.midias || [],
     });
     setIsInsumoDialogOpen(true);
   };

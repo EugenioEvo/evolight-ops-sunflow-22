@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useSearchParams } from "react-router-dom";
-import { Plus, Package, Wrench, Trash2, Edit, ArrowDownIcon, RotateCcw, ShoppingCart } from "lucide-react";
+import { Plus, Package, Wrench, Trash2, Edit, ArrowDownIcon, RotateCcw, ShoppingCart, Eye, Camera, Image as ImageIcon, X, Film } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useSupplyData, useSupplyActions, getEstoqueStatus, UNIDADES_OPTIONS, LOCALIZACAO_OPTIONS, supplyService, compraSchema, type CompraForm, type Insumo } from "@/features/supplies";
+import { useSupplyData, useSupplyActions, getEstoqueStatus, UNIDADES_OPTIONS, LOCALIZACAO_OPTIONS, supplyService, compraSchema, type CompraForm, type Insumo, type InsumoMidia } from "@/features/supplies";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -58,6 +58,18 @@ export default function Insumos() {
       handleError(e, { fallbackMessage: "Erro ao registrar compra." });
     }
   };
+
+  // Visualização de detalhes (fotos/vídeos)
+  const [detailInsumo, setDetailInsumo] = useState<Insumo | null>(null);
+
+  // Upload de mídias do insumo (no modal de criação/edição)
+  const [uploadingMidias, setUploadingMidias] = useState(false);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
+
+  const isVideo = (m: { type?: string; name?: string; url?: string }) =>
+    m.type === "video" || /\.(mp4|webm|mov|m4v|avi|mkv|3gp|quicktime)$/i.test(m.name || m.url || "");
+
 
   const {
     insumoForm, saidaForm,
@@ -127,7 +139,7 @@ export default function Insumos() {
         {!isTecnico && (
           <Dialog open={isInsumoDialogOpen} onOpenChange={setIsInsumoDialogOpen}>
             <DialogTrigger asChild>
-              <Button onClick={() => { setEditingInsumo(null); insumoForm.reset({ nome: "", categoria: "", unidade: "un", quantidade: 0, estoque_minimo: 10, estoque_critico: 5, localizacao: "Estoque", fornecedor: "", observacoes: "", retornavel: false }); }}><Plus className="h-4 w-4 mr-2" />Novo Insumo</Button>
+              <Button onClick={() => { setEditingInsumo(null); insumoForm.reset({ nome: "", categoria: "", unidade: "un", quantidade: 0, estoque_minimo: 10, estoque_critico: 5, localizacao: "Estoque", fornecedor: "", observacoes: "", retornavel: false, midias: [] }); }}><Plus className="h-4 w-4 mr-2" />Novo Insumo</Button>
             </DialogTrigger>
             <DialogContent className="max-w-2xl">
               <DialogHeader><DialogTitle>{editingInsumo ? "Editar Insumo" : "Novo Insumo"}</DialogTitle></DialogHeader>
@@ -177,6 +189,65 @@ export default function Insumos() {
                       <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
                     </FormItem>
                   )} />
+                  <FormField control={insumoForm.control} name="midias" render={({ field }) => {
+                    const midias: InsumoMidia[] = field.value || [];
+                    const onPick = async (files: FileList | null) => {
+                      if (!files || files.length === 0) return;
+                      const list = Array.from(files);
+                      const tooBig = list.find(f => (f.type.startsWith("video/") ? f.size > 50 * 1024 * 1024 : f.size > 5 * 1024 * 1024));
+                      if (tooBig) { toast.error("Foto até 5MB e vídeo até 50MB."); return; }
+                      try {
+                        setUploadingMidias(true);
+                        const uploaded = await supplyService.uploadInsumoMidias(editingInsumo?.id || "novos", list);
+                        field.onChange([...midias, ...uploaded]);
+                        toast.success(`${uploaded.length} mídia(s) anexada(s).`);
+                      } catch (e) {
+                        handleError(e, { fallbackMessage: "Erro ao enviar mídia." });
+                      } finally {
+                        setUploadingMidias(false);
+                      }
+                    };
+                    const remove = async (m: InsumoMidia) => {
+                      try { await supplyService.removeInsumoMidia(m.path); } catch {/* ignore */}
+                      field.onChange(midias.filter(x => x.path !== m.path));
+                    };
+                    return (
+                      <FormItem>
+                        <FormLabel>Fotos e vídeos do item</FormLabel>
+                        <p className="text-xs text-muted-foreground -mt-1">A primeira mídia aparece no card do insumo. Foto até 5MB, vídeo até 50MB.</p>
+                        <div className="flex gap-2">
+                          <Button type="button" variant="outline" size="sm" onClick={() => cameraInputRef.current?.click()} disabled={uploadingMidias}>
+                            <Camera className="h-4 w-4 mr-1" />Câmera
+                          </Button>
+                          <Button type="button" variant="outline" size="sm" onClick={() => galleryInputRef.current?.click()} disabled={uploadingMidias}>
+                            <ImageIcon className="h-4 w-4 mr-1" />Galeria
+                          </Button>
+                          {uploadingMidias && <span className="text-xs text-muted-foreground self-center">Enviando…</span>}
+                          <input ref={cameraInputRef} type="file" accept="image/*,video/*" capture="environment" className="hidden" onChange={(e) => { onPick(e.target.files); e.target.value = ""; }} />
+                          <input ref={galleryInputRef} type="file" accept="image/*,video/*" multiple className="hidden" onChange={(e) => { onPick(e.target.files); e.target.value = ""; }} />
+                        </div>
+                        {midias.length > 0 && (
+                          <div className="grid grid-cols-4 gap-2 mt-2">
+                            {midias.map((m, i) => (
+                              <div key={m.path} className="relative group aspect-square rounded-md overflow-hidden border bg-muted">
+                                {isVideo(m) ? (
+                                  <div className="w-full h-full flex items-center justify-center bg-muted">
+                                    <Film className="h-6 w-6 text-muted-foreground" />
+                                  </div>
+                                ) : (
+                                  <img src={m.url} alt={m.name || `mídia ${i + 1}`} className="w-full h-full object-cover" />
+                                )}
+                                {i === 0 && <Badge className="absolute top-1 left-1 text-[10px] px-1">capa</Badge>}
+                                <button type="button" onClick={() => remove(m)} className="absolute top-1 right-1 bg-background/90 rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition">
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </FormItem>
+                    );
+                  }} />
                   <FormField control={insumoForm.control} name="observacoes" render={({ field }) => (<FormItem><FormLabel>Observações</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
                   <div className="flex justify-end gap-2">
                     <Button type="button" variant="outline" onClick={() => { setIsInsumoDialogOpen(false); insumoForm.reset(); }}>Cancelar</Button>
@@ -296,14 +367,29 @@ export default function Insumos() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredInsumos.map((insumo) => {
               const estoqueStatus = getEstoqueStatus(insumo.quantidade, insumo.estoque_minimo, insumo.estoque_critico);
+              const cover = (insumo.midias || []).find(m => m.type === "image") || (insumo.midias || [])[0];
               return (
-                <Card key={insumo.id} className="hover:shadow-lg transition-shadow">
+                <Card key={insumo.id} className="hover:shadow-lg transition-shadow overflow-hidden">
+                  {cover && (
+                    <button type="button" onClick={() => setDetailInsumo(insumo)} className="block w-full aspect-video bg-muted overflow-hidden">
+                      {isVideo(cover) ? (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Film className="h-8 w-8 text-muted-foreground" />
+                        </div>
+                      ) : (
+                        <img src={cover.url} alt={insumo.nome} className="w-full h-full object-cover hover:scale-105 transition-transform" />
+                      )}
+                    </button>
+                  )}
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-2">{getCategoriaIcon(insumo.categoria)}<CardTitle className="text-lg">{insumo.nome}</CardTitle></div>
-                      {!isTecnico && (
-                        <div className="flex gap-1">
-                          <Button variant="ghost" size="sm" onClick={() => handleEditInsumo(insumo)}><Edit className="h-4 w-4" /></Button>
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="sm" onClick={() => setDetailInsumo(insumo)} title="Ver detalhes"><Eye className="h-4 w-4" /></Button>
+                        {!isTecnico && (
+                          <Button variant="ghost" size="sm" onClick={() => handleEditInsumo(insumo)} title="Editar"><Edit className="h-4 w-4" /></Button>
+                        )}
+                        {!isTecnico && (
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <Button variant="ghost" size="sm"><Trash2 className="h-4 w-4" /></Button>
@@ -321,8 +407,8 @@ export default function Insumos() {
                               </AlertDialogFooter>
                             </AlertDialogContent>
                           </AlertDialog>
-                        </div>
-                      )}
+                        )}
+                      </div>
                     </div>
                     <div className="flex gap-2 flex-wrap">
                       <Badge variant="outline">{insumo.categoria}</Badge>
@@ -415,6 +501,52 @@ export default function Insumos() {
                 </DialogFooter>
               </form>
             </Form>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Detalhes do Insumo */}
+      <Dialog open={!!detailInsumo} onOpenChange={(o) => !o && setDetailInsumo(null)}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>{detailInsumo?.nome}</DialogTitle>
+          </DialogHeader>
+          {detailInsumo && (
+            <div className="space-y-4">
+              <div className="flex gap-2 flex-wrap text-sm">
+                <Badge variant="outline">{detailInsumo.categoria}</Badge>
+                {detailInsumo.retornavel && <Badge variant="secondary"><RotateCcw className="h-3 w-3 mr-1" />Retornável</Badge>}
+                <Badge>{detailInsumo.quantidade} {detailInsumo.unidade}</Badge>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
+                {detailInsumo.preco != null && <div>Preço médio: R$ {Number(detailInsumo.preco).toFixed(2)}</div>}
+                {detailInsumo.localizacao && <div>Local: {detailInsumo.localizacao}</div>}
+                {detailInsumo.fornecedor && <div>Fornecedor: {detailInsumo.fornecedor}</div>}
+                <div>Estoque mínimo: {detailInsumo.estoque_minimo}</div>
+                <div>Estoque crítico: {detailInsumo.estoque_critico}</div>
+              </div>
+              {detailInsumo.observacoes && (
+                <div className="text-sm"><span className="font-medium">Observações: </span>{detailInsumo.observacoes}</div>
+              )}
+              <div>
+                <h4 className="text-sm font-medium mb-2">Fotos e vídeos ({(detailInsumo.midias || []).length})</h4>
+                {(detailInsumo.midias || []).length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Nenhuma mídia anexada.</p>
+                ) : (
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {(detailInsumo.midias || []).map((m, i) => (
+                      <a key={m.path} href={m.url} target="_blank" rel="noreferrer" className="block aspect-square rounded-md overflow-hidden border bg-muted">
+                        {isVideo(m) ? (
+                          <video src={m.url} className="w-full h-full object-cover" muted playsInline preload="metadata" controls />
+                        ) : (
+                          <img src={m.url} alt={m.name || `mídia ${i + 1}`} className="w-full h-full object-cover" />
+                        )}
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
           )}
         </DialogContent>
       </Dialog>
