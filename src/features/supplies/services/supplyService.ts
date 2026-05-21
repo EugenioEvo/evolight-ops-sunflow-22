@@ -1,6 +1,6 @@
 import type { AppSupabaseClient } from '@/shared/services/baseService';
 import { getClient } from '@/shared/services/baseService';
-import type { InsumoForm, CompraForm, DevolucaoEvidencia, MinhaDevolucao } from "../types";
+import type { InsumoForm, CompraForm, DevolucaoEvidencia, MinhaDevolucao, InsumoMidia } from "../types";
 
 export const createSupplyService = (client?: AppSupabaseClient) => {
   const db = getClient(client);
