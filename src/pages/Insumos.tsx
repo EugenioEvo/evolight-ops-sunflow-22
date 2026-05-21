@@ -389,6 +389,7 @@ export default function Insumos() {
                         {!isTecnico && (
                           <Button variant="ghost" size="sm" onClick={() => handleEditInsumo(insumo)} title="Editar"><Edit className="h-4 w-4" /></Button>
                         )}
+                        {!isTecnico && (
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <Button variant="ghost" size="sm"><Trash2 className="h-4 w-4" /></Button>
@@ -406,8 +407,8 @@ export default function Insumos() {
                               </AlertDialogFooter>
                             </AlertDialogContent>
                           </AlertDialog>
-                        </div>
-                      )}
+                        )}
+                      </div>
                     </div>
                     <div className="flex gap-2 flex-wrap">
                       <Badge variant="outline">{insumo.categoria}</Badge>
