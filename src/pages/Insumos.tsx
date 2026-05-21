@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useSearchParams } from "react-router-dom";
-import { Plus, Package, Wrench, Trash2, Edit, ArrowDownIcon, RotateCcw, ShoppingCart } from "lucide-react";
+import { Plus, Package, Wrench, Trash2, Edit, ArrowDownIcon, RotateCcw, ShoppingCart, Eye, Camera, Image as ImageIcon, X, Film } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
