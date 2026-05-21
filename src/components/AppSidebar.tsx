@@ -204,6 +204,16 @@ export function AppSidebar() {
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   );
+                  out.push(
+                    <SidebarMenuItem key="minhas-devolucoes">
+                      <SidebarMenuButton asChild>
+                        <NavLink to="/minhas-devolucoes" className={getNavClass("/minhas-devolucoes")}>
+                          <PackageCheck className="h-4 w-4" />
+                          {!collapsed && <span>Minhas Devoluções</span>}
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
                 }
                 return out;
               })}

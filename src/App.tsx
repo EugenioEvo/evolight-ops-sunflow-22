@@ -21,6 +21,7 @@ import Insumos from "./pages/Insumos";
 import Prestadores from "./pages/Prestadores";
 import Tecnicos from "./pages/Tecnicos";
 import MinhasOS from "./pages/MinhasOS";
+import MinhasDevolucoes from "./pages/MinhasDevolucoes";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 import { Navigate, useSearchParams } from "react-router-dom";
@@ -133,6 +134,11 @@ const App = () => (
                               </ProtectedRoute>
                             } />
                             <Route path="/minhas-os" element={<MinhasOS />} />
+                            <Route path="/minhas-devolucoes" element={
+                              <ProtectedRoute roles={['tecnico_campo', 'admin', 'engenharia', 'supervisao', 'backoffice']}>
+                                <MinhasDevolucoes />
+                              </ProtectedRoute>
+                            } />
                             <Route path="/equipamentos" element={
                               <ProtectedRoute roles={['admin', 'engenharia', 'supervisao']}>
                                 <Equipamentos />
