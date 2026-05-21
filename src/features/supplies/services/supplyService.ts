@@ -76,6 +76,7 @@ export const createSupplyService = (client?: AppSupabaseClient) => {
       tecnico_id: string;
       registrado_por: string;
       observacoes?: string;
+      lote_id?: string;
     }) {
       const { error } = await (db as any).from('insumo_saidas').insert([data]);
       if (error) throw error;
@@ -88,7 +89,25 @@ export const createSupplyService = (client?: AppSupabaseClient) => {
       observacoes?: string;
       evidencias?: DevolucaoEvidencia[];
     }) {
-      const { error } = await (db as any).from('insumo_devolucoes').insert([{
+      // RPC propaga a devolução para todas as saídas-irmãs do mesmo lote (multi-OS)
+      const { error } = await (db as any).rpc('register_devolucao_lote', {
+        p_saida_id: data.saida_id,
+        p_quantidade: data.quantidade,
+        p_observacoes: data.observacoes ?? null,
+        p_evidencias: data.evidencias ?? [],
+      });
+      if (error) throw error;
+    },
+
+    /** Registra entrada pendente (sobra de item NÃO retornável) */
+    async createEntradaPendente(data: {
+      saida_id: string;
+      quantidade: number;
+      registrada_por: string;
+      observacoes?: string;
+      evidencias?: DevolucaoEvidencia[];
+    }) {
+      const { error } = await (db as any).from('insumo_entradas_pendentes').insert([{
         saida_id: data.saida_id,
         quantidade: data.quantidade,
         registrada_por: data.registrada_por,
@@ -96,6 +115,32 @@ export const createSupplyService = (client?: AppSupabaseClient) => {
         evidencias: data.evidencias ?? [],
       }]);
       if (error) throw error;
+    },
+
+    async aprovarEntradaPendente(id: string, aprovadoPor: string) {
+      const { error } = await (db as any).from('insumo_entradas_pendentes')
+        .update({ status: 'aprovada', aprovado_por: aprovadoPor, aprovado_at: new Date().toISOString() })
+        .eq('id', id);
+      if (error) throw error;
+    },
+
+    async rejeitarEntradaPendente(id: string, aprovadoPor: string, motivo: string) {
+      const { error } = await (db as any).from('insumo_entradas_pendentes')
+        .update({ status: 'rejeitada', aprovado_por: aprovadoPor, aprovado_at: new Date().toISOString(), rejeitado_motivo: motivo })
+        .eq('id', id);
+      if (error) throw error;
+    },
+
+    async getBackofficeDevolucoes() {
+      const { data, error } = await (db as any).rpc('get_backoffice_devolucoes');
+      if (error) throw error;
+      return data || [];
+    },
+
+    async getBackofficeEntradasPendentes() {
+      const { data, error } = await (db as any).rpc('get_backoffice_entradas_pendentes');
+      if (error) throw error;
+      return data || [];
     },
 
     /** Upload de fotos/vídeos para evidência da devolução. Retorna array com URLs assinadas (1 ano). */

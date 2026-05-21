@@ -623,6 +623,51 @@ export type Database = {
           },
         ]
       }
+      insumo_entradas_pendentes: {
+        Row: {
+          aprovado_at: string | null
+          aprovado_por: string | null
+          created_at: string
+          evidencias: Json
+          id: string
+          observacoes: string | null
+          quantidade: number
+          registrada_por: string
+          rejeitado_motivo: string | null
+          saida_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          aprovado_at?: string | null
+          aprovado_por?: string | null
+          created_at?: string
+          evidencias?: Json
+          id?: string
+          observacoes?: string | null
+          quantidade: number
+          registrada_por: string
+          rejeitado_motivo?: string | null
+          saida_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          aprovado_at?: string | null
+          aprovado_por?: string | null
+          created_at?: string
+          evidencias?: Json
+          id?: string
+          observacoes?: string | null
+          quantidade?: number
+          registrada_por?: string
+          rejeitado_motivo?: string | null
+          saida_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       insumo_saidas: {
         Row: {
           aprovado_at: string | null
@@ -631,6 +676,7 @@ export type Database = {
           id: string
           insumo_id: string | null
           kit_id: string | null
+          lote_id: string
           observacoes: string | null
           ordem_servico_id: string
           quantidade: number
@@ -649,6 +695,7 @@ export type Database = {
           id?: string
           insumo_id?: string | null
           kit_id?: string | null
+          lote_id?: string
           observacoes?: string | null
           ordem_servico_id: string
           quantidade: number
@@ -667,6 +714,7 @@ export type Database = {
           id?: string
           insumo_id?: string | null
           kit_id?: string | null
+          lote_id?: string
           observacoes?: string | null
           ordem_servico_id?: string
           quantidade?: number
@@ -2247,13 +2295,51 @@ export type Database = {
       gerar_numero_os: { Args: never; Returns: string }
       gerar_numero_rdo: { Args: never; Returns: string }
       gerar_numero_ticket: { Args: never; Returns: string }
-      get_dashboard_stats: { Args: never; Returns: Json }
-      get_minhas_devolucoes: {
+      get_backoffice_devolucoes: {
         Args: never
         Returns: {
           devolucoes: Json
           insumo_nome: string
           kit_nome: string
+          lote_id: string
+          numero_os: string
+          ordem_servico_id: string
+          quantidade: number
+          quantidade_devolvida: number
+          retornavel: boolean
+          saida_created_at: string
+          saida_id: string
+          saida_status: string
+          tecnico_nome: string
+        }[]
+      }
+      get_backoffice_entradas_pendentes: {
+        Args: never
+        Returns: {
+          created_at: string
+          evidencias: Json
+          id: string
+          insumo_nome: string
+          kit_nome: string
+          numero_os: string
+          observacoes: string
+          ordem_servico_id: string
+          quantidade: number
+          rejeitado_motivo: string
+          saida_id: string
+          status: string
+          tecnico_nome: string
+        }[]
+      }
+      get_dashboard_stats: { Args: never; Returns: Json }
+      get_minhas_devolucoes: {
+        Args: never
+        Returns: {
+          devolucoes: Json
+          entradas: Json
+          insumo_nome: string
+          kit_nome: string
+          lote_id: string
           numero_os: string
           ordem_servico_id: string
           quantidade: number
@@ -2347,6 +2433,15 @@ export type Database = {
       mark_stale_clientes_sync_runs: { Args: never; Returns: undefined }
       mark_token_used: { Args: { p_token: string }; Returns: undefined }
       populate_rme_checklist: { Args: { p_rme_id: string }; Returns: undefined }
+      register_devolucao_lote: {
+        Args: {
+          p_evidencias: Json
+          p_observacoes: string
+          p_quantidade: number
+          p_saida_id: string
+        }
+        Returns: number
+      }
       user_is_prestador: {
         Args: { _prestador_id: string; _user_id: string }
         Returns: boolean
