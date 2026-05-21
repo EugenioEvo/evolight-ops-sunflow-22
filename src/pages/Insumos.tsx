@@ -27,13 +27,36 @@ const getCategoriaIcon = (categoria: string) =>
     : <Package className="h-4 w-4" />;
 
 export default function Insumos() {
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
+  const { handleError } = useErrorHandler();
   const [searchParams] = useSearchParams();
   const osIdParam = searchParams.get("os");
   const {
     insumos, kits, loading, searchTerm, setSearchTerm,
     activeTab, setActiveTab, filteredInsumos, categoriaCounts, reload,
   } = useSupplyData();
+
+  // Registrar Compra
+  const [compraInsumo, setCompraInsumo] = useState<Insumo | null>(null);
+  const compraForm = useForm<CompraForm>({
+    resolver: zodResolver(compraSchema),
+    defaultValues: { insumo_id: "", quantidade: 1, valor_unitario: 0, fornecedor: "", observacoes: "" },
+  });
+  const abrirCompra = (ins: Insumo) => {
+    setCompraInsumo(ins);
+    compraForm.reset({ insumo_id: ins.id, quantidade: 1, valor_unitario: Number(ins.preco || 0), fornecedor: ins.fornecedor || "", observacoes: "" });
+  };
+  const onSubmitCompra = async (data: CompraForm) => {
+    if (!user?.id) { toast.error("Sessão inválida."); return; }
+    try {
+      await supplyService.createCompra({ ...data, registrado_por: user.id });
+      toast.success("Compra registrada — estoque e preço médio atualizados.");
+      setCompraInsumo(null);
+      reload();
+    } catch (e) {
+      handleError(e, { fallbackMessage: "Erro ao registrar compra." });
+    }
+  };
 
   const {
     insumoForm, saidaForm,
