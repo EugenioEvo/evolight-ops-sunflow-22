@@ -22,10 +22,11 @@ export const useProviderData = () => {
 
   useEffect(() => { fetchPrestadores(); }, []);
 
-  // Banco de RH: apenas categorias operacionais externas (técnico e supervisor).
+  // Banco de RH: categorias operacionais externas (O&M + EPC).
   // Admin e engenharia são staff interno — gerenciados em /usuarios.
+  const OPERATIONAL_CATEGORIES = ['tecnico', 'supervisao', 'eletromecanico', 'sup_eletromecanico'];
   const operationalPrestadores = prestadores.filter(p =>
-    p.categoria === 'tecnico' || p.categoria === 'supervisao'
+    OPERATIONAL_CATEGORIES.includes(p.categoria)
   );
 
   const pendingPrestadores = operationalPrestadores.filter(p =>
