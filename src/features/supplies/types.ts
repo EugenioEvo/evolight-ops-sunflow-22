@@ -22,6 +22,13 @@ export const UNIDADES_OPTIONS = [
 
 export const LOCALIZACAO_OPTIONS = ["Estoque"] as const;
 
+export const insumoMidiaSchema = z.object({
+  url: z.string(),
+  path: z.string(),
+  type: z.enum(["image", "video"]),
+  name: z.string().optional(),
+});
+
 export const insumoSchema = z.object({
   nome: z.string().min(1, "Nome é obrigatório"),
   categoria: z.string().min(1, "Categoria é obrigatória"),
@@ -34,7 +41,9 @@ export const insumoSchema = z.object({
   fornecedor: z.string().optional().nullable(),
   observacoes: z.string().optional().nullable(),
   retornavel: z.boolean().default(false),
+  midias: z.array(insumoMidiaSchema).optional().default([]),
 });
+
 
 export const saidaSchema = z.object({
   tipo: z.enum(["insumo", "kit"]),
