@@ -71,7 +71,8 @@ export const useSupplyActions = (reload: () => void) => {
         retornavel = true; // KITs são retornáveis por natureza
       }
 
-      // Cria uma saída por OS selecionada
+      // Cria uma saída por OS selecionada, todas com o MESMO lote_id (devolução cascateia entre OSs)
+      const lote_id = crypto.randomUUID();
       for (const osId of data.ordens_servico_ids) {
         await supplyService.createSaida({
           insumo_id: data.tipo === "insumo" ? data.insumo_id : undefined,
@@ -82,6 +83,7 @@ export const useSupplyActions = (reload: () => void) => {
           ordem_servico_id: osId,
           registrado_por: user.id,
           observacoes: data.observacoes,
+          lote_id,
         });
       }
       toast.success(
