@@ -7,7 +7,7 @@ const corsHeaders = {
 }
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY') ?? ''
-const APP_BASE_URL = 'https://evolight-ops-sunflow-22.lovable.app'
+const APP_BASE_URL = 'https://sunflow.evolight.com.br'
 
 interface CreateBody {
   nome: string
