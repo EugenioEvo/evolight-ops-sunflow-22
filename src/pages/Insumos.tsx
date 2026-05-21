@@ -367,14 +367,28 @@ export default function Insumos() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredInsumos.map((insumo) => {
               const estoqueStatus = getEstoqueStatus(insumo.quantidade, insumo.estoque_minimo, insumo.estoque_critico);
+              const cover = (insumo.midias || []).find(m => m.type === "image") || (insumo.midias || [])[0];
               return (
-                <Card key={insumo.id} className="hover:shadow-lg transition-shadow">
+                <Card key={insumo.id} className="hover:shadow-lg transition-shadow overflow-hidden">
+                  {cover && (
+                    <button type="button" onClick={() => setDetailInsumo(insumo)} className="block w-full aspect-video bg-muted overflow-hidden">
+                      {isVideo(cover) ? (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Film className="h-8 w-8 text-muted-foreground" />
+                        </div>
+                      ) : (
+                        <img src={cover.url} alt={insumo.nome} className="w-full h-full object-cover hover:scale-105 transition-transform" />
+                      )}
+                    </button>
+                  )}
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-2">{getCategoriaIcon(insumo.categoria)}<CardTitle className="text-lg">{insumo.nome}</CardTitle></div>
-                      {!isTecnico && (
-                        <div className="flex gap-1">
-                          <Button variant="ghost" size="sm" onClick={() => handleEditInsumo(insumo)}><Edit className="h-4 w-4" /></Button>
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="sm" onClick={() => setDetailInsumo(insumo)} title="Ver detalhes"><Eye className="h-4 w-4" /></Button>
+                        {!isTecnico && (
+                          <Button variant="ghost" size="sm" onClick={() => handleEditInsumo(insumo)} title="Editar"><Edit className="h-4 w-4" /></Button>
+                        )}
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <Button variant="ghost" size="sm"><Trash2 className="h-4 w-4" /></Button>
