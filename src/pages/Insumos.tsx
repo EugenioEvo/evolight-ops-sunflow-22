@@ -10,8 +10,9 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useSupplyData, useSupplyActions, getEstoqueStatus } from "@/features/supplies";
+import { useSupplyData, useSupplyActions, getEstoqueStatus, UNIDADES_OPTIONS, LOCALIZACAO_OPTIONS } from "@/features/supplies";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -81,7 +82,7 @@ export default function Insumos() {
     if (!osIdParam) return;
     saidaForm.reset({
       tipo: "insumo", insumo_id: undefined, kit_id: undefined,
-      quantidade: 1, tecnico_id: meuTecnicoId || "", ordem_servico_id: osIdParam, observacoes: "",
+      quantidade: 1, tecnico_id: meuTecnicoId || "", ordens_servico_ids: [osIdParam], observacoes: "",
     });
     setIsSaidaDialogOpen(true);
   }, [osIdParam, meuTecnicoId]);
@@ -108,11 +109,32 @@ export default function Insumos() {
                     <FormField control={insumoForm.control} name="categoria" render={({ field }) => (<FormItem><FormLabel>Categoria</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="paineis_solares">Painéis Solares</SelectItem><SelectItem value="inversores">Inversores</SelectItem><SelectItem value="estruturas_montagem">Estruturas</SelectItem><SelectItem value="cabos_conectores">Cabos</SelectItem><SelectItem value="equipamentos_medicao">Medição</SelectItem><SelectItem value="ferramentas">Ferramentas</SelectItem><SelectItem value="componentes_eletricos">Componentes</SelectItem><SelectItem value="manutencao">Manutenção</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
                   </div>
                   <div className="grid grid-cols-3 gap-4">
-                    <FormField control={insumoForm.control} name="unidade" render={({ field }) => (<FormItem><FormLabel>Unidade</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                    <FormField control={insumoForm.control} name="unidade" render={({ field }) => (
+                      <FormItem><FormLabel>Unidade</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger></FormControl>
+                          <SelectContent>
+                            {UNIDADES_OPTIONS.map((u) => <SelectItem key={u.value} value={u.value}>{u.label}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
                     <FormField control={insumoForm.control} name="preco" render={({ field }) => (<FormItem><FormLabel>Preço</FormLabel><FormControl><Input type="number" step="0.01" {...field} onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)} /></FormControl><FormMessage /></FormItem>)} />
-                    <FormField control={insumoForm.control} name="localizacao" render={({ field }) => (<FormItem><FormLabel>Localização</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                    <FormField control={insumoForm.control} name="localizacao" render={({ field }) => (
+                      <FormItem><FormLabel>Localização</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value || "Estoque"}>
+                          <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                          <SelectContent>
+                            {LOCALIZACAO_OPTIONS.map((l) => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-3 gap-4">
+                    <FormField control={insumoForm.control} name="quantidade" render={({ field }) => (<FormItem><FormLabel>Estoque Atual</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? 0} onChange={(e) => field.onChange(parseInt(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>)} />
                     <FormField control={insumoForm.control} name="estoque_minimo" render={({ field }) => (<FormItem><FormLabel>Estoque Mínimo</FormLabel><FormControl><Input type="number" {...field} onChange={(e) => field.onChange(parseInt(e.target.value))} /></FormControl><FormMessage /></FormItem>)} />
                     <FormField control={insumoForm.control} name="estoque_critico" render={({ field }) => (<FormItem><FormLabel>Estoque Crítico</FormLabel><FormControl><Input type="number" {...field} onChange={(e) => field.onChange(parseInt(e.target.value))} /></FormControl><FormMessage /></FormItem>)} />
                   </div>
@@ -189,23 +211,27 @@ export default function Insumos() {
                 </FormItem>
               )} />
 
-              <FormField control={saidaForm.control} name="ordem_servico_id" render={({ field }) => (
-                <FormItem><FormLabel>Ordem de Serviço</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value} disabled={!watchedTecnicoId}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder={watchedTecnicoId ? "Selecione a OS" : "Escolha o técnico primeiro"} />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {osAtivas.length === 0 && <div className="p-2 text-sm text-muted-foreground">Nenhuma OS aceita/em execução</div>}
-                      {osAtivas.map(os => (
-                        <SelectItem key={os.ordem_servico_id} value={os.ordem_servico_id}>
-                          {os.numero_os} — {os.ticket_titulo}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+              <FormField control={saidaForm.control} name="ordens_servico_ids" render={({ field }) => (
+                <FormItem><FormLabel>Ordens de Serviço {field.value?.length ? `(${field.value.length} selecionada${field.value.length > 1 ? "s" : ""})` : ""}</FormLabel>
+                  <div className="rounded-md border max-h-48 overflow-y-auto p-2 space-y-1">
+                    {!watchedTecnicoId && <div className="p-2 text-sm text-muted-foreground">Escolha o técnico primeiro</div>}
+                    {watchedTecnicoId && osAtivas.length === 0 && <div className="p-2 text-sm text-muted-foreground">Nenhuma OS aceita/em execução</div>}
+                    {osAtivas.map(os => {
+                      const checked = (field.value || []).includes(os.ordem_servico_id);
+                      return (
+                        <label key={os.ordem_servico_id} className="flex items-center gap-2 p-2 hover:bg-muted/50 rounded cursor-pointer text-sm">
+                          <Checkbox
+                            checked={checked}
+                            onCheckedChange={(v) => {
+                              const curr = field.value || [];
+                              field.onChange(v ? [...curr, os.ordem_servico_id] : curr.filter((id) => id !== os.ordem_servico_id));
+                            }}
+                          />
+                          <span className="flex-1">{os.numero_os} — {os.ticket_titulo}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
                   <FormMessage />
                 </FormItem>
               )} />

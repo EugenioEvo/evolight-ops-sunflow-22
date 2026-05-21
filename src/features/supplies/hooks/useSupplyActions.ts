@@ -22,15 +22,15 @@ export const useSupplyActions = (reload: () => void) => {
   const insumoForm = useForm<InsumoForm>({
     resolver: zodResolver(insumoSchema),
     defaultValues: {
-      nome: "", categoria: "", unidade: "unidade",
-      estoque_minimo: 10, estoque_critico: 5,
-      localizacao: "", fornecedor: "", observacoes: "", retornavel: false,
+      nome: "", categoria: "", unidade: "un",
+      quantidade: 0, estoque_minimo: 10, estoque_critico: 5,
+      localizacao: "Estoque", fornecedor: "", observacoes: "", retornavel: false,
     },
   });
 
   const saidaForm = useForm<SaidaForm>({
     resolver: zodResolver(saidaSchema),
-    defaultValues: { tipo: "insumo", quantidade: 1, tecnico_id: "", ordem_servico_id: "", observacoes: "" },
+    defaultValues: { tipo: "insumo", quantidade: 1, tecnico_id: "", ordens_servico_ids: [], observacoes: "" },
   });
 
   const onSubmitInsumo = async (data: InsumoForm) => {
@@ -71,17 +71,24 @@ export const useSupplyActions = (reload: () => void) => {
         retornavel = true; // KITs são retornáveis por natureza
       }
 
-      await supplyService.createSaida({
-        insumo_id: data.tipo === "insumo" ? data.insumo_id : undefined,
-        kit_id: data.tipo === "kit" ? data.kit_id : undefined,
-        quantidade: data.quantidade,
-        retornavel,
-        tecnico_id: data.tecnico_id,
-        ordem_servico_id: data.ordem_servico_id,
-        registrado_por: user.id,
-        observacoes: data.observacoes,
-      });
-      toast.success("Saída registrada! Aguardando validação do BackOffice.");
+      // Cria uma saída por OS selecionada
+      for (const osId of data.ordens_servico_ids) {
+        await supplyService.createSaida({
+          insumo_id: data.tipo === "insumo" ? data.insumo_id : undefined,
+          kit_id: data.tipo === "kit" ? data.kit_id : undefined,
+          quantidade: data.quantidade,
+          retornavel,
+          tecnico_id: data.tecnico_id,
+          ordem_servico_id: osId,
+          registrado_por: user.id,
+          observacoes: data.observacoes,
+        });
+      }
+      toast.success(
+        data.ordens_servico_ids.length > 1
+          ? `Saída registrada em ${data.ordens_servico_ids.length} OS! Aguardando validação do BackOffice.`
+          : "Saída registrada! Aguardando validação do BackOffice."
+      );
       reload(); setIsSaidaDialogOpen(false); saidaForm.reset();
     } catch (error) {
       handleError(error, { fallbackMessage: "Erro ao registrar saída." });
@@ -92,8 +99,9 @@ export const useSupplyActions = (reload: () => void) => {
     setEditingInsumo(insumo);
     insumoForm.reset({
       nome: insumo.nome, categoria: insumo.categoria, unidade: insumo.unidade,
-      preco: insumo.preco, estoque_minimo: insumo.estoque_minimo, estoque_critico: insumo.estoque_critico,
-      localizacao: insumo.localizacao, fornecedor: insumo.fornecedor, observacoes: insumo.observacoes,
+      preco: insumo.preco, quantidade: insumo.quantidade,
+      estoque_minimo: insumo.estoque_minimo, estoque_critico: insumo.estoque_critico,
+      localizacao: insumo.localizacao || "Estoque", fornecedor: insumo.fornecedor || "", observacoes: insumo.observacoes || "",
       retornavel: !!insumo.retornavel,
     });
     setIsInsumoDialogOpen(true);
@@ -116,7 +124,7 @@ export const useSupplyActions = (reload: () => void) => {
       insumo_id: insumo.id,
       quantidade: 1,
       tecnico_id: "",
-      ordem_servico_id: "",
+      ordens_servico_ids: [],
       observacoes: "",
     });
     setIsSaidaDialogOpen(true);
