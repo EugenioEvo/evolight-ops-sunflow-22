@@ -148,26 +148,31 @@ serve(async (req) => {
     }
 
     const email = prestador.email.toLowerCase().trim()
-    const redirectTo = body.redirect_to || `${new URL(req.url).origin.replace('functions', 'app')}/reset-password`
+    const redirectTo = body.redirect_to || `${APP_BASE_URL}/reset-password`
 
-    // 1. Find or create auth user
+    // 1. Find or create auth user (sem usar inviteUserByEmail — envio via Resend depois)
     let authUserId: string | null = null
+    let isNewUser = false
     const { data: existingByList } = await admin.auth.admin.listUsers()
     const existing = existingByList.users.find(u => u.email?.toLowerCase() === email)
 
     if (existing) {
       authUserId = existing.id
     } else {
-      const { data: invited, error: inviteErr } = await admin.auth.admin.inviteUserByEmail(email, {
-        redirectTo,
-        data: { nome: prestador.nome, telefone: prestador.telefone }
+      const tempPassword = crypto.randomUUID() + crypto.randomUUID()
+      const { data: created, error: createErr } = await admin.auth.admin.createUser({
+        email,
+        password: tempPassword,
+        email_confirm: true,
+        user_metadata: { nome: prestador.nome, telefone: prestador.telefone },
       })
-      if (inviteErr || !invited.user) {
-        return new Response(JSON.stringify({ error: `Falha ao convidar: ${inviteErr?.message}` }), {
+      if (createErr || !created.user) {
+        return new Response(JSON.stringify({ error: `Falha ao criar usuário: ${createErr?.message}` }), {
           status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         })
       }
-      authUserId = invited.user.id
+      authUserId = created.user.id
+      isNewUser = true
     }
 
     // 2. Upsert profile
