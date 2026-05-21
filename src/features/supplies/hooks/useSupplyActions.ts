@@ -103,6 +103,7 @@ export const useSupplyActions = (reload: () => void) => {
       estoque_minimo: insumo.estoque_minimo, estoque_critico: insumo.estoque_critico,
       localizacao: insumo.localizacao || "Estoque", fornecedor: insumo.fornecedor || "", observacoes: insumo.observacoes || "",
       retornavel: !!insumo.retornavel,
+      midias: insumo.midias || [],
     });
     setIsInsumoDialogOpen(true);
   };
