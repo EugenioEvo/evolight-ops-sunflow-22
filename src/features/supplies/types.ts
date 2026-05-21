@@ -66,11 +66,13 @@ export const compraSchema = z.object({
 export type InsumoForm = z.infer<typeof insumoSchema>;
 export type SaidaForm = z.infer<typeof saidaSchema>;
 export type CompraForm = z.infer<typeof compraSchema>;
+export type InsumoMidia = z.infer<typeof insumoMidiaSchema>;
 
 export interface Insumo extends InsumoForm {
   id: string;
   quantidade: number;
   retornavel: boolean;
+  midias: InsumoMidia[];
   created_at: string;
   updated_at: string;
 }
