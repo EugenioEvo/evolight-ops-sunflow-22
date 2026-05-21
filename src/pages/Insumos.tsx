@@ -325,9 +325,16 @@ export default function Insumos() {
                       {insumo.localizacao && <div>Local: {insumo.localizacao}</div>}
                       {insumo.fornecedor && <div>Fornecedor: {insumo.fornecedor}</div>}
                     </div>
-                    <Button size="sm" variant="outline" className="w-full" onClick={() => handleSaida(insumo)} disabled={insumo.quantidade === 0}>
-                      <ArrowDownIcon className="h-4 w-4 mr-1" />Registrar Saída
-                    </Button>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button size="sm" variant="outline" onClick={() => handleSaida(insumo)} disabled={insumo.quantidade === 0}>
+                        <ArrowDownIcon className="h-4 w-4 mr-1" />Saída
+                      </Button>
+                      {!isTecnico && (
+                        <Button size="sm" variant="secondary" onClick={() => abrirCompra(insumo)}>
+                          <ShoppingCart className="h-4 w-4 mr-1" />Compra
+                        </Button>
+                      )}
+                    </div>
                   </CardContent>
                 </Card>
               );
