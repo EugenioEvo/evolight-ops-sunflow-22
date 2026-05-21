@@ -518,11 +518,19 @@ interface CreateDialogProps {
   onCreated: () => Promise<void>;
 }
 
+type StaffRole = 'admin' | 'engenharia' | 'supervisao' | 'backoffice';
+const STAFF_ROLE_OPTIONS: { value: StaffRole; label: string }[] = [
+  { value: 'admin', label: 'Administrador' },
+  { value: 'engenharia', label: 'Engenharia' },
+  { value: 'supervisao', label: 'Supervisor' },
+  { value: 'backoffice', label: 'BackOffice' },
+];
+
 const CreateStaffDialog = ({ open, onOpenChange, onCreated }: CreateDialogProps) => {
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [telefone, setTelefone] = useState('');
-  const [role, setRole] = useState<'admin' | 'engenharia'>('engenharia');
+  const [role, setRole] = useState<StaffRole>('engenharia');
   const [loading, setLoading] = useState(false);
 
   const reset = () => { setNome(''); setEmail(''); setTelefone(''); setRole('engenharia'); };
@@ -561,8 +569,8 @@ const CreateStaffDialog = ({ open, onOpenChange, onCreated }: CreateDialogProps)
         <DialogHeader>
           <DialogTitle>Novo usuário staff</DialogTitle>
           <DialogDescription>
-            Disponível apenas para <strong>Administrador</strong> e <strong>Engenharia</strong>.
-            Técnicos e supervisores são criados pela aprovação de candidatura em /prestadores.
+            Cria contas internas (Administrador, Engenharia, Supervisor, BackOffice).
+            Técnicos são criados pela aprovação de candidatura em /prestadores.
             Um convite por e-mail será enviado para definir a senha.
           </DialogDescription>
         </DialogHeader>
@@ -581,11 +589,12 @@ const CreateStaffDialog = ({ open, onOpenChange, onCreated }: CreateDialogProps)
           </div>
           <div>
             <Label>Papel</Label>
-            <Select value={role} onValueChange={v => setRole(v as 'admin' | 'engenharia')}>
+            <Select value={role} onValueChange={v => setRole(v as StaffRole)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="engenharia">Engenharia</SelectItem>
-                <SelectItem value="admin">Administrador</SelectItem>
+                {STAFF_ROLE_OPTIONS.map(o => (
+                  <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
