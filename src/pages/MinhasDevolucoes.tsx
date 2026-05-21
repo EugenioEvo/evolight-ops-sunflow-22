@@ -87,6 +87,7 @@ export default function MinhasDevolucoes() {
 
   const renderCard = (it: MinhaDevolucao, mostrarBotao: boolean) => {
     const saldo = saldoEm(it);
+    const emAnalise = it.devolucoes.filter(d => d.status === 'pendente_aprovacao').reduce((s, d) => s + d.quantidade, 0);
     return (
       <Card key={it.saida_id}>
         <CardHeader className="pb-2">
@@ -98,6 +99,17 @@ export default function MinhasDevolucoes() {
               </CardTitle>
               <p className="text-xs text-muted-foreground mt-1">
                 OS {it.numero_os} • Saída de {it.quantidade} • Devolvido {it.quantidade_devolvida}
+              </p>
+            </div>
+            <div className="flex gap-1 flex-wrap">
+              {it.retornavel
+                ? <Badge variant="secondary"><RotateCcw className="h-3 w-3 mr-1" />Retornável</Badge>
+                : <Badge variant="outline">Consumível</Badge>}
+              {emAnalise > 0 && <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300"><Loader2 className="h-3 w-3 mr-1 animate-spin" />Em análise {emAnalise}</Badge>}
+              {saldo > 0 && <Badge variant="default">Saldo {saldo}</Badge>}
+            </div>
+          </div>
+        </CardHeader>
               </p>
             </div>
             <div className="flex gap-1 flex-wrap">
