@@ -1,15 +1,38 @@
 import { z } from "zod";
 
+export const UNIDADES_OPTIONS = [
+  { value: "un", label: "un (unidade)" },
+  { value: "pc", label: "pc (peça)" },
+  { value: "cx", label: "cx (caixa)" },
+  { value: "kit", label: "kit" },
+  { value: "par", label: "par" },
+  { value: "m", label: "m (metro)" },
+  { value: "m2", label: "m² (metro²)" },
+  { value: "m3", label: "m³ (metro³)" },
+  { value: "cm", label: "cm" },
+  { value: "mm", label: "mm" },
+  { value: "kg", label: "kg" },
+  { value: "g", label: "g" },
+  { value: "l", label: "L (litro)" },
+  { value: "ml", label: "mL" },
+  { value: "rl", label: "rl (rolo)" },
+  { value: "sc", label: "sc (saco)" },
+  { value: "gl", label: "gl (galão)" },
+] as const;
+
+export const LOCALIZACAO_OPTIONS = ["Estoque"] as const;
+
 export const insumoSchema = z.object({
   nome: z.string().min(1, "Nome é obrigatório"),
   categoria: z.string().min(1, "Categoria é obrigatória"),
   unidade: z.string().min(1, "Unidade é obrigatória"),
   preco: z.number().min(0, "Preço deve ser positivo").optional(),
+  quantidade: z.number().min(0, "Estoque atual deve ser positivo").optional(),
   estoque_minimo: z.number().min(0, "Estoque mínimo deve ser positivo"),
   estoque_critico: z.number().min(0, "Estoque crítico deve ser positivo"),
-  localizacao: z.string().optional(),
-  fornecedor: z.string().optional(),
-  observacoes: z.string().optional(),
+  localizacao: z.string().optional().nullable(),
+  fornecedor: z.string().optional().nullable(),
+  observacoes: z.string().optional().nullable(),
   retornavel: z.boolean().default(false),
 });
 
@@ -19,7 +42,7 @@ export const saidaSchema = z.object({
   kit_id: z.string().optional(),
   quantidade: z.number().min(1, "Quantidade deve ser maior que zero"),
   tecnico_id: z.string().min(1, "Selecione um técnico"),
-  ordem_servico_id: z.string().min(1, "Selecione uma OS"),
+  ordens_servico_ids: z.array(z.string()).min(1, "Selecione ao menos uma OS"),
   observacoes: z.string().optional(),
 });
 
