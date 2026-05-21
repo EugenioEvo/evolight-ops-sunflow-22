@@ -718,6 +718,7 @@ export type Database = {
           fornecedor: string | null
           id: string
           localizacao: string | null
+          midias: Json
           nome: string
           observacoes: string | null
           preco: number | null
@@ -734,6 +735,7 @@ export type Database = {
           fornecedor?: string | null
           id?: string
           localizacao?: string | null
+          midias?: Json
           nome: string
           observacoes?: string | null
           preco?: number | null
@@ -750,6 +752,7 @@ export type Database = {
           fornecedor?: string | null
           id?: string
           localizacao?: string | null
+          midias?: Json
           nome?: string
           observacoes?: string | null
           preco?: number | null
