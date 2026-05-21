@@ -6,12 +6,76 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY') ?? ''
+const APP_BASE_URL = 'https://evolight-ops-sunflow-22.lovable.app'
+
 type AppRole = 'tecnico_campo' | 'supervisao' | 'eletromecanico' | 'sup_eletromecanico'
 
 interface ApproveBody {
   prestador_id: string
   role: AppRole
   redirect_to?: string
+}
+
+const ROLE_LABEL: Record<string, string> = {
+  tecnico_campo: 'Técnico de Campo',
+  supervisao: 'Supervisão',
+  eletromecanico: 'Eletromecânico',
+  sup_eletromecanico: 'Supervisor Eletromecânico',
+}
+
+async function sendApprovalEmail(params: {
+  to: string
+  nome: string
+  role: string
+  actionLink: string
+  isNew: boolean
+}) {
+  if (!RESEND_API_KEY) {
+    console.warn('[approve-prestador] RESEND_API_KEY missing — skipping email')
+    return { skipped: true as const }
+  }
+  const roleLabel = ROLE_LABEL[params.role] || params.role
+  const subject = params.isNew
+    ? `Candidatura aprovada — SunFlow (${roleLabel})`
+    : `Acesso SunFlow atualizado — ${roleLabel}`
+  const intro = params.isNew
+    ? `Sua candidatura foi <strong>aprovada</strong>. Você foi cadastrado no <strong>SunFlow</strong> como <strong>${roleLabel}</strong>. Clique no botão abaixo para definir sua senha e acessar a plataforma.`
+    : `Seu acesso ao <strong>SunFlow</strong> foi atualizado com o perfil <strong>${roleLabel}</strong>. Use o link abaixo caso precise redefinir sua senha.`
+
+  const html = `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
+      <h2 style="color:#1a56db">SunFlow — Evolight O&amp;M</h2>
+      <p>Olá <strong>${params.nome}</strong>,</p>
+      <p>${intro}</p>
+      <div style="text-align:center;margin:24px 0">
+        <a href="${params.actionLink}" style="display:inline-block;background:#1a56db;color:white;padding:12px 24px;text-decoration:none;border-radius:6px;font-weight:600">
+          ${params.isNew ? 'Definir senha e acessar' : 'Redefinir senha'}
+        </a>
+      </div>
+      <p style="color:#6b7280;font-size:13px">Se o botão não funcionar, copie e cole este link no navegador:<br/>
+        <span style="word-break:break-all">${params.actionLink}</span>
+      </p>
+      <p style="color:#6b7280;font-size:13px">— Equipe Evolight O&amp;M</p>
+    </div>
+  `
+
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      from: 'SunFlow <oem@grupoevolight.com.br>',
+      to: [params.to],
+      subject,
+      html,
+    }),
+  })
+  if (!res.ok) {
+    const detail = await res.text()
+    console.error('[approve-prestador] Resend failed:', detail)
+    return { skipped: false as const, error: detail }
+  }
+  return { skipped: false as const }
 }
 
 const ALLOWED_ROLES: AppRole[] = ['tecnico_campo', 'supervisao', 'eletromecanico', 'sup_eletromecanico']
@@ -84,26 +148,31 @@ serve(async (req) => {
     }
 
     const email = prestador.email.toLowerCase().trim()
-    const redirectTo = body.redirect_to || `${new URL(req.url).origin.replace('functions', 'app')}/reset-password`
+    const redirectTo = body.redirect_to || `${APP_BASE_URL}/reset-password`
 
-    // 1. Find or create auth user
+    // 1. Find or create auth user (sem usar inviteUserByEmail — envio via Resend depois)
     let authUserId: string | null = null
+    let isNewUser = false
     const { data: existingByList } = await admin.auth.admin.listUsers()
     const existing = existingByList.users.find(u => u.email?.toLowerCase() === email)
 
     if (existing) {
       authUserId = existing.id
     } else {
-      const { data: invited, error: inviteErr } = await admin.auth.admin.inviteUserByEmail(email, {
-        redirectTo,
-        data: { nome: prestador.nome, telefone: prestador.telefone }
+      const tempPassword = crypto.randomUUID() + crypto.randomUUID()
+      const { data: created, error: createErr } = await admin.auth.admin.createUser({
+        email,
+        password: tempPassword,
+        email_confirm: true,
+        user_metadata: { nome: prestador.nome, telefone: prestador.telefone },
       })
-      if (inviteErr || !invited.user) {
-        return new Response(JSON.stringify({ error: `Falha ao convidar: ${inviteErr?.message}` }), {
+      if (createErr || !created.user) {
+        return new Response(JSON.stringify({ error: `Falha ao criar usuário: ${createErr?.message}` }), {
           status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         })
       }
-      authUserId = invited.user.id
+      authUserId = created.user.id
+      isNewUser = true
     }
 
     // 2. Upsert profile
@@ -177,11 +246,43 @@ serve(async (req) => {
       user_id: authUserId,
     }).eq('id', prestador.id)
 
+    // 6. Generate recovery link e enviar via Resend
+    const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
+      type: 'recovery',
+      email,
+      options: { redirectTo },
+    })
+
+    if (linkErr || !linkData?.properties?.action_link) {
+      return new Response(JSON.stringify({
+        success: true,
+        warning: `Prestador aprovado, mas falha ao gerar link: ${linkErr?.message || 'sem link'}`,
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 })
+    }
+
+    const actionLink = linkData.properties.action_link
+    const emailResult = await sendApprovalEmail({
+      to: email,
+      nome: prestador.nome,
+      role: body.role,
+      actionLink,
+      isNew: isNewUser,
+    })
+
+    if (emailResult.error) {
+      return new Response(JSON.stringify({
+        success: true,
+        warning: 'Prestador aprovado, mas o e-mail falhou.',
+        action_link: actionLink,
+        email_error: emailResult.error,
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 })
+    }
+
     return new Response(JSON.stringify({
       success: true,
-      message: existing
-        ? 'Conta já existente vinculada e role atribuída.'
-        : 'Convite enviado por e-mail. O prestador definirá a senha no primeiro acesso.'
+      message: isNewUser
+        ? 'Convite enviado por e-mail. O prestador definirá a senha no primeiro acesso.'
+        : 'Conta já existente vinculada e role atribuída. E-mail de acesso enviado.',
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
