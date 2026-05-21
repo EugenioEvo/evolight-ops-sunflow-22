@@ -166,7 +166,7 @@ serve(async (req) => {
     }
 
     const email = prestador.email.toLowerCase().trim()
-    const redirectTo = body.redirect_to || `${APP_BASE_URL}/reset-password`
+    const redirectTo = body.redirect_to || `${resolveBaseUrl(req)}/reset-password`
 
     // 1. Find or create auth user (sem usar inviteUserByEmail — envio via Resend depois)
     let authUserId: string | null = null
