@@ -1,20 +1,25 @@
 import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useSearchParams } from "react-router-dom";
-import { Plus, Package, Wrench, Trash2, Edit, ArrowDownIcon, RotateCcw } from "lucide-react";
+import { Plus, Package, Wrench, Trash2, Edit, ArrowDownIcon, RotateCcw, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useSupplyData, useSupplyActions, getEstoqueStatus, UNIDADES_OPTIONS, LOCALIZACAO_OPTIONS } from "@/features/supplies";
+import { useSupplyData, useSupplyActions, getEstoqueStatus, UNIDADES_OPTIONS, LOCALIZACAO_OPTIONS, supplyService, compraSchema, type CompraForm, type Insumo } from "@/features/supplies";
+import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { useErrorHandler } from "@/hooks/useErrorHandler";
 
 const getCategoriaIcon = (categoria: string) =>
   ["inversores", "equipamentos_medicao", "ferramentas"].includes(categoria)
@@ -22,13 +27,36 @@ const getCategoriaIcon = (categoria: string) =>
     : <Package className="h-4 w-4" />;
 
 export default function Insumos() {
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
+  const { handleError } = useErrorHandler();
   const [searchParams] = useSearchParams();
   const osIdParam = searchParams.get("os");
   const {
     insumos, kits, loading, searchTerm, setSearchTerm,
     activeTab, setActiveTab, filteredInsumos, categoriaCounts, reload,
   } = useSupplyData();
+
+  // Registrar Compra
+  const [compraInsumo, setCompraInsumo] = useState<Insumo | null>(null);
+  const compraForm = useForm<CompraForm>({
+    resolver: zodResolver(compraSchema),
+    defaultValues: { insumo_id: "", quantidade: 1, valor_unitario: 0, fornecedor: "", observacoes: "" },
+  });
+  const abrirCompra = (ins: Insumo) => {
+    setCompraInsumo(ins);
+    compraForm.reset({ insumo_id: ins.id, quantidade: 1, valor_unitario: Number(ins.preco || 0), fornecedor: ins.fornecedor || "", observacoes: "" });
+  };
+  const onSubmitCompra = async (data: CompraForm) => {
+    if (!user?.id) { toast.error("Sessão inválida."); return; }
+    try {
+      await supplyService.createCompra({ ...data, registrado_por: user.id });
+      toast.success("Compra registrada — estoque e preço médio atualizados.");
+      setCompraInsumo(null);
+      reload();
+    } catch (e) {
+      handleError(e, { fallbackMessage: "Erro ao registrar compra." });
+    }
+  };
 
   const {
     insumoForm, saidaForm,
@@ -297,9 +325,16 @@ export default function Insumos() {
                       {insumo.localizacao && <div>Local: {insumo.localizacao}</div>}
                       {insumo.fornecedor && <div>Fornecedor: {insumo.fornecedor}</div>}
                     </div>
-                    <Button size="sm" variant="outline" className="w-full" onClick={() => handleSaida(insumo)} disabled={insumo.quantidade === 0}>
-                      <ArrowDownIcon className="h-4 w-4 mr-1" />Registrar Saída
-                    </Button>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button size="sm" variant="outline" onClick={() => handleSaida(insumo)} disabled={insumo.quantidade === 0}>
+                        <ArrowDownIcon className="h-4 w-4 mr-1" />Saída
+                      </Button>
+                      {!isTecnico && (
+                        <Button size="sm" variant="secondary" onClick={() => abrirCompra(insumo)}>
+                          <ShoppingCart className="h-4 w-4 mr-1" />Compra
+                        </Button>
+                      )}
+                    </div>
                   </CardContent>
                 </Card>
               );
@@ -314,6 +349,58 @@ export default function Insumos() {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Registrar Compra */}
+      <Dialog open={!!compraInsumo} onOpenChange={(o) => !o && setCompraInsumo(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Registrar Compra {compraInsumo && `— ${compraInsumo.nome}`}</DialogTitle>
+          </DialogHeader>
+          {compraInsumo && (
+            <Form {...compraForm}>
+              <form onSubmit={compraForm.handleSubmit(onSubmitCompra)} className="space-y-3">
+                <div className="rounded-md border p-3 text-xs text-muted-foreground bg-muted/30">
+                  Estoque atual: <strong>{compraInsumo.quantidade}</strong> {compraInsumo.unidade}
+                  {compraInsumo.preco != null && <> • Preço médio atual: <strong>R$ {Number(compraInsumo.preco).toFixed(2)}</strong></>}
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <FormField control={compraForm.control} name="quantidade" render={({ field }) => (
+                    <FormItem><FormLabel>Quantidade</FormLabel>
+                      <FormControl><Input type="number" min={1} {...field} onChange={(e) => field.onChange(parseInt(e.target.value) || 0)} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={compraForm.control} name="valor_unitario" render={({ field }) => (
+                    <FormItem><FormLabel>Valor unitário (R$)</FormLabel>
+                      <FormControl><Input type="number" step="0.01" min={0} {...field} onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                </div>
+                <FormField control={compraForm.control} name="fornecedor" render={({ field }) => (
+                  <FormItem><FormLabel>Fornecedor</FormLabel>
+                    <FormControl><Input {...field} value={field.value || ""} placeholder="Opcional — atualiza o fornecedor do insumo se preenchido" /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={compraForm.control} name="observacoes" render={({ field }) => (
+                  <FormItem><FormLabel>Observações</FormLabel>
+                    <FormControl><Textarea {...field} value={field.value || ""} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <div className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
+                  O preço médio será recalculado por <strong>média ponderada</strong> com o estoque atual.
+                </div>
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={() => setCompraInsumo(null)}>Cancelar</Button>
+                  <Button type="submit">Registrar Compra</Button>
+                </DialogFooter>
+              </form>
+            </Form>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

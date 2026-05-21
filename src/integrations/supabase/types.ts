@@ -517,11 +517,65 @@ export type Database = {
           },
         ]
       }
+      insumo_compras: {
+        Row: {
+          created_at: string
+          fornecedor: string | null
+          id: string
+          insumo_id: string
+          observacoes: string | null
+          preco_anterior: number | null
+          preco_novo: number | null
+          qtd_anterior: number | null
+          qtd_nova: number | null
+          quantidade: number
+          registrado_por: string
+          valor_unitario: number
+        }
+        Insert: {
+          created_at?: string
+          fornecedor?: string | null
+          id?: string
+          insumo_id: string
+          observacoes?: string | null
+          preco_anterior?: number | null
+          preco_novo?: number | null
+          qtd_anterior?: number | null
+          qtd_nova?: number | null
+          quantidade: number
+          registrado_por: string
+          valor_unitario: number
+        }
+        Update: {
+          created_at?: string
+          fornecedor?: string | null
+          id?: string
+          insumo_id?: string
+          observacoes?: string | null
+          preco_anterior?: number | null
+          preco_novo?: number | null
+          qtd_anterior?: number | null
+          qtd_nova?: number | null
+          quantidade?: number
+          registrado_por?: string
+          valor_unitario?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "insumo_compras_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "insumos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       insumo_devolucoes: {
         Row: {
           aprovado_at: string | null
           aprovado_por: string | null
           created_at: string
+          evidencias: Json
           id: string
           observacoes: string | null
           quantidade: number
@@ -535,6 +589,7 @@ export type Database = {
           aprovado_at?: string | null
           aprovado_por?: string | null
           created_at?: string
+          evidencias?: Json
           id?: string
           observacoes?: string | null
           quantidade: number
@@ -548,6 +603,7 @@ export type Database = {
           aprovado_at?: string | null
           aprovado_por?: string | null
           created_at?: string
+          evidencias?: Json
           id?: string
           observacoes?: string | null
           quantidade?: number
@@ -2189,6 +2245,22 @@ export type Database = {
       gerar_numero_rdo: { Args: never; Returns: string }
       gerar_numero_ticket: { Args: never; Returns: string }
       get_dashboard_stats: { Args: never; Returns: Json }
+      get_minhas_devolucoes: {
+        Args: never
+        Returns: {
+          devolucoes: Json
+          insumo_nome: string
+          kit_nome: string
+          numero_os: string
+          ordem_servico_id: string
+          quantidade: number
+          quantidade_devolvida: number
+          retornavel: boolean
+          saida_created_at: string
+          saida_id: string
+          saida_status: string
+        }[]
+      }
       get_rme_pendencias_insumos: {
         Args: { p_rme_id: string }
         Returns: {
