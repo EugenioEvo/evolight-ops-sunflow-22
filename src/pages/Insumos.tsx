@@ -59,6 +59,18 @@ export default function Insumos() {
     }
   };
 
+  // Visualização de detalhes (fotos/vídeos)
+  const [detailInsumo, setDetailInsumo] = useState<Insumo | null>(null);
+
+  // Upload de mídias do insumo (no modal de criação/edição)
+  const [uploadingMidias, setUploadingMidias] = useState(false);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
+
+  const isVideo = (m: { type?: string; name?: string; url?: string }) =>
+    m.type === "video" || /\.(mp4|webm|mov|m4v|avi|mkv|3gp|quicktime)$/i.test(m.name || m.url || "");
+
+
   const {
     insumoForm, saidaForm,
     isInsumoDialogOpen, setIsInsumoDialogOpen,
