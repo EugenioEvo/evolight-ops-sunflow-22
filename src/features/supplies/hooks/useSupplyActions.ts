@@ -99,8 +99,9 @@ export const useSupplyActions = (reload: () => void) => {
     setEditingInsumo(insumo);
     insumoForm.reset({
       nome: insumo.nome, categoria: insumo.categoria, unidade: insumo.unidade,
-      preco: insumo.preco, estoque_minimo: insumo.estoque_minimo, estoque_critico: insumo.estoque_critico,
-      localizacao: insumo.localizacao, fornecedor: insumo.fornecedor, observacoes: insumo.observacoes,
+      preco: insumo.preco, quantidade: insumo.quantidade,
+      estoque_minimo: insumo.estoque_minimo, estoque_critico: insumo.estoque_critico,
+      localizacao: insumo.localizacao || "Estoque", fornecedor: insumo.fornecedor || "", observacoes: insumo.observacoes || "",
       retornavel: !!insumo.retornavel,
     });
     setIsInsumoDialogOpen(true);
