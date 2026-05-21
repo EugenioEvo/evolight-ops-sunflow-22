@@ -7,7 +7,25 @@ const corsHeaders = {
 }
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY') ?? ''
-const APP_BASE_URL = 'https://sunflow.evolight.com.br'
+const ALLOWED_BASE_URLS = [
+  'https://sunflow.evolight.com.br',
+  'https://evolight-ops-sunflow-22.lovable.app',
+  'https://id-preview--974412cb-fff5-4365-b60f-801293d3be32.lovable.app',
+]
+const DEFAULT_BASE_URL = 'https://sunflow.evolight.com.br'
+
+function resolveBaseUrl(req: Request, explicit?: string): string {
+  const candidates = [explicit, req.headers.get('origin') ?? undefined, req.headers.get('referer') ?? undefined]
+  for (const raw of candidates) {
+    if (!raw) continue
+    try {
+      const u = new URL(raw)
+      const base = `${u.protocol}//${u.host}`
+      if (ALLOWED_BASE_URLS.includes(base)) return base
+    } catch { /* ignore */ }
+  }
+  return DEFAULT_BASE_URL
+}
 
 type AppRole = 'tecnico_campo' | 'supervisao' | 'eletromecanico' | 'sup_eletromecanico'
 
@@ -148,7 +166,7 @@ serve(async (req) => {
     }
 
     const email = prestador.email.toLowerCase().trim()
-    const redirectTo = body.redirect_to || `${APP_BASE_URL}/reset-password`
+    const redirectTo = body.redirect_to || `${resolveBaseUrl(req)}/reset-password`
 
     // 1. Find or create auth user (sem usar inviteUserByEmail — envio via Resend depois)
     let authUserId: string | null = null
