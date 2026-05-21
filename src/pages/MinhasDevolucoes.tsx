@@ -110,16 +110,6 @@ export default function MinhasDevolucoes() {
             </div>
           </div>
         </CardHeader>
-              </p>
-            </div>
-            <div className="flex gap-1 flex-wrap">
-              {it.retornavel
-                ? <Badge variant="secondary"><RotateCcw className="h-3 w-3 mr-1" />Retornável</Badge>
-                : <Badge variant="outline">Consumível</Badge>}
-              {saldo > 0 && <Badge variant="default">Saldo {saldo}</Badge>}
-            </div>
-          </div>
-        </CardHeader>
         <CardContent className="space-y-2">
           {it.devolucoes.length > 0 && (
             <div className="text-xs space-y-1 border-l-2 pl-2">
