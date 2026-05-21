@@ -34,7 +34,7 @@ export default function Insumos() {
     insumoForm, saidaForm,
     isInsumoDialogOpen, setIsInsumoDialogOpen,
     isSaidaDialogOpen, setIsSaidaDialogOpen,
-    editingInsumo, selectedInsumo,
+    editingInsumo, setEditingInsumo, selectedInsumo,
     onSubmitInsumo, onSubmitSaida,
     handleEditInsumo, handleDeleteInsumo, handleSaida,
     isTecnico,
