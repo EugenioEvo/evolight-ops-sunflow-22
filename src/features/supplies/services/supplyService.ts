@@ -37,6 +37,36 @@ export const createSupplyService = (client?: AppSupabaseClient) => {
       if (error) throw error;
     },
 
+    /** Upload de fotos/vídeos do cadastro do insumo. Retorna mídias com URL assinada (1 ano). */
+    async uploadInsumoMidias(insumoId: string, files: File[]): Promise<InsumoMidia[]> {
+      const out: InsumoMidia[] = [];
+      for (const file of files) {
+        const ext = file.name.split('.').pop() || 'bin';
+        const name = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+        const path = `${insumoId}/${name}`;
+        const { error: upErr } = await (db as any).storage
+          .from('insumo-midias')
+          .upload(path, file, { upsert: false, contentType: file.type });
+        if (upErr) throw upErr;
+        const { data: signed, error: sErr } = await (db as any).storage
+          .from('insumo-midias')
+          .createSignedUrl(path, 60 * 60 * 24 * 365);
+        if (sErr) throw sErr;
+        out.push({
+          path,
+          url: signed?.signedUrl || '',
+          type: file.type.startsWith('video/') ? 'video' : 'image',
+          name: file.name,
+        });
+      }
+      return out;
+    },
+
+    async removeInsumoMidia(path: string) {
+      await (db as any).storage.from('insumo-midias').remove([path]);
+    },
+
+
     async createSaida(data: {
       insumo_id?: string;
       kit_id?: string;
