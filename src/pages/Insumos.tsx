@@ -109,11 +109,32 @@ export default function Insumos() {
                     <FormField control={insumoForm.control} name="categoria" render={({ field }) => (<FormItem><FormLabel>Categoria</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="paineis_solares">Painéis Solares</SelectItem><SelectItem value="inversores">Inversores</SelectItem><SelectItem value="estruturas_montagem">Estruturas</SelectItem><SelectItem value="cabos_conectores">Cabos</SelectItem><SelectItem value="equipamentos_medicao">Medição</SelectItem><SelectItem value="ferramentas">Ferramentas</SelectItem><SelectItem value="componentes_eletricos">Componentes</SelectItem><SelectItem value="manutencao">Manutenção</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
                   </div>
                   <div className="grid grid-cols-3 gap-4">
-                    <FormField control={insumoForm.control} name="unidade" render={({ field }) => (<FormItem><FormLabel>Unidade</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                    <FormField control={insumoForm.control} name="unidade" render={({ field }) => (
+                      <FormItem><FormLabel>Unidade</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger></FormControl>
+                          <SelectContent>
+                            {UNIDADES_OPTIONS.map((u) => <SelectItem key={u.value} value={u.value}>{u.label}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
                     <FormField control={insumoForm.control} name="preco" render={({ field }) => (<FormItem><FormLabel>Preço</FormLabel><FormControl><Input type="number" step="0.01" {...field} onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)} /></FormControl><FormMessage /></FormItem>)} />
-                    <FormField control={insumoForm.control} name="localizacao" render={({ field }) => (<FormItem><FormLabel>Localização</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                    <FormField control={insumoForm.control} name="localizacao" render={({ field }) => (
+                      <FormItem><FormLabel>Localização</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value || "Estoque"}>
+                          <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                          <SelectContent>
+                            {LOCALIZACAO_OPTIONS.map((l) => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-3 gap-4">
+                    <FormField control={insumoForm.control} name="quantidade" render={({ field }) => (<FormItem><FormLabel>Estoque Atual</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? 0} onChange={(e) => field.onChange(parseInt(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>)} />
                     <FormField control={insumoForm.control} name="estoque_minimo" render={({ field }) => (<FormItem><FormLabel>Estoque Mínimo</FormLabel><FormControl><Input type="number" {...field} onChange={(e) => field.onChange(parseInt(e.target.value))} /></FormControl><FormMessage /></FormItem>)} />
                     <FormField control={insumoForm.control} name="estoque_critico" render={({ field }) => (<FormItem><FormLabel>Estoque Crítico</FormLabel><FormControl><Input type="number" {...field} onChange={(e) => field.onChange(parseInt(e.target.value))} /></FormControl><FormMessage /></FormItem>)} />
                   </div>
