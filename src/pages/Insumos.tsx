@@ -190,23 +190,27 @@ export default function Insumos() {
                 </FormItem>
               )} />
 
-              <FormField control={saidaForm.control} name="ordem_servico_id" render={({ field }) => (
-                <FormItem><FormLabel>Ordem de Serviço</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value} disabled={!watchedTecnicoId}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder={watchedTecnicoId ? "Selecione a OS" : "Escolha o técnico primeiro"} />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {osAtivas.length === 0 && <div className="p-2 text-sm text-muted-foreground">Nenhuma OS aceita/em execução</div>}
-                      {osAtivas.map(os => (
-                        <SelectItem key={os.ordem_servico_id} value={os.ordem_servico_id}>
-                          {os.numero_os} — {os.ticket_titulo}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+              <FormField control={saidaForm.control} name="ordens_servico_ids" render={({ field }) => (
+                <FormItem><FormLabel>Ordens de Serviço {field.value?.length ? `(${field.value.length} selecionada${field.value.length > 1 ? "s" : ""})` : ""}</FormLabel>
+                  <div className="rounded-md border max-h-48 overflow-y-auto p-2 space-y-1">
+                    {!watchedTecnicoId && <div className="p-2 text-sm text-muted-foreground">Escolha o técnico primeiro</div>}
+                    {watchedTecnicoId && osAtivas.length === 0 && <div className="p-2 text-sm text-muted-foreground">Nenhuma OS aceita/em execução</div>}
+                    {osAtivas.map(os => {
+                      const checked = (field.value || []).includes(os.ordem_servico_id);
+                      return (
+                        <label key={os.ordem_servico_id} className="flex items-center gap-2 p-2 hover:bg-muted/50 rounded cursor-pointer text-sm">
+                          <Checkbox
+                            checked={checked}
+                            onCheckedChange={(v) => {
+                              const curr = field.value || [];
+                              field.onChange(v ? [...curr, os.ordem_servico_id] : curr.filter((id) => id !== os.ordem_servico_id));
+                            }}
+                          />
+                          <span className="flex-1">{os.numero_os} — {os.ticket_titulo}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
                   <FormMessage />
                 </FormItem>
               )} />
