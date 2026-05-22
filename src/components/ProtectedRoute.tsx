@@ -18,10 +18,10 @@ export const ProtectedRoute = ({ children, roles }: ProtectedRouteProps) => {
   // é liberado pela role de staff — não faz sentido bloquear um supervisor pelo
   // status do prestador.
   const isStaff = !!profile?.roles?.some((r) =>
-    r === 'admin' || r === 'engenharia' || r === 'supervisao'
+    r === 'admin' || r === 'engenharia' || r === 'supervisao' || r === 'lider'
   );
   const needsPrestadorApproval = !!profile?.roles?.some((r) =>
-    r === 'tecnico_campo' || r === 'eletromecanico' || r === 'sup_eletromecanico'
+    r === 'tecnico_campo' || r === 'eletromecanico' || r === 'sup_eletromecanico' || r === 'lider_eletromecanico'
   );
   const isTecnicoOnly = needsPrestadorApproval && !isStaff;
 
