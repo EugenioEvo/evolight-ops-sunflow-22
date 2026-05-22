@@ -54,22 +54,12 @@ export const useSupplyActions = (reload: () => void) => {
         toast.error("Sessão inválida.");
         return;
       }
-      if (data.tipo === "insumo" && !data.insumo_id) {
+      if (!data.insumo_id) {
         toast.error("Selecione o insumo.");
         return;
       }
-      if (data.tipo === "kit" && !data.kit_id) {
-        toast.error("Selecione o KIT.");
-        return;
-      }
-      // se for insumo avulso, snapshot da flag retornavel
-      let retornavel = false;
-      if (data.tipo === "insumo" && data.insumo_id) {
-        const { data: ins } = await supabase.from('insumos').select('retornavel').eq('id', data.insumo_id).maybeSingle();
-        retornavel = !!(ins as any)?.retornavel;
-      } else {
-        retornavel = true; // KITs são retornáveis por natureza
-      }
+      const { data: ins } = await supabase.from('insumos').select('retornavel').eq('id', data.insumo_id).maybeSingle();
+      const retornavel = !!(ins as any)?.retornavel;
 
       // Cria uma saída por OS selecionada, todas com o MESMO lote_id (devolução cascateia entre OSs).
       // Para "Uso Interno" ou destino "Obra", cria uma única saída sem OS vinculada.
@@ -84,8 +74,7 @@ export const useSupplyActions = (reload: () => void) => {
       }
       for (const t of targets) {
         await supplyService.createSaida({
-          insumo_id: data.tipo === "insumo" ? data.insumo_id : undefined,
-          kit_id: data.tipo === "kit" ? data.kit_id : undefined,
+          insumo_id: data.insumo_id,
           quantidade: data.quantidade,
           retornavel,
           tecnico_id: data.tecnico_id,
@@ -138,7 +127,6 @@ export const useSupplyActions = (reload: () => void) => {
   const handleSaida = (insumo: Insumo) => {
     setSelectedInsumo(insumo);
     saidaForm.reset({
-      tipo: "insumo",
       insumo_id: insumo.id,
       quantidade: 1,
       tecnico_id: "",
