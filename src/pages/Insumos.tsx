@@ -157,7 +157,7 @@ export default function Insumos() {
     <div className="container mx-auto py-8 space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Gestão de Insumos</h1>
-        {!isTecnico && (
+        {canManageInventory && (
           <Dialog open={isInsumoDialogOpen} onOpenChange={setIsInsumoDialogOpen}>
             <DialogTrigger asChild>
               <Button onClick={() => { setEditingInsumo(null); insumoForm.reset({ nome: "", categoria: "", unidade: "un", quantidade: 0, estoque_minimo: 10, estoque_critico: 5, localizacao: "Estoque", fornecedor: "", observacoes: "", retornavel: false, midias: [] }); }}><Plus className="h-4 w-4 mr-2" />Novo Insumo</Button>
