@@ -45,6 +45,13 @@ export const insumoSchema = z.object({
 });
 
 
+export const saidaEvidenciaSchema = z.object({
+  url: z.string(),
+  path: z.string(),
+  type: z.enum(["image", "video"]),
+  name: z.string().optional(),
+});
+
 export const saidaSchema = z.object({
   tipo: z.enum(["insumo", "kit"]),
   insumo_id: z.string().optional(),
@@ -53,11 +60,21 @@ export const saidaSchema = z.object({
   tecnico_id: z.string().min(1, "Selecione um técnico"),
   uso_interno: z.boolean().default(false),
   ordens_servico_ids: z.array(z.string()).default([]),
+  obra_id: z.string().optional().nullable(),
+  evidencias: z.array(saidaEvidenciaSchema).min(1, "Anexe ao menos 1 foto ou vídeo da saída"),
   observacoes: z.string().optional(),
-}).refine((d) => d.uso_interno || d.ordens_servico_ids.length > 0, {
-  message: "Selecione ao menos uma OS ou marque como Uso Interno",
+}).refine((d) => {
+  const destinos =
+    (d.uso_interno ? 1 : 0) +
+    (d.ordens_servico_ids.length > 0 ? 1 : 0) +
+    (d.obra_id ? 1 : 0);
+  return destinos === 1;
+}, {
+  message: "Selecione uma OS, uma Obra ou marque Uso Interno (apenas um destino).",
   path: ["ordens_servico_ids"],
 });
+
+export type SaidaEvidencia = z.infer<typeof saidaEvidenciaSchema>;
 
 export const compraSchema = z.object({
   insumo_id: z.string().min(1),
