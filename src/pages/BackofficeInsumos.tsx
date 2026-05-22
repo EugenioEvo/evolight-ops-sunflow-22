@@ -190,27 +190,52 @@ export default function BackofficeInsumos() {
         {/* SAÍDAS PENDENTES */}
         <TabsContent value="saidas" className="space-y-3 mt-4">
           {saidas.length === 0 && <p className="text-muted-foreground text-center py-8">Nenhuma saída pendente.</p>}
-          {saidas.map(s => (
-            <Card key={s.id}>
-              <CardHeader className="pb-2">
-                <div className="flex items-start justify-between gap-4 flex-wrap">
-                  <div>
-                    <CardTitle className="text-base">
-                      {s.insumo?.nome || s.kit?.nome || "—"} • {s.quantidade} {s.insumo?.unidade || ""}
-                    </CardTitle>
-                    <p className="text-sm text-muted-foreground">
-                      OS {s.os?.numero_os || "—"} • Técnico {s.tecnico?.profile?.nome || "—"}
-                    </p>
+          {saidas.map((s: any) => {
+            const destino = s.uso_interno
+              ? "Uso Interno"
+              : s.obra
+                ? `Obra: ${s.obra.nome}${s.obra.cidade ? ` • ${s.obra.cidade}` : ""}`
+                : s.os?.numero_os ? `OS ${s.os.numero_os}` : "—";
+            const evid: any[] = Array.isArray(s.evidencias) ? s.evidencias : [];
+            return (
+              <Card key={s.id}>
+                <CardHeader className="pb-2">
+                  <div className="flex items-start justify-between gap-4 flex-wrap">
+                    <div>
+                      <CardTitle className="text-base">
+                        {s.insumo?.nome || s.kit?.nome || "—"} • {s.quantidade} {s.insumo?.unidade || ""}
+                      </CardTitle>
+                      <p className="text-sm text-muted-foreground">
+                        {destino} • Técnico {s.tecnico?.profile?.nome || "—"}
+                      </p>
+                    </div>
+                    {s.retornavel && <Badge variant="secondary"><RotateCcw className="h-3 w-3 mr-1" />Retornável</Badge>}
                   </div>
-                  {s.retornavel && <Badge variant="secondary"><RotateCcw className="h-3 w-3 mr-1" />Retornável</Badge>}
-                </div>
-              </CardHeader>
-              <CardContent className="flex gap-2 justify-end">
-                <Button size="sm" variant="outline" onClick={() => { setTarget({ id: s.id, tipo: "saida" }); setRejeitarOpen(true); }}>Rejeitar</Button>
-                <Button size="sm" onClick={() => aprovar(s.id, "saida")}>Aprovar</Button>
-              </CardContent>
-            </Card>
-          ))}
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {evid.length > 0 ? (
+                    <div className="grid grid-cols-4 md:grid-cols-6 gap-2">
+                      {evid.map((m: any, i: number) => (
+                        <a key={m.path || i} href={m.url} target="_blank" rel="noreferrer" className="block aspect-square rounded-md overflow-hidden border bg-muted">
+                          {m.type === "video" ? (
+                            <video src={m.url} className="w-full h-full object-cover" muted playsInline preload="metadata" />
+                          ) : (
+                            <img src={m.url} alt={m.name || `anexo ${i + 1}`} className="w-full h-full object-cover" />
+                          )}
+                        </a>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-destructive">⚠️ Sem evidências anexadas (saída antiga).</p>
+                  )}
+                  <div className="flex gap-2 justify-end">
+                    <Button size="sm" variant="outline" onClick={() => { setTarget({ id: s.id, tipo: "saida" }); setRejeitarOpen(true); }}>Rejeitar</Button>
+                    <Button size="sm" onClick={() => aprovar(s.id, "saida")}>Aprovar</Button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </TabsContent>
 
         {/* DEVOLUÇÕES (todas as saídas retornáveis em aberto) */}
