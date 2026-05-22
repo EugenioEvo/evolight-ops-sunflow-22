@@ -14,13 +14,15 @@ interface ApprovePrestadorDialogProps {
   onApproved: () => void;
 }
 
-type ApproveRole = 'tecnico_campo' | 'supervisao' | 'eletromecanico' | 'sup_eletromecanico';
+type ApproveRole = 'tecnico_campo' | 'supervisao' | 'lider' | 'eletromecanico' | 'sup_eletromecanico' | 'lider_eletromecanico';
 
 const CATEGORIA_TO_ROLE: Record<string, ApproveRole> = {
   tecnico: 'tecnico_campo',
   supervisao: 'supervisao',
+  lider: 'lider',
   eletromecanico: 'eletromecanico',
   sup_eletromecanico: 'sup_eletromecanico',
+  lider_eletromecanico: 'lider_eletromecanico',
 };
 
 export const ApprovePrestadorDialog = ({ open, onOpenChange, prestador, onApproved }: ApprovePrestadorDialogProps) => {
