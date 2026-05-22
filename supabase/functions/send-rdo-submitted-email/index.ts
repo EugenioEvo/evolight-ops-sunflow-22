@@ -50,7 +50,7 @@ serve(async (req) => {
 
     // Staff emails
     const { data: staffRoles } = await supabase
-      .from('user_roles').select('user_id').in('role', ['admin', 'engenharia', 'supervisao'])
+      .from('user_roles').select('user_id').in('role', ['admin', 'engenharia', 'sup_eletromecanico'])
 
     const userIds = Array.from(new Set((staffRoles || []).map((r: any) => r.user_id)))
     if (userIds.length === 0) {

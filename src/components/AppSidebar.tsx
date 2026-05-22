@@ -63,14 +63,14 @@ const mainItems: NavItem[] = [
   { title: "Agenda", url: "/agenda", icon: Calendar, allow: STAFF_BO },
   { title: "Carga de Trabalho", url: "/carga-trabalho", icon: TrendingUp, allow: STAFF },
   { title: "Confirmações", url: "/dashboard-presenca", icon: Monitor, allow: STAFF },
-  { title: "Aprovar RMEs", url: "/gerenciar-rme", icon: CheckSquare, allow: STAFF },
+  { title: "Aprovar RMEs", url: "/gerenciar-rme", icon: CheckSquare, allow: ['admin', 'engenharia', 'supervisao'] },
   { title: "Validar Insumos", url: "/backoffice/insumos", icon: PackageCheck, allow: [...STAFF, 'backoffice'] },
 ];
 
 const rdoItems: NavItem[] = [
   { title: "Dashboard", url: "/rdo/dashboard", icon: Home, allow: [...STAFF, ...ELETRO] },
   { title: "RDO", url: "/rdo", icon: FileSpreadsheet, allow: [...STAFF, ...ELETRO] },
-  { title: "Aprovar RDOs", url: "/gerenciar-rdo", icon: CheckSquare, allow: STAFF },
+  { title: "Aprovar RDOs", url: "/gerenciar-rdo", icon: CheckSquare, allow: ['admin', 'engenharia', 'sup_eletromecanico'] },
   { title: "Obras", url: "/obras", icon: HardHat, allow: [...STAFF, 'sup_eletromecanico', 'lider_eletromecanico'] },
   { title: "Catálogo de Atividades", url: "/obra-catalogo", icon: BookOpen, allow: ['admin'] },
 ];

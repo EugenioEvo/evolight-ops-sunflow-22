@@ -65,3 +65,9 @@ verify_jwt = true
 
 [functions.send-rme-decision-email]
 verify_jwt = true
+
+[functions.send-rdo-submitted-email]
+verify_jwt = true
+
+[functions.send-rdo-decision-email]
+verify_jwt = true
