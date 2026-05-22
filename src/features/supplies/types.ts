@@ -51,8 +51,12 @@ export const saidaSchema = z.object({
   kit_id: z.string().optional(),
   quantidade: z.number().min(1, "Quantidade deve ser maior que zero"),
   tecnico_id: z.string().min(1, "Selecione um técnico"),
-  ordens_servico_ids: z.array(z.string()).min(1, "Selecione ao menos uma OS"),
+  uso_interno: z.boolean().default(false),
+  ordens_servico_ids: z.array(z.string()).default([]),
   observacoes: z.string().optional(),
+}).refine((d) => d.uso_interno || d.ordens_servico_ids.length > 0, {
+  message: "Selecione ao menos uma OS ou marque como Uso Interno",
+  path: ["ordens_servico_ids"],
 });
 
 export const compraSchema = z.object({

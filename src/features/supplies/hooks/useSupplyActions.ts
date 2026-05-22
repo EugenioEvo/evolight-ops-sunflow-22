@@ -30,7 +30,7 @@ export const useSupplyActions = (reload: () => void) => {
 
   const saidaForm = useForm<SaidaForm>({
     resolver: zodResolver(saidaSchema),
-    defaultValues: { tipo: "insumo", quantidade: 1, tecnico_id: "", ordens_servico_ids: [], observacoes: "" },
+    defaultValues: { tipo: "insumo", quantidade: 1, tecnico_id: "", uso_interno: false, ordens_servico_ids: [], observacoes: "" },
   });
 
   const onSubmitInsumo = async (data: InsumoForm) => {
@@ -71,25 +71,30 @@ export const useSupplyActions = (reload: () => void) => {
         retornavel = true; // KITs são retornáveis por natureza
       }
 
-      // Cria uma saída por OS selecionada, todas com o MESMO lote_id (devolução cascateia entre OSs)
+      // Cria uma saída por OS selecionada, todas com o MESMO lote_id (devolução cascateia entre OSs).
+      // Para "Uso Interno", cria uma única saída sem OS vinculada.
       const lote_id = crypto.randomUUID();
-      for (const osId of data.ordens_servico_ids) {
+      const targets: (string | null)[] = data.uso_interno ? [null] : data.ordens_servico_ids;
+      for (const osId of targets) {
         await supplyService.createSaida({
           insumo_id: data.tipo === "insumo" ? data.insumo_id : undefined,
           kit_id: data.tipo === "kit" ? data.kit_id : undefined,
           quantidade: data.quantidade,
           retornavel,
           tecnico_id: data.tecnico_id,
-          ordem_servico_id: osId,
+          ordem_servico_id: osId ?? undefined,
+          uso_interno: data.uso_interno,
           registrado_por: user.id,
           observacoes: data.observacoes,
           lote_id,
         });
       }
       toast.success(
-        data.ordens_servico_ids.length > 1
-          ? `Saída registrada em ${data.ordens_servico_ids.length} OS! Aguardando validação do BackOffice.`
-          : "Saída registrada! Aguardando validação do BackOffice."
+        data.uso_interno
+          ? "Saída de uso interno registrada! Aguardando validação do BackOffice."
+          : data.ordens_servico_ids.length > 1
+            ? `Saída registrada em ${data.ordens_servico_ids.length} OS! Aguardando validação do BackOffice.`
+            : "Saída registrada! Aguardando validação do BackOffice."
       );
       reload(); setIsSaidaDialogOpen(false); saidaForm.reset();
     } catch (error) {
@@ -127,6 +132,7 @@ export const useSupplyActions = (reload: () => void) => {
       insumo_id: insumo.id,
       quantidade: 1,
       tecnico_id: "",
+      uso_interno: false,
       ordens_servico_ids: [],
       observacoes: "",
     });

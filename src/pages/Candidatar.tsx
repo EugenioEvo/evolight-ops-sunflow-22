@@ -20,7 +20,7 @@ const candidaturaSchema = z.object({
   cpf: z.string().trim().optional().or(z.literal('')),
   cidade: z.string().trim().max(100).optional().or(z.literal('')),
   estado: z.string().trim().max(2).optional().or(z.literal('')),
-  categoria: z.enum(['tecnico', 'supervisao', 'eletromecanico', 'sup_eletromecanico'], { required_error: 'Selecione uma área' }),
+  categoria: z.enum(['tecnico', 'supervisao', 'lider', 'eletromecanico', 'sup_eletromecanico', 'lider_eletromecanico'], { required_error: 'Selecione uma área' }),
   experiencia: z.string().optional(),
   observacoes: z.string().max(1000).optional().or(z.literal('')),
 });
@@ -167,8 +167,10 @@ const Candidatar = () => {
                     <SelectContent>
                       <SelectItem value="tecnico">Técnico de Campo (O&amp;M)</SelectItem>
                       <SelectItem value="supervisao">Supervisor (O&amp;M)</SelectItem>
+                      <SelectItem value="lider">Líder (O&amp;M)</SelectItem>
                       <SelectItem value="eletromecanico">Eletromecânico (EPC)</SelectItem>
                       <SelectItem value="sup_eletromecanico">Sup. Eletromecânico (EPC)</SelectItem>
+                      <SelectItem value="lider_eletromecanico">Líder Eletromecânico (EPC)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

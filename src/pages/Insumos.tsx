@@ -313,6 +313,28 @@ export default function Insumos() {
                 </FormItem>
               )} />
 
+              <FormField control={saidaForm.control} name="uso_interno" render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between rounded-md border p-3">
+                  <div className="space-y-0.5 pr-3">
+                    <FormLabel className="text-sm font-medium">Uso Interno</FormLabel>
+                    <p className="text-xs text-muted-foreground">
+                      Saída não vinculada a OS (ex.: estoque do veículo, ferramentaria).
+                      Ainda passa pelo fluxo de aprovação do BackOffice.
+                    </p>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={!!field.value}
+                      onCheckedChange={(v) => {
+                        field.onChange(v);
+                        if (v) saidaForm.setValue("ordens_servico_ids", []);
+                      }}
+                    />
+                  </FormControl>
+                </FormItem>
+              )} />
+
+              {!saidaForm.watch("uso_interno") && (
               <FormField control={saidaForm.control} name="ordens_servico_ids" render={({ field }) => (
                 <FormItem><FormLabel>Ordens de Serviço {field.value?.length ? `(${field.value.length} selecionada${field.value.length > 1 ? "s" : ""})` : ""}</FormLabel>
                   <div className="rounded-md border max-h-48 overflow-y-auto p-2 space-y-1">
@@ -337,6 +359,7 @@ export default function Insumos() {
                   <FormMessage />
                 </FormItem>
               )} />
+              )}
 
               <FormField control={saidaForm.control} name="observacoes" render={({ field }) => (
                 <FormItem><FormLabel>Observações</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>

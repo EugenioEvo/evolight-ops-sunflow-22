@@ -72,11 +72,12 @@ export const createSupplyService = (client?: AppSupabaseClient) => {
       kit_id?: string;
       quantidade: number;
       retornavel: boolean;
-      ordem_servico_id: string;
+      ordem_servico_id?: string;
       tecnico_id: string;
       registrado_por: string;
       observacoes?: string;
       lote_id?: string;
+      uso_interno?: boolean;
     }) {
       const { error } = await (db as any).from('insumo_saidas').insert([data]);
       if (error) throw error;

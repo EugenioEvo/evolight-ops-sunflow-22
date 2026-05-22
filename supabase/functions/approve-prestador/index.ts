@@ -27,7 +27,7 @@ function resolveBaseUrl(req: Request, explicit?: string): string {
   return DEFAULT_BASE_URL
 }
 
-type AppRole = 'tecnico_campo' | 'supervisao', 'lider' | 'eletromecanico' | 'sup_eletromecanico', 'lider_eletromecanico'
+type AppRole = 'tecnico_campo' | 'supervisao' | 'lider' | 'eletromecanico' | 'sup_eletromecanico' | 'lider_eletromecanico'
 
 interface ApproveBody {
   prestador_id: string
@@ -38,8 +38,10 @@ interface ApproveBody {
 const ROLE_LABEL: Record<string, string> = {
   tecnico_campo: 'Técnico de Campo',
   supervisao: 'Supervisão',
+  lider: 'Líder',
   eletromecanico: 'Eletromecânico',
   sup_eletromecanico: 'Supervisor Eletromecânico',
+  lider_eletromecanico: 'Líder Eletromecânico',
 }
 
 async function sendApprovalEmail(params: {

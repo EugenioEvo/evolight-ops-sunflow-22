@@ -14,13 +14,15 @@ interface ApprovePrestadorDialogProps {
   onApproved: () => void;
 }
 
-type ApproveRole = 'tecnico_campo' | 'supervisao' | 'eletromecanico' | 'sup_eletromecanico';
+type ApproveRole = 'tecnico_campo' | 'supervisao' | 'lider' | 'eletromecanico' | 'sup_eletromecanico' | 'lider_eletromecanico';
 
 const CATEGORIA_TO_ROLE: Record<string, ApproveRole> = {
   tecnico: 'tecnico_campo',
   supervisao: 'supervisao',
+  lider: 'lider',
   eletromecanico: 'eletromecanico',
   sup_eletromecanico: 'sup_eletromecanico',
+  lider_eletromecanico: 'lider_eletromecanico',
 };
 
 export const ApprovePrestadorDialog = ({ open, onOpenChange, prestador, onApproved }: ApprovePrestadorDialogProps) => {
@@ -80,10 +82,31 @@ export const ApprovePrestadorDialog = ({ open, onOpenChange, prestador, onApprov
               </Label>
             </div>
             <div className="flex items-center space-x-3 p-3 rounded-lg border min-h-[44px]">
+              <RadioGroupItem value="lider" id="r-lid" />
+              <Label htmlFor="r-lid" className="flex-1 cursor-pointer">
+                <div className="font-medium">Líder (O&amp;M)</div>
+                <div className="text-xs text-muted-foreground">Mesmos acessos do Supervisor, com nomenclatura de Líder.</div>
+              </Label>
+            </div>
+            <div className="flex items-center space-x-3 p-3 rounded-lg border min-h-[44px]">
               <RadioGroupItem value="eletromecanico" id="r-ele" />
               <Label htmlFor="r-ele" className="flex-1 cursor-pointer">
                 <div className="font-medium">Eletromecânico (EPC)</div>
                 <div className="text-xs text-muted-foreground">Visualiza RDOs em que aparece como equipe.</div>
+              </Label>
+            </div>
+            <div className="flex items-center space-x-3 p-3 rounded-lg border min-h-[44px]">
+              <RadioGroupItem value="sup_eletromecanico" id="r-sup-ele" />
+              <Label htmlFor="r-sup-ele" className="flex-1 cursor-pointer">
+                <div className="font-medium">Sup. Eletromecânico (EPC)</div>
+                <div className="text-xs text-muted-foreground">Cria/edita RDOs e gerencia equipe da obra.</div>
+              </Label>
+            </div>
+            <div className="flex items-center space-x-3 p-3 rounded-lg border min-h-[44px]">
+              <RadioGroupItem value="lider_eletromecanico" id="r-lid-ele" />
+              <Label htmlFor="r-lid-ele" className="flex-1 cursor-pointer">
+                <div className="font-medium">Líder Eletromecânico (EPC)</div>
+                <div className="text-xs text-muted-foreground">Mesmos acessos do Sup. Eletromecânico, com nomenclatura de Líder.</div>
               </Label>
             </div>
             <div className="flex items-center space-x-3 p-3 rounded-lg border min-h-[44px]">
