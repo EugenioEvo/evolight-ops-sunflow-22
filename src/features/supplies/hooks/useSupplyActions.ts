@@ -72,30 +72,40 @@ export const useSupplyActions = (reload: () => void) => {
       }
 
       // Cria uma saída por OS selecionada, todas com o MESMO lote_id (devolução cascateia entre OSs).
-      // Para "Uso Interno", cria uma única saída sem OS vinculada.
+      // Para "Uso Interno" ou destino "Obra", cria uma única saída sem OS vinculada.
       const lote_id = crypto.randomUUID();
-      const targets: (string | null)[] = data.uso_interno ? [null] : data.ordens_servico_ids;
-      for (const osId of targets) {
+      let targets: Array<{ ordem_servico_id?: string | null; obra_id?: string | null }>;
+      if (data.uso_interno) {
+        targets = [{ ordem_servico_id: null, obra_id: null }];
+      } else if (data.obra_id) {
+        targets = [{ ordem_servico_id: null, obra_id: data.obra_id }];
+      } else {
+        targets = data.ordens_servico_ids.map((osId) => ({ ordem_servico_id: osId, obra_id: null }));
+      }
+      for (const t of targets) {
         await supplyService.createSaida({
           insumo_id: data.tipo === "insumo" ? data.insumo_id : undefined,
           kit_id: data.tipo === "kit" ? data.kit_id : undefined,
           quantidade: data.quantidade,
           retornavel,
           tecnico_id: data.tecnico_id,
-          ordem_servico_id: osId ?? undefined,
+          ordem_servico_id: t.ordem_servico_id ?? undefined,
+          obra_id: t.obra_id ?? undefined,
           uso_interno: data.uso_interno,
           registrado_por: user.id,
           observacoes: data.observacoes,
           lote_id,
+          evidencias: data.evidencias,
         });
       }
-      toast.success(
-        data.uso_interno
-          ? "Saída de uso interno registrada! Aguardando validação do BackOffice."
+      const msg = data.uso_interno
+        ? "Saída de uso interno registrada! Aguardando validação do BackOffice."
+        : data.obra_id
+          ? "Saída registrada para a Obra! Aguardando validação do BackOffice."
           : data.ordens_servico_ids.length > 1
             ? `Saída registrada em ${data.ordens_servico_ids.length} OS! Aguardando validação do BackOffice.`
-            : "Saída registrada! Aguardando validação do BackOffice."
-      );
+            : "Saída registrada! Aguardando validação do BackOffice.";
+      toast.success(msg);
       reload(); setIsSaidaDialogOpen(false); saidaForm.reset();
     } catch (error) {
       handleError(error, { fallbackMessage: "Erro ao registrar saída." });
