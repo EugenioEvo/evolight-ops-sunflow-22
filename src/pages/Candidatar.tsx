@@ -167,8 +167,10 @@ const Candidatar = () => {
                     <SelectContent>
                       <SelectItem value="tecnico">Técnico de Campo (O&amp;M)</SelectItem>
                       <SelectItem value="supervisao">Supervisor (O&amp;M)</SelectItem>
+                      <SelectItem value="lider">Líder (O&amp;M)</SelectItem>
                       <SelectItem value="eletromecanico">Eletromecânico (EPC)</SelectItem>
                       <SelectItem value="sup_eletromecanico">Sup. Eletromecânico (EPC)</SelectItem>
+                      <SelectItem value="lider_eletromecanico">Líder Eletromecânico (EPC)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
