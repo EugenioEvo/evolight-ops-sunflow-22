@@ -2466,6 +2466,8 @@ export type Database = {
         | "backoffice"
         | "eletromecanico"
         | "sup_eletromecanico"
+        | "lider"
+        | "lider_eletromecanico"
       equipamento_tipo:
         | "painel_solar"
         | "inversor"
@@ -2630,6 +2632,8 @@ export const Constants = {
         "backoffice",
         "eletromecanico",
         "sup_eletromecanico",
+        "lider",
+        "lider_eletromecanico",
       ],
       equipamento_tipo: [
         "painel_solar",
