@@ -132,7 +132,7 @@ export default function Insumos() {
   useEffect(() => {
     (async () => {
       try {
-        const all = await obrasService.list();
+        const all = await obrasService.fetchAll();
         setObrasAtivas(all.filter((o) => o.status === "planejada" || o.status === "em_execucao"));
       } catch { /* silencioso */ }
     })();
