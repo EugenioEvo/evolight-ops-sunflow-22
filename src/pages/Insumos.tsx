@@ -432,10 +432,10 @@ export default function Insumos() {
                       <div className="flex items-center gap-2">{getCategoriaIcon(insumo.categoria)}<CardTitle className="text-lg">{insumo.nome}</CardTitle></div>
                       <div className="flex gap-1">
                         <Button variant="ghost" size="sm" onClick={() => setDetailInsumo(insumo)} title="Ver detalhes"><Eye className="h-4 w-4" /></Button>
-                        {!isTecnico && (
+                        {canManageInventory && (
                           <Button variant="ghost" size="sm" onClick={() => handleEditInsumo(insumo)} title="Editar"><Edit className="h-4 w-4" /></Button>
                         )}
-                        {!isTecnico && (
+                        {canManageInventory && (
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <Button variant="ghost" size="sm"><Trash2 className="h-4 w-4" /></Button>
