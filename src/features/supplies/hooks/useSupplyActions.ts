@@ -144,6 +144,8 @@ export const useSupplyActions = (reload: () => void) => {
       tecnico_id: "",
       uso_interno: false,
       ordens_servico_ids: [],
+      obra_id: null,
+      evidencias: [],
       observacoes: "",
     });
     setIsSaidaDialogOpen(true);
