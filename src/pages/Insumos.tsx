@@ -21,6 +21,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useErrorHandler } from "@/hooks/useErrorHandler";
+import { obrasService } from "@/features/obras";
+import type { Obra } from "@/features/obras";
 
 const getCategoriaIcon = (categoria: string) =>
   ["inversores", "equipamentos_medicao", "ferramentas"].includes(categoria)
