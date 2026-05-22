@@ -20,7 +20,7 @@ const candidaturaSchema = z.object({
   cpf: z.string().trim().optional().or(z.literal('')),
   cidade: z.string().trim().max(100).optional().or(z.literal('')),
   estado: z.string().trim().max(2).optional().or(z.literal('')),
-  categoria: z.enum(['tecnico', 'supervisao', 'eletromecanico', 'sup_eletromecanico'], { required_error: 'Selecione uma área' }),
+  categoria: z.enum(['tecnico', 'supervisao', 'lider', 'eletromecanico', 'sup_eletromecanico', 'lider_eletromecanico'], { required_error: 'Selecione uma área' }),
   experiencia: z.string().optional(),
   observacoes: z.string().max(1000).optional().or(z.literal('')),
 });
