@@ -678,7 +678,7 @@ export type Database = {
           kit_id: string | null
           lote_id: string
           observacoes: string | null
-          ordem_servico_id: string
+          ordem_servico_id: string | null
           quantidade: number
           quantidade_devolvida: number
           registrado_por: string
@@ -687,6 +687,7 @@ export type Database = {
           status: string
           tecnico_id: string
           updated_at: string
+          uso_interno: boolean
         }
         Insert: {
           aprovado_at?: string | null
@@ -697,7 +698,7 @@ export type Database = {
           kit_id?: string | null
           lote_id?: string
           observacoes?: string | null
-          ordem_servico_id: string
+          ordem_servico_id?: string | null
           quantidade: number
           quantidade_devolvida?: number
           registrado_por: string
@@ -706,6 +707,7 @@ export type Database = {
           status?: string
           tecnico_id: string
           updated_at?: string
+          uso_interno?: boolean
         }
         Update: {
           aprovado_at?: string | null
@@ -716,7 +718,7 @@ export type Database = {
           kit_id?: string | null
           lote_id?: string
           observacoes?: string | null
-          ordem_servico_id?: string
+          ordem_servico_id?: string | null
           quantidade?: number
           quantidade_devolvida?: number
           registrado_por?: string
@@ -725,6 +727,7 @@ export type Database = {
           status?: string
           tecnico_id?: string
           updated_at?: string
+          uso_interno?: boolean
         }
         Relationships: [
           {
