@@ -78,7 +78,7 @@ export default function BackofficeInsumos() {
     try {
       const [s, d, e] = await Promise.all([
         (supabase as any).from("insumo_saidas")
-          .select("*, insumo:insumos(nome,unidade), kit:kits(nome), tecnico:tecnicos(id,profile:profiles(nome)), os:ordens_servico(numero_os)")
+          .select("*, insumo:insumos(nome,unidade), kit:kits(nome), tecnico:tecnicos(id,profile:profiles(nome)), os:ordens_servico(numero_os), obra:obras(id,nome,cidade)")
           .eq("status", "pendente_aprovacao")
           .order("created_at", { ascending: false }),
         supplyService.getBackofficeDevolucoes(),
