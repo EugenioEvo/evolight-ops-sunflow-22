@@ -21,6 +21,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useErrorHandler } from "@/hooks/useErrorHandler";
+import { obrasService } from "@/features/obras";
+import type { Obra } from "@/features/obras";
 
 const getCategoriaIcon = (categoria: string) =>
   ["inversores", "equipamentos_medicao", "ferramentas"].includes(categoria)
@@ -81,13 +83,21 @@ export default function Insumos() {
     isTecnico,
   } = useSupplyActions(reload);
 
-  // Para fluxo de saída: lista de técnicos + OS ativas do técnico escolhido
+  // Permissão para gerenciar cadastro/compra (apenas admin e backoffice)
+  const userRoles = profile?.roles || [];
+  const canManageInventory = userRoles.includes("admin") || userRoles.includes("backoffice");
+
+  // Para fluxo de saída: lista de técnicos + OS ativas + Obras ativas
   const [tecnicos, setTecnicos] = useState<Array<{ id: string; nome: string }>>([]);
   const [osAtivas, setOsAtivas] = useState<Array<{ ordem_servico_id: string; numero_os: string; ticket_titulo: string }>>([]);
+  const [obrasAtivas, setObrasAtivas] = useState<Obra[]>([]);
   const [meuTecnicoId, setMeuTecnicoId] = useState<string>("");
 
   const watchedTecnicoId = saidaForm.watch("tecnico_id");
   const watchedTipo = saidaForm.watch("tipo");
+  const watchedObraId = saidaForm.watch("obra_id");
+  const watchedOsIds = saidaForm.watch("ordens_servico_ids");
+  const watchedUsoInterno = saidaForm.watch("uso_interno");
 
   useEffect(() => {
     (async () => {
@@ -118,12 +128,23 @@ export default function Insumos() {
     })();
   }, [watchedTecnicoId]);
 
+  // Carrega Obras em atividade (planejada / em_execucao) para o seletor de saída
+  useEffect(() => {
+    (async () => {
+      try {
+        const all = await obrasService.fetchAll();
+        setObrasAtivas(all.filter((o) => o.status === "planejada" || o.status === "em_execucao"));
+      } catch { /* silencioso */ }
+    })();
+  }, []);
+
   // Auto-abrir dialog de saída quando navega de Minhas OS via ?os=<id>
   useEffect(() => {
     if (!osIdParam) return;
     saidaForm.reset({
       tipo: "insumo", insumo_id: undefined, kit_id: undefined,
-      quantidade: 1, tecnico_id: meuTecnicoId || "", ordens_servico_ids: [osIdParam], observacoes: "",
+      quantidade: 1, tecnico_id: meuTecnicoId || "", ordens_servico_ids: [osIdParam],
+      obra_id: null, evidencias: [], observacoes: "",
     });
     setIsSaidaDialogOpen(true);
   }, [osIdParam, meuTecnicoId]);
@@ -136,7 +157,7 @@ export default function Insumos() {
     <div className="container mx-auto py-8 space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Gestão de Insumos</h1>
-        {!isTecnico && (
+        {canManageInventory && (
           <Dialog open={isInsumoDialogOpen} onOpenChange={setIsInsumoDialogOpen}>
             <DialogTrigger asChild>
               <Button onClick={() => { setEditingInsumo(null); insumoForm.reset({ nome: "", categoria: "", unidade: "un", quantidade: 0, estoque_minimo: 10, estoque_critico: 5, localizacao: "Estoque", fornecedor: "", observacoes: "", retornavel: false, midias: [] }); }}><Plus className="h-4 w-4 mr-2" />Novo Insumo</Button>
@@ -147,7 +168,7 @@ export default function Insumos() {
                 <form onSubmit={insumoForm.handleSubmit(onSubmitInsumo)} className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <FormField control={insumoForm.control} name="nome" render={({ field }) => (<FormItem><FormLabel>Nome</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                    <FormField control={insumoForm.control} name="categoria" render={({ field }) => (<FormItem><FormLabel>Categoria</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="paineis_solares">Painéis Solares</SelectItem><SelectItem value="inversores">Inversores</SelectItem><SelectItem value="estruturas_montagem">Estruturas</SelectItem><SelectItem value="cabos_conectores">Cabos</SelectItem><SelectItem value="equipamentos_medicao">Medição</SelectItem><SelectItem value="ferramentas">Ferramentas</SelectItem><SelectItem value="componentes_eletricos">Componentes</SelectItem><SelectItem value="manutencao">Manutenção</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
+                    <FormField control={insumoForm.control} name="categoria" render={({ field }) => (<FormItem><FormLabel>Categoria</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="paineis_solares">Painéis Solares</SelectItem><SelectItem value="inversores">Inversores</SelectItem><SelectItem value="estruturas_montagem">Estruturas</SelectItem><SelectItem value="cabos_conectores">Cabos</SelectItem><SelectItem value="equipamentos_medicao">Medição</SelectItem><SelectItem value="ferramentas">Ferramentas</SelectItem><SelectItem value="componentes_eletricos">Componentes</SelectItem><SelectItem value="manutencao">Manutenção</SelectItem><SelectItem value="seguranca">Segurança (uniformes, luvas, EPIs)</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
                   </div>
                   <div className="grid grid-cols-3 gap-4">
                     <FormField control={insumoForm.control} name="unidade" render={({ field }) => (
@@ -264,23 +285,46 @@ export default function Insumos() {
 
       {/* Saída Dialog */}
       <Dialog open={isSaidaDialogOpen} onOpenChange={setIsSaidaDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Registrar Saída{selectedInsumo && ` - ${selectedInsumo.nome}`}</DialogTitle>
           </DialogHeader>
           <Form {...saidaForm}>
             <form onSubmit={saidaForm.handleSubmit(onSubmitSaida)} className="space-y-4">
-              <FormField control={saidaForm.control} name="tipo" render={({ field }) => (
-                <FormItem><FormLabel>Tipo</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                    <SelectContent>
-                      <SelectItem value="insumo">Item avulso</SelectItem>
-                      <SelectItem value="kit">KIT</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </FormItem>
-              )} />
+              {/* Linha 1: Tipo, Quantidade, Técnico */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <FormField control={saidaForm.control} name="tipo" render={({ field }) => (
+                  <FormItem><FormLabel>Tipo</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                      <SelectContent>
+                        <SelectItem value="insumo">Item avulso</SelectItem>
+                        <SelectItem value="kit">KIT</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </FormItem>
+                )} />
+
+                <FormField control={saidaForm.control} name="quantidade" render={({ field }) => (
+                  <FormItem><FormLabel>Quantidade</FormLabel>
+                    <FormControl><Input type="number" min="1" {...field} onChange={(e) => field.onChange(parseInt(e.target.value))} /></FormControl>
+                    {selectedInsumo && watchedTipo === "insumo" && (
+                      <p className="text-xs text-muted-foreground">Estoque: {selectedInsumo.quantidade} {selectedInsumo.unidade}</p>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                )} />
+
+                <FormField control={saidaForm.control} name="tecnico_id" render={({ field }) => (
+                  <FormItem><FormLabel>Técnico responsável</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value} disabled={isTecnico && !!meuTecnicoId}>
+                      <FormControl><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger></FormControl>
+                      <SelectContent>{tecnicos.map(t => <SelectItem key={t.id} value={t.id}>{t.nome}</SelectItem>)}</SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+              </div>
 
               {watchedTipo === "kit" && (
                 <FormField control={saidaForm.control} name="kit_id" render={({ field }) => (
@@ -293,32 +337,12 @@ export default function Insumos() {
                 )} />
               )}
 
-              <FormField control={saidaForm.control} name="quantidade" render={({ field }) => (
-                <FormItem><FormLabel>Quantidade</FormLabel>
-                  <FormControl><Input type="number" min="1" {...field} onChange={(e) => field.onChange(parseInt(e.target.value))} /></FormControl>
-                  {selectedInsumo && watchedTipo === "insumo" && (
-                    <p className="text-sm text-muted-foreground">Estoque atual: {selectedInsumo.quantidade} {selectedInsumo.unidade}</p>
-                  )}
-                  <FormMessage />
-                </FormItem>
-              )} />
-
-              <FormField control={saidaForm.control} name="tecnico_id" render={({ field }) => (
-                <FormItem><FormLabel>Técnico responsável</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value} disabled={isTecnico && !!meuTecnicoId}>
-                    <FormControl><SelectTrigger><SelectValue placeholder="Selecione um técnico" /></SelectTrigger></FormControl>
-                    <SelectContent>{tecnicos.map(t => <SelectItem key={t.id} value={t.id}>{t.nome}</SelectItem>)}</SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )} />
-
               <FormField control={saidaForm.control} name="uso_interno" render={({ field }) => (
                 <FormItem className="flex flex-row items-center justify-between rounded-md border p-3">
                   <div className="space-y-0.5 pr-3">
                     <FormLabel className="text-sm font-medium">Uso Interno</FormLabel>
                     <p className="text-xs text-muted-foreground">
-                      Saída não vinculada a OS (ex.: estoque do veículo, ferramentaria).
+                      Saída não vinculada a OS nem Obra (ex.: estoque do veículo, ferramentaria).
                       Ainda passa pelo fluxo de aprovação do BackOffice.
                     </p>
                   </div>
@@ -327,39 +351,131 @@ export default function Insumos() {
                       checked={!!field.value}
                       onCheckedChange={(v) => {
                         field.onChange(v);
-                        if (v) saidaForm.setValue("ordens_servico_ids", []);
+                        if (v) {
+                          saidaForm.setValue("ordens_servico_ids", []);
+                          saidaForm.setValue("obra_id", null);
+                        }
                       }}
                     />
                   </FormControl>
                 </FormItem>
               )} />
 
-              {!saidaForm.watch("uso_interno") && (
-              <FormField control={saidaForm.control} name="ordens_servico_ids" render={({ field }) => (
-                <FormItem><FormLabel>Ordens de Serviço {field.value?.length ? `(${field.value.length} selecionada${field.value.length > 1 ? "s" : ""})` : ""}</FormLabel>
-                  <div className="rounded-md border max-h-48 overflow-y-auto p-2 space-y-1">
-                    {!watchedTecnicoId && <div className="p-2 text-sm text-muted-foreground">Escolha o técnico primeiro</div>}
-                    {watchedTecnicoId && osAtivas.length === 0 && <div className="p-2 text-sm text-muted-foreground">Nenhuma OS aceita/em execução</div>}
-                    {osAtivas.map(os => {
-                      const checked = (field.value || []).includes(os.ordem_servico_id);
-                      return (
-                        <label key={os.ordem_servico_id} className="flex items-center gap-2 p-2 hover:bg-muted/50 rounded cursor-pointer text-sm">
-                          <Checkbox
-                            checked={checked}
-                            onCheckedChange={(v) => {
-                              const curr = field.value || [];
-                              field.onChange(v ? [...curr, os.ordem_servico_id] : curr.filter((id) => id !== os.ordem_servico_id));
-                            }}
-                          />
-                          <span className="flex-1">{os.numero_os} — {os.ticket_titulo}</span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                  <FormMessage />
-                </FormItem>
-              )} />
+              {/* Destinos: OS (esquerda) e Obra (direita) — mutuamente exclusivos */}
+              {!watchedUsoInterno && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <FormField control={saidaForm.control} name="ordens_servico_ids" render={({ field }) => {
+                    const blockedByObra = !!watchedObraId;
+                    return (
+                      <FormItem>
+                        <FormLabel>
+                          Ordens de Serviço {field.value?.length ? `(${field.value.length})` : ""}
+                          {blockedByObra && <span className="text-xs text-muted-foreground ml-1">— desativado (Obra selecionada)</span>}
+                        </FormLabel>
+                        <div className={`rounded-md border max-h-48 overflow-y-auto p-2 space-y-1 ${blockedByObra ? "opacity-50 pointer-events-none" : ""}`}>
+                          {!watchedTecnicoId && <div className="p-2 text-sm text-muted-foreground">Escolha o técnico primeiro</div>}
+                          {watchedTecnicoId && osAtivas.length === 0 && <div className="p-2 text-sm text-muted-foreground">Nenhuma OS aceita/em execução</div>}
+                          {osAtivas.map(os => {
+                            const checked = (field.value || []).includes(os.ordem_servico_id);
+                            return (
+                              <label key={os.ordem_servico_id} className="flex items-center gap-2 p-2 hover:bg-muted/50 rounded cursor-pointer text-sm">
+                                <Checkbox
+                                  checked={checked}
+                                  onCheckedChange={(v) => {
+                                    const curr = field.value || [];
+                                    field.onChange(v ? [...curr, os.ordem_servico_id] : curr.filter((id) => id !== os.ordem_servico_id));
+                                  }}
+                                />
+                                <span className="flex-1">{os.numero_os} — {os.ticket_titulo}</span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                        <FormMessage />
+                      </FormItem>
+                    );
+                  }} />
+
+                  <FormField control={saidaForm.control} name="obra_id" render={({ field }) => {
+                    const blockedByOS = (watchedOsIds || []).length > 0;
+                    return (
+                      <FormItem>
+                        <FormLabel>
+                          Obra
+                          {blockedByOS && <span className="text-xs text-muted-foreground ml-1">— desativado (OS selecionada)</span>}
+                        </FormLabel>
+                        <Select
+                          onValueChange={(v) => field.onChange(v === "__none__" ? null : v)}
+                          value={field.value || "__none__"}
+                          disabled={blockedByOS}
+                        >
+                          <FormControl><SelectTrigger><SelectValue placeholder="Selecione a obra" /></SelectTrigger></FormControl>
+                          <SelectContent>
+                            <SelectItem value="__none__">— Nenhuma —</SelectItem>
+                            {obrasAtivas.map(o => (
+                              <SelectItem key={o.id} value={o.id}>
+                                {o.nome}{o.cidade ? ` • ${o.cidade}` : ""}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground">Apenas Obras planejadas ou em execução.</p>
+                        <FormMessage />
+                      </FormItem>
+                    );
+                  }} />
+                </div>
               )}
+
+              {/* Evidências obrigatórias */}
+              <FormField control={saidaForm.control} name="evidencias" render={({ field }) => {
+                const evid: any[] = field.value || [];
+                const pick = async (files: FileList | null) => {
+                  if (!files || files.length === 0) return;
+                  const list = Array.from(files);
+                  const tooBig = list.find(f => (f.type.startsWith("video/") ? f.size > 50 * 1024 * 1024 : f.size > 5 * 1024 * 1024));
+                  if (tooBig) { toast.error("Foto até 5MB e vídeo até 50MB."); return; }
+                  try {
+                    const uploaded = await supplyService.uploadSaidaEvidencias(crypto.randomUUID(), list);
+                    field.onChange([...evid, ...uploaded]);
+                  } catch (e) {
+                    handleError(e, { fallbackMessage: "Erro ao enviar mídia." });
+                  }
+                };
+                return (
+                  <FormItem>
+                    <FormLabel>Fotos e vídeos da saída <span className="text-destructive">*</span></FormLabel>
+                    <p className="text-xs text-muted-foreground -mt-1">Obrigatório ao menos 1 anexo. O BackOffice usará isso para validar a saída.</p>
+                    <div className="flex gap-2">
+                      <Button type="button" variant="outline" size="sm" onClick={() => document.getElementById("saida-cam-input")?.click()}>
+                        <Camera className="h-4 w-4 mr-1" />Câmera
+                      </Button>
+                      <Button type="button" variant="outline" size="sm" onClick={() => document.getElementById("saida-gal-input")?.click()}>
+                        <ImageIcon className="h-4 w-4 mr-1" />Galeria
+                      </Button>
+                      <input id="saida-cam-input" type="file" accept="image/*,video/*" capture="environment" className="hidden" onChange={(e) => { pick(e.target.files); e.target.value = ""; }} />
+                      <input id="saida-gal-input" type="file" accept="image/*,video/*" multiple className="hidden" onChange={(e) => { pick(e.target.files); e.target.value = ""; }} />
+                    </div>
+                    {evid.length > 0 && (
+                      <div className="grid grid-cols-4 gap-2 mt-2">
+                        {evid.map((m, i) => (
+                          <div key={m.path || i} className="relative group aspect-square rounded-md overflow-hidden border bg-muted">
+                            {isVideo(m) ? (
+                              <div className="w-full h-full flex items-center justify-center"><Film className="h-6 w-6 text-muted-foreground" /></div>
+                            ) : (
+                              <img src={m.url} alt={m.name || `anexo ${i + 1}`} className="w-full h-full object-cover" />
+                            )}
+                            <button type="button" onClick={() => field.onChange(evid.filter((_, idx) => idx !== i))} className="absolute top-1 right-1 bg-background/90 rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition">
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                );
+              }} />
 
               <FormField control={saidaForm.control} name="observacoes" render={({ field }) => (
                 <FormItem><FormLabel>Observações</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>
@@ -411,10 +527,10 @@ export default function Insumos() {
                       <div className="flex items-center gap-2">{getCategoriaIcon(insumo.categoria)}<CardTitle className="text-lg">{insumo.nome}</CardTitle></div>
                       <div className="flex gap-1">
                         <Button variant="ghost" size="sm" onClick={() => setDetailInsumo(insumo)} title="Ver detalhes"><Eye className="h-4 w-4" /></Button>
-                        {!isTecnico && (
+                        {canManageInventory && (
                           <Button variant="ghost" size="sm" onClick={() => handleEditInsumo(insumo)} title="Editar"><Edit className="h-4 w-4" /></Button>
                         )}
-                        {!isTecnico && (
+                        {canManageInventory && (
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <Button variant="ghost" size="sm"><Trash2 className="h-4 w-4" /></Button>
@@ -457,7 +573,7 @@ export default function Insumos() {
                       <Button size="sm" variant="outline" onClick={() => handleSaida(insumo)} disabled={insumo.quantidade === 0}>
                         <ArrowDownIcon className="h-4 w-4 mr-1" />Saída
                       </Button>
-                      {!isTecnico && (
+                      {canManageInventory && (
                         <Button size="sm" variant="secondary" onClick={() => abrirCompra(insumo)}>
                           <ShoppingCart className="h-4 w-4 mr-1" />Compra
                         </Button>
