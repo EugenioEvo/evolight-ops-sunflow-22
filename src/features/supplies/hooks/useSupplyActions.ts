@@ -95,7 +95,7 @@ export const useSupplyActions = (reload: () => void) => {
           registrado_por: user.id,
           observacoes: data.observacoes,
           lote_id,
-          evidencias: data.evidencias,
+          evidencias: data.evidencias as any,
         });
       }
       const msg = data.uso_interno
