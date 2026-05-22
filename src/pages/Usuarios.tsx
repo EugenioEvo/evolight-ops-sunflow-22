@@ -20,15 +20,17 @@ import { Search, Shield, Trash2, UserCog, Pencil, Plus, Loader2 } from 'lucide-r
 import { toast } from 'sonner';
 import { especialidadesOptions, certificacoesOptions, experienciaOptions } from '@/features/providers/types';
 
-type AppRole = 'admin' | 'engenharia' | 'supervisao' | 'backoffice' | 'sup_eletromecanico' | 'eletromecanico' | 'tecnico_campo' | 'cliente';
-const ALL_ROLES: AppRole[] = ['admin', 'engenharia', 'supervisao', 'backoffice', 'sup_eletromecanico', 'eletromecanico', 'tecnico_campo', 'cliente'];
+type AppRole = 'admin' | 'engenharia' | 'supervisao' | 'lider' | 'backoffice' | 'sup_eletromecanico' | 'lider_eletromecanico' | 'eletromecanico' | 'tecnico_campo' | 'cliente';
+const ALL_ROLES: AppRole[] = ['admin', 'engenharia', 'supervisao', 'lider', 'backoffice', 'sup_eletromecanico', 'lider_eletromecanico', 'eletromecanico', 'tecnico_campo', 'cliente'];
 
 const ROLE_LABEL: Record<AppRole, string> = {
   admin: 'Administrador',
   engenharia: 'Engenharia',
   supervisao: 'Supervisor',
+  lider: 'Líder',
   backoffice: 'BackOffice',
   sup_eletromecanico: 'Sup. Eletromecânico',
+  lider_eletromecanico: 'Líder Eletromecânico',
   eletromecanico: 'Eletromecânico',
   tecnico_campo: 'Técnico',
   cliente: 'Cliente',
@@ -38,8 +40,10 @@ const ROLE_COLOR: Record<AppRole, string> = {
   admin: 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300',
   engenharia: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
   supervisao: 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300',
+  lider: 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300',
   backoffice: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300',
   sup_eletromecanico: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/40 dark:text-cyan-300',
+  lider_eletromecanico: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/40 dark:text-cyan-300',
   eletromecanico: 'bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-300',
   tecnico_campo: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300',
   cliente: 'bg-slate-100 text-slate-800 dark:bg-slate-900/40 dark:text-slate-300',
@@ -518,11 +522,12 @@ interface CreateDialogProps {
   onCreated: () => Promise<void>;
 }
 
-type StaffRole = 'admin' | 'engenharia' | 'supervisao' | 'backoffice';
+type StaffRole = 'admin' | 'engenharia' | 'supervisao' | 'lider' | 'backoffice';
 const STAFF_ROLE_OPTIONS: { value: StaffRole; label: string }[] = [
   { value: 'admin', label: 'Administrador' },
   { value: 'engenharia', label: 'Engenharia' },
   { value: 'supervisao', label: 'Supervisor' },
+  { value: 'lider', label: 'Líder' },
   { value: 'backoffice', label: 'BackOffice' },
 ];
 

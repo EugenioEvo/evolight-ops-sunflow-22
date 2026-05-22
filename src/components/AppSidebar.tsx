@@ -38,7 +38,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
-type Role = 'admin' | 'engenharia' | 'supervisao' | 'backoffice' | 'sup_eletromecanico' | 'tecnico_campo' | 'eletromecanico' | 'cliente';
+type Role = 'admin' | 'engenharia' | 'supervisao' | 'lider' | 'backoffice' | 'sup_eletromecanico' | 'lider_eletromecanico' | 'tecnico_campo' | 'eletromecanico' | 'cliente';
 
 interface NavItem {
   title: string;
@@ -48,9 +48,10 @@ interface NavItem {
   allow?: Role[];
 }
 
-const STAFF: Role[] = ['admin', 'engenharia', 'supervisao'];
+// Líder tem as mesmas permissões que Supervisor (mesma área), apenas nomenclatura diferente.
+const STAFF: Role[] = ['admin', 'engenharia', 'supervisao', 'lider'];
 const STAFF_BO: Role[] = [...STAFF, 'backoffice'];
-const ELETRO: Role[] = ['eletromecanico', 'sup_eletromecanico'];
+const ELETRO: Role[] = ['eletromecanico', 'sup_eletromecanico', 'lider_eletromecanico'];
 
 const mainItems: NavItem[] = [
   { title: "Dashboard", url: "/", icon: Home, allow: [...STAFF_BO, 'tecnico_campo', 'cliente', ...ELETRO] },
@@ -70,7 +71,7 @@ const rdoItems: NavItem[] = [
   { title: "Dashboard", url: "/rdo/dashboard", icon: Home, allow: [...STAFF, ...ELETRO] },
   { title: "RDO", url: "/rdo", icon: FileSpreadsheet, allow: [...STAFF, ...ELETRO] },
   { title: "Aprovar RDOs", url: "/gerenciar-rdo", icon: CheckSquare, allow: STAFF },
-  { title: "Obras", url: "/obras", icon: HardHat, allow: [...STAFF, 'sup_eletromecanico'] },
+  { title: "Obras", url: "/obras", icon: HardHat, allow: [...STAFF, 'sup_eletromecanico', 'lider_eletromecanico'] },
   { title: "Catálogo de Atividades", url: "/obra-catalogo", icon: BookOpen, allow: ['admin'] },
 ];
 
@@ -103,7 +104,7 @@ export function AppSidebar() {
   const isTecnico = userRoles.includes('tecnico_campo');
   const isStaff = userRoles.some(r => STAFF.includes(r));
   const isBackoffice = userRoles.includes('backoffice');
-  const isSupEletro = userRoles.includes('sup_eletromecanico');
+  const isSupEletro = userRoles.includes('sup_eletromecanico') || userRoles.includes('lider_eletromecanico');
   const showCadastros = isStaff || isBackoffice || isTecnico || isSupEletro;
 
   useEffect(() => {

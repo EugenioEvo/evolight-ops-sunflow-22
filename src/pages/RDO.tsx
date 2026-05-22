@@ -15,7 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useAuth } from '@/hooks/useAuth';
 import { useRDOQuery, useRDOMutations, RDO_STATUS_LABEL, RDO_STATUS_VARIANT, type RDOStatus } from '@/features/rdo';
 
-const STAFF_ROLES = ['admin', 'engenharia', 'supervisao'] as const;
+const STAFF_ROLES = ['admin', 'engenharia', 'supervisao', 'lider'] as const;
 
 export default function RDO() {
   const navigate = useNavigate();
@@ -26,7 +26,7 @@ export default function RDO() {
   const [toDelete, setToDelete] = useState<string | null>(null);
 
   const isStaff = profile?.roles?.some((r) => (STAFF_ROLES as readonly string[]).includes(r)) ?? false;
-  const canCreate = isStaff || profile?.roles?.includes('sup_eletromecanico');
+  const canCreate = isStaff || profile?.roles?.some((r) => r === 'sup_eletromecanico' || r === 'lider_eletromecanico');
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();

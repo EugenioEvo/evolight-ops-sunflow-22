@@ -27,7 +27,7 @@ function resolveBaseUrl(req: Request, explicit?: string): string {
   return DEFAULT_BASE_URL
 }
 
-type AppRole = 'tecnico_campo' | 'supervisao' | 'eletromecanico' | 'sup_eletromecanico'
+type AppRole = 'tecnico_campo' | 'supervisao', 'lider' | 'eletromecanico' | 'sup_eletromecanico', 'lider_eletromecanico'
 
 interface ApproveBody {
   prestador_id: string
@@ -96,9 +96,9 @@ async function sendApprovalEmail(params: {
   return { skipped: false as const }
 }
 
-const ALLOWED_ROLES: AppRole[] = ['tecnico_campo', 'supervisao', 'eletromecanico', 'sup_eletromecanico']
+const ALLOWED_ROLES: AppRole[] = ['tecnico_campo', 'supervisao', 'lider', 'eletromecanico', 'sup_eletromecanico', 'lider_eletromecanico']
 // Roles operacionais de campo que precisam de registro em `tecnicos` (link prestador↔profile).
-const FIELD_ROLES: AppRole[] = ['tecnico_campo', 'eletromecanico', 'sup_eletromecanico']
+const FIELD_ROLES: AppRole[] = ['tecnico_campo', 'eletromecanico', 'sup_eletromecanico', 'lider_eletromecanico']
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {

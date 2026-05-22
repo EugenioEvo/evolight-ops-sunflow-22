@@ -174,10 +174,14 @@ const Index = () => {
     return labels[status] || status;
   };
 
-  // Redirecionar clientes para seu dashboard
+  // Redirecionar conforme perfil principal
   useEffect(() => {
-    if (profile?.role === 'cliente') {
+    if (!profile?.role) return;
+    if (profile.role === 'cliente') {
       navigate('/meu-painel');
+    } else if (['sup_eletromecanico', 'eletromecanico', 'lider_eletromecanico'].includes(profile.role)) {
+      // Equipe de eletromecânica (EPC) vai direto ao Dashboard de RDOs
+      navigate('/rdo/dashboard');
     }
   }, [profile, navigate]);
 

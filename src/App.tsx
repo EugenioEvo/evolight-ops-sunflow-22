@@ -99,27 +99,27 @@ const App = () => (
                             <Route path="/tickets" element={<Tickets />} />
                             <Route path="/routes" element={<RoutesPage />} />
                             <Route path="/agenda" element={
-                              <ProtectedRoute roles={['admin', 'engenharia', 'supervisao']}>
+                              <ProtectedRoute roles={['admin', 'engenharia', 'supervisao', 'lider']}>
                                 <Agenda />
                               </ProtectedRoute>
                             } />
                             <Route path="/carga-trabalho" element={
-                              <ProtectedRoute roles={['admin', 'engenharia', 'supervisao']}>
+                              <ProtectedRoute roles={['admin', 'engenharia', 'supervisao', 'lider']}>
                                 <CargaTrabalho />
                               </ProtectedRoute>
                             } />
                             <Route path="/dashboard-presenca" element={
-                              <ProtectedRoute roles={['admin', 'engenharia', 'supervisao']}>
+                              <ProtectedRoute roles={['admin', 'engenharia', 'supervisao', 'lider']}>
                                 <DashboardPresenca />
                               </ProtectedRoute>
                             } />
                             <Route path="/clientes" element={
-                              <ProtectedRoute roles={['admin', 'engenharia', 'supervisao']}>
+                              <ProtectedRoute roles={['admin', 'engenharia', 'supervisao', 'lider']}>
                                 <Clientes />
                               </ProtectedRoute>
                             } />
                             <Route path="/prestadores" element={
-                              <ProtectedRoute roles={['admin', 'engenharia', 'supervisao']}>
+                              <ProtectedRoute roles={['admin', 'engenharia', 'supervisao', 'lider']}>
                                 <Prestadores />
                               </ProtectedRoute>
                             } />
@@ -129,23 +129,23 @@ const App = () => (
                               </ProtectedRoute>
                             } />
                             <Route path="/tecnicos" element={
-                              <ProtectedRoute roles={['admin', 'engenharia', 'supervisao']}>
+                              <ProtectedRoute roles={['admin', 'engenharia', 'supervisao', 'lider']}>
                                 <Tecnicos />
                               </ProtectedRoute>
                             } />
                             <Route path="/minhas-os" element={<MinhasOS />} />
                             <Route path="/minhas-devolucoes" element={
-                              <ProtectedRoute roles={['tecnico_campo', 'admin', 'engenharia', 'supervisao', 'backoffice']}>
+                              <ProtectedRoute roles={['tecnico_campo', 'admin', 'engenharia', 'supervisao', 'lider', 'backoffice']}>
                                 <MinhasDevolucoes />
                               </ProtectedRoute>
                             } />
                             <Route path="/equipamentos" element={
-                              <ProtectedRoute roles={['admin', 'engenharia', 'supervisao']}>
+                              <ProtectedRoute roles={['admin', 'engenharia', 'supervisao', 'lider']}>
                                 <Equipamentos />
                               </ProtectedRoute>
                             } />
                             <Route path="/insumos" element={
-                              <ProtectedRoute roles={['admin', 'engenharia', 'supervisao', 'backoffice', 'tecnico_campo']}>
+                              <ProtectedRoute roles={['admin', 'engenharia', 'supervisao', 'lider', 'backoffice', 'tecnico_campo']}>
                                 <Insumos />
                               </ProtectedRoute>
                             } />
@@ -155,23 +155,23 @@ const App = () => (
                               </ProtectedRoute>
                             } />
                             <Route path="/backoffice/insumos" element={
-                              <ProtectedRoute roles={['admin', 'engenharia', 'supervisao', 'backoffice']}>
+                              <ProtectedRoute roles={['admin', 'engenharia', 'supervisao', 'lider', 'backoffice']}>
                                 <BackofficeInsumos />
                               </ProtectedRoute>
                             } />
                             <Route path="/rme" element={<LegacyRMERedirect />} />
                             <Route path="/gerenciar-rme" element={
-                              <ProtectedRoute roles={['admin', 'engenharia', 'supervisao']}>
+                              <ProtectedRoute roles={['admin', 'engenharia', 'supervisao', 'lider']}>
                                 <GerenciarRME />
                               </ProtectedRoute>
                             } />
                             <Route path="/obras" element={
-                              <ProtectedRoute roles={['admin', 'engenharia', 'supervisao', 'sup_eletromecanico']}>
+                              <ProtectedRoute roles={['admin', 'engenharia', 'supervisao', 'lider', 'sup_eletromecanico', 'lider_eletromecanico']}>
                                 <Obras />
                               </ProtectedRoute>
                             } />
                             <Route path="/obras/:id" element={
-                              <ProtectedRoute roles={['admin', 'engenharia', 'supervisao', 'sup_eletromecanico']}>
+                              <ProtectedRoute roles={['admin', 'engenharia', 'supervisao', 'lider', 'sup_eletromecanico', 'lider_eletromecanico']}>
                                 <ObraDetail mode="staff" />
                               </ProtectedRoute>
                             } />
@@ -181,27 +181,27 @@ const App = () => (
                               </ProtectedRoute>
                             } />
                             <Route path="/rdo" element={
-                              <ProtectedRoute roles={['admin', 'engenharia', 'supervisao', 'sup_eletromecanico', 'eletromecanico']}>
+                              <ProtectedRoute roles={['admin', 'engenharia', 'supervisao', 'lider', 'sup_eletromecanico', 'lider_eletromecanico', 'eletromecanico']}>
                                 <RDO />
                               </ProtectedRoute>
                             } />
                             <Route path="/rdo/dashboard" element={
-                              <ProtectedRoute roles={['admin', 'engenharia', 'supervisao', 'sup_eletromecanico', 'eletromecanico']}>
+                              <ProtectedRoute roles={['admin', 'engenharia', 'supervisao', 'lider', 'sup_eletromecanico', 'lider_eletromecanico', 'eletromecanico']}>
                                 <DashboardRDO />
                               </ProtectedRoute>
                             } />
                             <Route path="/rdo/novo" element={
-                              <ProtectedRoute roles={['admin', 'engenharia', 'supervisao', 'sup_eletromecanico']}>
+                              <ProtectedRoute roles={['admin', 'engenharia', 'supervisao', 'lider', 'sup_eletromecanico', 'lider_eletromecanico']}>
                                 <RDOWizard />
                               </ProtectedRoute>
                             } />
                             <Route path="/rdo/:id" element={
-                              <ProtectedRoute roles={['admin', 'engenharia', 'supervisao', 'sup_eletromecanico', 'eletromecanico']}>
+                              <ProtectedRoute roles={['admin', 'engenharia', 'supervisao', 'lider', 'sup_eletromecanico', 'lider_eletromecanico', 'eletromecanico']}>
                                 <RDOWizard />
                               </ProtectedRoute>
                             } />
                             <Route path="/gerenciar-rdo" element={
-                              <ProtectedRoute roles={['admin', 'engenharia', 'supervisao']}>
+                              <ProtectedRoute roles={['admin', 'engenharia', 'supervisao', 'lider']}>
                                 <GerenciarRDO />
                               </ProtectedRoute>
                             } />
@@ -211,7 +211,7 @@ const App = () => (
                               </ProtectedRoute>
                             } />
                             <Route path="/relatorios" element={
-                              <ProtectedRoute roles={['admin', 'engenharia', 'supervisao']}>
+                              <ProtectedRoute roles={['admin', 'engenharia', 'supervisao', 'lider']}>
                                 <Relatorios />
                               </ProtectedRoute>
                             } />
