@@ -673,10 +673,12 @@ export type Database = {
           aprovado_at: string | null
           aprovado_por: string | null
           created_at: string
+          evidencias: Json
           id: string
           insumo_id: string | null
           kit_id: string | null
           lote_id: string
+          obra_id: string | null
           observacoes: string | null
           ordem_servico_id: string | null
           quantidade: number
@@ -693,10 +695,12 @@ export type Database = {
           aprovado_at?: string | null
           aprovado_por?: string | null
           created_at?: string
+          evidencias?: Json
           id?: string
           insumo_id?: string | null
           kit_id?: string | null
           lote_id?: string
+          obra_id?: string | null
           observacoes?: string | null
           ordem_servico_id?: string | null
           quantidade: number
@@ -713,10 +717,12 @@ export type Database = {
           aprovado_at?: string | null
           aprovado_por?: string | null
           created_at?: string
+          evidencias?: Json
           id?: string
           insumo_id?: string | null
           kit_id?: string | null
           lote_id?: string
+          obra_id?: string | null
           observacoes?: string | null
           ordem_servico_id?: string | null
           quantidade?: number
@@ -742,6 +748,13 @@ export type Database = {
             columns: ["kit_id"]
             isOneToOne: false
             referencedRelation: "kits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "insumo_saidas_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
             referencedColumns: ["id"]
           },
           {
