@@ -94,7 +94,6 @@ export default function Insumos() {
   const [meuTecnicoId, setMeuTecnicoId] = useState<string>("");
 
   const watchedTecnicoId = saidaForm.watch("tecnico_id");
-  const watchedTipo = saidaForm.watch("tipo");
   const watchedObraId = saidaForm.watch("obra_id");
   const watchedOsIds = saidaForm.watch("ordens_servico_ids");
   const watchedUsoInterno = saidaForm.watch("uso_interno");
@@ -142,7 +141,7 @@ export default function Insumos() {
   useEffect(() => {
     if (!osIdParam) return;
     saidaForm.reset({
-      tipo: "insumo", insumo_id: undefined, kit_id: undefined,
+      insumo_id: undefined,
       quantidade: 1, tecnico_id: meuTecnicoId || "", ordens_servico_ids: [osIdParam],
       obra_id: null, evidencias: [], observacoes: "",
     });
@@ -291,24 +290,12 @@ export default function Insumos() {
           </DialogHeader>
           <Form {...saidaForm}>
             <form onSubmit={saidaForm.handleSubmit(onSubmitSaida)} className="space-y-4">
-              {/* Linha 1: Tipo, Quantidade, Técnico */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <FormField control={saidaForm.control} name="tipo" render={({ field }) => (
-                  <FormItem><FormLabel>Tipo</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                      <SelectContent>
-                        <SelectItem value="insumo">Item avulso</SelectItem>
-                        <SelectItem value="kit">KIT</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </FormItem>
-                )} />
-
+              {/* Linha 1: Quantidade, Técnico */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <FormField control={saidaForm.control} name="quantidade" render={({ field }) => (
                   <FormItem><FormLabel>Quantidade</FormLabel>
                     <FormControl><Input type="number" min="1" {...field} onChange={(e) => field.onChange(parseInt(e.target.value))} /></FormControl>
-                    {selectedInsumo && watchedTipo === "insumo" && (
+                    {selectedInsumo && (
                       <p className="text-xs text-muted-foreground">Estoque: {selectedInsumo.quantidade} {selectedInsumo.unidade}</p>
                     )}
                     <FormMessage />
@@ -325,17 +312,6 @@ export default function Insumos() {
                   </FormItem>
                 )} />
               </div>
-
-              {watchedTipo === "kit" && (
-                <FormField control={saidaForm.control} name="kit_id" render={({ field }) => (
-                  <FormItem><FormLabel>KIT</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl><SelectTrigger><SelectValue placeholder="Selecione o KIT" /></SelectTrigger></FormControl>
-                      <SelectContent>{kits.map(k => <SelectItem key={k.id} value={k.id}>{k.nome}</SelectItem>)}</SelectContent>
-                    </Select>
-                  </FormItem>
-                )} />
-              )}
 
               <FormField control={saidaForm.control} name="uso_interno" render={({ field }) => (
                 <FormItem className="flex flex-row items-center justify-between rounded-md border p-3">

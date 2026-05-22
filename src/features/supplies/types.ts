@@ -53,9 +53,7 @@ export const saidaEvidenciaSchema = z.object({
 });
 
 export const saidaSchema = z.object({
-  tipo: z.enum(["insumo", "kit"]),
-  insumo_id: z.string().optional(),
-  kit_id: z.string().optional(),
+  insumo_id: z.string().min(1, "Selecione o insumo"),
   quantidade: z.number().min(1, "Quantidade deve ser maior que zero"),
   tecnico_id: z.string().min(1, "Selecione um técnico"),
   uso_interno: z.boolean().default(false),
