@@ -422,14 +422,18 @@ export default function Insumos() {
                   <FormItem>
                     <FormLabel>Fotos e vídeos da saída <span className="text-destructive">*</span></FormLabel>
                     <p className="text-xs text-muted-foreground -mt-1">Obrigatório ao menos 1 anexo. O BackOffice usará isso para validar a saída.</p>
-                    <div className="flex gap-2">
-                      <Button type="button" variant="outline" size="sm" onClick={() => document.getElementById("saida-cam-input")?.click()}>
-                        <Camera className="h-4 w-4 mr-1" />Câmera
+                    <div className="flex flex-wrap gap-2">
+                      <Button type="button" variant="outline" size="sm" onClick={() => document.getElementById("saida-foto-input")?.click()}>
+                        <Camera className="h-4 w-4 mr-1" />Foto
+                      </Button>
+                      <Button type="button" variant="outline" size="sm" onClick={() => document.getElementById("saida-video-input")?.click()}>
+                        <Film className="h-4 w-4 mr-1" />Vídeo
                       </Button>
                       <Button type="button" variant="outline" size="sm" onClick={() => document.getElementById("saida-gal-input")?.click()}>
                         <ImageIcon className="h-4 w-4 mr-1" />Galeria
                       </Button>
-                      <input id="saida-cam-input" type="file" accept="image/*,video/*" capture="environment" className="hidden" onChange={(e) => { pick(e.target.files); e.target.value = ""; }} />
+                      <input id="saida-foto-input" type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { pick(e.target.files); e.target.value = ""; }} />
+                      <input id="saida-video-input" type="file" accept="video/*" capture="environment" className="hidden" onChange={(e) => { pick(e.target.files); e.target.value = ""; }} />
                       <input id="saida-gal-input" type="file" accept="image/*,video/*" multiple className="hidden" onChange={(e) => { pick(e.target.files); e.target.value = ""; }} />
                     </div>
                     {evid.length > 0 && (
