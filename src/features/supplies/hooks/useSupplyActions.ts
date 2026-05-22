@@ -132,6 +132,7 @@ export const useSupplyActions = (reload: () => void) => {
       insumo_id: insumo.id,
       quantidade: 1,
       tecnico_id: "",
+      uso_interno: false,
       ordens_servico_ids: [],
       observacoes: "",
     });
