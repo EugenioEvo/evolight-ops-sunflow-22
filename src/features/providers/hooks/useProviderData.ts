@@ -24,7 +24,7 @@ export const useProviderData = () => {
 
   // Banco de RH: categorias operacionais externas (O&M + EPC).
   // Admin e engenharia são staff interno — gerenciados em /usuarios.
-  const OPERATIONAL_CATEGORIES = ['tecnico', 'supervisao', 'eletromecanico', 'sup_eletromecanico'];
+  const OPERATIONAL_CATEGORIES = ['tecnico', 'supervisao', 'lider', 'eletromecanico', 'sup_eletromecanico', 'lider_eletromecanico'];
   const operationalPrestadores = prestadores.filter(p =>
     OPERATIONAL_CATEGORIES.includes(p.categoria)
   );

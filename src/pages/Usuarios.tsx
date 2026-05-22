@@ -20,8 +20,8 @@ import { Search, Shield, Trash2, UserCog, Pencil, Plus, Loader2 } from 'lucide-r
 import { toast } from 'sonner';
 import { especialidadesOptions, certificacoesOptions, experienciaOptions } from '@/features/providers/types';
 
-type AppRole = 'admin' | 'engenharia' | 'supervisao' | 'backoffice' | 'sup_eletromecanico' | 'eletromecanico' | 'tecnico_campo' | 'cliente';
-const ALL_ROLES: AppRole[] = ['admin', 'engenharia', 'supervisao', 'backoffice', 'sup_eletromecanico', 'eletromecanico', 'tecnico_campo', 'cliente'];
+type AppRole = 'admin' | 'engenharia' | 'supervisao', 'lider' | 'backoffice' | 'sup_eletromecanico', 'lider_eletromecanico' | 'eletromecanico' | 'tecnico_campo' | 'cliente';
+const ALL_ROLES: AppRole[] = ['admin', 'engenharia', 'supervisao', 'lider', 'backoffice', 'sup_eletromecanico', 'lider_eletromecanico', 'eletromecanico', 'tecnico_campo', 'cliente'];
 
 const ROLE_LABEL: Record<AppRole, string> = {
   admin: 'Administrador',
@@ -518,11 +518,11 @@ interface CreateDialogProps {
   onCreated: () => Promise<void>;
 }
 
-type StaffRole = 'admin' | 'engenharia' | 'supervisao' | 'backoffice';
+type StaffRole = 'admin' | 'engenharia' | 'supervisao', 'lider' | 'backoffice';
 const STAFF_ROLE_OPTIONS: { value: StaffRole; label: string }[] = [
   { value: 'admin', label: 'Administrador' },
   { value: 'engenharia', label: 'Engenharia' },
-  { value: 'supervisao', label: 'Supervisor' },
+  { value: 'supervisao', 'lider', label: 'Supervisor' },
   { value: 'backoffice', label: 'BackOffice' },
 ];
 

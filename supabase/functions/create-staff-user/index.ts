@@ -31,7 +31,7 @@ interface CreateBody {
   nome: string
   email: string
   telefone?: string
-  role: 'admin' | 'engenharia' | 'supervisao' | 'backoffice'
+  role: 'admin' | 'engenharia' | 'supervisao', 'lider' | 'backoffice'
   redirect_to?: string
 }
 
@@ -136,7 +136,7 @@ serve(async (req) => {
     }
 
     const body = (await req.json()) as CreateBody
-    const VALID_ROLES = ['admin', 'engenharia', 'supervisao', 'backoffice']
+    const VALID_ROLES = ['admin', 'engenharia', 'supervisao', 'lider', 'backoffice']
     if (!body?.nome || !body?.email || !VALID_ROLES.includes(body.role)) {
       return new Response(JSON.stringify({ error: `Dados inválidos. Role deve ser uma de: ${VALID_ROLES.join(', ')}.` }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }

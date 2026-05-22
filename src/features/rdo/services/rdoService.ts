@@ -139,7 +139,7 @@ export const rdoService = {
     const { data, error } = await supabase
       .from('prestadores')
       .select('id, nome, categoria')
-      .in('categoria', ['eletromecanico', 'sup_eletromecanico'])
+      .in('categoria', ['eletromecanico', 'sup_eletromecanico', 'lider_eletromecanico'])
       .eq('ativo', true)
       .order('nome');
     if (error) throw error;
@@ -430,7 +430,7 @@ async function notifyRDOStaffSubmitted(rdoId: string) {
     .from('obras').select('nome').eq('id', (rdo as any).obra_id).maybeSingle();
 
   const { data: staffRoles } = await supabase
-    .from('user_roles').select('user_id').in('role', ['admin', 'engenharia', 'supervisao']);
+    .from('user_roles').select('user_id').in('role', ['admin', 'engenharia', 'supervisao', 'lider']);
   const userIds = Array.from(new Set((staffRoles || []).map((r: any) => r.user_id)));
   if (userIds.length === 0) return;
 
