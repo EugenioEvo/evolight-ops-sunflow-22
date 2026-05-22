@@ -26,7 +26,7 @@ export default function RDO() {
   const [toDelete, setToDelete] = useState<string | null>(null);
 
   const isStaff = profile?.roles?.some((r) => (STAFF_ROLES as readonly string[]).includes(r)) ?? false;
-  const canCreate = isStaff || profile?.roles?.includes('sup_eletromecanico', 'lider_eletromecanico');
+  const canCreate = isStaff || profile?.roles?.some((r) => r === 'sup_eletromecanico' || r === 'lider_eletromecanico');
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
