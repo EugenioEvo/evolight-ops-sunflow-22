@@ -38,8 +38,10 @@ interface ApproveBody {
 const ROLE_LABEL: Record<string, string> = {
   tecnico_campo: 'Técnico de Campo',
   supervisao: 'Supervisão',
+  lider: 'Líder',
   eletromecanico: 'Eletromecânico',
   sup_eletromecanico: 'Supervisor Eletromecânico',
+  lider_eletromecanico: 'Líder Eletromecânico',
 }
 
 async function sendApprovalEmail(params: {
