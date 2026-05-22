@@ -73,14 +73,41 @@ export const createSupplyService = (client?: AppSupabaseClient) => {
       quantidade: number;
       retornavel: boolean;
       ordem_servico_id?: string;
+      obra_id?: string | null;
       tecnico_id: string;
       registrado_por: string;
       observacoes?: string;
       lote_id?: string;
       uso_interno?: boolean;
+      evidencias?: DevolucaoEvidencia[];
     }) {
       const { error } = await (db as any).from('insumo_saidas').insert([data]);
       if (error) throw error;
+    },
+
+    /** Upload de fotos/vídeos para evidência da SAÍDA do item. Retorna mídias com URL assinada (1 ano). */
+    async uploadSaidaEvidencias(loteId: string, files: File[]): Promise<DevolucaoEvidencia[]> {
+      const out: DevolucaoEvidencia[] = [];
+      for (const file of files) {
+        const ext = file.name.split('.').pop() || 'bin';
+        const name = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+        const path = `${loteId}/${name}`;
+        const { error: upErr } = await (db as any).storage
+          .from('saida-evidencias')
+          .upload(path, file, { upsert: false, contentType: file.type });
+        if (upErr) throw upErr;
+        const { data: signed, error: sErr } = await (db as any).storage
+          .from('saida-evidencias')
+          .createSignedUrl(path, 60 * 60 * 24 * 365);
+        if (sErr) throw sErr;
+        out.push({
+          path,
+          url: signed?.signedUrl || '',
+          type: file.type.startsWith('video/') ? 'video' : 'image',
+          name: file.name,
+        });
+      }
+      return out;
     },
 
     async createDevolucao(data: {
