@@ -27,7 +27,7 @@ function resolveBaseUrl(req: Request, explicit?: string): string {
   return DEFAULT_BASE_URL
 }
 
-type AppRole = 'tecnico_campo' | 'supervisao', 'lider' | 'eletromecanico' | 'sup_eletromecanico', 'lider_eletromecanico'
+type AppRole = 'tecnico_campo' | 'supervisao' | 'lider' | 'eletromecanico' | 'sup_eletromecanico' | 'lider_eletromecanico'
 
 interface ApproveBody {
   prestador_id: string
