@@ -63,7 +63,7 @@ const mainItems: NavItem[] = [
   { title: "Agenda", url: "/agenda", icon: Calendar, allow: STAFF_BO },
   { title: "Carga de Trabalho", url: "/carga-trabalho", icon: TrendingUp, allow: STAFF },
   { title: "Confirmações", url: "/dashboard-presenca", icon: Monitor, allow: STAFF },
-  { title: "Aprovar RMEs", url: "/gerenciar-rme", icon: CheckSquare, allow: STAFF },
+  { title: "Aprovar RMEs", url: "/gerenciar-rme", icon: CheckSquare, allow: ['admin', 'engenharia', 'supervisao'] },
   { title: "Validar Insumos", url: "/backoffice/insumos", icon: PackageCheck, allow: [...STAFF, 'backoffice'] },
 ];
 
