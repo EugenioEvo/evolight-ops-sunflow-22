@@ -30,7 +30,7 @@ export const useSupplyActions = (reload: () => void) => {
 
   const saidaForm = useForm<SaidaForm>({
     resolver: zodResolver(saidaSchema),
-    defaultValues: { tipo: "insumo", quantidade: 1, tecnico_id: "", uso_interno: false, ordens_servico_ids: [], observacoes: "" },
+    defaultValues: { tipo: "insumo", quantidade: 1, tecnico_id: "", uso_interno: false, ordens_servico_ids: [], obra_id: null, evidencias: [], observacoes: "" },
   });
 
   const onSubmitInsumo = async (data: InsumoForm) => {
