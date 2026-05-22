@@ -128,12 +128,23 @@ export default function Insumos() {
     })();
   }, [watchedTecnicoId]);
 
+  // Carrega Obras em atividade (planejada / em_execucao) para o seletor de saída
+  useEffect(() => {
+    (async () => {
+      try {
+        const all = await obrasService.list();
+        setObrasAtivas(all.filter((o) => o.status === "planejada" || o.status === "em_execucao"));
+      } catch { /* silencioso */ }
+    })();
+  }, []);
+
   // Auto-abrir dialog de saída quando navega de Minhas OS via ?os=<id>
   useEffect(() => {
     if (!osIdParam) return;
     saidaForm.reset({
       tipo: "insumo", insumo_id: undefined, kit_id: undefined,
-      quantidade: 1, tecnico_id: meuTecnicoId || "", ordens_servico_ids: [osIdParam], observacoes: "",
+      quantidade: 1, tecnico_id: meuTecnicoId || "", ordens_servico_ids: [osIdParam],
+      obra_id: null, evidencias: [], observacoes: "",
     });
     setIsSaidaDialogOpen(true);
   }, [osIdParam, meuTecnicoId]);
