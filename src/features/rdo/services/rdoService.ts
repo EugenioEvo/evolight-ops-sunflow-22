@@ -430,7 +430,7 @@ async function notifyRDOStaffSubmitted(rdoId: string) {
     .from('obras').select('nome').eq('id', (rdo as any).obra_id).maybeSingle();
 
   const { data: staffRoles } = await supabase
-    .from('user_roles').select('user_id').in('role', ['admin', 'engenharia', 'supervisao', 'lider']);
+    .from('user_roles').select('user_id').in('role', ['admin', 'engenharia', 'sup_eletromecanico']);
   const userIds = Array.from(new Set((staffRoles || []).map((r: any) => r.user_id)));
   if (userIds.length === 0) return;
 
