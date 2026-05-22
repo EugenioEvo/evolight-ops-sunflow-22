@@ -83,13 +83,21 @@ export default function Insumos() {
     isTecnico,
   } = useSupplyActions(reload);
 
-  // Para fluxo de saída: lista de técnicos + OS ativas do técnico escolhido
+  // Permissão para gerenciar cadastro/compra (apenas admin e backoffice)
+  const userRoles = profile?.roles || [];
+  const canManageInventory = userRoles.includes("admin") || userRoles.includes("backoffice");
+
+  // Para fluxo de saída: lista de técnicos + OS ativas + Obras ativas
   const [tecnicos, setTecnicos] = useState<Array<{ id: string; nome: string }>>([]);
   const [osAtivas, setOsAtivas] = useState<Array<{ ordem_servico_id: string; numero_os: string; ticket_titulo: string }>>([]);
+  const [obrasAtivas, setObrasAtivas] = useState<Obra[]>([]);
   const [meuTecnicoId, setMeuTecnicoId] = useState<string>("");
 
   const watchedTecnicoId = saidaForm.watch("tecnico_id");
   const watchedTipo = saidaForm.watch("tipo");
+  const watchedObraId = saidaForm.watch("obra_id");
+  const watchedOsIds = saidaForm.watch("ordens_servico_ids");
+  const watchedUsoInterno = saidaForm.watch("uso_interno");
 
   useEffect(() => {
     (async () => {
