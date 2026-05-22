@@ -2265,6 +2265,7 @@ export type Database = {
     }
     Functions: {
       calculate_next_retry: { Args: { attempt: number }; Returns: string }
+      can_approve_rdo: { Args: { _user_id: string }; Returns: boolean }
       can_tech_view_cliente: {
         Args: { p_cliente_id: string; p_user_id: string }
         Returns: boolean
