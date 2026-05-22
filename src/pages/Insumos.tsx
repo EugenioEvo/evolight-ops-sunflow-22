@@ -284,7 +284,7 @@ export default function Insumos() {
 
       {/* Saída Dialog */}
       <Dialog open={isSaidaDialogOpen} onOpenChange={setIsSaidaDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl w-[calc(100vw-1rem)] max-h-[calc(100vh-1rem)] sm:max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle>Registrar Saída{selectedInsumo && ` - ${selectedInsumo.nome}`}</DialogTitle>
           </DialogHeader>
