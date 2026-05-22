@@ -478,7 +478,7 @@ export default function Insumos() {
                       <Button size="sm" variant="outline" onClick={() => handleSaida(insumo)} disabled={insumo.quantidade === 0}>
                         <ArrowDownIcon className="h-4 w-4 mr-1" />Saída
                       </Button>
-                      {!isTecnico && (
+                      {canManageInventory && (
                         <Button size="sm" variant="secondary" onClick={() => abrirCompra(insumo)}>
                           <ShoppingCart className="h-4 w-4 mr-1" />Compra
                         </Button>
