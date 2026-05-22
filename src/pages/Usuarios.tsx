@@ -522,11 +522,12 @@ interface CreateDialogProps {
   onCreated: () => Promise<void>;
 }
 
-type StaffRole = 'admin' | 'engenharia' | 'supervisao', 'lider' | 'backoffice';
+type StaffRole = 'admin' | 'engenharia' | 'supervisao' | 'lider' | 'backoffice';
 const STAFF_ROLE_OPTIONS: { value: StaffRole; label: string }[] = [
   { value: 'admin', label: 'Administrador' },
   { value: 'engenharia', label: 'Engenharia' },
-  { value: 'supervisao', 'lider', label: 'Supervisor' },
+  { value: 'supervisao', label: 'Supervisor' },
+  { value: 'lider', label: 'Líder' },
   { value: 'backoffice', label: 'BackOffice' },
 ];
 
