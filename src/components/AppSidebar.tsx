@@ -38,7 +38,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
-type Role = 'admin' | 'engenharia' | 'supervisao' | 'backoffice' | 'sup_eletromecanico' | 'tecnico_campo' | 'eletromecanico' | 'cliente';
+type Role = 'admin' | 'engenharia' | 'supervisao' | 'lider' | 'backoffice' | 'sup_eletromecanico' | 'lider_eletromecanico' | 'tecnico_campo' | 'eletromecanico' | 'cliente';
 
 interface NavItem {
   title: string;
@@ -48,9 +48,10 @@ interface NavItem {
   allow?: Role[];
 }
 
-const STAFF: Role[] = ['admin', 'engenharia', 'supervisao'];
+// Líder tem as mesmas permissões que Supervisor (mesma área), apenas nomenclatura diferente.
+const STAFF: Role[] = ['admin', 'engenharia', 'supervisao', 'lider'];
 const STAFF_BO: Role[] = [...STAFF, 'backoffice'];
-const ELETRO: Role[] = ['eletromecanico', 'sup_eletromecanico'];
+const ELETRO: Role[] = ['eletromecanico', 'sup_eletromecanico', 'lider_eletromecanico'];
 
 const mainItems: NavItem[] = [
   { title: "Dashboard", url: "/", icon: Home, allow: [...STAFF_BO, 'tecnico_campo', 'cliente', ...ELETRO] },
