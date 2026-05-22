@@ -31,7 +31,7 @@ interface CreateBody {
   nome: string
   email: string
   telefone?: string
-  role: 'admin' | 'engenharia' | 'supervisao', 'lider' | 'backoffice'
+  role: 'admin' | 'engenharia' | 'supervisao' | 'lider' | 'backoffice'
   redirect_to?: string
 }
 
@@ -39,6 +39,7 @@ const ROLE_LABEL: Record<string, string> = {
   admin: 'Administrador',
   engenharia: 'Engenharia',
   supervisao: 'Supervisão',
+  lider: 'Líder',
   backoffice: 'Backoffice',
 }
 
