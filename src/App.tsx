@@ -161,7 +161,7 @@ const App = () => (
                             } />
                             <Route path="/rme" element={<LegacyRMERedirect />} />
                             <Route path="/gerenciar-rme" element={
-                              <ProtectedRoute roles={['admin', 'engenharia', 'supervisao', 'lider']}>
+                              <ProtectedRoute roles={['admin', 'engenharia', 'supervisao']}>
                                 <GerenciarRME />
                               </ProtectedRoute>
                             } />
