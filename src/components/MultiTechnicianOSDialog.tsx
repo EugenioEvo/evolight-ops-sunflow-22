@@ -468,19 +468,67 @@ export const MultiTechnicianOSDialog = ({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="space-y-2">
                   <Label htmlFor="cliente">Cliente <span className="text-destructive">*</span></Label>
-                  <Select
-                    value={standaloneData.cliente_id}
-                    onValueChange={(v) => setStandaloneData(prev => ({ ...prev, cliente_id: v }))}
-                  >
-                    <SelectTrigger id="cliente"><SelectValue placeholder="Selecione o cliente" /></SelectTrigger>
-                    <SelectContent>
-                      {clientes.map(c => (
-                        <SelectItem key={c.id} value={c.id}>
-                          {c.empresa || "Sem nome"}{c.ufv_solarz ? ` — ${c.ufv_solarz}` : ""}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {(() => {
+                    const selected = clientes.find(c => c.id === standaloneData.cliente_id);
+                    const fmtLabel = (c: ClienteOption) => {
+                      const doc = c.cnpj_cpf?.trim();
+                      const nome = c.empresa || "Sem nome";
+                      const ufv = c.ufv_solarz ? ` — ${c.ufv_solarz}` : "";
+                      return `${doc ? doc + " · " : ""}${nome}${ufv}`;
+                    };
+                    return (
+                      <Popover open={clienteSearchOpen} onOpenChange={setClienteSearchOpen}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            id="cliente"
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={clienteSearchOpen}
+                            className="w-full justify-between font-normal"
+                          >
+                            <span className="truncate">
+                              {selected ? fmtLabel(selected) : "Selecione o cliente"}
+                            </span>
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                          <Command
+                            filter={(value, search) => {
+                              const v = value.toLowerCase();
+                              const s = search.toLowerCase().replace(/[^\w]/g, "");
+                              const vNorm = v.replace(/[^\w]/g, "");
+                              return v.includes(search.toLowerCase()) || vNorm.includes(s) ? 1 : 0;
+                            }}
+                          >
+                            <CommandInput placeholder="Buscar por nome, CNPJ ou CPF..." />
+                            <CommandList>
+                              <CommandEmpty>Nenhum cliente encontrado.</CommandEmpty>
+                              <CommandGroup>
+                                {clientes.map(c => {
+                                  const label = fmtLabel(c);
+                                  const searchValue = `${c.empresa || ""} ${c.cnpj_cpf || ""} ${c.ufv_solarz || ""}`.trim();
+                                  return (
+                                    <CommandItem
+                                      key={c.id}
+                                      value={searchValue}
+                                      onSelect={() => {
+                                        setStandaloneData(prev => ({ ...prev, cliente_id: c.id }));
+                                        setClienteSearchOpen(false);
+                                      }}
+                                    >
+                                      <Check className={cn("mr-2 h-4 w-4", standaloneData.cliente_id === c.id ? "opacity-100" : "opacity-0")} />
+                                      <span className="truncate">{label}</span>
+                                    </CommandItem>
+                                  );
+                                })}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                    );
+                  })()}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="endereco">Endereço do Serviço <span className="text-destructive">*</span></Label>
