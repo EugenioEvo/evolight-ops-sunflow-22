@@ -74,7 +74,7 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
     
-    console.log(`[send-calendar-invite] Action: ${action}, OS ID: ${os_id}`);
+    console.log(`[send-calendar-invite] invoked`, { os_id, action, isSystemCall });
 
     // Buscar dados completos da OS
     const { data: os, error: osError } = await supabase
