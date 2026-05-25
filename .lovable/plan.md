@@ -1,75 +1,35 @@
-# Corrigir recursão infinita nas RLS de RDO
-
 ## Diagnóstico
 
-Os 500 vistos pelo Dayn vêm das policies SELECT de `rdo_relatorios` e `rdo_equipe` que se referenciam mutuamente:
+Após investigar `send-calendar-invite`, `os-acceptance-action`, `useAceiteOS` e os logs:
 
-- `rdo_relatorios."View RDO if responsible or in equipe"` faz `EXISTS (SELECT … FROM rdo_equipe …)`
-- `rdo_equipe."View rdo equipe if envolvido"` faz `EXISTS (SELECT … FROM rdo_relatorios …)`
+1. **Zero logs** em `send-calendar-invite` (`edge_function_logs` vazio). Isso indica que a função **não está sendo executada** — nem mesmo entra no `try/catch` que loga erros.
+2. `**os-acceptance-action` retorna 200** (HTML "OS aceita") confirmado nos logs, mas o `fetch` interno para `send-calendar-invite` (com Bearer = service role key) não produz invocação registrada.
+3. **Bug latente em `send-calendar-invite**`: a variável `const method` é declarada dentro do bloco `if (hasSchedule) { ... }` (linha 169) e referenciada fora dele em `content_type: text/calendar; ...; method=${method}` (linha 329, dentro de `if (icsContent)`). Isso é um `ReferenceError` em runtime quando há agendamento — exatamente o caminho do "create" pós-aceite.
 
-Cada SELECT dispara a RLS da outra tabela, que dispara a RLS da primeira → **infinite recursion** (confirmado em `postgres_logs`). Mesmas policies aparecem replicadas em `rdo_atividades` e `rdo_equipamentos` (já que ambas filtram via subquery em `rdo_relatorios` + `rdo_equipe`), então o problema se propaga para todas as telas que consultam RDO.
+A combinação mais provável: o gateway com `verify_jwt = true` está rejeitando as chamadas (tanto a do app quanto a service-role vinda do `os-acceptance-action`), e mesmo quando passa, o `ReferenceError` mata o envio antes do Resend.
 
-Os erros `removeChild` no console são consequência: a query falha → state inconsistente → React tenta desmontar nós que já saíram da árvore.
+## Correções
 
-## Correção (migração SQL)
+### 1. `supabase/functions/send-calendar-invite/index.ts`
 
-Substituir os `EXISTS` cruzados por **funções SECURITY DEFINER** que rodam com privilégios elevados e ignoram RLS (padrão já adotado no projeto com `has_role`, `is_staff`, `user_is_prestador`).
+- Promover `method` e `status` para escopo externo ao `if (hasSchedule)` para que fiquem acessíveis no `emailPayload.attachments[].content_type` e nos headers (default `REQUEST`).
+- Sanitizar: se `icsContent` for nulo (cancel sem schedule), não anexar `.ics` (já feito) — mas o `content_type` agora referencia `method` que sempre existe.
+- Adicionar log no topo (`console.log('[send-calendar-invite] invoked', { os_id, action, isSystemCall })`) para garantir rastreabilidade mesmo em falhas precoces.
 
-### 1. Novas funções
+### 2. `supabase/config.toml`
 
-```sql
-create or replace function public.user_in_rdo_equipe(_uid uuid, _rdo_id uuid)
-returns boolean language sql stable security definer set search_path = public as $$
-  select exists (
-    select 1 from rdo_equipe e
-    where e.rdo_id = _rdo_id
-      and user_is_prestador(_uid, e.prestador_id)
-  )
-$$;
+- Alterar `[functions.send-calendar-invite] verify_jwt = true` → `verify_jwt = false`.
+- Justificativa: a função **já valida autenticação no código** (linhas 33–75) com três caminhos: (a) service-role bypass (`isSystemCall`), (b) staff via `user_roles`, (c) técnico atribuído à OS. Manter `verify_jwt = true` no gateway interfere com a chamada server-to-server feita por `os-acceptance-action` (Bearer = service role) e bloqueia o fluxo. Mesmo padrão já é usado em `os-acceptance-action`, `process-pending-geocoding`, `api-export`, `confirm-presence` e `send-os-reminders`.
 
-create or replace function public.user_is_rdo_responsavel(_uid uuid, _rdo_id uuid)
-returns boolean language sql stable security definer set search_path = public as $$
-  select exists (
-    select 1 from rdo_relatorios r
-    where r.id = _rdo_id
-      and user_is_prestador(_uid, r.responsavel_id)
-  )
-$$;
+### 3. Verificação
 
-create or replace function public.rdo_status(_rdo_id uuid)
-returns text language sql stable security definer set search_path = public as $$
-  select status from rdo_relatorios where id = _rdo_id
-$$;
-```
+Após o deploy automático:
 
-### 2. Reescrever policies
+- Reaceitar uma OS via app → conferir `edge_function_logs` para `send-calendar-invite` (deve registrar "invoked" + "Email enviado") e Resend (e-mail entregue para o técnico e `oem@grupoevolight.com.br`).
+- Reaceitar via botão do e-mail → mesmo resultado, com `isSystemCall=true` no log.
+- Verificar fila `email_retry_queue` para confirmar que não há novos registros pendentes deste tipo.
 
-- `rdo_relatorios "View RDO if responsible or in equipe"` →
-  `is_staff(auth.uid()) OR user_is_prestador(auth.uid(), responsavel_id) OR user_in_rdo_equipe(auth.uid(), id)`
+## Fora do escopo
 
-- `rdo_equipe "View rdo equipe if envolvido"` →
-  `is_staff(auth.uid()) OR user_is_prestador(auth.uid(), prestador_id) OR user_is_rdo_responsavel(auth.uid(), rdo_id)`
-
-- `rdo_atividades "View rdo atividades if envolvido"` →
-  `is_staff(auth.uid()) OR user_is_rdo_responsavel(auth.uid(), rdo_id) OR user_in_rdo_equipe(auth.uid(), rdo_id)`
-
-- `rdo_equipamentos "View rdo equipamentos if envolvido"` → idem.
-
-- Policies de **gerência** ("Sup eletromec manages own RDO atividades/equipamentos") que hoje fazem `EXISTS (SELECT … FROM rdo_relatorios …)` passam a usar `user_is_rdo_responsavel(auth.uid(), rdo_id) AND rdo_status(rdo_id) = ANY(ARRAY['rascunho','rejeitado'])`.
-
-Todas as policies de INSERT/UPDATE/DELETE que já não recursam ficam como estão. Policies de `Staff manage …` permanecem inalteradas.
-
-## Sem mudanças de código frontend
-
-`rdoService.ts` e telas consumidoras continuam idênticos — o fix é 100% banco.
-
-## Verificação
-
-1. Logar como Dayn (`sup_eletromecanico`) e abrir `/rdo/dashboard`, `/rdo`, detalhe de RDO.
-2. Conferir em `postgres_logs` que não há mais `infinite recursion`.
-3. Conferir que staff continua vendo tudo e cliente continua vendo só `aprovado`.
-
-## Fora de escopo
-
-- Não tocar policies de outras tabelas (tickets, OS, RME).
-- Não mudar `user_is_prestador`, `is_staff`, `has_role`.
+- Não mexer em `useAceiteOS` nem em `os-acceptance-action` — ambos já invocam corretamente; o problema é no destino.
+- Não alterar a lógica de promoção de responsável, notificações in-app ou conteúdo do e-mail.

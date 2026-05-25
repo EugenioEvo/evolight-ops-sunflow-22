@@ -74,7 +74,7 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
     
-    console.log(`[send-calendar-invite] Action: ${action}, OS ID: ${os_id}`);
+    console.log(`[send-calendar-invite] invoked`, { os_id, action, isSystemCall });
 
     // Buscar dados completos da OS
     const { data: os, error: osError } = await supabase
@@ -131,6 +131,7 @@ const handler = async (req: Request): Promise<Response> => {
     let dtStart: Date | null = null;
     let dtEnd: Date | null = null;
     let icsContent: string | null = null;
+    let method: "REQUEST" | "CANCEL" = (action === "cancel" || action === "reassign_removed") ? "CANCEL" : "REQUEST";
 
     if (hasSchedule) {
       const dataOS = new Date(os.data_programada);
@@ -166,7 +167,7 @@ const handler = async (req: Request): Promise<Response> => {
         sequence = 1;
       }
       
-      const method = (action === "cancel" || action === "reassign_removed") ? "CANCEL" : "REQUEST";
+      method = (action === "cancel" || action === "reassign_removed") ? "CANCEL" : "REQUEST";
       const status = (action === "cancel" || action === "reassign_removed") ? "CANCELLED" : "CONFIRMED";
 
       // VTIMEZONE block for America/Sao_Paulo (BRT, UTC-3, no DST since 2019)
