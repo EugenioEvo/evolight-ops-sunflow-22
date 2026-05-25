@@ -71,7 +71,10 @@ interface UsuarioRow {
   ativo: boolean;
   roles: AppRole[];
   prestador: PrestadorData | null;
+  tecnico_id: string | null; // se presente, usuário é escalável como técnico
 }
+
+const ROLES_ESCALAVEIS: AppRole[] = ['supervisao', 'lider', 'sup_eletromecanico', 'lider_eletromecanico', 'eletromecanico'];
 
 const Usuarios = () => {
   const { profile } = useAuth();
