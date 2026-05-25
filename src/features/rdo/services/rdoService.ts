@@ -136,9 +136,9 @@ export const rdoService = {
   },
 
   async listEletromecanicos(opts?: { onlySupervisores?: boolean }): Promise<EletromecanicoOption[]> {
-    const cats = opts?.onlySupervisores
+    const cats = (opts?.onlySupervisores
       ? ['sup_eletromecanico', 'lider_eletromecanico']
-      : ['eletromecanico', 'sup_eletromecanico', 'lider_eletromecanico'];
+      : ['eletromecanico', 'sup_eletromecanico', 'lider_eletromecanico']) as any;
     // 1) Match clássico: prestadores cuja categoria é eletromecânica.
     const byCategoria = await supabase
       .from('prestadores')
