@@ -219,8 +219,9 @@ export const TicketForm = ({
               control={form.control}
               name="cliente_id"
               render={({ field }) => (
-                <FormItem className="flex flex-col">
-                  <FormLabel>Cliente</FormLabel>
+                <FormItem className="flex flex-row items-center gap-3 space-y-0">
+                  <FormLabel className="w-20 shrink-0">Cliente</FormLabel>
+                  <div className="flex-1 min-w-0">
                   <Popover open={clientePopoverOpen} onOpenChange={setClientePopoverOpen}>
                     <PopoverTrigger asChild>
                       <FormControl>
