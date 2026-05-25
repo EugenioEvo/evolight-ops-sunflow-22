@@ -2450,6 +2450,7 @@ export type Database = {
       mark_stale_clientes_sync_runs: { Args: never; Returns: undefined }
       mark_token_used: { Args: { p_token: string }; Returns: undefined }
       populate_rme_checklist: { Args: { p_rme_id: string }; Returns: undefined }
+      rdo_status: { Args: { _rdo_id: string }; Returns: string }
       register_devolucao_lote: {
         Args: {
           p_evidencias: Json
@@ -2459,8 +2460,16 @@ export type Database = {
         }
         Returns: number
       }
+      user_in_rdo_equipe: {
+        Args: { _rdo_id: string; _uid: string }
+        Returns: boolean
+      }
       user_is_prestador: {
         Args: { _prestador_id: string; _user_id: string }
+        Returns: boolean
+      }
+      user_is_rdo_responsavel: {
+        Args: { _rdo_id: string; _uid: string }
         Returns: boolean
       }
       user_owns_obra: {
