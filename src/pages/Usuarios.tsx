@@ -212,6 +212,7 @@ const Usuarios = () => {
                       <span className="font-semibold">{row.nome}</span>
                       {!row.ativo && <Badge variant="outline">Inativo</Badge>}
                       {row.prestador && <Badge variant="secondary" className="text-xs">Prestador vinculado</Badge>}
+                      {row.tecnico_id && <Badge className="text-xs bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300">Escalável como técnico</Badge>}
                     </div>
                     <div className="text-sm text-muted-foreground truncate">{row.email}</div>
                     {row.telefone && <div className="text-xs text-muted-foreground">{row.telefone}</div>}
