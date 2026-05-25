@@ -71,7 +71,10 @@ interface UsuarioRow {
   ativo: boolean;
   roles: AppRole[];
   prestador: PrestadorData | null;
+  tecnico_id: string | null; // se presente, usuário é escalável como técnico
 }
+
+const ROLES_ESCALAVEIS: AppRole[] = ['supervisao', 'lider', 'sup_eletromecanico', 'lider_eletromecanico', 'eletromecanico'];
 
 const Usuarios = () => {
   const { profile } = useAuth();
@@ -89,7 +92,7 @@ const Usuarios = () => {
     const [{ data: profiles }, { data: roles }, { data: tecnicos }, { data: prestadores }] = await Promise.all([
       supabase.from('profiles').select('id, user_id, nome, email, telefone, ativo').order('nome'),
       supabase.from('user_roles').select('user_id, role'),
-      supabase.from('tecnicos').select('profile_id, prestador_id'),
+      supabase.from('tecnicos').select('id, profile_id, prestador_id'),
       supabase.from('prestadores').select('id, email, cpf, cidade, estado, cep, endereco, experiencia, especialidades, certificacoes, observacoes_candidato'),
     ]);
 
@@ -108,8 +111,10 @@ const Usuarios = () => {
     });
 
     const prestadorIdByProfile = new Map<string, string>();
+    const tecnicoIdByProfile = new Map<string, string>();
     (tecnicos || []).forEach((t: any) => {
       if (t.prestador_id) prestadorIdByProfile.set(t.profile_id, t.prestador_id);
+      if (t.id) tecnicoIdByProfile.set(t.profile_id, t.id);
     });
 
     setRows((profiles || []).map((p: any) => {
@@ -117,7 +122,7 @@ const Usuarios = () => {
       const prestador = fkPrestadorId
         ? prestadorById.get(fkPrestadorId) ?? null
         : prestadorByEmail.get(p.email.toLowerCase()) ?? null;
-      return { ...p, roles: rolesByUser.get(p.user_id) || [], prestador };
+      return { ...p, roles: rolesByUser.get(p.user_id) || [], prestador, tecnico_id: tecnicoIdByProfile.get(p.id) ?? null };
     }));
     setLoading(false);
   };
@@ -153,6 +158,20 @@ const Usuarios = () => {
       await load();
     } catch (err: any) {
       toast.error(err.message || 'Erro ao remover');
+    }
+  };
+
+  const provisionTecnico = async (row: UsuarioRow, action: 'provision' | 'unprovision') => {
+    try {
+      const { data, error } = await supabase.functions.invoke('provision-staff-as-tecnico', {
+        body: { profile_id: row.id, action },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      toast.success(action === 'provision' ? 'Usuário agora é escalável como técnico.' : 'Usuário removido da escala.');
+      await load();
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao atualizar escala');
     }
   };
 
@@ -193,6 +212,7 @@ const Usuarios = () => {
                       <span className="font-semibold">{row.nome}</span>
                       {!row.ativo && <Badge variant="outline">Inativo</Badge>}
                       {row.prestador && <Badge variant="secondary" className="text-xs">Prestador vinculado</Badge>}
+                      {row.tecnico_id && <Badge className="text-xs bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300">Escalável como técnico</Badge>}
                     </div>
                     <div className="text-sm text-muted-foreground truncate">{row.email}</div>
                     {row.telefone && <div className="text-xs text-muted-foreground">{row.telefone}</div>}
@@ -212,6 +232,30 @@ const Usuarios = () => {
                     <Button size="sm" variant="outline" onClick={() => toggleAtivo(row)} disabled={!isAdmin}>
                       {row.ativo ? 'Desativar' : 'Ativar'}
                     </Button>
+                    {isAdmin && row.roles.some(r => ROLES_ESCALAVEIS.includes(r)) && !row.tecnico_id && (
+                      <Button size="sm" variant="outline" onClick={() => provisionTecnico(row, 'provision')}>
+                        Tornar escalável
+                      </Button>
+                    )}
+                    {isAdmin && row.tecnico_id && row.roles.some(r => ROLES_ESCALAVEIS.includes(r)) && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button size="sm" variant="outline">Remover da escala</Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Remover da escala</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              {row.nome} deixará de aparecer como técnico nas escalas, agendamentos e RDOs. Bloqueado se ainda houver OS ativas.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => provisionTecnico(row, 'unprovision')}>Remover</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
                     {isAdmin && (
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
