@@ -35,7 +35,7 @@ export class ErrorBoundary extends Component<Props, State> {
     if (isRecoverableDomMutationError(error)) {
       return { hasError: false, error: null, errorInfo: null, recoveryKey: Date.now() };
     }
-    return { hasError: true, error, errorInfo: null };
+    return { hasError: true, error, errorInfo: null, recoveryKey: 0 };
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
