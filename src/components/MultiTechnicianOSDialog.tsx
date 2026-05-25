@@ -74,8 +74,9 @@ export const MultiTechnicianOSDialog = ({
   const [initialTecnicoResponsavelId, setInitialTecnicoResponsavelId] = useState<string>("");
   /** Horas previstas POR técnico (sempre por técnico — usado pelo BI Carga de Trabalho) */
   const [horasPorTecnico, setHorasPorTecnico] = useState<Record<string, number>>({});
+  const DESCRICAO_HINT = "Situação da planta (kwp, qtd de módulos, potência) e descrição dos serviços a serem realizados.";
   const [formData, setFormData] = useState({
-    descricao_servicos: "MANUTENÇÃO",
+    descricao_servicos: DESCRICAO_HINT,
     tipo_trabalho: [] as string[],
   });
 
@@ -96,7 +97,7 @@ export const MultiTechnicianOSDialog = ({
       setTecnicoResponsavelId("");
       setInitialTecnicoResponsavelId("");
       setHorasPorTecnico({});
-      setFormData({ descricao_servicos: "MANUTENÇÃO", tipo_trabalho: [] });
+      setFormData({ descricao_servicos: DESCRICAO_HINT, tipo_trabalho: [] });
       setStandaloneData({
         cliente_id: "",
         endereco_servico: "",
@@ -458,30 +459,32 @@ export const MultiTechnicianOSDialog = ({
           {/* Standalone-only: Cliente / Endereço / Data / Hora */}
           {isStandalone && (
             <>
-              <div className="space-y-2">
-                <Label htmlFor="cliente">Cliente <span className="text-destructive">*</span></Label>
-                <Select
-                  value={standaloneData.cliente_id}
-                  onValueChange={(v) => setStandaloneData(prev => ({ ...prev, cliente_id: v }))}
-                >
-                  <SelectTrigger id="cliente"><SelectValue placeholder="Selecione o cliente" /></SelectTrigger>
-                  <SelectContent>
-                    {clientes.map(c => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.empresa || "Sem nome"}{c.ufv_solarz ? ` — ${c.ufv_solarz}` : ""}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="endereco">Endereço do Serviço <span className="text-destructive">*</span></Label>
-                <Input
-                  id="endereco"
-                  value={standaloneData.endereco_servico}
-                  onChange={(e) => setStandaloneData(prev => ({ ...prev, endereco_servico: e.target.value }))}
-                  placeholder="Endereço completo"
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="cliente">Cliente <span className="text-destructive">*</span></Label>
+                  <Select
+                    value={standaloneData.cliente_id}
+                    onValueChange={(v) => setStandaloneData(prev => ({ ...prev, cliente_id: v }))}
+                  >
+                    <SelectTrigger id="cliente"><SelectValue placeholder="Selecione o cliente" /></SelectTrigger>
+                    <SelectContent>
+                      {clientes.map(c => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.empresa || "Sem nome"}{c.ufv_solarz ? ` — ${c.ufv_solarz}` : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="endereco">Endereço do Serviço <span className="text-destructive">*</span></Label>
+                  <Input
+                    id="endereco"
+                    value={standaloneData.endereco_servico}
+                    onChange={(e) => setStandaloneData(prev => ({ ...prev, endereco_servico: e.target.value }))}
+                    placeholder="Endereço completo"
+                  />
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
@@ -700,7 +703,7 @@ export const MultiTechnicianOSDialog = ({
                 rows={3}
                 value={formData.descricao_servicos}
                 onChange={(e) => setFormData(prev => ({ ...prev, descricao_servicos: e.target.value }))}
-                placeholder="Descreva os serviços a serem executados"
+                placeholder="Situação da planta (kwp, qtd de módulos, potência) e descrição dos serviços a serem realizados."
               />
             </div>
           )}
