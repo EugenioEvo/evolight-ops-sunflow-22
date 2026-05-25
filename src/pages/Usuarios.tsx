@@ -92,7 +92,7 @@ const Usuarios = () => {
     const [{ data: profiles }, { data: roles }, { data: tecnicos }, { data: prestadores }] = await Promise.all([
       supabase.from('profiles').select('id, user_id, nome, email, telefone, ativo').order('nome'),
       supabase.from('user_roles').select('user_id, role'),
-      supabase.from('tecnicos').select('profile_id, prestador_id'),
+      supabase.from('tecnicos').select('id, profile_id, prestador_id'),
       supabase.from('prestadores').select('id, email, cpf, cidade, estado, cep, endereco, experiencia, especialidades, certificacoes, observacoes_candidato'),
     ]);
 
