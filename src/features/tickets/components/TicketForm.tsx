@@ -201,7 +201,7 @@ export const TicketForm = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{editingTicket ? 'Editar Ticket' : 'Criar Novo Ticket'}</DialogTitle>
           <DialogDescription>
@@ -219,8 +219,9 @@ export const TicketForm = ({
               control={form.control}
               name="cliente_id"
               render={({ field }) => (
-                <FormItem className="flex flex-col">
-                  <FormLabel>Cliente</FormLabel>
+                <FormItem className="flex flex-row items-center gap-3 space-y-0">
+                  <FormLabel className="w-20 shrink-0">Cliente</FormLabel>
+                  <div className="flex-1 min-w-0">
                   <Popover open={clientePopoverOpen} onOpenChange={setClientePopoverOpen}>
                     <PopoverTrigger asChild>
                       <FormControl>
@@ -339,6 +340,7 @@ export const TicketForm = ({
                     </p>
                   )}
                   <FormMessage />
+                  </div>
                 </FormItem>
               )}
             />
@@ -348,8 +350,9 @@ export const TicketForm = ({
               control={form.control}
               name="ufv_nome"
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Usina</FormLabel>
+                <FormItem className="flex flex-row items-center gap-3 space-y-0">
+                  <FormLabel className="w-20 shrink-0">Usina</FormLabel>
+                  <div className="flex-1 min-w-0">
                   {!clienteHasUFVs ? (
                     <>
                       <FormControl>
@@ -402,6 +405,7 @@ export const TicketForm = ({
                     </>
                   )}
                   <FormMessage />
+                  </div>
                 </FormItem>
               )}
                 />
@@ -416,9 +420,6 @@ export const TicketForm = ({
                       <FormControl>
                         <Input {...field} placeholder="Endereço completo onde o serviço será realizado" />
                       </FormControl>
-                      <p className="text-xs text-muted-foreground">
-                        Pré-preenchido a partir do cadastro do cliente/usina. Edite se precisar.
-                      </p>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -440,24 +441,74 @@ export const TicketForm = ({
                 />
               </div>
 
-              {/* Coluna direita: Observações ocupando a altura toda */}
-              <FormField
-                control={form.control}
-                name="observacoes"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col h-full">
-                    <FormLabel>Observações</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        {...field}
-                        placeholder="Notas sobre o endereço, horário, pessoa de contato, solicitações especiais do cliente, etc."
-                        className="flex-1 min-h-[260px] resize-none"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {/* Coluna direita: Observações + Equipamento/Prioridade */}
+              <div className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="observacoes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Observações</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          {...field}
+                          placeholder="Notas sobre o endereço, horário, pessoa de contato, solicitações especiais do cliente, etc."
+                          className="min-h-[140px] resize-none"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="equipamento_tipo"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Equipamento</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="painel_solar">Painel Solar</SelectItem>
+                            <SelectItem value="inversor">Inversor</SelectItem>
+                            <SelectItem value="controlador_carga">Controlador de Carga</SelectItem>
+                            <SelectItem value="bateria">Bateria</SelectItem>
+                            <SelectItem value="cabeamento">Cabeamento</SelectItem>
+                            <SelectItem value="estrutura">Estrutura</SelectItem>
+                            <SelectItem value="monitoramento">Sistema de Monitoramento</SelectItem>
+                            <SelectItem value="outros">Outros</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="prioridade"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Prioridade</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="baixa">Baixa</SelectItem>
+                            <SelectItem value="media">Média</SelectItem>
+                            <SelectItem value="alta">Alta</SelectItem>
+                            <SelectItem value="critica">Crítica</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
             </div>
 
             {/* Descrição full-width */}
@@ -479,54 +530,6 @@ export const TicketForm = ({
               )}
             />
 
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="equipamento_tipo"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Tipo de Equipamento</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="painel_solar">Painel Solar</SelectItem>
-                        <SelectItem value="inversor">Inversor</SelectItem>
-                        <SelectItem value="controlador_carga">Controlador de Carga</SelectItem>
-                        <SelectItem value="bateria">Bateria</SelectItem>
-                        <SelectItem value="cabeamento">Cabeamento</SelectItem>
-                        <SelectItem value="estrutura">Estrutura</SelectItem>
-                        <SelectItem value="monitoramento">Sistema de Monitoramento</SelectItem>
-                        <SelectItem value="outros">Outros</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="prioridade"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Prioridade</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="baixa">Baixa</SelectItem>
-                        <SelectItem value="media">Média</SelectItem>
-                        <SelectItem value="alta">Alta</SelectItem>
-                        <SelectItem value="critica">Crítica</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
 
             {similarTickets.length > 0 && (
               <div className="flex gap-3 p-3 rounded-md border border-warning/40 bg-warning/10 text-sm">
@@ -602,9 +605,7 @@ export const TicketForm = ({
               );
             })()}
 
-            <div className="rounded-md border border-dashed bg-muted/30 p-3 text-xs text-muted-foreground">
-              <strong className="text-foreground">Horas previstas:</strong> agora são informadas por técnico no momento da geração da Ordem de Serviço (BI de Carga de Trabalho).
-            </div>
+
 
 
             <FormField
