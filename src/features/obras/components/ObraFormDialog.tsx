@@ -10,7 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { obraSchema, OBRA_STATUS, OBRA_STATUS_LABEL, type Obra, type ObraForm } from '../types';
 import { ESTADOS_BR } from '@/features/clients/types';
-import { useClientesQuery, usePrestadoresQuery } from '@/shared/hooks';
+import { useClientesQuery } from '@/shared/hooks';
+import { useQuery } from '@tanstack/react-query';
+import { rdoService } from '@/features/rdo';
 import { useObraMutations } from '../hooks/useObras';
 import { ClienteCombobox } from './ClienteCombobox';
 import { CoordsField } from './CoordsField';
