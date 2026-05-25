@@ -492,6 +492,21 @@ export const TicketForm = ({
               </div>
             </div>
 
+            {/* Resumo do Serviço — full-width */}
+            <FormField
+              control={form.control}
+              name="titulo"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Resumo do Serviço</FormLabel>
+                  <FormControl>
+                    <Input {...field} placeholder="Ex.: Manutenção preventiva — Inversor 50kW" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             {/* Descrição full-width */}
             <FormField
               control={form.control}
