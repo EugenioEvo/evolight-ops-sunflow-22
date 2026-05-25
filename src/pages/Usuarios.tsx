@@ -161,6 +161,20 @@ const Usuarios = () => {
     }
   };
 
+  const provisionTecnico = async (row: UsuarioRow, action: 'provision' | 'unprovision') => {
+    try {
+      const { data, error } = await supabase.functions.invoke('provision-staff-as-tecnico', {
+        body: { profile_id: row.id, action },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      toast.success(action === 'provision' ? 'Usuário agora é escalável como técnico.' : 'Usuário removido da escala.');
+      await load();
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao atualizar escala');
+    }
+  };
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
