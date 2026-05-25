@@ -405,6 +405,7 @@ export const TicketForm = ({
                     </>
                   )}
                   <FormMessage />
+                  </div>
                 </FormItem>
               )}
                 />
