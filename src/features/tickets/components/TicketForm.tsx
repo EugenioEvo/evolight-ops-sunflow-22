@@ -219,9 +219,8 @@ export const TicketForm = ({
               control={form.control}
               name="cliente_id"
               render={({ field }) => (
-                <FormItem className="flex flex-row items-center gap-3 space-y-0">
-                  <FormLabel className="w-20 shrink-0">Cliente</FormLabel>
-                  <div className="flex-1 min-w-0">
+                <FormItem>
+                  <FormLabel>Cliente</FormLabel>
                   <Popover open={clientePopoverOpen} onOpenChange={setClientePopoverOpen}>
                     <PopoverTrigger asChild>
                       <FormControl>
@@ -340,7 +339,6 @@ export const TicketForm = ({
                     </p>
                   )}
                   <FormMessage />
-                  </div>
                 </FormItem>
               )}
             />
@@ -350,9 +348,8 @@ export const TicketForm = ({
               control={form.control}
               name="ufv_nome"
               render={({ field }) => (
-                <FormItem className="flex flex-row items-center gap-3 space-y-0">
-                  <FormLabel className="w-20 shrink-0">Usina</FormLabel>
-                  <div className="flex-1 min-w-0">
+                <FormItem>
+                  <FormLabel>Usina</FormLabel>
                   {!clienteHasUFVs ? (
                     <>
                       <FormControl>
@@ -405,10 +402,9 @@ export const TicketForm = ({
                     </>
                   )}
                   <FormMessage />
-                  </div>
                 </FormItem>
               )}
-                />
+            />
 
                 {/* Endereço — uma linha apenas */}
                 <FormField
@@ -419,21 +415,6 @@ export const TicketForm = ({
                       <FormLabel>Endereço do Serviço</FormLabel>
                       <FormControl>
                         <Input {...field} placeholder="Endereço completo onde o serviço será realizado" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* Resumo do Serviço (antigo "Título") */}
-                <FormField
-                  control={form.control}
-                  name="titulo"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Resumo do Serviço</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="Ex.: Manutenção preventiva — Inversor 50kW" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -510,6 +491,21 @@ export const TicketForm = ({
                 </div>
               </div>
             </div>
+
+            {/* Resumo do Serviço — full-width */}
+            <FormField
+              control={form.control}
+              name="titulo"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Resumo do Serviço</FormLabel>
+                  <FormControl>
+                    <Input {...field} placeholder="Ex.: Manutenção preventiva — Inversor 50kW" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             {/* Descrição full-width */}
             <FormField
