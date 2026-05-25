@@ -10,7 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { obraSchema, OBRA_STATUS, OBRA_STATUS_LABEL, type Obra, type ObraForm } from '../types';
 import { ESTADOS_BR } from '@/features/clients/types';
-import { useClientesQuery, usePrestadoresQuery } from '@/shared/hooks';
+import { useClientesQuery } from '@/shared/hooks';
+import { useQuery } from '@tanstack/react-query';
+import { rdoService } from '@/features/rdo';
 import { useObraMutations } from '../hooks/useObras';
 import { ClienteCombobox } from './ClienteCombobox';
 import { CoordsField } from './CoordsField';
@@ -26,7 +28,11 @@ const NONE = '__none__';
 
 export function ObraFormDialog({ open, onOpenChange, obra }: Props) {
   const { data: clientes = [] } = useClientesQuery(500);
-  const { data: prestadores = [] } = usePrestadoresQuery();
+  const { data: supervisores = [] } = useQuery({
+    queryKey: ['eletromecanicos', 'supervisores'],
+    queryFn: () => rdoService.listEletromecanicos({ onlySupervisores: true }),
+    staleTime: 60_000,
+  });
   const { create, update } = useObraMutations();
   const [tab, setTab] = useState<'dados' | 'metas'>('dados');
   const metasSaveRef = useRef<((obraId: string) => Promise<void>) | null>(null);
@@ -87,7 +93,7 @@ export function ObraFormDialog({ open, onOpenChange, obra }: Props) {
     onOpenChange(false);
   };
 
-  const supervisores = prestadores.filter((p: any) => p.ativo);
+  
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
