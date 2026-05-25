@@ -605,9 +605,7 @@ export const TicketForm = ({
               );
             })()}
 
-            <div className="rounded-md border border-dashed bg-muted/30 p-3 text-xs text-muted-foreground">
-              <strong className="text-foreground">Horas previstas:</strong> agora são informadas por técnico no momento da geração da Ordem de Serviço (BI de Carga de Trabalho).
-            </div>
+
 
 
             <FormField
