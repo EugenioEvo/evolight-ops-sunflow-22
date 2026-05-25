@@ -53,9 +53,15 @@ export const createTicketService = (client?: AppSupabaseClient) => {
     },
 
     async loadPrestadores(): Promise<TicketPrestador[]> {
-      const { data, error } = await db.from('prestadores').select('*').eq('categoria', 'tecnico').eq('ativo', true);
+      // Fonte de verdade da escalabilidade = ter registro em `tecnicos`
+      // (cobre supervisores/líderes/eletromecânicos provisionados via
+      // provision-staff-as-tecnico, não apenas categoria='tecnico').
+      const { data, error } = await db
+        .from('prestadores')
+        .select('*, tecnicos!inner(id)')
+        .eq('ativo', true);
       if (error) throw error;
-      return (data || []) as TicketPrestador[];
+      return (data || []).map(({ tecnicos, ...rest }: any) => rest) as TicketPrestador[];
     },
 
     async create(ticketData: TablesInsert<'tickets'>) {
