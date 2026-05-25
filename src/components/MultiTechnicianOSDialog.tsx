@@ -125,6 +125,13 @@ export const MultiTechnicianOSDialog = ({
     }
   }, [open]);
 
+  // Pre-fill description from ticket when dialog opens
+  useEffect(() => {
+    if (open && ticket?.descricao) {
+      setFormData(prev => ({ ...prev, descricao_servicos: ticket.descricao }));
+    }
+  }, [open, ticket?.descricao]);
+
   // Availability check — usa max(horas) entre os técnicos selecionados como janela
   useEffect(() => {
     const date = isStandalone ? standaloneData.data_servico : ticket?.data_servico;
