@@ -100,7 +100,8 @@ async function sendApprovalEmail(params: {
 
 const ALLOWED_ROLES: AppRole[] = ['tecnico_campo', 'supervisao', 'lider', 'eletromecanico', 'sup_eletromecanico', 'lider_eletromecanico']
 // Roles operacionais de campo que precisam de registro em `tecnicos` (link prestador↔profile).
-const FIELD_ROLES: AppRole[] = ['tecnico_campo', 'eletromecanico', 'sup_eletromecanico', 'lider_eletromecanico']
+// Supervisores e líderes também ficam escaláveis como técnicos (mesmo padrão multi-role do Hércules).
+const FIELD_ROLES: AppRole[] = ['tecnico_campo', 'eletromecanico', 'sup_eletromecanico', 'lider_eletromecanico', 'supervisao', 'lider']
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
