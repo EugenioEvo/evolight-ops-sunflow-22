@@ -573,169 +573,131 @@ export const MultiTechnicianOSDialog = ({
             )}
           </div>
 
-          {/* Horas previstas POR técnico (BI Carga de Trabalho) */}
-          {selectedPrestadores.length > 0 && !isAddMode && (
-            <div className="space-y-2">
-              <Label>Horas Previstas por Técnico <span className="text-destructive">*</span></Label>
-              <p className="text-xs text-muted-foreground">
-                Meta de horas que cada técnico deve gastar nesta OS. Usado pelo BI Carga de Trabalho (Meta × Realizado).
-              </p>
-              <div className="border rounded-md divide-y">
-                {selectedPrestadores.map(pid => {
-                  const p = prestadores.find(x => x.id === pid);
+          {/* Grid: Esquerda (Horas + Horário Programado) | Direita (Tipo + Responsável) */}
+          {!isAddMode && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Coluna esquerda */}
+              <div className="space-y-4">
+                {/* Horas previstas POR técnico (BI Carga de Trabalho) */}
+                {selectedPrestadores.length > 0 && (
+                  <div className="space-y-2">
+                    <Label>Horas Previstas por Técnico <span className="text-destructive">*</span></Label>
+                    <p className="text-xs text-muted-foreground">
+                      Previsão de horas para realização do trabalho. Necessário incluir pausas.
+                    </p>
+                    <div className="border rounded-md divide-y">
+                      {selectedPrestadores.map(pid => {
+                        const p = prestadores.find(x => x.id === pid);
+                        return (
+                          <div key={pid} className="flex items-center justify-between gap-3 p-2">
+                            <span className="text-sm flex-1 truncate">{p?.nome || pid}</span>
+                            <Input
+                              type="number" min={0.5} max={24} step={0.5}
+                              className="w-20 h-9"
+                              value={horasPorTecnico[pid] ?? 1}
+                              onChange={(e) => setHorasPorTecnico(prev => ({ ...prev, [pid]: Number(e.target.value) || 1 }))}
+                            />
+                            <span className="text-xs text-muted-foreground w-4">h</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Preview do Horário Programado calculado pela janela útil */}
+                {hasDateInfo && selectedPrestadores.length > 0 && (() => {
+                  const date = isStandalone ? standaloneData.data_servico : ticket?.data_servico;
+                  const startTime = isStandalone ? standaloneData.horario_previsto_inicio : ticket?.horario_previsto_inicio;
+                  const maxHoras = Math.max(1, ...selectedPrestadores.map(id => horasPorTecnico[id] || 1));
+                  const sched = computeScheduleEnd(date, startTime, Math.round(maxHoras * 60));
+                  const startHHMM = (startTime || '').slice(0, 5);
+                  const endHHMM = (sched.endTime || '').slice(0, 5);
+                  const display = `${startHHMM} - ${endHHMM}`;
                   return (
-                    <div key={pid} className="flex items-center justify-between gap-3 p-2">
-                      <span className="text-sm flex-1">{p?.nome || pid}</span>
-                      <Input
-                        type="number" min={0.5} max={24} step={0.5}
-                        className="w-24 h-9"
-                        value={horasPorTecnico[pid] ?? 1}
-                        onChange={(e) => setHorasPorTecnico(prev => ({ ...prev, [pid]: Number(e.target.value) || 1 }))}
-                      />
-                      <span className="text-xs text-muted-foreground w-6">h</span>
+                    <div className="rounded-md border bg-muted/30 p-3 space-y-1">
+                      <div className="flex items-center gap-2 text-sm">
+                        <Clock className="h-4 w-4 text-muted-foreground" />
+                        <strong>Horário Programado:</strong> {display}
+                      </div>
+                      {sched.outOfWindowWarning && (
+                        <p className="text-xs text-amber-600 dark:text-amber-400">
+                          ⚠ Hora de início fora da janela útil (08:00–18:00). Reprogramado para o próximo slot válido.
+                        </p>
+                      )}
+                      {sched.crossedDay && (
+                        <p className="text-xs text-amber-600 dark:text-amber-400">
+                          ⚠ A duração ultrapassa a janela útil — o serviço se estende para o próximo dia útil.
+                        </p>
+                      )}
+                      {sched.weekendWarning && (
+                        <p className="text-xs text-destructive">
+                          ⚠ A data selecionada cai em fim de semana. O serviço foi automaticamente movido para a próxima segunda-feira.
+                        </p>
+                      )}
                     </div>
                   );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Preview do Horário Programado calculado pela janela útil */}
-          {hasDateInfo && selectedPrestadores.length > 0 && (() => {
-            const date = isStandalone ? standaloneData.data_servico : ticket?.data_servico;
-            const startTime = isStandalone ? standaloneData.horario_previsto_inicio : ticket?.horario_previsto_inicio;
-            const maxHoras = Math.max(1, ...selectedPrestadores.map(id => horasPorTecnico[id] || 1));
-            const sched = computeScheduleEnd(date, startTime, Math.round(maxHoras * 60));
-            const display = formatScheduledWindow(date, startTime, sched.endTime, sched.endDate);
-            return (
-              <div className="rounded-md border bg-muted/30 p-3 space-y-1">
-                <div className="flex items-center gap-2 text-sm">
-                  <Clock className="h-4 w-4 text-muted-foreground" />
-                  <strong>Horário Programado:</strong> {display}
-                </div>
-                {sched.outOfWindowWarning && (
-                  <p className="text-xs text-amber-600 dark:text-amber-400">
-                    ⚠ Hora de início fora da janela útil (08:00–18:00). Reprogramado para o próximo slot válido.
-                  </p>
-                )}
-                {sched.crossedDay && (
-                  <p className="text-xs text-amber-600 dark:text-amber-400">
-                    ⚠ A duração ultrapassa a janela útil — o serviço se estende para o próximo dia útil.
-                  </p>
-                )}
-                {sched.weekendWarning && (
-                  <p className="text-xs text-destructive">
-                    ⚠ A data selecionada cai em fim de semana. O serviço foi automaticamente movido para a próxima segunda-feira.
-                  </p>
-                )}
-              </div>
-            );
-          })()}
-
-          {/* Conflict details */}
-          {Array.from(availabilityMap.values())
-            .filter(a => !a.available && a.conflictDetails)
-            .map(a => {
-              const prest = prestadores.find(p => p.id === a.prestadorId);
-              return (
-                <Alert key={a.prestadorId} variant="destructive" className="py-2">
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertDescription className="text-xs">
-                    <strong>{prest?.nome}</strong>: Conflito com {a.conflictDetails}
-                  </AlertDescription>
-                </Alert>
-              );
-            })}
-
-          {/* Add-mode (item 4): permitir trocar Técnico Responsável.
-              Reatribui RMEs em rascunho/rejeitado/pendente; mantém aprovados intactos. */}
-          {isAddMode && (
-            <div className="space-y-2">
-              <Label htmlFor="responsavel-add">Técnico Responsável</Label>
-              <Select
-                value={tecnicoResponsavelId}
-                onValueChange={setTecnicoResponsavelId}
-                disabled={responsavelOptions.length === 0}
-              >
-                <SelectTrigger id="responsavel-add">
-                  <SelectValue placeholder="Escolha o responsável" />
-                </SelectTrigger>
-                <SelectContent>
-                  {responsavelOptions.map(p => (
-                    <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {responsavelChanged ? (
-                <Alert variant="default" className="py-2">
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertDescription className="text-xs">
-                    Trocando o Técnico Responsável: a titularidade de todos os RMEs em <strong>rascunho, rejeitado ou pendente</strong> será transferida.
-                    RMEs já <strong>aprovados</strong> permanecem com o técnico original.
-                  </AlertDescription>
-                </Alert>
-              ) : (
-                <p className="text-xs text-muted-foreground">
-                  Você pode também apenas trocar o responsável (sem adicionar novos técnicos).
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* Tipo / Responsável / Descrição — apenas no modo "gerar OS" inicial */}
-          {!isAddMode && (
-            <>
-              <div className="space-y-2">
-                <Label>Tipo de Trabalho <span className="text-destructive">*</span></Label>
-                <div className="flex gap-6 flex-wrap">
-                  {['internet', 'eletrica', 'limpeza'].map(tipo => (
-                    <div key={tipo} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`tipo-${tipo}`}
-                        checked={formData.tipo_trabalho.includes(tipo)}
-                        onCheckedChange={(checked) => handleTipoTrabalhoChange(tipo, checked as boolean)}
-                      />
-                      <label htmlFor={`tipo-${tipo}`} className="text-sm font-medium">
-                        {tipo === 'eletrica' ? 'ELÉTRICA' : tipo.toUpperCase()}
-                      </label>
-                    </div>
-                  ))}
-                </div>
+                })()}
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="responsavel">Técnico Responsável <span className="text-destructive">*</span></Label>
-                <Select
-                  value={tecnicoResponsavelId}
-                  onValueChange={setTecnicoResponsavelId}
-                  disabled={responsavelOptions.length === 0}
-                >
-                  <SelectTrigger id="responsavel">
-                    <SelectValue placeholder={responsavelOptions.length === 0 ? "Selecione técnicos acima" : "Escolha o responsável"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {responsavelOptions.map(p => (
-                      <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
+              {/* Coluna direita */}
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Tipo de Trabalho <span className="text-destructive">*</span></Label>
+                  <div className="flex gap-6 flex-wrap">
+                    {['internet', 'eletrica', 'limpeza'].map(tipo => (
+                      <div key={tipo} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`tipo-${tipo}`}
+                          checked={formData.tipo_trabalho.includes(tipo)}
+                          onCheckedChange={(checked) => handleTipoTrabalhoChange(tipo, checked as boolean)}
+                        />
+                        <label htmlFor={`tipo-${tipo}`} className="text-sm font-medium">
+                          {tipo === 'eletrica' ? 'ELÉTRICA' : tipo.toUpperCase()}
+                        </label>
+                      </div>
                     ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  Responsável principal pelo serviço. Se recusar, o próximo a aceitar assume.
-                </p>
-              </div>
+                  </div>
+                </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="descricao_servicos">Descrição Serviços Solicitados <span className="text-destructive">*</span></Label>
-                <Textarea
-                  id="descricao_servicos"
-                  rows={3}
-                  value={formData.descricao_servicos}
-                  onChange={(e) => setFormData(prev => ({ ...prev, descricao_servicos: e.target.value }))}
-                  placeholder="Descreva os serviços a serem executados"
-                />
+                <div className="space-y-2">
+                  <Label htmlFor="responsavel">Técnico Responsável <span className="text-destructive">*</span></Label>
+                  <Select
+                    value={tecnicoResponsavelId}
+                    onValueChange={setTecnicoResponsavelId}
+                    disabled={responsavelOptions.length === 0}
+                  >
+                    <SelectTrigger id="responsavel">
+                      <SelectValue placeholder={responsavelOptions.length === 0 ? "Selecione técnicos acima" : "Escolha o responsável"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {responsavelOptions.map(p => (
+                        <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Responsável principal pelo serviço. Se recusar, o próximo a aceitar assume.
+                  </p>
+                </div>
               </div>
-            </>
+            </div>
           )}
+
+          {/* Descrição (full-width, abaixo) */}
+          {!isAddMode && (
+            <div className="space-y-2">
+              <Label htmlFor="descricao_servicos">Descrição Serviços Solicitados <span className="text-destructive">*</span></Label>
+              <Textarea
+                id="descricao_servicos"
+                rows={3}
+                value={formData.descricao_servicos}
+                onChange={(e) => setFormData(prev => ({ ...prev, descricao_servicos: e.target.value }))}
+                placeholder="Descreva os serviços a serem executados"
+              />
+            </div>
+          )}
+
 
           <div className="p-4 bg-warning/10 border border-warning/30 rounded-md">
             <p className="text-xs">
