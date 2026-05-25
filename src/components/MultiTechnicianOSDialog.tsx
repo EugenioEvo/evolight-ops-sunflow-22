@@ -97,7 +97,7 @@ export const MultiTechnicianOSDialog = ({
       setTecnicoResponsavelId("");
       setInitialTecnicoResponsavelId("");
       setHorasPorTecnico({});
-      setFormData({ descricao_servicos: "MANUTENÇÃO", tipo_trabalho: [] });
+      setFormData({ descricao_servicos: DESCRICAO_HINT, tipo_trabalho: [] });
       setStandaloneData({
         cliente_id: "",
         endereco_servico: "",
