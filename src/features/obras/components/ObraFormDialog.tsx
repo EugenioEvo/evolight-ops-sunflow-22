@@ -28,7 +28,11 @@ const NONE = '__none__';
 
 export function ObraFormDialog({ open, onOpenChange, obra }: Props) {
   const { data: clientes = [] } = useClientesQuery(500);
-  const { data: prestadores = [] } = usePrestadoresQuery();
+  const { data: supervisores = [] } = useQuery({
+    queryKey: ['eletromecanicos', 'supervisores'],
+    queryFn: () => rdoService.listEletromecanicos({ onlySupervisores: true }),
+    staleTime: 60_000,
+  });
   const { create, update } = useObraMutations();
   const [tab, setTab] = useState<'dados' | 'metas'>('dados');
   const metasSaveRef = useRef<((obraId: string) => Promise<void>) | null>(null);
