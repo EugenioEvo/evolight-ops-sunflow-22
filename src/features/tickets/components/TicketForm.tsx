@@ -210,19 +210,9 @@ export const TicketForm = ({
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="titulo"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Título</FormLabel>
-                  <FormControl>
-                    <Input {...field} placeholder="Manutenção em painel solar" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {/* Linha topo: col esquerda (Cliente, Usina, Endereço, Resumo) + col direita (Observações) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-4">
 
             {/* Cliente — combobox com busca e infos do Conta Azul */}
             <FormField
