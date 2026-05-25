@@ -60,7 +60,9 @@ const WorkOrders = () => {
     if (!canManageOS) return;
     (async () => {
       const [{ data: prestData }, { data: cliData }] = await Promise.all([
-        supabase.from('prestadores').select('id, nome, email').eq('categoria', 'tecnico').eq('ativo', true).order('nome'),
+        // Fonte de verdade da escalabilidade = ter registro em `tecnicos`
+        // (cobre staff provisionado via provision-staff-as-tecnico, não apenas categoria='tecnico').
+        supabase.from('prestadores').select('id, nome, email, tecnicos!inner(id)').eq('ativo', true).order('nome'),
         supabase.from('clientes').select('id, empresa, endereco, cidade, estado, cliente_ufvs(nome)').order('empresa'),
       ]);
       setPrestadores((prestData || []) as any);
