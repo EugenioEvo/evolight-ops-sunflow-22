@@ -606,19 +606,6 @@ export const TicketForm = ({
               <strong className="text-foreground">Horas previstas:</strong> agora são informadas por técnico no momento da geração da Ordem de Serviço (BI de Carga de Trabalho).
             </div>
 
-            <FormField
-              control={form.control}
-              name="observacoes"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Observações</FormLabel>
-                  <FormControl>
-                    <Textarea {...field} placeholder="Informações adicionais..." rows={2} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
 
             <FormField
               control={form.control}
