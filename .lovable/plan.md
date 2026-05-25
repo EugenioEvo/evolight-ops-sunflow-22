@@ -1,48 +1,37 @@
-# Por que Dayn e Adailton não aparecem
+# Padronizar Hércules como supervisor escalável
 
-Diagnóstico no banco:
+Trazer o cadastro do Hércules para o mesmo padrão do Dayn, sem mudanças de código. Atentar que Dayn é Supervisor de obras/eletromecânico (RDO) e Hercules Supervisor Técnico/Elétrico (RME). Ambos podem exercer em paralelo atividades de técnicos e/ou eletromecãnicos desde que acumulem esses flags.
 
-- Ambos têm `prestadores` + `tecnicos` + role `tecnico_campo` corretamente criados (provisionamento OK).
-- Dayn: `prestadores.categoria = 'supervisao'`
-- Adailton: `prestadores.categoria = 'eletromecanico'`
+## Migração de dados (idempotente)
 
-O modal "Gerar Ordem de Serviço" recebe a lista via `ticketService.loadPrestadores()`, que faz:
+Sobre o `prestador` `c67f5c32-1aaf-4eb2-9de0-47e8c6a6c1de` e o `profile` `39bd3d1d-5275-41e9-8328-ab6454d768f8`:
 
-```ts
-db.from('prestadores').select('*').eq('categoria', 'tecnico').eq('ativo', true)
-```
+1. **Vincular prestador ao auth user**
+  `UPDATE prestadores SET user_id = '39bd3d1d…' WHERE id = 'c67f5c32…' AND user_id IS NULL`
+2. **Refletir o cargo real**
+  `UPDATE prestadores SET categoria = 'supervisao' WHERE id = 'c67f5c32…'`
+3. **Garantir roles `supervisao` + `tecnico_campo**` em `user_roles` (ON CONFLICT DO NOTHING para o par user_id+role).
+4. **Confirmar `tecnicos**` existente já apontando para esse prestador (verificar; criar se faltar — mas pelo diagnóstico anterior o `tecnicos` já existe).
+5. **Sincronizar `tecnicos.profile_id**` com o profile do Hércules, caso esteja nulo ou divergente.
 
-Esse filtro `categoria = 'tecnico'` exclui qualquer prestador cujo cargo principal seja supervisão, liderança ou eletromecânico — exatamente o caso de Dayn e Adailton. Hércules aparece porque seu prestador tem `categoria = 'tecnico'`.
+## Resultado esperado
 
-# Correção
+- Continua aparecendo no modal "Gerar OS" (já estava).
+- `/usuarios` passa a mostrar badge "Escalável como técnico" e os botões de remover/escalar.
+- Login do Hércules passa a ver as próprias OSs (RLS chain `prestadores.user_id → tecnicos → profile` fica completa).
+- E-mails e push de aceite funcionam normalmente porque agora há role `tecnico_campo`.
+- RDO continua listando-o (a query já une `categoria` + `user_roles`).
 
-Trocar o filtro por categoria por um filtro baseado em "tem `tecnicos` ativo" — que é a fonte de verdade da escalabilidade (consistente com a memória `staff-tecnico-provisioning` e com o `provision-staff-as-tecnico`).
+## Verificação pós-migração
 
-## Mudança
+Reexecutar a query de diagnóstico para confirmar que Hércules aparece com:
 
-**`src/features/tickets/services/ticketService.ts` → `loadPrestadores`**
-
-Substituir a query por uma que retorne apenas prestadores que possuem registro em `tecnicos` (inner join), mantendo `ativo = true`:
-
-```ts
-const { data } = await db
-  .from('prestadores')
-  .select('*, tecnicos!inner(id)')
-  .eq('ativo', true);
-```
-
-E mapear ignorando o campo `tecnicos` no retorno (apenas usado como filtro). Mantém a forma `TicketPrestador[]` atual.
-
-Resultado: Dayn (supervisao), Adailton (eletromecanico) e qualquer outro supervisor/líder provisionado passam a aparecer junto de Hércules, Weberson, Adrian e Diego — sem inflar a lista com prestadores que não estão escaláveis.
-
-## Detalhes técnicos
-
-- Não toca em RLS nem em edge functions.
-- Não altera `prestadores.categoria` (preserva o cargo real para outros usos como RDO/relatórios).
-- O ScheduleModal e outros consumidores que usam essa mesma lista herdam a correção automaticamente.
-- `useTechnicianScoreEngine(prestadores)` continua funcionando — só passa a pontuar também supervisores/líderes escaláveis.
+- `prestador_user_id` = profile.id
+- `categoria` = `supervisao`
+- `roles` inclui `supervisao` e `tecnico_campo`
+- `tecnico_id` não nulo
 
 ## Fora de escopo
 
-- Não mexer no provisionamento (já está correto).
-- Não consolidar `prestadores`/`tecnicos` (TODO já registrado em memória).
+- Nenhuma mudança de código.
+- Não tocar em outros prestadores com `categoria='tecnico'` (Weberson, Adrian, Diego ficam como estão — eles são técnicos puros).
