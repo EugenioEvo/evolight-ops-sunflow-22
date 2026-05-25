@@ -12,20 +12,38 @@ interface State {
   hasError: boolean;
   error: Error | null;
   errorInfo: ErrorInfo | null;
+  recoveryKey: number;
 }
+
+const isRecoverableDomMutationError = (error: unknown) => {
+  if (!(error instanceof Error)) return false;
+  return (
+    error.name === 'NotFoundError' &&
+    /removeChild|insertBefore|node to be removed is not a child/i.test(error.message)
+  );
+};
 
 export class ErrorBoundary extends Component<Props, State> {
   public state: State = {
     hasError: false,
     error: null,
     errorInfo: null,
+    recoveryKey: 0,
   };
 
   public static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, error, errorInfo: null };
+    if (isRecoverableDomMutationError(error)) {
+      return { hasError: false, error: null, errorInfo: null, recoveryKey: Date.now() };
+    }
+    return { hasError: true, error, errorInfo: null, recoveryKey: 0 };
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    if (isRecoverableDomMutationError(error)) {
+      console.warn('ErrorBoundary recovered from external DOM mutation:', error.message);
+      return;
+    }
+
     console.error('ErrorBoundary caught an error:', error, errorInfo);
     
     this.setState({
@@ -42,6 +60,7 @@ export class ErrorBoundary extends Component<Props, State> {
       hasError: false,
       error: null,
       errorInfo: null,
+      recoveryKey: this.state.recoveryKey + 1,
     });
   };
 
@@ -116,6 +135,6 @@ export class ErrorBoundary extends Component<Props, State> {
       );
     }
 
-    return this.props.children;
+    return <React.Fragment key={this.state.recoveryKey}>{this.props.children}</React.Fragment>;
   }
 }
