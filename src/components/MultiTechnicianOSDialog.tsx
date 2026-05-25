@@ -458,30 +458,32 @@ export const MultiTechnicianOSDialog = ({
           {/* Standalone-only: Cliente / Endereço / Data / Hora */}
           {isStandalone && (
             <>
-              <div className="space-y-2">
-                <Label htmlFor="cliente">Cliente <span className="text-destructive">*</span></Label>
-                <Select
-                  value={standaloneData.cliente_id}
-                  onValueChange={(v) => setStandaloneData(prev => ({ ...prev, cliente_id: v }))}
-                >
-                  <SelectTrigger id="cliente"><SelectValue placeholder="Selecione o cliente" /></SelectTrigger>
-                  <SelectContent>
-                    {clientes.map(c => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.empresa || "Sem nome"}{c.ufv_solarz ? ` — ${c.ufv_solarz}` : ""}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="endereco">Endereço do Serviço <span className="text-destructive">*</span></Label>
-                <Input
-                  id="endereco"
-                  value={standaloneData.endereco_servico}
-                  onChange={(e) => setStandaloneData(prev => ({ ...prev, endereco_servico: e.target.value }))}
-                  placeholder="Endereço completo"
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="cliente">Cliente <span className="text-destructive">*</span></Label>
+                  <Select
+                    value={standaloneData.cliente_id}
+                    onValueChange={(v) => setStandaloneData(prev => ({ ...prev, cliente_id: v }))}
+                  >
+                    <SelectTrigger id="cliente"><SelectValue placeholder="Selecione o cliente" /></SelectTrigger>
+                    <SelectContent>
+                      {clientes.map(c => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.empresa || "Sem nome"}{c.ufv_solarz ? ` — ${c.ufv_solarz}` : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="endereco">Endereço do Serviço <span className="text-destructive">*</span></Label>
+                  <Input
+                    id="endereco"
+                    value={standaloneData.endereco_servico}
+                    onChange={(e) => setStandaloneData(prev => ({ ...prev, endereco_servico: e.target.value }))}
+                    placeholder="Endereço completo"
+                  />
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
