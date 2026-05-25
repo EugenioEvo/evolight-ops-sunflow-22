@@ -237,7 +237,7 @@ const Usuarios = () => {
                         Tornar escalável
                       </Button>
                     )}
-                    {isAdmin && row.tecnico_id && !row.roles.includes('tecnico_campo') === false && row.roles.some(r => ROLES_ESCALAVEIS.includes(r)) && (
+                    {isAdmin && row.tecnico_id && row.roles.some(r => ROLES_ESCALAVEIS.includes(r)) && (
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <Button size="sm" variant="outline">Remover da escala</Button>
