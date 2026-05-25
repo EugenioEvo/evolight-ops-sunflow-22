@@ -340,6 +340,7 @@ export const TicketForm = ({
                     </p>
                   )}
                   <FormMessage />
+                  </div>
                 </FormItem>
               )}
             />
