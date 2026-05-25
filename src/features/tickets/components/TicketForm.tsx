@@ -420,9 +420,6 @@ export const TicketForm = ({
                       <FormControl>
                         <Input {...field} placeholder="Endereço completo onde o serviço será realizado" />
                       </FormControl>
-                      <p className="text-xs text-muted-foreground">
-                        Pré-preenchido a partir do cadastro do cliente/usina. Edite se precisar.
-                      </p>
                       <FormMessage />
                     </FormItem>
                   )}
