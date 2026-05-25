@@ -167,7 +167,7 @@ const handler = async (req: Request): Promise<Response> => {
         sequence = 1;
       }
       
-      const method = (action === "cancel" || action === "reassign_removed") ? "CANCEL" : "REQUEST";
+      method = (action === "cancel" || action === "reassign_removed") ? "CANCEL" : "REQUEST";
       const status = (action === "cancel" || action === "reassign_removed") ? "CANCELLED" : "CONFIRMED";
 
       // VTIMEZONE block for America/Sao_Paulo (BRT, UTC-3, no DST since 2019)
