@@ -1,37 +1,75 @@
-# Padronizar Hércules como supervisor escalável
+# Corrigir recursão infinita nas RLS de RDO
 
-Trazer o cadastro do Hércules para o mesmo padrão do Dayn, sem mudanças de código. Atentar que Dayn é Supervisor de obras/eletromecânico (RDO) e Hercules Supervisor Técnico/Elétrico (RME). Ambos podem exercer em paralelo atividades de técnicos e/ou eletromecãnicos desde que acumulem esses flags.
+## Diagnóstico
 
-## Migração de dados (idempotente)
+Os 500 vistos pelo Dayn vêm das policies SELECT de `rdo_relatorios` e `rdo_equipe` que se referenciam mutuamente:
 
-Sobre o `prestador` `c67f5c32-1aaf-4eb2-9de0-47e8c6a6c1de` e o `profile` `39bd3d1d-5275-41e9-8328-ab6454d768f8`:
+- `rdo_relatorios."View RDO if responsible or in equipe"` faz `EXISTS (SELECT … FROM rdo_equipe …)`
+- `rdo_equipe."View rdo equipe if envolvido"` faz `EXISTS (SELECT … FROM rdo_relatorios …)`
 
-1. **Vincular prestador ao auth user**
-  `UPDATE prestadores SET user_id = '39bd3d1d…' WHERE id = 'c67f5c32…' AND user_id IS NULL`
-2. **Refletir o cargo real**
-  `UPDATE prestadores SET categoria = 'supervisao' WHERE id = 'c67f5c32…'`
-3. **Garantir roles `supervisao` + `tecnico_campo**` em `user_roles` (ON CONFLICT DO NOTHING para o par user_id+role).
-4. **Confirmar `tecnicos**` existente já apontando para esse prestador (verificar; criar se faltar — mas pelo diagnóstico anterior o `tecnicos` já existe).
-5. **Sincronizar `tecnicos.profile_id**` com o profile do Hércules, caso esteja nulo ou divergente.
+Cada SELECT dispara a RLS da outra tabela, que dispara a RLS da primeira → **infinite recursion** (confirmado em `postgres_logs`). Mesmas policies aparecem replicadas em `rdo_atividades` e `rdo_equipamentos` (já que ambas filtram via subquery em `rdo_relatorios` + `rdo_equipe`), então o problema se propaga para todas as telas que consultam RDO.
 
-## Resultado esperado
+Os erros `removeChild` no console são consequência: a query falha → state inconsistente → React tenta desmontar nós que já saíram da árvore.
 
-- Continua aparecendo no modal "Gerar OS" (já estava).
-- `/usuarios` passa a mostrar badge "Escalável como técnico" e os botões de remover/escalar.
-- Login do Hércules passa a ver as próprias OSs (RLS chain `prestadores.user_id → tecnicos → profile` fica completa).
-- E-mails e push de aceite funcionam normalmente porque agora há role `tecnico_campo`.
-- RDO continua listando-o (a query já une `categoria` + `user_roles`).
+## Correção (migração SQL)
 
-## Verificação pós-migração
+Substituir os `EXISTS` cruzados por **funções SECURITY DEFINER** que rodam com privilégios elevados e ignoram RLS (padrão já adotado no projeto com `has_role`, `is_staff`, `user_is_prestador`).
 
-Reexecutar a query de diagnóstico para confirmar que Hércules aparece com:
+### 1. Novas funções
 
-- `prestador_user_id` = profile.id
-- `categoria` = `supervisao`
-- `roles` inclui `supervisao` e `tecnico_campo`
-- `tecnico_id` não nulo
+```sql
+create or replace function public.user_in_rdo_equipe(_uid uuid, _rdo_id uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1 from rdo_equipe e
+    where e.rdo_id = _rdo_id
+      and user_is_prestador(_uid, e.prestador_id)
+  )
+$$;
+
+create or replace function public.user_is_rdo_responsavel(_uid uuid, _rdo_id uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1 from rdo_relatorios r
+    where r.id = _rdo_id
+      and user_is_prestador(_uid, r.responsavel_id)
+  )
+$$;
+
+create or replace function public.rdo_status(_rdo_id uuid)
+returns text language sql stable security definer set search_path = public as $$
+  select status from rdo_relatorios where id = _rdo_id
+$$;
+```
+
+### 2. Reescrever policies
+
+- `rdo_relatorios "View RDO if responsible or in equipe"` →
+  `is_staff(auth.uid()) OR user_is_prestador(auth.uid(), responsavel_id) OR user_in_rdo_equipe(auth.uid(), id)`
+
+- `rdo_equipe "View rdo equipe if envolvido"` →
+  `is_staff(auth.uid()) OR user_is_prestador(auth.uid(), prestador_id) OR user_is_rdo_responsavel(auth.uid(), rdo_id)`
+
+- `rdo_atividades "View rdo atividades if envolvido"` →
+  `is_staff(auth.uid()) OR user_is_rdo_responsavel(auth.uid(), rdo_id) OR user_in_rdo_equipe(auth.uid(), rdo_id)`
+
+- `rdo_equipamentos "View rdo equipamentos if envolvido"` → idem.
+
+- Policies de **gerência** ("Sup eletromec manages own RDO atividades/equipamentos") que hoje fazem `EXISTS (SELECT … FROM rdo_relatorios …)` passam a usar `user_is_rdo_responsavel(auth.uid(), rdo_id) AND rdo_status(rdo_id) = ANY(ARRAY['rascunho','rejeitado'])`.
+
+Todas as policies de INSERT/UPDATE/DELETE que já não recursam ficam como estão. Policies de `Staff manage …` permanecem inalteradas.
+
+## Sem mudanças de código frontend
+
+`rdoService.ts` e telas consumidoras continuam idênticos — o fix é 100% banco.
+
+## Verificação
+
+1. Logar como Dayn (`sup_eletromecanico`) e abrir `/rdo/dashboard`, `/rdo`, detalhe de RDO.
+2. Conferir em `postgres_logs` que não há mais `infinite recursion`.
+3. Conferir que staff continua vendo tudo e cliente continua vendo só `aprovado`.
 
 ## Fora de escopo
 
-- Nenhuma mudança de código.
-- Não tocar em outros prestadores com `categoria='tecnico'` (Weberson, Adrian, Diego ficam como estão — eles são técnicos puros).
+- Não tocar policies de outras tabelas (tickets, OS, RME).
+- Não mudar `user_is_prestador`, `is_staff`, `has_role`.
