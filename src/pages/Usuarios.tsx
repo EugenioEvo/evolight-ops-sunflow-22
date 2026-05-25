@@ -111,8 +111,10 @@ const Usuarios = () => {
     });
 
     const prestadorIdByProfile = new Map<string, string>();
+    const tecnicoIdByProfile = new Map<string, string>();
     (tecnicos || []).forEach((t: any) => {
       if (t.prestador_id) prestadorIdByProfile.set(t.profile_id, t.prestador_id);
+      if (t.id) tecnicoIdByProfile.set(t.profile_id, t.id);
     });
 
     setRows((profiles || []).map((p: any) => {
@@ -120,7 +122,7 @@ const Usuarios = () => {
       const prestador = fkPrestadorId
         ? prestadorById.get(fkPrestadorId) ?? null
         : prestadorByEmail.get(p.email.toLowerCase()) ?? null;
-      return { ...p, roles: rolesByUser.get(p.user_id) || [], prestador };
+      return { ...p, roles: rolesByUser.get(p.user_id) || [], prestador, tecnico_id: tecnicoIdByProfile.get(p.id) ?? null };
     }));
     setLoading(false);
   };
