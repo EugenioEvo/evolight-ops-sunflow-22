@@ -441,24 +441,74 @@ export const TicketForm = ({
                 />
               </div>
 
-              {/* Coluna direita: Observações ocupando a altura toda */}
-              <FormField
-                control={form.control}
-                name="observacoes"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col h-full">
-                    <FormLabel>Observações</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        {...field}
-                        placeholder="Notas sobre o endereço, horário, pessoa de contato, solicitações especiais do cliente, etc."
-                        className="flex-1 min-h-[260px] resize-none"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {/* Coluna direita: Observações + Equipamento/Prioridade */}
+              <div className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="observacoes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Observações</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          {...field}
+                          placeholder="Notas sobre o endereço, horário, pessoa de contato, solicitações especiais do cliente, etc."
+                          className="min-h-[140px] resize-none"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="equipamento_tipo"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Equipamento</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="painel_solar">Painel Solar</SelectItem>
+                            <SelectItem value="inversor">Inversor</SelectItem>
+                            <SelectItem value="controlador_carga">Controlador de Carga</SelectItem>
+                            <SelectItem value="bateria">Bateria</SelectItem>
+                            <SelectItem value="cabeamento">Cabeamento</SelectItem>
+                            <SelectItem value="estrutura">Estrutura</SelectItem>
+                            <SelectItem value="monitoramento">Sistema de Monitoramento</SelectItem>
+                            <SelectItem value="outros">Outros</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="prioridade"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Prioridade</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="baixa">Baixa</SelectItem>
+                            <SelectItem value="media">Média</SelectItem>
+                            <SelectItem value="alta">Alta</SelectItem>
+                            <SelectItem value="critica">Crítica</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
             </div>
 
             {/* Descrição full-width */}
@@ -480,54 +530,6 @@ export const TicketForm = ({
               )}
             />
 
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="equipamento_tipo"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Tipo de Equipamento</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="painel_solar">Painel Solar</SelectItem>
-                        <SelectItem value="inversor">Inversor</SelectItem>
-                        <SelectItem value="controlador_carga">Controlador de Carga</SelectItem>
-                        <SelectItem value="bateria">Bateria</SelectItem>
-                        <SelectItem value="cabeamento">Cabeamento</SelectItem>
-                        <SelectItem value="estrutura">Estrutura</SelectItem>
-                        <SelectItem value="monitoramento">Sistema de Monitoramento</SelectItem>
-                        <SelectItem value="outros">Outros</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="prioridade"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Prioridade</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="baixa">Baixa</SelectItem>
-                        <SelectItem value="media">Média</SelectItem>
-                        <SelectItem value="alta">Alta</SelectItem>
-                        <SelectItem value="critica">Crítica</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
 
             {similarTickets.length > 0 && (
               <div className="flex gap-3 p-3 rounded-md border border-warning/40 bg-warning/10 text-sm">
