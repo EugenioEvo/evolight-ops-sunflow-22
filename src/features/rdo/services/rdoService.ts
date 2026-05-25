@@ -135,12 +135,15 @@ export const rdoService = {
     return (data || []) as CatalogoItem[];
   },
 
-  async listEletromecanicos(): Promise<EletromecanicoOption[]> {
+  async listEletromecanicos(opts?: { onlySupervisores?: boolean }): Promise<EletromecanicoOption[]> {
+    const cats = opts?.onlySupervisores
+      ? ['sup_eletromecanico', 'lider_eletromecanico']
+      : ['eletromecanico', 'sup_eletromecanico', 'lider_eletromecanico'];
     // 1) Match clássico: prestadores cuja categoria é eletromecânica.
     const byCategoria = await supabase
       .from('prestadores')
       .select('id, nome, categoria')
-      .in('categoria', ['eletromecanico', 'sup_eletromecanico', 'lider_eletromecanico'])
+      .in('categoria', cats)
       .eq('ativo', true);
     if (byCategoria.error) throw byCategoria.error;
 
@@ -149,7 +152,7 @@ export const rdoService = {
     const rolesRes = await supabase
       .from('user_roles')
       .select('user_id')
-      .in('role', ['eletromecanico', 'sup_eletromecanico', 'lider_eletromecanico']);
+      .in('role', cats);
     if (rolesRes.error) throw rolesRes.error;
     const userIds = Array.from(new Set((rolesRes.data ?? []).map((r: any) => r.user_id)));
 
