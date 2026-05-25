@@ -74,6 +74,7 @@ export const MultiTechnicianOSDialog = ({
   }, [alreadyAssignedPrestadorIds, isAddMode, ticket?.tecnico_responsavel_id]);
 
   const [loading, setLoading] = useState(false);
+  const [clienteSearchOpen, setClienteSearchOpen] = useState(false);
   const [selectedPrestadores, setSelectedPrestadores] = useState<string[]>([]);
   const [tecnicoResponsavelId, setTecnicoResponsavelId] = useState<string>("");
   const [initialTecnicoResponsavelId, setInitialTecnicoResponsavelId] = useState<string>("");
