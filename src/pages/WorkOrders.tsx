@@ -45,7 +45,7 @@ const WorkOrders = () => {
   const [sendingEmailId, setSendingEmailId] = useState<string | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [prestadores, setPrestadores] = useState<Array<{ id: string; nome: string; email: string }>>([]);
-  const [standaloneClientes, setStandaloneClientes] = useState<Array<{ id: string; empresa: string | null; ufv_solarz: string | null; endereco: string | null; cidade: string | null; estado: string | null }>>([]);
+  const [standaloneClientes, setStandaloneClientes] = useState<Array<{ id: string; empresa: string | null; cnpj_cpf: string | null; ufv_solarz: string | null; endereco: string | null; cidade: string | null; estado: string | null }>>([]);
   const { profile } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -63,7 +63,7 @@ const WorkOrders = () => {
         // Fonte de verdade da escalabilidade = ter registro em `tecnicos`
         // (cobre staff provisionado via provision-staff-as-tecnico, não apenas categoria='tecnico').
         supabase.from('prestadores').select('id, nome, email, tecnicos!inner(id)').eq('ativo', true).order('nome'),
-        supabase.from('clientes').select('id, empresa, endereco, cidade, estado, cliente_ufvs(nome)').order('empresa'),
+        supabase.from('clientes').select('id, empresa, cnpj_cpf, endereco, cidade, estado, cliente_ufvs(nome)').order('empresa'),
       ]);
       setPrestadores((prestData || []) as any);
       // Derive ufv_solarz (legacy field, now = joined UFV names) for downstream consumers
