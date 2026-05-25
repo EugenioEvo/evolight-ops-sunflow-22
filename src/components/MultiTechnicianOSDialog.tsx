@@ -74,8 +74,9 @@ export const MultiTechnicianOSDialog = ({
   const [initialTecnicoResponsavelId, setInitialTecnicoResponsavelId] = useState<string>("");
   /** Horas previstas POR técnico (sempre por técnico — usado pelo BI Carga de Trabalho) */
   const [horasPorTecnico, setHorasPorTecnico] = useState<Record<string, number>>({});
+  const DESCRICAO_HINT = "Situação da planta (kwp, qtd de módulos, potência) e descrição dos serviços a serem realizados.";
   const [formData, setFormData] = useState({
-    descricao_servicos: "MANUTENÇÃO",
+    descricao_servicos: DESCRICAO_HINT,
     tipo_trabalho: [] as string[],
   });
 
