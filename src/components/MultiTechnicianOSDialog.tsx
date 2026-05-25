@@ -24,6 +24,7 @@ interface Prestador {
 interface ClienteOption {
   id: string;
   empresa: string | null;
+  cnpj_cpf?: string | null;
   ufv_solarz: string | null;
   endereco: string | null;
   cidade: string | null;
