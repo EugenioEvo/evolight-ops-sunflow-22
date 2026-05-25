@@ -93,7 +93,7 @@ export function ObraFormDialog({ open, onOpenChange, obra }: Props) {
     onOpenChange(false);
   };
 
-  const supervisores = prestadores.filter((p: any) => p.ativo);
+  
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
