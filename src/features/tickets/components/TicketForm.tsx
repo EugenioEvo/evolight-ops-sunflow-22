@@ -201,7 +201,7 @@ export const TicketForm = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{editingTicket ? 'Editar Ticket' : 'Criar Novo Ticket'}</DialogTitle>
           <DialogDescription>
@@ -210,19 +210,9 @@ export const TicketForm = ({
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="titulo"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Título</FormLabel>
-                  <FormControl>
-                    <Input {...field} placeholder="Manutenção em painel solar" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {/* Linha topo: col esquerda (Cliente, Usina, Endereço, Resumo) + col direita (Observações) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-4">
 
             {/* Cliente — combobox com busca e infos do Conta Azul */}
             <FormField
@@ -414,8 +404,63 @@ export const TicketForm = ({
                   <FormMessage />
                 </FormItem>
               )}
-            />
+                />
 
+                {/* Endereço — uma linha apenas */}
+                <FormField
+                  control={form.control}
+                  name="endereco_servico"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Endereço do Serviço</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="Endereço completo onde o serviço será realizado" />
+                      </FormControl>
+                      <p className="text-xs text-muted-foreground">
+                        Pré-preenchido a partir do cadastro do cliente/usina. Edite se precisar.
+                      </p>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Resumo do Serviço (antigo "Título") */}
+                <FormField
+                  control={form.control}
+                  name="titulo"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Resumo do Serviço</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="Ex.: Manutenção preventiva — Inversor 50kW" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              {/* Coluna direita: Observações ocupando a altura toda */}
+              <FormField
+                control={form.control}
+                name="observacoes"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col h-full">
+                    <FormLabel>Observações</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        {...field}
+                        placeholder="Notas sobre o endereço, horário, pessoa de contato, solicitações especiais do cliente, etc."
+                        className="flex-1 min-h-[260px] resize-none"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            {/* Descrição full-width */}
             <FormField
               control={form.control}
               name="descricao"
@@ -423,25 +468,12 @@ export const TicketForm = ({
                 <FormItem>
                   <FormLabel>Descrição</FormLabel>
                   <FormControl>
-                    <Textarea {...field} placeholder="Descreva o problema..." rows={2} />
+                    <Textarea
+                      {...field}
+                      placeholder="Situação da planta (kWp, qtd de módulos, potência) e descrição dos serviços a serem realizados."
+                      rows={3}
+                    />
                   </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="endereco_servico"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Endereço do Serviço</FormLabel>
-                  <FormControl>
-                    <Textarea {...field} placeholder="Endereço completo onde o serviço será realizado..." rows={2} />
-                  </FormControl>
-                  <p className="text-xs text-muted-foreground">
-                    Pré-preenchido a partir do cadastro do cliente/usina. Edite se precisar.
-                  </p>
                   <FormMessage />
                 </FormItem>
               )}
@@ -574,19 +606,6 @@ export const TicketForm = ({
               <strong className="text-foreground">Horas previstas:</strong> agora são informadas por técnico no momento da geração da Ordem de Serviço (BI de Carga de Trabalho).
             </div>
 
-            <FormField
-              control={form.control}
-              name="observacoes"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Observações</FormLabel>
-                  <FormControl>
-                    <Textarea {...field} placeholder="Informações adicionais..." rows={2} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
 
             <FormField
               control={form.control}
