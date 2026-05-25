@@ -703,7 +703,7 @@ export const MultiTechnicianOSDialog = ({
                 rows={3}
                 value={formData.descricao_servicos}
                 onChange={(e) => setFormData(prev => ({ ...prev, descricao_servicos: e.target.value }))}
-                placeholder="Descreva os serviços a serem executados"
+                placeholder="Situação da planta (kwp, qtd de módulos, potência) e descrição dos serviços a serem realizados."
               />
             </div>
           )}
