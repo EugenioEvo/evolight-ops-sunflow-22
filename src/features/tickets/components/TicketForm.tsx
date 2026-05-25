@@ -350,8 +350,9 @@ export const TicketForm = ({
               control={form.control}
               name="ufv_nome"
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Usina</FormLabel>
+                <FormItem className="flex flex-row items-center gap-3 space-y-0">
+                  <FormLabel className="w-20 shrink-0">Usina</FormLabel>
+                  <div className="flex-1 min-w-0">
                   {!clienteHasUFVs ? (
                     <>
                       <FormControl>
