@@ -131,6 +131,7 @@ const handler = async (req: Request): Promise<Response> => {
     let dtStart: Date | null = null;
     let dtEnd: Date | null = null;
     let icsContent: string | null = null;
+    let method: "REQUEST" | "CANCEL" = (action === "cancel" || action === "reassign_removed") ? "CANCEL" : "REQUEST";
 
     if (hasSchedule) {
       const dataOS = new Date(os.data_programada);
