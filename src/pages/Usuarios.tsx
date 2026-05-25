@@ -232,6 +232,30 @@ const Usuarios = () => {
                     <Button size="sm" variant="outline" onClick={() => toggleAtivo(row)} disabled={!isAdmin}>
                       {row.ativo ? 'Desativar' : 'Ativar'}
                     </Button>
+                    {isAdmin && row.roles.some(r => ROLES_ESCALAVEIS.includes(r)) && !row.tecnico_id && (
+                      <Button size="sm" variant="outline" onClick={() => provisionTecnico(row, 'provision')}>
+                        Tornar escalável
+                      </Button>
+                    )}
+                    {isAdmin && row.tecnico_id && !row.roles.includes('tecnico_campo') === false && row.roles.some(r => ROLES_ESCALAVEIS.includes(r)) && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button size="sm" variant="outline">Remover da escala</Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Remover da escala</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              {row.nome} deixará de aparecer como técnico nas escalas, agendamentos e RDOs. Bloqueado se ainda houver OS ativas.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => provisionTecnico(row, 'unprovision')}>Remover</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
                     {isAdmin && (
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
