@@ -84,7 +84,7 @@ export const createWorkOrderService = (client?: AppSupabaseClient) => {
     async loadDetail(id: string): Promise<WorkOrderDetailData | null> {
       const { data, error } = await db
         .from('ordens_servico')
-        .select(`*, tickets!inner(id, titulo, descricao, status, prioridade, endereco_servico, data_inicio_execucao, data_conclusao, prestadores:tecnico_responsavel_id(id, nome), clientes(empresa, endereco, cidade, estado, prioridade, cliente_ufvs(nome))), rme_relatorios(id, status, created_at, data_execucao, start_time, end_time)`)
+        .select(`*, tickets!inner(id, titulo, descricao, status, prioridade, endereco_servico, data_servico, horario_previsto_inicio, data_inicio_execucao, data_conclusao, tecnico_responsavel_id, prestadores:tecnico_responsavel_id(id, nome), clientes(empresa, endereco, cidade, estado, prioridade, cliente_ufvs(nome))), rme_relatorios(id, status, created_at, data_execucao, start_time, end_time)`)
         .eq('id', id)
         .maybeSingle();
       if (error) throw error;
