@@ -145,7 +145,31 @@ export const MultiTechnicianOSDialog = ({
     }
   }, [open, ticket?.descricao]);
 
-  // Availability check — usa max(horas) entre os técnicos selecionados como janela
+  // Add-mode: carregar horas previstas atuais (duracao_estimada_min) das OS já existentes
+  // do ticket, mapeando por prestador_id, para permitir edição/recálculo.
+  useEffect(() => {
+    if (!open || isStandalone || !isAddMode || !ticketId) return;
+    (async () => {
+      const { data, error } = await supabase
+        .from('ordens_servico')
+        .select('id, duracao_estimada_min, tecnicos!inner(prestador_id)')
+        .eq('ticket_id', ticketId);
+      if (error || !data) return;
+      const horas: Record<string, number> = {};
+      const osMap: Record<string, string> = {};
+      for (const os of data as any[]) {
+        const pid = os.tecnicos?.prestador_id;
+        if (!pid) continue;
+        const h = os.duracao_estimada_min ? os.duracao_estimada_min / 60 : 1;
+        horas[pid] = h;
+        osMap[pid] = os.id;
+      }
+      setHorasPorTecnico(prev => ({ ...horas, ...prev })); // não sobrescreve edits do usuário
+      setInitialHorasPorTecnico(horas);
+      setOsIdPorPrestador(osMap);
+    })();
+  }, [open, isStandalone, isAddMode, ticketId]);
+
   useEffect(() => {
     const date = isStandalone ? standaloneData.data_servico : ticket?.data_servico;
     const startTime = isStandalone ? standaloneData.horario_previsto_inicio : ticket?.horario_previsto_inicio;
