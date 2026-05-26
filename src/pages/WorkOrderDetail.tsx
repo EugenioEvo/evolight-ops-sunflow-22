@@ -134,14 +134,23 @@ const WorkOrderDetail = () => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-sm text-muted-foreground">Data Programada</p>
-                <div className="flex items-center gap-2 mt-1"><Calendar className="h-4 w-4 text-muted-foreground" /><span className="font-medium">{workOrder.data_programada ? format(new Date(workOrder.data_programada), "dd/MM/yyyy", { locale: ptBR }) : "Não definida"}</span></div>
+                <div className="flex items-center gap-2 mt-1"><Calendar className="h-4 w-4 text-muted-foreground" /><span className="font-medium">{(() => {
+                  // Source of truth: ticket.data_servico (date-only); fallback to OS data_programada.
+                  // Parse YYYY-MM-DD as local date to avoid timezone shift (UTC midnight rendering as prior day in BR).
+                  const raw = (workOrder.tickets as any).data_servico || workOrder.data_programada;
+                  if (!raw) return "Não definida";
+                  const s = String(raw).slice(0, 10);
+                  const [y, m, d] = s.split('-').map(Number);
+                  if (!y || !m || !d) return "Não definida";
+                  return format(new Date(y, m - 1, d), "dd/MM/yyyy", { locale: ptBR });
+                })()}</span></div>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Horário Programado</p>
                 <div className="flex items-center gap-2 mt-1">
                   <Clock className="h-4 w-4 text-muted-foreground" />
                   <span className="font-medium">
-                    {workOrder.hora_inicio || "00:00"} - {workOrder.hora_fim || "00:00"}
+                    {(workOrder.hora_inicio || "00:00").slice(0, 5)} - {(workOrder.hora_fim || "00:00").slice(0, 5)}
                     {(() => {
                       // Sufixo (dd/MM) quando o término ultrapassa o início (vira o dia)
                       const hi = workOrder.hora_inicio, hf = workOrder.hora_fim
@@ -149,7 +158,6 @@ const WorkOrderDetail = () => {
                       const [ih, im] = hi.split(':').map(Number)
                       const [fh, fm] = hf.split(':').map(Number)
                       if ((fh * 60 + fm) > (ih * 60 + im)) return null
-                      // Calcula próximo dia útil simples a partir de data_programada
                       const d = new Date(workOrder.data_programada)
                       d.setDate(d.getDate() + 1)
                       while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + 1)
@@ -229,7 +237,7 @@ const WorkOrderDetail = () => {
         <Card>
           <CardHeader><CardTitle className="text-lg">Serviço</CardTitle></CardHeader>
           <CardContent className="space-y-4">
-            <div><p className="text-sm text-muted-foreground">Serviço Solicitado</p><Badge className="mt-1">{workOrder.servico_solicitado?.toUpperCase() || "MANUTENÇÃO"}</Badge></div>
+            <div><p className="text-sm text-muted-foreground">Serviço Solicitado</p><Badge className="mt-1">{(workOrder.tickets.titulo || workOrder.servico_solicitado || "MANUTENÇÃO").toUpperCase()}</Badge></div>
             {workOrder.work_type && workOrder.work_type.length > 0 && (
               <div><p className="text-sm text-muted-foreground mb-2">Tipo de Trabalho</p><div className="flex flex-wrap gap-2">{workOrder.work_type.map(t => <Badge key={t} variant="outline">{t.toUpperCase()}</Badge>)}</div></div>
             )}
