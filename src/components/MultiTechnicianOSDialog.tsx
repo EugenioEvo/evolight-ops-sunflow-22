@@ -80,6 +80,10 @@ export const MultiTechnicianOSDialog = ({
   const [initialTecnicoResponsavelId, setInitialTecnicoResponsavelId] = useState<string>("");
   /** Horas previstas POR técnico (sempre por técnico — usado pelo BI Carga de Trabalho) */
   const [horasPorTecnico, setHorasPorTecnico] = useState<Record<string, number>>({});
+  /** Horas iniciais carregadas das OS existentes (add-mode) — base para detectar mudanças. */
+  const [initialHorasPorTecnico, setInitialHorasPorTecnico] = useState<Record<string, number>>({});
+  /** Mapa prestadorId → id da OS existente (add-mode), para updates. */
+  const [osIdPorPrestador, setOsIdPorPrestador] = useState<Record<string, string>>({});
   const DESCRICAO_HINT = "Situação da planta (kwp, qtd de módulos, potência) e descrição dos serviços a serem realizados.";
   const [formData, setFormData] = useState({
     descricao_servicos: DESCRICAO_HINT,
