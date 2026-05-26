@@ -652,9 +652,23 @@ export const MultiTechnicianOSDialog = ({
                     <div className="border rounded-md divide-y">
                       {selectedPrestadores.map(pid => {
                         const p = prestadores.find(x => x.id === pid);
+                        const horas = horasPorTecnico[pid] ?? 1;
+                        const date = isStandalone ? standaloneData.data_servico : ticket?.data_servico;
+                        const startTime = isStandalone ? standaloneData.horario_previsto_inicio : ticket?.horario_previsto_inicio;
+                        let hint: string | null = null;
+                        if (hasDateInfo && date && startTime && horas > 0) {
+                          const s = computeScheduleEnd(date, startTime, Math.round(horas * 60));
+                          const [y, mo, d] = s.endDate.split('-');
+                          hint = `Encerra ${d}/${mo} às ${s.endTime}`;
+                        }
                         return (
                           <div key={pid} className="flex items-center justify-between gap-3 p-2">
-                            <span className="text-sm flex-1 truncate">{p?.nome || pid}</span>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm truncate">{p?.nome || pid}</p>
+                              {hint && (
+                                <p className="text-[11px] text-muted-foreground mt-0.5">{hint}</p>
+                              )}
+                            </div>
                             <Input
                               type="number" min={0.5} max={24} step={0.5}
                               className="w-20 h-9"
@@ -669,7 +683,7 @@ export const MultiTechnicianOSDialog = ({
                   </div>
                 )}
 
-                {/* Preview do Horário Programado calculado pela janela útil */}
+                {/* Preview do Horário Programado calculado pela janela útil (técnico com maior duração) */}
                 {hasDateInfo && selectedPrestadores.length > 0 && (() => {
                   const date = isStandalone ? standaloneData.data_servico : ticket?.data_servico;
                   const startTime = isStandalone ? standaloneData.horario_previsto_inicio : ticket?.horario_previsto_inicio;
@@ -677,13 +691,16 @@ export const MultiTechnicianOSDialog = ({
                   const sched = computeScheduleEnd(date, startTime, Math.round(maxHoras * 60));
                   const startHHMM = (startTime || '').slice(0, 5);
                   const endHHMM = (sched.endTime || '').slice(0, 5);
-                  const display = `${startHHMM} - ${endHHMM}`;
+                  const display = formatScheduledWindow(date, startHHMM, endHHMM, sched.endDate);
+                  const [ey, em, ed] = sched.endDate.split('-');
+                  const endHint = `Encerra ${ed}/${em} às ${endHHMM} (técnico com maior duração: ${maxHoras}h)`;
                   return (
                     <div className="rounded-md border bg-muted/30 p-3 space-y-1">
                       <div className="flex items-center gap-2 text-sm">
                         <Clock className="h-4 w-4 text-muted-foreground" />
                         <strong>Horário Programado:</strong> {display}
                       </div>
+                      <p className="text-[11px] text-muted-foreground">{endHint}</p>
                       {sched.outOfWindowWarning && (
                         <p className="text-xs text-amber-600 dark:text-amber-400">
                           ⚠ Hora de início fora da janela útil (08:00–18:00). Reprogramado para o próximo slot válido.
@@ -702,6 +719,7 @@ export const MultiTechnicianOSDialog = ({
                     </div>
                   );
                 })()}
+
               </div>
 
               {/* Coluna direita */}
