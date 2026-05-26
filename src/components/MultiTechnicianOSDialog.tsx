@@ -80,6 +80,10 @@ export const MultiTechnicianOSDialog = ({
   const [initialTecnicoResponsavelId, setInitialTecnicoResponsavelId] = useState<string>("");
   /** Horas previstas POR técnico (sempre por técnico — usado pelo BI Carga de Trabalho) */
   const [horasPorTecnico, setHorasPorTecnico] = useState<Record<string, number>>({});
+  /** Horas iniciais carregadas das OS existentes (add-mode) — base para detectar mudanças. */
+  const [initialHorasPorTecnico, setInitialHorasPorTecnico] = useState<Record<string, number>>({});
+  /** Mapa prestadorId → id da OS existente (add-mode), para updates. */
+  const [osIdPorPrestador, setOsIdPorPrestador] = useState<Record<string, string>>({});
   const DESCRICAO_HINT = "Situação da planta (kwp, qtd de módulos, potência) e descrição dos serviços a serem realizados.";
   const [formData, setFormData] = useState({
     descricao_servicos: DESCRICAO_HINT,
@@ -103,6 +107,8 @@ export const MultiTechnicianOSDialog = ({
       setTecnicoResponsavelId("");
       setInitialTecnicoResponsavelId("");
       setHorasPorTecnico({});
+      setInitialHorasPorTecnico({});
+      setOsIdPorPrestador({});
       setFormData({ descricao_servicos: DESCRICAO_HINT, tipo_trabalho: [] });
       setStandaloneData({
         cliente_id: "",
@@ -139,7 +145,31 @@ export const MultiTechnicianOSDialog = ({
     }
   }, [open, ticket?.descricao]);
 
-  // Availability check — usa max(horas) entre os técnicos selecionados como janela
+  // Add-mode: carregar horas previstas atuais (duracao_estimada_min) das OS já existentes
+  // do ticket, mapeando por prestador_id, para permitir edição/recálculo.
+  useEffect(() => {
+    if (!open || isStandalone || !isAddMode || !ticketId) return;
+    (async () => {
+      const { data, error } = await supabase
+        .from('ordens_servico')
+        .select('id, duracao_estimada_min, tecnicos!inner(prestador_id)')
+        .eq('ticket_id', ticketId);
+      if (error || !data) return;
+      const horas: Record<string, number> = {};
+      const osMap: Record<string, string> = {};
+      for (const os of data as any[]) {
+        const pid = os.tecnicos?.prestador_id;
+        if (!pid) continue;
+        const h = os.duracao_estimada_min ? os.duracao_estimada_min / 60 : 1;
+        horas[pid] = h;
+        osMap[pid] = os.id;
+      }
+      setHorasPorTecnico(prev => ({ ...horas, ...prev })); // não sobrescreve edits do usuário
+      setInitialHorasPorTecnico(horas);
+      setOsIdPorPrestador(osMap);
+    })();
+  }, [open, isStandalone, isAddMode, ticketId]);
+
   useEffect(() => {
     const date = isStandalone ? standaloneData.data_servico : ticket?.data_servico;
     const startTime = isStandalone ? standaloneData.horario_previsto_inicio : ticket?.horario_previsto_inicio;
@@ -214,11 +244,27 @@ export const MultiTechnicianOSDialog = ({
     && !!tecnicoResponsavelId
     && tecnicoResponsavelId !== initialTecnicoResponsavelId;
 
+  // Add-mode: técnicos existentes cuja duração foi alterada
+  const changedHorasPrestadorIds = useMemo(() => {
+    if (!isAddMode) return [] as string[];
+    return Object.keys(initialHorasPorTecnico).filter(pid => {
+      if (!assignedPrestadorIds.includes(pid)) return false;
+      const curr = horasPorTecnico[pid];
+      if (typeof curr !== 'number') return false;
+      return Math.abs((initialHorasPorTecnico[pid] || 0) - curr) > 0.001;
+    });
+  }, [isAddMode, initialHorasPorTecnico, horasPorTecnico, assignedPrestadorIds]);
+
   const validate = (): string | null => {
     if (isAddMode) {
-      // Em add-mode aceitamos: novos técnicos OU troca de responsável OU remoção de técnicos
-      if (newSelectedPrestadores.length === 0 && !responsavelChanged && removedPrestadorIds.length === 0) {
-        return "Selecione novos técnicos, remova alguém ou troque o Técnico Responsável";
+      // Em add-mode aceitamos: novos técnicos OU troca de responsável OU remoção OU ajuste de horas
+      if (
+        newSelectedPrestadores.length === 0
+        && !responsavelChanged
+        && removedPrestadorIds.length === 0
+        && changedHorasPrestadorIds.length === 0
+      ) {
+        return "Selecione novos técnicos, remova alguém, troque o responsável ou ajuste as horas";
       }
       if (selectedPrestadores.length === 0) return "O ticket precisa ter ao menos um técnico alocado";
       if (!tecnicoResponsavelId) return "Selecione o Técnico Responsável";
@@ -417,9 +463,55 @@ export const MultiTechnicianOSDialog = ({
         }
       }
 
-      // Em add-mode com apenas troca de responsável (sem novos técnicos),
-      // não houve geração de OS — mas a operação foi bem-sucedida.
-      const onlyMutateNoOS = isAddMode && newSelectedPrestadores.length === 0 && (responsavelChanged || removedCount > 0);
+      // ───── Add-mode: atualizar duração das OS existentes alteradas ─────
+      // Recalcula hora_fim usando a janela útil 08–18 (mesma regra do util de frontend).
+      let updatedHorasCount = 0;
+      if (isAddMode && changedHorasPrestadorIds.length > 0) {
+        const date = ticket?.data_servico;
+        const startTime = ticket?.horario_previsto_inicio;
+        for (const pid of changedHorasPrestadorIds) {
+          const osId = osIdPorPrestador[pid];
+          if (!osId) continue;
+          const horasTec = horasPorTecnico[pid] || 1;
+          const duracaoMin = Math.round(horasTec * 60);
+          const updatePayload: Record<string, any> = { duracao_estimada_min: duracaoMin };
+          if (date && startTime) {
+            const sched = computeScheduleEnd(date, startTime, duracaoMin);
+            updatePayload.hora_inicio = startTime;
+            updatePayload.hora_fim = sched.endTime;
+          }
+          const { error: upErr } = await supabase
+            .from('ordens_servico')
+            .update(updatePayload)
+            .eq('id', osId);
+          if (upErr) {
+            console.error('Falha ao atualizar OS', osId, upErr);
+            errorCount++;
+            continue;
+          }
+          // espelha em horas_previstas_os (BI Carga de Trabalho)
+          const { data: tecRow } = await supabase
+            .from('tecnicos').select('id').eq('prestador_id', pid).maybeSingle();
+          if (tecRow?.id) {
+            await supabase
+              .from('horas_previstas_os')
+              .upsert({
+                ordem_servico_id: osId,
+                tecnico_id: tecRow.id,
+                minutos_previstos: duracaoMin,
+              }, { onConflict: 'ordem_servico_id,tecnico_id' });
+          }
+          updatedHorasCount++;
+        }
+        if (updatedHorasCount > 0) {
+          toast.success(`${updatedHorasCount} OS atualizada(s) com nova duração.`);
+        }
+      }
+
+      // Em add-mode com apenas mutações (sem novos técnicos), também é sucesso.
+      const onlyMutateNoOS = isAddMode
+        && newSelectedPrestadores.length === 0
+        && (responsavelChanged || removedCount > 0 || updatedHorasCount > 0);
       if (successCount > 0 || onlyMutateNoOS) {
         if (successCount > 0) {
           toast.success(`${successCount} OS gerada(s) com sucesso!${errorCount > 0 ? ` ${errorCount} falha(s).` : ''}`);
@@ -637,6 +729,98 @@ export const MultiTechnicianOSDialog = ({
             )}
           </div>
 
+          {/* Add-mode: Horas Previstas por Técnico (existentes + novos) + Horário Programado */}
+          {isAddMode && selectedPrestadores.length > 0 && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Horas Previstas por Técnico <span className="text-destructive">*</span></Label>
+                <p className="text-xs text-muted-foreground">
+                  Ajuste a duração de cada técnico (existente ou novo). Alterações em técnicos já alocados recalculam a janela de execução da OS correspondente.
+                </p>
+                <div className="border rounded-md divide-y">
+                  {selectedPrestadores.map(pid => {
+                    const p = prestadores.find(x => x.id === pid);
+                    const horas = horasPorTecnico[pid] ?? 1;
+                    const date = ticket?.data_servico;
+                    const startTime = ticket?.horario_previsto_inicio;
+                    let hint: string | null = null;
+                    if (hasDateInfo && date && startTime && horas > 0) {
+                      const s = computeScheduleEnd(date, startTime, Math.round(horas * 60));
+                      const [, mo, d] = s.endDate.split('-');
+                      hint = `Encerra ${d}/${mo} às ${s.endTime}`;
+                    }
+                    const initial = initialHorasPorTecnico[pid];
+                    const isExisting = assignedPrestadorIds.includes(pid);
+                    const changed = typeof initial === 'number' && Math.abs(initial - horas) > 0.001;
+                    return (
+                      <div key={pid} className="flex items-center gap-3 p-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm truncate flex items-center gap-2">
+                            {p?.nome || pid}
+                            {!isExisting && (
+                              <Badge variant="outline" className="text-[10px]">Novo</Badge>
+                            )}
+                            {changed && (
+                              <Badge className="text-[10px] bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30">
+                                Alterado
+                              </Badge>
+                            )}
+                          </p>
+                        </div>
+                        <Input
+                          type="number" min={0.5} max={24} step={0.5}
+                          className="w-20 h-9"
+                          value={horasPorTecnico[pid] ?? 1}
+                          onChange={(e) => setHorasPorTecnico(prev => ({ ...prev, [pid]: Number(e.target.value) || 1 }))}
+                        />
+                        <span className="text-xs text-muted-foreground">h</span>
+                        {hint && (
+                          <span className="text-[11px] text-muted-foreground whitespace-nowrap">→ {hint}</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {hasDateInfo && (() => {
+                const date = ticket?.data_servico;
+                const startTime = ticket?.horario_previsto_inicio;
+                const maxHoras = Math.max(1, ...selectedPrestadores.map(id => horasPorTecnico[id] || 1));
+                const sched = computeScheduleEnd(date, startTime, Math.round(maxHoras * 60));
+                const startHHMM = (startTime || '').slice(0, 5);
+                const endHHMM = (sched.endTime || '').slice(0, 5);
+                const display = formatScheduledWindow(date, startHHMM, endHHMM, sched.endDate);
+                const [, em, ed] = sched.endDate.split('-');
+                const endHint = `Encerra ${ed}/${em} às ${endHHMM} (técnico com maior duração: ${maxHoras}h)`;
+                return (
+                  <div className="rounded-md border bg-muted/30 p-3 space-y-1">
+                    <div className="flex items-center gap-2 text-sm">
+                      <Clock className="h-4 w-4 text-muted-foreground" />
+                      <strong>Horário Programado:</strong> {display}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">{endHint}</p>
+                    {sched.outOfWindowWarning && (
+                      <p className="text-xs text-amber-600 dark:text-amber-400">
+                        ⚠ Hora de início fora da janela útil (08:00–18:00). Reprogramado para o próximo slot válido.
+                      </p>
+                    )}
+                    {sched.crossedDay && (
+                      <p className="text-xs text-amber-600 dark:text-amber-400">
+                        ⚠ A duração ultrapassa a janela útil — o serviço se estende para o próximo dia útil.
+                      </p>
+                    )}
+                    {sched.weekendWarning && (
+                      <p className="text-xs text-destructive">
+                        ⚠ A data selecionada cai em fim de semana. O serviço foi automaticamente movido para a próxima segunda-feira.
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+
           {/* Grid: Esquerda (Horas + Horário Programado) | Direita (Tipo + Responsável) */}
           {!isAddMode && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -661,13 +845,17 @@ export const MultiTechnicianOSDialog = ({
                           const [y, mo, d] = s.endDate.split('-');
                           hint = `Encerra ${d}/${mo} às ${s.endTime}`;
                         }
+                        const initial = initialHorasPorTecnico[pid];
+                        const changed = isAddMode && typeof initial === 'number' && Math.abs(initial - horas) > 0.001;
                         return (
-                          <div key={pid} className="flex items-center justify-between gap-3 p-2">
+                          <div key={pid} className="flex items-center gap-3 p-2">
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm truncate">{p?.nome || pid}</p>
-                              {hint && (
-                                <p className="text-[11px] text-muted-foreground mt-0.5">{hint}</p>
-                              )}
+                              <p className="text-sm truncate">
+                                {p?.nome || pid}
+                                {changed && (
+                                  <Badge variant="outline" className="ml-2 text-[10px]">Alterado</Badge>
+                                )}
+                              </p>
                             </div>
                             <Input
                               type="number" min={0.5} max={24} step={0.5}
@@ -675,7 +863,10 @@ export const MultiTechnicianOSDialog = ({
                               value={horasPorTecnico[pid] ?? 1}
                               onChange={(e) => setHorasPorTecnico(prev => ({ ...prev, [pid]: Number(e.target.value) || 1 }))}
                             />
-                            <span className="text-xs text-muted-foreground w-4">h</span>
+                            <span className="text-xs text-muted-foreground">h</span>
+                            {hint && (
+                              <span className="text-[11px] text-muted-foreground whitespace-nowrap">→ {hint}</span>
+                            )}
                           </div>
                         );
                       })}
@@ -794,7 +985,7 @@ export const MultiTechnicianOSDialog = ({
           {isAddMode ? (
             <Button
               onClick={handleSubmit}
-              disabled={loading || (newSelectedPrestadores.length === 0 && !responsavelChanged && removedPrestadorIds.length === 0)}
+              disabled={loading || (newSelectedPrestadores.length === 0 && !responsavelChanged && removedPrestadorIds.length === 0 && changedHorasPrestadorIds.length === 0)}
             >
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {(() => {
@@ -802,6 +993,7 @@ export const MultiTechnicianOSDialog = ({
                 if (newSelectedPrestadores.length > 0) parts.push(`Adicionar ${newSelectedPrestadores.length} técnico${newSelectedPrestadores.length > 1 ? 's' : ''}`);
                 if (removedPrestadorIds.length > 0) parts.push(`Remover ${removedPrestadorIds.length}`);
                 if (responsavelChanged) parts.push('Trocar responsável');
+                if (changedHorasPrestadorIds.length > 0) parts.push(`Atualizar ${changedHorasPrestadorIds.length} duração${changedHorasPrestadorIds.length > 1 ? 'ões' : ''}`);
                 return parts.length ? parts.join(' + ') : 'Salvar alterações';
               })()}
             </Button>
