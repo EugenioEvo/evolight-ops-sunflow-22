@@ -224,11 +224,12 @@ serve(async (req) => {
     osData.duracao_estimada_min = duracaoMin
 
     if (ticket.horario_previsto_inicio) {
-      // Janela útil: 09-12 / 14-17, segunda a sexta. Se a duração ultrapassar
-      // o expediente, o término rola para o próximo dia útil mantendo o slot
-      // válido (mesma lógica de src/utils/scheduleWindow.ts).
-      const MORNING_START = 9 * 60, MORNING_END = 12 * 60
-      const AFTERNOON_START = 14 * 60, AFTERNOON_END = 17 * 60
+      // Janela útil: 08:00 — 18:00 contínua, segunda a sexta.
+      // Mesma regra de src/utils/scheduleWindow.ts (fonte da verdade).
+      // Se a duração ultrapassar o expediente, o término rola para o
+      // próximo dia útil mantendo o slot válido.
+      const DAY_START = 8 * 60
+      const DAY_END = 18 * 60
       const isWeekend = (d: Date) => d.getDay() === 0 || d.getDay() === 6
       const nextBizDay = (d: Date) => {
         const n = new Date(d); n.setDate(n.getDate() + 1)
@@ -243,19 +244,17 @@ serve(async (req) => {
       let remaining = duracaoMin
 
       const anchor = () => {
-        if (cursor < MORNING_START) cursor = MORNING_START
-        else if (cursor >= MORNING_END && cursor < AFTERNOON_START) cursor = AFTERNOON_START
-        else if (cursor >= AFTERNOON_END) {
+        if (cursor < DAY_START) cursor = DAY_START
+        else if (cursor >= DAY_END) {
           currentDate = nextBizDay(currentDate)
-          cursor = MORNING_START
+          cursor = DAY_START
         }
       }
       anchor()
       while (remaining > 0) {
-        const slotEnd = cursor < MORNING_END ? MORNING_END : AFTERNOON_END
-        const avail = slotEnd - cursor
+        const avail = DAY_END - cursor
         if (remaining <= avail) { cursor += remaining; remaining = 0 }
-        else { remaining -= avail; cursor = slotEnd; anchor() }
+        else { remaining -= avail; cursor = DAY_END; anchor() }
       }
       const endHH = String(Math.floor(cursor / 60)).padStart(2, '0')
       const endMM = String(cursor % 60).padStart(2, '0')
@@ -263,16 +262,8 @@ serve(async (req) => {
       osData.hora_inicio = ticket.horario_previsto_inicio
       osData.hora_fim = `${endHH}:${endMM}`
 
-      // Se cruzou para outro dia, ajusta data_programada para refletir o término final
-      const endY = currentDate.getFullYear()
-      const endM = String(currentDate.getMonth() + 1).padStart(2, '0')
-      const endD = String(currentDate.getDate()).padStart(2, '0')
-      const endISO = `${endY}-${endM}-${endD}`
-      if (baseISO && endISO !== baseISO) {
-        // Mantemos data_programada no início (referência de execução),
-        // mas hora_fim já reflete o horário do dia seguinte.
-        // Caso queira armazenar a data final, esse seria o lugar.
-      }
+      // data_programada permanece no início (referência de execução);
+      // se quiser registrar a data de término, é aqui que entraria.
     }
 
     // Criar ordem de serviço
