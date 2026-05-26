@@ -244,11 +244,27 @@ export const MultiTechnicianOSDialog = ({
     && !!tecnicoResponsavelId
     && tecnicoResponsavelId !== initialTecnicoResponsavelId;
 
+  // Add-mode: técnicos existentes cuja duração foi alterada
+  const changedHorasPrestadorIds = useMemo(() => {
+    if (!isAddMode) return [] as string[];
+    return Object.keys(initialHorasPorTecnico).filter(pid => {
+      if (!assignedPrestadorIds.includes(pid)) return false;
+      const curr = horasPorTecnico[pid];
+      if (typeof curr !== 'number') return false;
+      return Math.abs((initialHorasPorTecnico[pid] || 0) - curr) > 0.001;
+    });
+  }, [isAddMode, initialHorasPorTecnico, horasPorTecnico, assignedPrestadorIds]);
+
   const validate = (): string | null => {
     if (isAddMode) {
-      // Em add-mode aceitamos: novos técnicos OU troca de responsável OU remoção de técnicos
-      if (newSelectedPrestadores.length === 0 && !responsavelChanged && removedPrestadorIds.length === 0) {
-        return "Selecione novos técnicos, remova alguém ou troque o Técnico Responsável";
+      // Em add-mode aceitamos: novos técnicos OU troca de responsável OU remoção OU ajuste de horas
+      if (
+        newSelectedPrestadores.length === 0
+        && !responsavelChanged
+        && removedPrestadorIds.length === 0
+        && changedHorasPrestadorIds.length === 0
+      ) {
+        return "Selecione novos técnicos, remova alguém, troque o responsável ou ajuste as horas";
       }
       if (selectedPrestadores.length === 0) return "O ticket precisa ter ao menos um técnico alocado";
       if (!tecnicoResponsavelId) return "Selecione o Técnico Responsável";
