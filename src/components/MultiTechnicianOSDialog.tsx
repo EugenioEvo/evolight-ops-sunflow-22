@@ -107,6 +107,8 @@ export const MultiTechnicianOSDialog = ({
       setTecnicoResponsavelId("");
       setInitialTecnicoResponsavelId("");
       setHorasPorTecnico({});
+      setInitialHorasPorTecnico({});
+      setOsIdPorPrestador({});
       setFormData({ descricao_servicos: DESCRICAO_HINT, tipo_trabalho: [] });
       setStandaloneData({
         cliente_id: "",
