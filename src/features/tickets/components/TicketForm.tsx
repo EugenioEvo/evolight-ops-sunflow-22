@@ -15,6 +15,7 @@ import { Clock, AlertTriangle, ChevronsUpDown, Check, CircleDollarSign, Sun, Sea
 import { cn } from '@/lib/utils';
 import { ticketSchema, type TicketFormData, type TicketWithRelations, type TicketCliente, type TicketPrestador } from '../types';
 import { useSimilarTickets } from '../hooks/useSimilarTickets';
+import { isHHMMInBusinessWindow } from '@/utils/scheduleWindow';
 
 interface TicketFormProps {
   open: boolean;
