@@ -589,10 +589,7 @@ export const TicketForm = ({
             </div>
             {form.watch('horario_previsto_inicio') && (() => {
               const t = form.watch('horario_previsto_inicio')!;
-              const [h, m] = t.split(':').map(Number);
-              const mins = (h || 0) * 60 + (m || 0);
-              const inWindow = (mins >= 540 && mins < 720) || (mins >= 840 && mins < 1020);
-              if (inWindow) return null;
+              if (isHHMMInBusinessWindow(t)) return null;
               return (
                 <div className="flex items-center gap-2 p-3 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 text-sm">
                   <Clock className="h-4 w-4 shrink-0" />
