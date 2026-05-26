@@ -691,13 +691,17 @@ export const MultiTechnicianOSDialog = ({
                           const [y, mo, d] = s.endDate.split('-');
                           hint = `Encerra ${d}/${mo} às ${s.endTime}`;
                         }
+                        const initial = initialHorasPorTecnico[pid];
+                        const changed = isAddMode && typeof initial === 'number' && Math.abs(initial - horas) > 0.001;
                         return (
-                          <div key={pid} className="flex items-center justify-between gap-3 p-2">
+                          <div key={pid} className="flex items-center gap-3 p-2">
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm truncate">{p?.nome || pid}</p>
-                              {hint && (
-                                <p className="text-[11px] text-muted-foreground mt-0.5">{hint}</p>
-                              )}
+                              <p className="text-sm truncate">
+                                {p?.nome || pid}
+                                {changed && (
+                                  <Badge variant="outline" className="ml-2 text-[10px]">Alterado</Badge>
+                                )}
+                              </p>
                             </div>
                             <Input
                               type="number" min={0.5} max={24} step={0.5}
@@ -705,7 +709,10 @@ export const MultiTechnicianOSDialog = ({
                               value={horasPorTecnico[pid] ?? 1}
                               onChange={(e) => setHorasPorTecnico(prev => ({ ...prev, [pid]: Number(e.target.value) || 1 }))}
                             />
-                            <span className="text-xs text-muted-foreground w-4">h</span>
+                            <span className="text-xs text-muted-foreground">h</span>
+                            {hint && (
+                              <span className="text-[11px] text-muted-foreground whitespace-nowrap">→ {hint}</span>
+                            )}
                           </div>
                         );
                       })}
