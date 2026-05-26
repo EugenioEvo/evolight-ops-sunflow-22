@@ -463,9 +463,55 @@ export const MultiTechnicianOSDialog = ({
         }
       }
 
-      // Em add-mode com apenas troca de responsável (sem novos técnicos),
-      // não houve geração de OS — mas a operação foi bem-sucedida.
-      const onlyMutateNoOS = isAddMode && newSelectedPrestadores.length === 0 && (responsavelChanged || removedCount > 0);
+      // ───── Add-mode: atualizar duração das OS existentes alteradas ─────
+      // Recalcula hora_fim usando a janela útil 08–18 (mesma regra do util de frontend).
+      let updatedHorasCount = 0;
+      if (isAddMode && changedHorasPrestadorIds.length > 0) {
+        const date = ticket?.data_servico;
+        const startTime = ticket?.horario_previsto_inicio;
+        for (const pid of changedHorasPrestadorIds) {
+          const osId = osIdPorPrestador[pid];
+          if (!osId) continue;
+          const horasTec = horasPorTecnico[pid] || 1;
+          const duracaoMin = Math.round(horasTec * 60);
+          const updatePayload: Record<string, any> = { duracao_estimada_min: duracaoMin };
+          if (date && startTime) {
+            const sched = computeScheduleEnd(date, startTime, duracaoMin);
+            updatePayload.hora_inicio = startTime;
+            updatePayload.hora_fim = sched.endTime;
+          }
+          const { error: upErr } = await supabase
+            .from('ordens_servico')
+            .update(updatePayload)
+            .eq('id', osId);
+          if (upErr) {
+            console.error('Falha ao atualizar OS', osId, upErr);
+            errorCount++;
+            continue;
+          }
+          // espelha em horas_previstas_os (BI Carga de Trabalho)
+          const { data: tecRow } = await supabase
+            .from('tecnicos').select('id').eq('prestador_id', pid).maybeSingle();
+          if (tecRow?.id) {
+            await supabase
+              .from('horas_previstas_os')
+              .upsert({
+                ordem_servico_id: osId,
+                tecnico_id: tecRow.id,
+                minutos_previstos: duracaoMin,
+              }, { onConflict: 'ordem_servico_id,tecnico_id' });
+          }
+          updatedHorasCount++;
+        }
+        if (updatedHorasCount > 0) {
+          toast.success(`${updatedHorasCount} OS atualizada(s) com nova duração.`);
+        }
+      }
+
+      // Em add-mode com apenas mutações (sem novos técnicos), também é sucesso.
+      const onlyMutateNoOS = isAddMode
+        && newSelectedPrestadores.length === 0
+        && (responsavelChanged || removedCount > 0 || updatedHorasCount > 0);
       if (successCount > 0 || onlyMutateNoOS) {
         if (successCount > 0) {
           toast.success(`${successCount} OS gerada(s) com sucesso!${errorCount > 0 ? ` ${errorCount} falha(s).` : ''}`);
