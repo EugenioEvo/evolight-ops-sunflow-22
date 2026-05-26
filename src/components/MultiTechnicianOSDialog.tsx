@@ -667,6 +667,98 @@ export const MultiTechnicianOSDialog = ({
             )}
           </div>
 
+          {/* Add-mode: Horas Previstas por Técnico (existentes + novos) + Horário Programado */}
+          {isAddMode && selectedPrestadores.length > 0 && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Horas Previstas por Técnico <span className="text-destructive">*</span></Label>
+                <p className="text-xs text-muted-foreground">
+                  Ajuste a duração de cada técnico (existente ou novo). Alterações em técnicos já alocados recalculam a janela de execução da OS correspondente.
+                </p>
+                <div className="border rounded-md divide-y">
+                  {selectedPrestadores.map(pid => {
+                    const p = prestadores.find(x => x.id === pid);
+                    const horas = horasPorTecnico[pid] ?? 1;
+                    const date = ticket?.data_servico;
+                    const startTime = ticket?.horario_previsto_inicio;
+                    let hint: string | null = null;
+                    if (hasDateInfo && date && startTime && horas > 0) {
+                      const s = computeScheduleEnd(date, startTime, Math.round(horas * 60));
+                      const [, mo, d] = s.endDate.split('-');
+                      hint = `Encerra ${d}/${mo} às ${s.endTime}`;
+                    }
+                    const initial = initialHorasPorTecnico[pid];
+                    const isExisting = assignedPrestadorIds.includes(pid);
+                    const changed = typeof initial === 'number' && Math.abs(initial - horas) > 0.001;
+                    return (
+                      <div key={pid} className="flex items-center gap-3 p-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm truncate flex items-center gap-2">
+                            {p?.nome || pid}
+                            {!isExisting && (
+                              <Badge variant="outline" className="text-[10px]">Novo</Badge>
+                            )}
+                            {changed && (
+                              <Badge className="text-[10px] bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30">
+                                Alterado
+                              </Badge>
+                            )}
+                          </p>
+                        </div>
+                        <Input
+                          type="number" min={0.5} max={24} step={0.5}
+                          className="w-20 h-9"
+                          value={horasPorTecnico[pid] ?? 1}
+                          onChange={(e) => setHorasPorTecnico(prev => ({ ...prev, [pid]: Number(e.target.value) || 1 }))}
+                        />
+                        <span className="text-xs text-muted-foreground">h</span>
+                        {hint && (
+                          <span className="text-[11px] text-muted-foreground whitespace-nowrap">→ {hint}</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {hasDateInfo && (() => {
+                const date = ticket?.data_servico;
+                const startTime = ticket?.horario_previsto_inicio;
+                const maxHoras = Math.max(1, ...selectedPrestadores.map(id => horasPorTecnico[id] || 1));
+                const sched = computeScheduleEnd(date, startTime, Math.round(maxHoras * 60));
+                const startHHMM = (startTime || '').slice(0, 5);
+                const endHHMM = (sched.endTime || '').slice(0, 5);
+                const display = formatScheduledWindow(date, startHHMM, endHHMM, sched.endDate);
+                const [, em, ed] = sched.endDate.split('-');
+                const endHint = `Encerra ${ed}/${em} às ${endHHMM} (técnico com maior duração: ${maxHoras}h)`;
+                return (
+                  <div className="rounded-md border bg-muted/30 p-3 space-y-1">
+                    <div className="flex items-center gap-2 text-sm">
+                      <Clock className="h-4 w-4 text-muted-foreground" />
+                      <strong>Horário Programado:</strong> {display}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">{endHint}</p>
+                    {sched.outOfWindowWarning && (
+                      <p className="text-xs text-amber-600 dark:text-amber-400">
+                        ⚠ Hora de início fora da janela útil (08:00–18:00). Reprogramado para o próximo slot válido.
+                      </p>
+                    )}
+                    {sched.crossedDay && (
+                      <p className="text-xs text-amber-600 dark:text-amber-400">
+                        ⚠ A duração ultrapassa a janela útil — o serviço se estende para o próximo dia útil.
+                      </p>
+                    )}
+                    {sched.weekendWarning && (
+                      <p className="text-xs text-destructive">
+                        ⚠ A data selecionada cai em fim de semana. O serviço foi automaticamente movido para a próxima segunda-feira.
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+
           {/* Grid: Esquerda (Horas + Horário Programado) | Direita (Tipo + Responsável) */}
           {!isAddMode && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
