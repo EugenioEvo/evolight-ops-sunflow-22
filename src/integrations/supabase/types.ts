@@ -2306,6 +2306,7 @@ export type Database = {
         Returns: boolean
       }
       cleanup_expired_tokens: { Args: never; Returns: undefined }
+      cleanup_geocoding_rate_limits: { Args: never; Returns: undefined }
       cleanup_old_audit_logs: { Args: never; Returns: undefined }
       cleanup_old_geocoding_cache: { Args: never; Returns: undefined }
       generate_presence_token: { Args: { p_os_id: string }; Returns: string }
