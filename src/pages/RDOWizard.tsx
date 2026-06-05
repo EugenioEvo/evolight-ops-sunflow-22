@@ -481,11 +481,29 @@ export default function RDOWizard() {
           <div className="grid grid-cols-2 gap-2">
             <div>
               <Label>Início</Label>
-              <Input type="time" value={horarioInicio} onChange={(e) => setHorarioInicio(e.target.value)} disabled={readOnly} />
+              <Input
+                type="text"
+                inputMode="numeric"
+                placeholder="HH:MM"
+                pattern="^([01]\d|2[0-3]):[0-5]\d$"
+                maxLength={5}
+                value={horarioInicio}
+                onChange={(e) => setHorarioInicio(e.target.value)}
+                disabled={readOnly}
+              />
             </div>
             <div>
               <Label>Fim</Label>
-              <Input type="time" value={horarioFim} onChange={(e) => setHorarioFim(e.target.value)} disabled={readOnly} />
+              <Input
+                type="text"
+                inputMode="numeric"
+                placeholder="HH:MM"
+                pattern="^([01]\d|2[0-3]):[0-5]\d$"
+                maxLength={5}
+                value={horarioFim}
+                onChange={(e) => setHorarioFim(e.target.value)}
+                disabled={readOnly}
+              />
             </div>
           </div>
           <div>
