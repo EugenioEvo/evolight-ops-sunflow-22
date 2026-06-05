@@ -529,7 +529,7 @@ export default function RDOWizard() {
                       checked={checked}
                       disabled={readOnly}
                       onCheckedChange={(v) => {
-                        if (v) setEquipe([...equipe, { prestador_id: p.id, horas_trabalhadas: 8, horas_extras: 0 }]);
+                        if (v) setEquipe([...equipe, { prestador_id: p.id, horas_trabalhadas: defaultHorasTrabalhadas, horas_extras: 0 }]);
                         else setEquipe(equipe.filter((e) => e.prestador_id !== p.id));
                       }}
                     />
@@ -538,11 +538,7 @@ export default function RDOWizard() {
                       <p className="text-xs text-muted-foreground">{p.categoria === 'sup_eletromecanico' ? 'Sup. Eletromecânico' : 'Eletromecânico'}</p>
                     </div>
                     {checked && item && (
-                      <>
-                        <div className="w-24"><Label className="text-xs">Horas</Label><Input type="number" step="0.5" value={item.horas_trabalhadas ?? 0} onChange={(e) => { const n = [...equipe]; n[idx] = { ...item, horas_trabalhadas: Number(e.target.value) }; setEquipe(n); }} disabled={readOnly} /></div>
-                        <div className="w-24"><Label className="text-xs">Extras</Label><Input type="number" step="0.5" value={item.horas_extras ?? 0} onChange={(e) => { const n = [...equipe]; n[idx] = { ...item, horas_extras: Number(e.target.value) }; setEquipe(n); }} disabled={readOnly} /></div>
-                        <div className="w-32"><Label className="text-xs">Função</Label><Input value={item.funcao ?? ''} onChange={(e) => { const n = [...equipe]; n[idx] = { ...item, funcao: e.target.value }; setEquipe(n); }} disabled={readOnly} /></div>
-                      </>
+                      <div className="w-28"><Label className="text-xs">Horas</Label><Input type="number" step="0.5" value={item.horas_trabalhadas ?? 0} onChange={(e) => { const n = [...equipe]; n[idx] = { ...item, horas_trabalhadas: Number(e.target.value) }; setEquipe(n); }} disabled={readOnly} /></div>
                     )}
                   </div>
                 );
