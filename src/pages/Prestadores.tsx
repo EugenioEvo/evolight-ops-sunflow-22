@@ -17,19 +17,44 @@ import {
 } from "@/features/providers";
 import { ApprovePrestadorDialog } from "@/features/providers/components/ApprovePrestadorDialog";
 
+const CATEGORIA_LABELS: Record<string, string> = {
+  tecnico: "Técnico de Campo (O&M)",
+  supervisao: "Supervisor (O&M)",
+  lider: "Líder (O&M)",
+  eletromecanico: "Eletromecânico (EPC)",
+  sup_eletromecanico: "Sup. Eletromecânico (EPC)",
+  lider_eletromecanico: "Líder Eletromecânico (EPC)",
+};
+
 const getCategoriaColor = (categoria: string) => {
   switch (categoria) {
-    case "supervisao": return "bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300";
-    case "tecnico": return "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300";
-    default: return "bg-muted text-muted-foreground";
+    case "supervisao":
+    case "lider":
+      return "bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300";
+    case "tecnico":
+      return "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300";
+    case "eletromecanico":
+      return "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300";
+    case "sup_eletromecanico":
+    case "lider_eletromecanico":
+      return "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300";
+    default:
+      return "bg-muted text-muted-foreground";
   }
 };
 
 const getCategoriaIcon = (categoria: string) => {
   switch (categoria) {
-    case "supervisao": return Eye;
-    case "tecnico": return Wrench;
-    default: return Users;
+    case "supervisao":
+    case "lider":
+    case "sup_eletromecanico":
+    case "lider_eletromecanico":
+      return Eye;
+    case "tecnico":
+    case "eletromecanico":
+      return Wrench;
+    default:
+      return Users;
   }
 };
 
@@ -121,10 +146,12 @@ const Prestadores = () => {
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl><SelectTrigger><SelectValue placeholder="Selecione a categoria" /></SelectTrigger></FormControl>
                         <SelectContent>
-                          <SelectItem value="admin">Administração</SelectItem>
-                          <SelectItem value="engenharia">Engenharia</SelectItem>
-                          <SelectItem value="supervisao">Supervisão</SelectItem>
-                          <SelectItem value="tecnico">Técnico de Campo</SelectItem>
+                          <SelectItem value="tecnico">Técnico de Campo (O&amp;M)</SelectItem>
+                          <SelectItem value="supervisao">Supervisor (O&amp;M)</SelectItem>
+                          <SelectItem value="lider">Líder (O&amp;M)</SelectItem>
+                          <SelectItem value="eletromecanico">Eletromecânico (EPC)</SelectItem>
+                          <SelectItem value="sup_eletromecanico">Sup. Eletromecânico (EPC)</SelectItem>
+                          <SelectItem value="lider_eletromecanico">Líder Eletromecânico (EPC)</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -230,14 +257,18 @@ const Prestadores = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="flex w-full flex-wrap h-auto">
           <TabsTrigger value="pendentes" className="relative">
             Pendentes ({categoryCounts.pendentes})
             {categoryCounts.pendentes > 0 && <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-destructive animate-pulse" />}
           </TabsTrigger>
           <TabsTrigger value="todos">Aprovados ({categoryCounts.todos})</TabsTrigger>
-          <TabsTrigger value="tecnico">Técnicos ({categoryCounts.tecnico})</TabsTrigger>
-          <TabsTrigger value="supervisao">Supervisores ({categoryCounts.supervisao})</TabsTrigger>
+          <TabsTrigger value="tecnico">Técnicos O&amp;M ({categoryCounts.tecnico})</TabsTrigger>
+          <TabsTrigger value="supervisao">Supervisores O&amp;M ({categoryCounts.supervisao})</TabsTrigger>
+          <TabsTrigger value="lider">Líderes O&amp;M ({categoryCounts.lider})</TabsTrigger>
+          <TabsTrigger value="eletromecanico">Eletromec. EPC ({categoryCounts.eletromecanico})</TabsTrigger>
+          <TabsTrigger value="sup_eletromecanico">Sup. Eletromec. EPC ({categoryCounts.sup_eletromecanico})</TabsTrigger>
+          <TabsTrigger value="lider_eletromecanico">Líder Eletromec. EPC ({categoryCounts.lider_eletromecanico})</TabsTrigger>
           <TabsTrigger value="rejeitados">Rejeitados ({categoryCounts.rejeitados})</TabsTrigger>
         </TabsList>
 
@@ -313,7 +344,7 @@ const Prestadores = () => {
                       </div>
                       <div className="flex items-center gap-2">
                         <Badge className={getCategoriaColor(prestador.categoria)}>
-                          {prestador.categoria === 'engenharia' ? 'Engenharia' : prestador.categoria === 'supervisao' ? 'Supervisão' : 'Técnico'}
+                          {CATEGORIA_LABELS[prestador.categoria] ?? prestador.categoria}
                         </Badge>
                         <div className="flex gap-1">
                           <Button variant="ghost" size="sm" onClick={() => handleEdit(prestador)}><Edit className="h-4 w-4" /></Button>

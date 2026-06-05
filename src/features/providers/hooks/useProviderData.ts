@@ -60,8 +60,12 @@ export const useProviderData = () => {
     todos: activePrestadores.length,
     pendentes: pendingPrestadores.length,
     rejeitados: rejectedPrestadores.length,
-    supervisao: activePrestadores.filter(p => p.categoria === "supervisao").length,
     tecnico: activePrestadores.filter(p => p.categoria === "tecnico").length,
+    supervisao: activePrestadores.filter(p => p.categoria === "supervisao").length,
+    lider: activePrestadores.filter(p => p.categoria === "lider").length,
+    eletromecanico: activePrestadores.filter(p => p.categoria === "eletromecanico").length,
+    sup_eletromecanico: activePrestadores.filter(p => p.categoria === "sup_eletromecanico").length,
+    lider_eletromecanico: activePrestadores.filter(p => p.categoria === "lider_eletromecanico").length,
   };
 
   return {
