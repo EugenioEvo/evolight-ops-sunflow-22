@@ -109,13 +109,6 @@ export const ApprovePrestadorDialog = ({ open, onOpenChange, prestador, onApprov
                 <div className="text-xs text-muted-foreground">Mesmos acessos do Sup. Eletromecânico, com nomenclatura de Líder.</div>
               </Label>
             </div>
-            <div className="flex items-center space-x-3 p-3 rounded-lg border min-h-[44px]">
-              <RadioGroupItem value="sup_eletromecanico" id="r-sup-ele" />
-              <Label htmlFor="r-sup-ele" className="flex-1 cursor-pointer">
-                <div className="font-medium">Sup. Eletromecânico (EPC)</div>
-                <div className="text-xs text-muted-foreground">Cria/edita RDOs e gerencia equipe da obra.</div>
-              </Label>
-            </div>
           </RadioGroup>
         </div>
 
