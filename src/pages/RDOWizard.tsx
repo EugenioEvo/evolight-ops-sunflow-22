@@ -490,11 +490,10 @@ export default function RDOWizard() {
           <div>
             <Label>Horas paradas — programadas <span className="text-xs font-normal text-muted-foreground">(0,5 = 30min)</span></Label>
             <Input
-              type="number"
-              step="0.5"
-              min={0}
+              type="text"
+              inputMode="decimal"
               value={horasParadasProg}
-              onChange={(e) => setHorasParadasProg(e.target.value)}
+              onChange={(e) => setHorasParadasProg(e.target.value.replace(/[^0-9,.]/g, ''))}
               disabled={readOnly}
               placeholder="Almoço, lanche, etc."
             />
@@ -502,11 +501,10 @@ export default function RDOWizard() {
           <div>
             <Label>Horas paradas — não programadas <span className="text-xs font-normal text-muted-foreground">(0,5 = 30min)</span></Label>
             <Input
-              type="number"
-              step="0.5"
-              min={0}
+              type="text"
+              inputMode="decimal"
               value={horasParadasNaoProg}
-              onChange={(e) => setHorasParadasNaoProg(e.target.value)}
+              onChange={(e) => setHorasParadasNaoProg(e.target.value.replace(/[^0-9,.]/g, ''))}
               disabled={readOnly}
               placeholder="Falta de material, descarga, etc."
             />
