@@ -257,14 +257,18 @@ const Prestadores = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="flex w-full flex-wrap h-auto">
           <TabsTrigger value="pendentes" className="relative">
             Pendentes ({categoryCounts.pendentes})
             {categoryCounts.pendentes > 0 && <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-destructive animate-pulse" />}
           </TabsTrigger>
           <TabsTrigger value="todos">Aprovados ({categoryCounts.todos})</TabsTrigger>
-          <TabsTrigger value="tecnico">Técnicos ({categoryCounts.tecnico})</TabsTrigger>
-          <TabsTrigger value="supervisao">Supervisores ({categoryCounts.supervisao})</TabsTrigger>
+          <TabsTrigger value="tecnico">Técnicos O&amp;M ({categoryCounts.tecnico})</TabsTrigger>
+          <TabsTrigger value="supervisao">Supervisores O&amp;M ({categoryCounts.supervisao})</TabsTrigger>
+          <TabsTrigger value="lider">Líderes O&amp;M ({categoryCounts.lider})</TabsTrigger>
+          <TabsTrigger value="eletromecanico">Eletromec. EPC ({categoryCounts.eletromecanico})</TabsTrigger>
+          <TabsTrigger value="sup_eletromecanico">Sup. Eletromec. EPC ({categoryCounts.sup_eletromecanico})</TabsTrigger>
+          <TabsTrigger value="lider_eletromecanico">Líder Eletromec. EPC ({categoryCounts.lider_eletromecanico})</TabsTrigger>
           <TabsTrigger value="rejeitados">Rejeitados ({categoryCounts.rejeitados})</TabsTrigger>
         </TabsList>
 
