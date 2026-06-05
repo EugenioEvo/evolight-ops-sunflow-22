@@ -187,6 +187,21 @@ export const rdoService = {
     return (data?.prestador_id as string | null) ?? null;
   },
 
+  async findActiveByObraData(
+    obra_id: string,
+    data_rdo: string,
+  ): Promise<{ id: string; numero_rdo: string; status: string; responsavel_id: string } | null> {
+    const { data, error } = await supabase
+      .from('rdo_relatorios')
+      .select('id, numero_rdo, status, responsavel_id')
+      .eq('obra_id', obra_id)
+      .eq('data_rdo', data_rdo)
+      .neq('status', 'cancelado')
+      .maybeSingle();
+    if (error) return null;
+    return (data as any) ?? null;
+  },
+
   async createDraft(input: {
     obra_id: string;
     data_rdo: string;
