@@ -92,7 +92,7 @@ export default function RDOWizard() {
   // Default horas trabalhadas = (fim - inicio) - paradas (prog + não prog)
   const defaultHorasTrabalhadas = (() => {
     const toMin = (s: string) => {
-      const m = /^(\d{1,2}):(\d{2})$/.exec(s ?? '');
+      const m = /^(\d{1,2}):(\d{2})(?::\d{2})?$/.exec(s ?? '');
       return m ? Number(m[1]) * 60 + Number(m[2]) : null;
     };
     const ini = toMin(horarioInicio);
