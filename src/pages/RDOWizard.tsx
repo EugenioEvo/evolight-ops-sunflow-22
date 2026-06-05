@@ -89,6 +89,21 @@ export default function RDOWizard() {
   const [equipamentos, setEquipamentos] = useState<RDOEquipamento[]>([]);
   const [status, setStatus] = useState<string>('rascunho');
 
+  // Default horas trabalhadas = (fim - inicio) - paradas (prog + não prog)
+  const defaultHorasTrabalhadas = (() => {
+    const toMin = (s: string) => {
+      const m = /^(\d{1,2}):(\d{2})$/.exec(s ?? '');
+      return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+    };
+    const ini = toMin(horarioInicio);
+    const fim = toMin(horarioFim);
+    if (ini == null || fim == null || fim <= ini) return 8;
+    const bruto = (fim - ini) / 60;
+    const paradas = (Number(horasParadasProg) || 0) + (Number(horasParadasNaoProg) || 0);
+    const liquido = Math.max(0, bruto - paradas);
+    return Math.round(liquido * 2) / 2;
+  })();
+
   const sigRef = useRef<SignatureCanvas | null>(null);
 
   // Lookups
