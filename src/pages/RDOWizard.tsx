@@ -99,7 +99,8 @@ export default function RDOWizard() {
     const fim = toMin(horarioFim);
     if (ini == null || fim == null || fim <= ini) return 8;
     const bruto = (fim - ini) / 60;
-    const paradas = (Number(horasParadasProg) || 0) + (Number(horasParadasNaoProg) || 0);
+    const parseBr = (s: string) => Number(String(s ?? '').replace(',', '.')) || 0;
+    const paradas = parseBr(horasParadasProg) + parseBr(horasParadasNaoProg);
     const liquido = Math.max(0, bruto - paradas);
     return Math.round(liquido * 2) / 2;
   })();
