@@ -99,7 +99,8 @@ export default function RDOWizard() {
     const fim = toMin(horarioFim);
     if (ini == null || fim == null || fim <= ini) return 8;
     const bruto = (fim - ini) / 60;
-    const paradas = (Number(horasParadasProg) || 0) + (Number(horasParadasNaoProg) || 0);
+    const parseBr = (s: string) => Number(String(s ?? '').replace(',', '.')) || 0;
+    const paradas = parseBr(horasParadasProg) + parseBr(horasParadasNaoProg);
     const liquido = Math.max(0, bruto - paradas);
     return Math.round(liquido * 2) / 2;
   })();
@@ -156,8 +157,8 @@ export default function RDOWizard() {
     ocorrencias: ocorrencias || null,
     atrasos: atrasos || null,
     restricoes: restricoes || null,
-    horas_paradas_programadas: horasParadasProg ? Number(horasParadasProg) : null,
-    horas_paradas_nao_programadas: horasParadasNaoProg ? Number(horasParadasNaoProg) : null,
+    horas_paradas_programadas: horasParadasProg ? Number(String(horasParadasProg).replace(',', '.')) : null,
+    horas_paradas_nao_programadas: horasParadasNaoProg ? Number(String(horasParadasNaoProg).replace(',', '.')) : null,
   }), [obraId, dataRdo, turno, clima, temperatura, horarioInicio, horarioFim, condicoesCanteiro, observacoes, ocorrencias, atrasos, restricoes, horasParadasProg, horasParadasNaoProg]);
 
   // Auto-fetch average temperature from Open-Meteo (free, no API key)
@@ -490,11 +491,10 @@ export default function RDOWizard() {
           <div>
             <Label>Horas paradas — programadas <span className="text-xs font-normal text-muted-foreground">(0,5 = 30min)</span></Label>
             <Input
-              type="number"
-              step="0.5"
-              min={0}
+              type="text"
+              inputMode="decimal"
               value={horasParadasProg}
-              onChange={(e) => setHorasParadasProg(e.target.value)}
+              onChange={(e) => setHorasParadasProg(e.target.value.replace(/[^0-9,.]/g, ''))}
               disabled={readOnly}
               placeholder="Almoço, lanche, etc."
             />
@@ -502,11 +502,10 @@ export default function RDOWizard() {
           <div>
             <Label>Horas paradas — não programadas <span className="text-xs font-normal text-muted-foreground">(0,5 = 30min)</span></Label>
             <Input
-              type="number"
-              step="0.5"
-              min={0}
+              type="text"
+              inputMode="decimal"
               value={horasParadasNaoProg}
-              onChange={(e) => setHorasParadasNaoProg(e.target.value)}
+              onChange={(e) => setHorasParadasNaoProg(e.target.value.replace(/[^0-9,.]/g, ''))}
               disabled={readOnly}
               placeholder="Falta de material, descarga, etc."
             />
