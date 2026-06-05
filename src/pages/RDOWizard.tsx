@@ -157,8 +157,8 @@ export default function RDOWizard() {
     ocorrencias: ocorrencias || null,
     atrasos: atrasos || null,
     restricoes: restricoes || null,
-    horas_paradas_programadas: horasParadasProg ? Number(horasParadasProg) : null,
-    horas_paradas_nao_programadas: horasParadasNaoProg ? Number(horasParadasNaoProg) : null,
+    horas_paradas_programadas: horasParadasProg ? Number(String(horasParadasProg).replace(',', '.')) : null,
+    horas_paradas_nao_programadas: horasParadasNaoProg ? Number(String(horasParadasNaoProg).replace(',', '.')) : null,
   }), [obraId, dataRdo, turno, clima, temperatura, horarioInicio, horarioFim, condicoesCanteiro, observacoes, ocorrencias, atrasos, restricoes, horasParadasProg, horasParadasNaoProg]);
 
   // Auto-fetch average temperature from Open-Meteo (free, no API key)
