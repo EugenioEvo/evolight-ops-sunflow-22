@@ -105,6 +105,9 @@ export default function RDOWizard() {
     return Math.round(liquido * 2) / 2;
   })();
 
+  const recalculateEquipeHoras = (lista: RDOEquipe[], horas = defaultHorasTrabalhadas) =>
+    lista.map((e) => ({ ...e, horas_trabalhadas: horas }));
+
   // Ao entrar no step 2, recalcula horas trabalhadas de toda a equipe marcada
   useEffect(() => {
     if (step !== 2 || readOnly) return;
@@ -276,6 +279,18 @@ export default function RDOWizard() {
     }
   }
 
+  async function saveDraft(equipeAtual = equipe) {
+    const id = await ensureDraftCreated();
+    await rdoService.updateHeader(id, headerPatch);
+    await Promise.all([
+      rdoService.replaceEquipe(id, equipeAtual),
+      rdoService.replaceAtividades(id, atividades),
+      rdoService.replaceEquipamentos(id, equipamentos),
+    ]);
+    qc.invalidateQueries({ queryKey: ['rdo', id] });
+    qc.invalidateQueries({ queryKey: ['rdo-relatorios'] });
+  }
+
   async function handleSubmit() {
     if (!sigRef.current || sigRef.current.isEmpty()) {
       toast.error('Assine antes de enviar para aprovação');
@@ -335,8 +350,19 @@ export default function RDOWizard() {
       if (equipe.length === 0) { toast.error('Adicione pelo menos um membro à equipe'); return; }
       if (atividades.length === 0) { toast.error('Adicione pelo menos uma atividade'); return; }
     }
-    try { await handleSave(); } catch { /* toast já exibido */ }
-    setStep((s) => (s < 3 ? ((s + 1) as 1 | 2 | 3) : s));
+    const nextStep = (step < 3 ? ((step + 1) as 1 | 2 | 3) : step);
+    const equipeAtual = step === 1 && nextStep === 2 ? recalculateEquipeHoras(equipe) : equipe;
+    if (equipeAtual !== equipe) setEquipe(equipeAtual);
+    try {
+      setSaving(true);
+      await saveDraft(equipeAtual);
+      toast.success('RDO salvo');
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Falha ao salvar RDO');
+    } finally {
+      setSaving(false);
+    }
+    setStep(nextStep);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
