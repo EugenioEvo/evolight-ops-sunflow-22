@@ -488,10 +488,10 @@ export default function RDOWizard() {
             </div>
           </div>
           <div>
-            <Label>Horas paradas — programadas</Label>
+            <Label>Horas paradas — programadas <span className="text-xs font-normal text-muted-foreground">(0,5 = 30min)</span></Label>
             <Input
               type="number"
-              step="0.25"
+              step="0.5"
               min={0}
               value={horasParadasProg}
               onChange={(e) => setHorasParadasProg(e.target.value)}
@@ -500,10 +500,10 @@ export default function RDOWizard() {
             />
           </div>
           <div>
-            <Label>Horas paradas — não programadas</Label>
+            <Label>Horas paradas — não programadas <span className="text-xs font-normal text-muted-foreground">(0,5 = 30min)</span></Label>
             <Input
               type="number"
-              step="0.25"
+              step="0.5"
               min={0}
               value={horasParadasNaoProg}
               onChange={(e) => setHorasParadasNaoProg(e.target.value)}
