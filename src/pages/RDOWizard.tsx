@@ -105,6 +105,17 @@ export default function RDOWizard() {
     return Math.round(liquido * 2) / 2;
   })();
 
+  // Ao entrar no step 2, recalcula horas trabalhadas de toda a equipe marcada
+  useEffect(() => {
+    if (step !== 2 || readOnly) return;
+    setEquipe((prev) =>
+      prev.length === 0 || prev.every((e) => e.horas_trabalhadas === defaultHorasTrabalhadas)
+        ? prev
+        : prev.map((e) => ({ ...e, horas_trabalhadas: defaultHorasTrabalhadas })),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, defaultHorasTrabalhadas]);
+
   const sigRef = useRef<SignatureCanvas | null>(null);
 
   // Lookups
