@@ -146,10 +146,12 @@ const Prestadores = () => {
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl><SelectTrigger><SelectValue placeholder="Selecione a categoria" /></SelectTrigger></FormControl>
                         <SelectContent>
-                          <SelectItem value="admin">Administração</SelectItem>
-                          <SelectItem value="engenharia">Engenharia</SelectItem>
-                          <SelectItem value="supervisao">Supervisão</SelectItem>
-                          <SelectItem value="tecnico">Técnico de Campo</SelectItem>
+                          <SelectItem value="tecnico">Técnico de Campo (O&amp;M)</SelectItem>
+                          <SelectItem value="supervisao">Supervisor (O&amp;M)</SelectItem>
+                          <SelectItem value="lider">Líder (O&amp;M)</SelectItem>
+                          <SelectItem value="eletromecanico">Eletromecânico (EPC)</SelectItem>
+                          <SelectItem value="sup_eletromecanico">Sup. Eletromecânico (EPC)</SelectItem>
+                          <SelectItem value="lider_eletromecanico">Líder Eletromecânico (EPC)</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
