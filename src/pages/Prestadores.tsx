@@ -340,7 +340,7 @@ const Prestadores = () => {
                       </div>
                       <div className="flex items-center gap-2">
                         <Badge className={getCategoriaColor(prestador.categoria)}>
-                          {prestador.categoria === 'engenharia' ? 'Engenharia' : prestador.categoria === 'supervisao' ? 'Supervisão' : 'Técnico'}
+                          {CATEGORIA_LABELS[prestador.categoria] ?? prestador.categoria}
                         </Badge>
                         <div className="flex gap-1">
                           <Button variant="ghost" size="sm" onClick={() => handleEdit(prestador)}><Edit className="h-4 w-4" /></Button>
