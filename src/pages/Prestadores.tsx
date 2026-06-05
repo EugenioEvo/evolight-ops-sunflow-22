@@ -17,19 +17,44 @@ import {
 } from "@/features/providers";
 import { ApprovePrestadorDialog } from "@/features/providers/components/ApprovePrestadorDialog";
 
+const CATEGORIA_LABELS: Record<string, string> = {
+  tecnico: "Técnico de Campo (O&M)",
+  supervisao: "Supervisor (O&M)",
+  lider: "Líder (O&M)",
+  eletromecanico: "Eletromecânico (EPC)",
+  sup_eletromecanico: "Sup. Eletromecânico (EPC)",
+  lider_eletromecanico: "Líder Eletromecânico (EPC)",
+};
+
 const getCategoriaColor = (categoria: string) => {
   switch (categoria) {
-    case "supervisao": return "bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300";
-    case "tecnico": return "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300";
-    default: return "bg-muted text-muted-foreground";
+    case "supervisao":
+    case "lider":
+      return "bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300";
+    case "tecnico":
+      return "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300";
+    case "eletromecanico":
+      return "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300";
+    case "sup_eletromecanico":
+    case "lider_eletromecanico":
+      return "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300";
+    default:
+      return "bg-muted text-muted-foreground";
   }
 };
 
 const getCategoriaIcon = (categoria: string) => {
   switch (categoria) {
-    case "supervisao": return Eye;
-    case "tecnico": return Wrench;
-    default: return Users;
+    case "supervisao":
+    case "lider":
+    case "sup_eletromecanico":
+    case "lider_eletromecanico":
+      return Eye;
+    case "tecnico":
+    case "eletromecanico":
+      return Wrench;
+    default:
+      return Users;
   }
 };
 
