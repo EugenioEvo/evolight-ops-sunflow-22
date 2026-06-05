@@ -191,10 +191,26 @@ export default function RDOWizard() {
     return () => { cancelled = true; };
   }, [obraId, dataRdo, horarioInicio, horarioFim, obrasQ.data, readOnly]);
 
+  // Pre-check: existing active RDO for (obra, data) — uses the explicit date the user selected, not "today"
+  const existingRdoQ = useQuery({
+    queryKey: ['rdo-existing', obraId, dataRdo],
+    queryFn: () => rdoService.findActiveByObraData(obraId, dataRdo),
+    enabled: isNew && !!obraId && !!dataRdo,
+  });
+  const blockingExistingRdo =
+    isNew && existingRdoQ.data && existingRdoQ.data.id !== rdoId ? existingRdoQ.data : null;
+
   async function ensureDraftCreated(): Promise<string> {
     if (rdoId) return rdoId;
     if (!obraId) throw new Error('Selecione uma obra');
     if (!dataRdo) throw new Error('Informe a data do RDO');
+    // Re-check on submit to avoid race with the unique index
+    const existing = await rdoService.findActiveByObraData(obraId, dataRdo);
+    if (existing) {
+      throw new Error(
+        `Já existe um RDO (${existing.numero_rdo}) para esta obra na data ${dataRdo}. Abra-o para editar ou escolha outra data.`,
+      );
+    }
     const respId = profile?.id ? await rdoService.getCurrentPrestadorId(profile.id) : null;
     if (!respId) throw new Error('Seu cadastro de prestador não foi localizado. Conclua sua aprovação primeiro.');
     const id = await rdoService.createDraft({
