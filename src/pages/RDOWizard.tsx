@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { ArrowLeft, ArrowRight, Camera, Check, FileDown, Loader2, Plus, Save, Send, Trash2, Upload, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useDebounce } from '@/hooks/useDebounce';
 import { downloadRDOPDF } from '@/utils/generateRDOPDF';
 import SignatureCanvas from 'react-signature-canvas';
 import { toast } from 'sonner';
@@ -133,9 +134,14 @@ export default function RDOWizard() {
     enabled: !!rdoId,
   });
 
+  // Hidrata o formulário UMA vez por rdoId (evita "piscar" / sobrescrever edições locais
+  // após cada invalidação/refetch de rdoQ).
+  const hydratedForRef = useRef<string | null>(null);
   useEffect(() => {
     const r = rdoQ.data;
     if (!r) return;
+    if (hydratedForRef.current === r.id) return;
+    hydratedForRef.current = r.id;
     setObraId(r.obra_id);
     setDataRdo(r.data_rdo);
     setTurno(r.turno ?? '');
@@ -155,6 +161,12 @@ export default function RDOWizard() {
     setEquipamentos(r.equipamentos);
     setStatus(r.status);
   }, [rdoQ.data]);
+
+  // Status sempre acompanha o backend (aprovação/rejeição vindas via refetch).
+  useEffect(() => {
+    if (rdoQ.data?.status && rdoQ.data.status !== status) setStatus(rdoQ.data.status);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rdoQ.data?.status]);
 
   const readOnly = !isStaff && status !== 'rascunho' && status !== 'rejeitado';
 
@@ -197,7 +209,8 @@ export default function RDOWizard() {
         const tslice = temps.slice(sh, eh + 1).filter((t) => typeof t === 'number');
         if (tslice.length > 0) {
           const avg = tslice.reduce((a, b) => a + b, 0) / tslice.length;
-          setTemperatura(avg.toFixed(1));
+          // Só preenche se o usuário ainda não digitou nada — evita sobrescrever edições manuais.
+          setTemperatura((cur) => (cur && cur.trim() !== '' ? cur : avg.toFixed(1)));
         }
         const codes: number[] = (j?.hourly?.weathercode ?? []).slice(sh, eh + 1);
         if (codes.length > 0) {
@@ -213,7 +226,9 @@ export default function RDOWizard() {
           const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
           const dominant = entries[0][0];
           const dominantShare = entries[0][1] / codes.length;
-          setClima(entries.length > 1 && dominantShare < 0.7 ? 'misto' : dominant);
+          const sugerido = entries.length > 1 && dominantShare < 0.7 ? 'misto' : dominant;
+          // Só preenche se o usuário ainda não escolheu manualmente.
+          setClima((cur) => (cur && cur.trim() !== '' ? cur : sugerido));
         }
       })
       .catch(() => { /* keep silent — fallback é manual */ })
@@ -221,11 +236,15 @@ export default function RDOWizard() {
     return () => { cancelled = true; };
   }, [obraId, dataRdo, horarioInicio, horarioFim, obrasQ.data, readOnly]);
 
-  // Pre-check: existing active RDO for (obra, data) — uses the explicit date the user selected, not "today"
+  // Pre-check: existing active RDO for (obra, data). Debounce para evitar refetch a cada
+  // tecla/seleção e usar placeholderData para não "piscar" o aviso bloqueante.
+  const obraIdDeb = useDebounce(obraId, 400);
+  const dataRdoDeb = useDebounce(dataRdo, 400);
   const existingRdoQ = useQuery({
-    queryKey: ['rdo-existing', obraId, dataRdo],
-    queryFn: () => rdoService.findActiveByObraData(obraId, dataRdo),
-    enabled: isNew && !!obraId && !!dataRdo,
+    queryKey: ['rdo-existing', obraIdDeb, dataRdoDeb],
+    queryFn: () => rdoService.findActiveByObraData(obraIdDeb, dataRdoDeb),
+    enabled: isNew && !!obraIdDeb && !!dataRdoDeb,
+    placeholderData: keepPreviousData,
   });
   const blockingExistingRdo =
     isNew && existingRdoQ.data && existingRdoQ.data.id !== rdoId ? existingRdoQ.data : null;
