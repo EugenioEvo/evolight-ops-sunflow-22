@@ -209,7 +209,8 @@ export default function RDOWizard() {
         const tslice = temps.slice(sh, eh + 1).filter((t) => typeof t === 'number');
         if (tslice.length > 0) {
           const avg = tslice.reduce((a, b) => a + b, 0) / tslice.length;
-          setTemperatura(avg.toFixed(1));
+          // Só preenche se o usuário ainda não digitou nada — evita sobrescrever edições manuais.
+          setTemperatura((cur) => (cur && cur.trim() !== '' ? cur : avg.toFixed(1)));
         }
         const codes: number[] = (j?.hourly?.weathercode ?? []).slice(sh, eh + 1);
         if (codes.length > 0) {
@@ -225,7 +226,9 @@ export default function RDOWizard() {
           const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
           const dominant = entries[0][0];
           const dominantShare = entries[0][1] / codes.length;
-          setClima(entries.length > 1 && dominantShare < 0.7 ? 'misto' : dominant);
+          const sugerido = entries.length > 1 && dominantShare < 0.7 ? 'misto' : dominant;
+          // Só preenche se o usuário ainda não escolheu manualmente.
+          setClima((cur) => (cur && cur.trim() !== '' ? cur : sugerido));
         }
       })
       .catch(() => { /* keep silent — fallback é manual */ })
