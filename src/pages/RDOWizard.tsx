@@ -236,11 +236,15 @@ export default function RDOWizard() {
     return () => { cancelled = true; };
   }, [obraId, dataRdo, horarioInicio, horarioFim, obrasQ.data, readOnly]);
 
-  // Pre-check: existing active RDO for (obra, data) — uses the explicit date the user selected, not "today"
+  // Pre-check: existing active RDO for (obra, data). Debounce para evitar refetch a cada
+  // tecla/seleção e usar placeholderData para não "piscar" o aviso bloqueante.
+  const obraIdDeb = useDebounce(obraId, 400);
+  const dataRdoDeb = useDebounce(dataRdo, 400);
   const existingRdoQ = useQuery({
-    queryKey: ['rdo-existing', obraId, dataRdo],
-    queryFn: () => rdoService.findActiveByObraData(obraId, dataRdo),
-    enabled: isNew && !!obraId && !!dataRdo,
+    queryKey: ['rdo-existing', obraIdDeb, dataRdoDeb],
+    queryFn: () => rdoService.findActiveByObraData(obraIdDeb, dataRdoDeb),
+    enabled: isNew && !!obraIdDeb && !!dataRdoDeb,
+    placeholderData: keepPreviousData,
   });
   const blockingExistingRdo =
     isNew && existingRdoQ.data && existingRdoQ.data.id !== rdoId ? existingRdoQ.data : null;
