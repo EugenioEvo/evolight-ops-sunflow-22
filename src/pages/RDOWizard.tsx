@@ -134,9 +134,14 @@ export default function RDOWizard() {
     enabled: !!rdoId,
   });
 
+  // Hidrata o formulário UMA vez por rdoId (evita "piscar" / sobrescrever edições locais
+  // após cada invalidação/refetch de rdoQ).
+  const hydratedForRef = useRef<string | null>(null);
   useEffect(() => {
     const r = rdoQ.data;
     if (!r) return;
+    if (hydratedForRef.current === r.id) return;
+    hydratedForRef.current = r.id;
     setObraId(r.obra_id);
     setDataRdo(r.data_rdo);
     setTurno(r.turno ?? '');
@@ -156,6 +161,12 @@ export default function RDOWizard() {
     setEquipamentos(r.equipamentos);
     setStatus(r.status);
   }, [rdoQ.data]);
+
+  // Status sempre acompanha o backend (aprovação/rejeição vindas via refetch).
+  useEffect(() => {
+    if (rdoQ.data?.status && rdoQ.data.status !== status) setStatus(rdoQ.data.status);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rdoQ.data?.status]);
 
   const readOnly = !isStaff && status !== 'rascunho' && status !== 'rejeitado';
 
