@@ -136,44 +136,13 @@ export const rdoService = {
   },
 
   async listEletromecanicos(opts?: { onlySupervisores?: boolean }): Promise<EletromecanicoOption[]> {
-    const cats = (opts?.onlySupervisores
-      ? ['sup_eletromecanico', 'lider_eletromecanico']
-      : ['eletromecanico', 'sup_eletromecanico', 'lider_eletromecanico']) as any;
-    // 1) Match clássico: prestadores cuja categoria é eletromecânica.
-    const byCategoria = await supabase
-      .from('prestadores')
-      .select('id, nome, categoria')
-      .in('categoria', cats)
-      .eq('ativo', true);
-    if (byCategoria.error) throw byCategoria.error;
-
-    // 2) Inclui staff (supervisão/líder) que ACUMULAM role de eletromecânico
-    //    mas têm prestadores.categoria diferente (ex.: 'supervisor').
-    const rolesRes = await supabase
-      .from('user_roles')
-      .select('user_id')
-      .in('role', cats);
-    if (rolesRes.error) throw rolesRes.error;
-    const userIds = Array.from(new Set((rolesRes.data ?? []).map((r: any) => r.user_id)));
-
-    let byRole: any[] = [];
-    if (userIds.length) {
-      const tecRes = await supabase
-        .from('tecnicos')
-        .select('prestador_id, profiles!inner(user_id), prestadores:prestador_id(id, nome, categoria, ativo)')
-        .in('profiles.user_id', userIds)
-        .not('prestador_id', 'is', null);
-      if (tecRes.error) throw tecRes.error;
-      byRole = (tecRes.data ?? [])
-        .map((t: any) => t.prestadores)
-        .filter((p: any) => p && p.ativo);
-    }
-
-    const map = new Map<string, EletromecanicoOption>();
-    for (const p of (byCategoria.data ?? []) as any[]) map.set(p.id, p);
-    for (const p of byRole) if (!map.has(p.id)) map.set(p.id, p);
-
-    return Array.from(map.values()).sort((a: any, b: any) => a.nome.localeCompare(b.nome));
+    // Usa RPC SECURITY DEFINER para contornar RLS de prestadores/tecnicos
+    // (supervisores eletromecânicos não são "staff" e enxergariam apenas a si mesmos).
+    const { data, error } = await supabase.rpc('list_rdo_eletromecanicos', {
+      p_only_supervisores: !!opts?.onlySupervisores,
+    });
+    if (error) throw error;
+    return ((data ?? []) as any[]) as EletromecanicoOption[];
   },
 
   async getCurrentPrestadorId(profileId: string): Promise<string | null> {
