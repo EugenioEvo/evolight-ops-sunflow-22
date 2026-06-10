@@ -159,7 +159,29 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        // Sessão pode estar inválida/expirada no servidor (403 session_not_found).
+        // Tenta limpar apenas localmente para não travar o usuário.
+        console.warn('signOut global falhou, limpando sessão local:', error.message);
+        await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+      }
+    } catch (e) {
+      console.warn('signOut exception, limpando sessão local:', e);
+      await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+    } finally {
+      // Garante limpeza de estado e redireciona
+      setUser(null);
+      setSession(null);
+      setProfile(null);
+      try {
+        Object.keys(localStorage)
+          .filter((k) => k.startsWith('sb-') && k.endsWith('-auth-token'))
+          .forEach((k) => localStorage.removeItem(k));
+      } catch {}
+      window.location.href = '/auth';
+    }
   };
 
   return (
