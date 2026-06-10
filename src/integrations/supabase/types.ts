@@ -2444,6 +2444,14 @@ export type Database = {
       is_backoffice: { Args: { _user_id: string }; Returns: boolean }
       is_staff: { Args: { _user_id: string }; Returns: boolean }
       is_staff_or_backoffice: { Args: { _user_id: string }; Returns: boolean }
+      list_rdo_eletromecanicos: {
+        Args: { p_only_supervisores?: boolean }
+        Returns: {
+          categoria: string
+          id: string
+          nome: string
+        }[]
+      }
       log_presence_attempt: {
         Args: { p_ip: string; p_os_id: string }
         Returns: undefined
