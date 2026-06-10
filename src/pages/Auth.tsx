@@ -36,17 +36,14 @@ const Auth = () => {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
 
-      toast({
-        title: 'Login realizado com sucesso!',
+      toast.success('Login realizado com sucesso!', {
         description: 'Bem-vindo de volta.',
       });
 
       navigate('/');
     } catch (error: any) {
-      toast({
-        title: 'Erro no login',
-        description: error.message,
-        variant: 'destructive',
+      toast.error('Erro no login', {
+        description: error?.message ?? 'Verifique e-mail e senha.',
       });
     } finally {
       setLoading(false);
