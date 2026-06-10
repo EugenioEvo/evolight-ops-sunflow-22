@@ -512,13 +512,6 @@ export default function RDOWizard() {
               </SelectContent>
             </Select>
           </div>
-          <div>
-            <Label className="flex items-center gap-2">
-              Clima{tempLoading && <Loader2 className="h-3 w-3 animate-spin" />}
-            </Label>
-            <Select value={clima} onValueChange={setClima} disabled>
-              <SelectTrigger><SelectValue placeholder="Preenchido automaticamente" /></SelectTrigger>
-              <SelectContent>
           <div className="grid grid-cols-2 gap-2">
             <div>
               <Label>Início</Label>
