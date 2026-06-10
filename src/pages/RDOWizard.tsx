@@ -90,6 +90,14 @@ export default function RDOWizard() {
   const [equipamentos, setEquipamentos] = useState<RDOEquipamento[]>([]);
   const [status, setStatus] = useState<string>('rascunho');
 
+  // Máscara de hora: aceita "0800" -> "08:00", "8" -> "8", "830" -> "8:30", "2360" -> "23:60" (validação acontece depois)
+  const maskTime = (raw: string) => {
+    const digits = (raw ?? '').replace(/\D/g, '').slice(0, 4);
+    if (digits.length <= 2) return digits;
+    return `${digits.slice(0, 2)}:${digits.slice(2)}`;
+  };
+
+
   // Default horas trabalhadas = (fim - inicio) - paradas (prog + não prog)
   const defaultHorasTrabalhadas = (() => {
     const toMin = (s: string) => {
@@ -504,6 +512,34 @@ export default function RDOWizard() {
               </SelectContent>
             </Select>
           </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label>Início</Label>
+              <Input
+                type="text"
+                inputMode="numeric"
+                placeholder="HH:MM"
+                pattern="^([01]\d|2[0-3]):[0-5]\d$"
+                maxLength={5}
+                value={horarioInicio}
+                onChange={(e) => setHorarioInicio(maskTime(e.target.value))}
+                disabled={readOnly}
+              />
+            </div>
+            <div>
+              <Label>Fim</Label>
+              <Input
+                type="text"
+                inputMode="numeric"
+                placeholder="HH:MM"
+                pattern="^([01]\d|2[0-3]):[0-5]\d$"
+                maxLength={5}
+                value={horarioFim}
+                onChange={(e) => setHorarioFim(maskTime(e.target.value))}
+                disabled={readOnly}
+              />
+            </div>
+          </div>
           <div>
             <Label className="flex items-center gap-2">
               Clima{tempLoading && <Loader2 className="h-3 w-3 animate-spin" />}
@@ -534,34 +570,7 @@ export default function RDOWizard() {
               Média horária Open-Meteo entre Início e Fim, baseada nas coordenadas da obra.
             </p>
           </div>
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <Label>Início</Label>
-              <Input
-                type="text"
-                inputMode="numeric"
-                placeholder="HH:MM"
-                pattern="^([01]\d|2[0-3]):[0-5]\d$"
-                maxLength={5}
-                value={horarioInicio}
-                onChange={(e) => setHorarioInicio(e.target.value)}
-                disabled={readOnly}
-              />
-            </div>
-            <div>
-              <Label>Fim</Label>
-              <Input
-                type="text"
-                inputMode="numeric"
-                placeholder="HH:MM"
-                pattern="^([01]\d|2[0-3]):[0-5]\d$"
-                maxLength={5}
-                value={horarioFim}
-                onChange={(e) => setHorarioFim(e.target.value)}
-                disabled={readOnly}
-              />
-            </div>
-          </div>
+
           <div>
             <Label>Horas paradas — programadas <span className="text-xs font-normal text-muted-foreground">(0,5 = 30min)</span></Label>
             <Input
