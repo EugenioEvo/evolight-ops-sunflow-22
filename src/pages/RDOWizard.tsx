@@ -90,6 +90,14 @@ export default function RDOWizard() {
   const [equipamentos, setEquipamentos] = useState<RDOEquipamento[]>([]);
   const [status, setStatus] = useState<string>('rascunho');
 
+  // Máscara de hora: aceita "0800" -> "08:00", "8" -> "8", "830" -> "8:30", "2360" -> "23:60" (validação acontece depois)
+  const maskTime = (raw: string) => {
+    const digits = (raw ?? '').replace(/\D/g, '').slice(0, 4);
+    if (digits.length <= 2) return digits;
+    return `${digits.slice(0, 2)}:${digits.slice(2)}`;
+  };
+
+
   // Default horas trabalhadas = (fim - inicio) - paradas (prog + não prog)
   const defaultHorasTrabalhadas = (() => {
     const toMin = (s: string) => {
