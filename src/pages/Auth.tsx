@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,7 +16,7 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
-  const { toast } = useToast();
+  
 
   useEffect(() => {
     const checkUser = async () => {
@@ -36,17 +36,14 @@ const Auth = () => {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
 
-      toast({
-        title: 'Login realizado com sucesso!',
+      toast.success('Login realizado com sucesso!', {
         description: 'Bem-vindo de volta.',
       });
 
       navigate('/');
     } catch (error: any) {
-      toast({
-        title: 'Erro no login',
-        description: error.message,
-        variant: 'destructive',
+      toast.error('Erro no login', {
+        description: error?.message ?? 'Verifique e-mail e senha.',
       });
     } finally {
       setLoading(false);
