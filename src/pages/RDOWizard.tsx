@@ -341,13 +341,12 @@ export default function RDOWizard() {
     }
   }
 
-  async function handleUploadEvidencias(files: FileList | null, tipo: 'antes' | 'depois' | 'ocorrencia' | 'epi') {
+  async function handleUploadEvidencias(files: File[], tipo: 'antes' | 'depois' | 'ocorrencia' | 'epi') {
     if (!files || files.length === 0) return;
     try {
       const id = await ensureDraftCreated();
-      const arr = Array.from(files);
       let ok = 0;
-      for (const f of arr) {
+      for (const f of files) {
         try { await rdoService.uploadEvidencia(id, f, tipo); ok++; }
         catch (e: any) { toast.error(`${f.name}: ${e?.message ?? 'falha'}`); }
       }
@@ -821,17 +820,17 @@ export default function RDOWizard() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <label className="cursor-pointer inline-flex items-center text-sm text-primary px-2 py-1 rounded border border-input hover:bg-accent">
                         <input type="file" accept="image/*" capture="environment" className="hidden"
-                          onChange={(e) => { handleUploadEvidencias(e.target.files, tipo); e.currentTarget.value = ''; }} />
+                          onChange={(e) => { const fs = e.target.files ? Array.from(e.target.files) : []; e.currentTarget.value = ''; handleUploadEvidencias(fs, tipo); }} />
                         <Camera className="h-4 w-4 mr-1" /> Foto
                       </label>
                       <label className="cursor-pointer inline-flex items-center text-sm text-primary px-2 py-1 rounded border border-input hover:bg-accent">
                         <input type="file" accept="video/*" capture="environment" className="hidden"
-                          onChange={(e) => { handleUploadEvidencias(e.target.files, tipo); e.currentTarget.value = ''; }} />
+                          onChange={(e) => { const fs = e.target.files ? Array.from(e.target.files) : []; e.currentTarget.value = ''; handleUploadEvidencias(fs, tipo); }} />
                         <Camera className="h-4 w-4 mr-1" /> Vídeo
                       </label>
                       <label className="cursor-pointer inline-flex items-center text-sm text-primary px-2 py-1 rounded border border-input hover:bg-accent">
                         <input type="file" accept="image/*,video/*" multiple className="hidden"
-                          onChange={(e) => { handleUploadEvidencias(e.target.files, tipo); e.currentTarget.value = ''; }} />
+                          onChange={(e) => { const fs = e.target.files ? Array.from(e.target.files) : []; e.currentTarget.value = ''; handleUploadEvidencias(fs, tipo); }} />
                         <Upload className="h-4 w-4 mr-1" /> Upload
                       </label>
                     </div>
