@@ -56,6 +56,14 @@ const fetchAsDataURL = async (url: string): Promise<string | null> => {
   }
 };
 
+const getImageSize = (dataUrl: string): Promise<{ w: number; h: number } | null> =>
+  new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve({ w: img.naturalWidth || img.width, h: img.naturalHeight || img.height });
+    img.onerror = () => resolve(null);
+    img.src = dataUrl;
+  });
+
 export const generateRDOPDF = async (data: RDOPDFData): Promise<Blob> => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -171,12 +179,10 @@ export const generateRDOPDF = async (data: RDOPDFData): Promise<Blob> => {
   } else {
     autoTable(doc, {
       startY: yPos,
-      head: [['Nome', 'Função', 'Horas', 'H. Extras']],
+      head: [['Nome', 'Horas']],
       body: data.equipe.map((e) => [
         e.nome,
-        e.funcao ?? '-',
         String(e.horas_trabalhadas ?? 0),
-        String(e.horas_extras ?? 0),
       ]),
       theme: 'striped',
       styles: { fontSize: 9 },
@@ -248,7 +254,20 @@ export const generateRDOPDF = async (data: RDOPDFData): Promise<Blob> => {
       const x = margin + col * (cellW + 6);
       try {
         if (dataUrl) {
-          doc.addImage(dataUrl, 'JPEG', x, yPos, cellW, cellH);
+          // Mantém proporção: fit dentro da caixa cellW x cellH e centraliza.
+          const size = await getImageSize(dataUrl);
+          let drawW = cellW;
+          let drawH = cellH;
+          let offX = 0;
+          let offY = 0;
+          if (size && size.w > 0 && size.h > 0) {
+            const ratio = Math.min(cellW / size.w, cellH / size.h);
+            drawW = size.w * ratio;
+            drawH = size.h * ratio;
+            offX = (cellW - drawW) / 2;
+            offY = (cellH - drawH) / 2;
+          }
+          doc.addImage(dataUrl, 'JPEG', x + offX, yPos + offY, drawW, drawH);
         } else {
           doc.setDrawColor(...MUTED);
           doc.rect(x, yPos, cellW, cellH);
