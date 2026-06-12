@@ -605,11 +605,12 @@ export default function RDOWizard() {
           </div>
         </CardContent>
       </Card>
-      </>
+      </div>
       )}
 
       {step === 2 && (
-      <>
+      <div key="rdo-step-2" className="space-y-6 contents">
+
       {/* Equipe */}
       <Card>
         <CardHeader>
