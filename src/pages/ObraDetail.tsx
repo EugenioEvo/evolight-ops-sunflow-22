@@ -61,7 +61,7 @@ export default function ObraDetail({ mode = 'staff' }: Props) {
         .select(`
           id, numero_rdo, data_rdo, status, fotos_geral,
           equipe:rdo_equipe(prestador_id, horas_trabalhadas, horas_extras),
-          atividades:rdo_atividades(percentual_avanco),
+          atividades:rdo_atividades(catalogo_id, quantidade, percentual_avanco),
           evidencias:rdo_evidencias(storage_path, descricao)
         `)
         .eq('obra_id', id!)
