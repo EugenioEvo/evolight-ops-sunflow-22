@@ -92,7 +92,8 @@ export default function RDO() {
                     <TableHead>Obra</TableHead>
                     <TableHead className="hidden md:table-cell">Responsável</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead className="w-12" />
+                    <TableHead className="w-32" />
+
                   </TableRow>
                 </TableHeader>
                 <TableBody>
