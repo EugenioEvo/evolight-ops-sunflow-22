@@ -341,13 +341,12 @@ export default function RDOWizard() {
     }
   }
 
-  async function handleUploadEvidencias(files: FileList | null, tipo: 'antes' | 'depois' | 'ocorrencia' | 'epi') {
+  async function handleUploadEvidencias(files: File[], tipo: 'antes' | 'depois' | 'ocorrencia' | 'epi') {
     if (!files || files.length === 0) return;
     try {
       const id = await ensureDraftCreated();
-      const arr = Array.from(files);
       let ok = 0;
-      for (const f of arr) {
+      for (const f of files) {
         try { await rdoService.uploadEvidencia(id, f, tipo); ok++; }
         catch (e: any) { toast.error(`${f.name}: ${e?.message ?? 'falha'}`); }
       }
