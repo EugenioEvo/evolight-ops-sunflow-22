@@ -719,7 +719,12 @@ export default function RDOWizard() {
                   <div className="md:col-span-3">
                     <Label className="text-xs">Quantidade</Label>
                     <Input type="number" step="0.01" value={a.quantidade}
-                      onChange={(e) => { const n = [...atividades]; n[i] = { ...a, quantidade: Number(e.target.value) }; setAtividades(n); }}
+                      onChange={(e) => {
+                        const n = [...atividades];
+                        const q = Number(e.target.value);
+                        n[i] = { ...a, quantidade: q, percentual_avanco: computeAvanco(a.catalogo_id, q) };
+                        setAtividades(n);
+                      }}
                       disabled={readOnly} />
                   </div>
                   <div className="md:col-span-2">
@@ -731,14 +736,10 @@ export default function RDOWizard() {
                   <div className="md:col-span-2">
                     <Label className="text-xs">% avanço</Label>
                     <Input
-                      type="number"
-                      min={0}
-                      max={100}
-                      value={a.percentual_avanco ?? ''}
-                      onChange={(e) => { const n = [...atividades]; n[i] = { ...a, percentual_avanco: e.target.value ? Number(e.target.value) : null }; setAtividades(n); }}
-                      disabled={readOnly || !!a.catalogo_id}
-                      placeholder={a.catalogo_id ? 'Auto (obra)' : ''}
-                      title={a.catalogo_id ? 'Calculado automaticamente a partir das metas da obra' : undefined}
+                      type="text"
+                      readOnly
+                      value={`${computeAvanco(a.catalogo_id, a.quantidade)}%`}
+                      title="Calculado automaticamente: quantidade / meta da obra"
                     />
                   </div>
                 </div>
