@@ -16,17 +16,21 @@ import { useAuth } from '@/hooks/useAuth';
 import { useRDOQuery, useRDOMutations, RDO_STATUS_LABEL, RDO_STATUS_VARIANT, type RDOStatus } from '@/features/rdo';
 
 const STAFF_ROLES = ['admin', 'engenharia', 'supervisao', 'lider'] as const;
+const ADM_ENG_ROLES = ['admin', 'engenharia'] as const;
 
 export default function RDO() {
   const navigate = useNavigate();
   const { profile } = useAuth();
   const { data: rdos = [], isLoading } = useRDOQuery();
-  const { remove } = useRDOMutations();
+  const { remove, reopen } = useRDOMutations();
   const [search, setSearch] = useState('');
   const [toDelete, setToDelete] = useState<string | null>(null);
+  const [toReopen, setToReopen] = useState<string | null>(null);
 
   const isStaff = profile?.roles?.some((r) => (STAFF_ROLES as readonly string[]).includes(r)) ?? false;
+  const isAdmEng = profile?.roles?.some((r) => (ADM_ENG_ROLES as readonly string[]).includes(r)) ?? false;
   const canCreate = isStaff || profile?.roles?.some((r) => r === 'sup_eletromecanico' || r === 'lider_eletromecanico');
+
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
