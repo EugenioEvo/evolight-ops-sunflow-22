@@ -97,6 +97,21 @@ export default function RDOWizard() {
     return `${digits.slice(0, 2)}:${digits.slice(2)}`;
   };
 
+  // Normaliza para HH:MM aceito pelo Postgres `time`. Aceita "9"→"09:00",
+  // "17"→"17:00", "8:5"→"08:05". Retorna null se inválido/vazio.
+  const normalizeTime = (raw: string): string | null => {
+    const s = (raw ?? '').trim();
+    if (!s) return null;
+    const digits = s.replace(/\D/g, '');
+    let hh: string, mm: string;
+    if (digits.length <= 2) { hh = digits.padStart(2, '0'); mm = '00'; }
+    else if (digits.length === 3) { hh = '0' + digits[0]; mm = digits.slice(1); }
+    else { hh = digits.slice(0, 2); mm = digits.slice(2, 4).padEnd(2, '0'); }
+    const h = Number(hh), m = Number(mm);
+    if (!Number.isFinite(h) || !Number.isFinite(m) || h > 23 || m > 59) return null;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  };
+
 
   // Default horas trabalhadas = (fim - inicio) - paradas (prog + não prog)
   const defaultHorasTrabalhadas = (() => {
@@ -207,8 +222,8 @@ export default function RDOWizard() {
     turno: turno || null,
     clima: clima || null,
     temperatura_c: temperatura ? Number(temperatura) : null,
-    horario_inicio: horarioInicio || null,
-    horario_fim: horarioFim || null,
+    horario_inicio: normalizeTime(horarioInicio),
+    horario_fim: normalizeTime(horarioFim),
     condicoes_canteiro: condicoesCanteiro || null,
     observacoes_gerais: observacoes || null,
     ocorrencias: ocorrencias || null,
@@ -300,8 +315,8 @@ export default function RDOWizard() {
       turno: turno || null,
       clima: clima || null,
       temperatura_c: temperatura ? Number(temperatura) : null,
-      horario_inicio: horarioInicio || null,
-      horario_fim: horarioFim || null,
+      horario_inicio: normalizeTime(horarioInicio),
+      horario_fim: normalizeTime(horarioFim),
       condicoes_canteiro: condicoesCanteiro || null,
     });
     setRdoId(id);
@@ -550,6 +565,7 @@ export default function RDOWizard() {
                 maxLength={5}
                 value={horarioInicio}
                 onChange={(e) => setHorarioInicio(maskTime(e.target.value))}
+                onBlur={(e) => { const n = normalizeTime(e.target.value); if (n) setHorarioInicio(n); }}
                 disabled={readOnly}
               />
             </div>
@@ -563,6 +579,7 @@ export default function RDOWizard() {
                 maxLength={5}
                 value={horarioFim}
                 onChange={(e) => setHorarioFim(maskTime(e.target.value))}
+                onBlur={(e) => { const n = normalizeTime(e.target.value); if (n) setHorarioFim(n); }}
                 disabled={readOnly}
               />
             </div>
