@@ -315,8 +315,8 @@ export default function RDOWizard() {
       turno: turno || null,
       clima: clima || null,
       temperatura_c: temperatura ? Number(temperatura) : null,
-      horario_inicio: horarioInicio || null,
-      horario_fim: horarioFim || null,
+      horario_inicio: normalizeTime(horarioInicio),
+      horario_fim: normalizeTime(horarioFim),
       condicoes_canteiro: condicoesCanteiro || null,
     });
     setRdoId(id);
