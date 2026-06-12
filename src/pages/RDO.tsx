@@ -122,19 +122,44 @@ export default function RDO() {
                         </Badge>
                       </TableCell>
                       <TableCell onClick={(e) => e.stopPropagation()}>
-                        {isStaff && r.status === 'rascunho' && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setToDelete(r.id)}
-                            aria-label="Remover RDO"
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        )}
+                        <div className="flex items-center justify-end gap-1">
+                          {isAdmEng && r.status === 'aprovado' && (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => navigate(`/rdo/${r.id}?edit=1`)}
+                                aria-label="Editar RDO aprovado"
+                                title="Editar (Adm/Engenharia)"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => setToReopen(r.id)}
+                                aria-label="Retornar RDO para rascunho"
+                                title="Retornar para rascunho"
+                              >
+                                <Undo2 className="h-4 w-4 text-amber-500" />
+                              </Button>
+                            </>
+                          )}
+                          {isStaff && r.status === 'rascunho' && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setToDelete(r.id)}
+                              aria-label="Remover RDO"
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
+
                 </TableBody>
               </Table>
             </div>
