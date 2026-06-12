@@ -97,6 +97,21 @@ export default function RDOWizard() {
     return `${digits.slice(0, 2)}:${digits.slice(2)}`;
   };
 
+  // Normaliza para HH:MM aceito pelo Postgres `time`. Aceita "9"→"09:00",
+  // "17"→"17:00", "8:5"→"08:05". Retorna null se inválido/vazio.
+  const normalizeTime = (raw: string): string | null => {
+    const s = (raw ?? '').trim();
+    if (!s) return null;
+    const digits = s.replace(/\D/g, '');
+    let hh: string, mm: string;
+    if (digits.length <= 2) { hh = digits.padStart(2, '0'); mm = '00'; }
+    else if (digits.length === 3) { hh = '0' + digits[0]; mm = digits.slice(1); }
+    else { hh = digits.slice(0, 2); mm = digits.slice(2, 4).padEnd(2, '0'); }
+    const h = Number(hh), m = Number(mm);
+    if (!Number.isFinite(h) || !Number.isFinite(m) || h > 23 || m > 59) return null;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  };
+
 
   // Default horas trabalhadas = (fim - inicio) - paradas (prog + não prog)
   const defaultHorasTrabalhadas = (() => {
