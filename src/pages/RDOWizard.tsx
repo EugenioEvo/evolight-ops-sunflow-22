@@ -134,6 +134,29 @@ export default function RDOWizard() {
   const obrasQ = useQuery({ queryKey: ['rdo-obras-ativas'], queryFn: () => rdoService.listObrasAtivas() });
   const catalogoQ = useQuery({ queryKey: ['rdo-catalogo'], queryFn: () => rdoService.listCatalogo() });
   const eletroQ = useQuery({ queryKey: ['rdo-eletro'], queryFn: () => rdoService.listEletromecanicos() });
+  const metasQ = useQuery({
+    queryKey: ['obra-metas', obraId],
+    queryFn: async () => {
+      if (!obraId) return [] as { catalogo_id: string; quantidade_meta: number }[];
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data } = await supabase
+        .from('obra_metas_catalogo')
+        .select('catalogo_id, quantidade_meta')
+        .eq('obra_id', obraId);
+      return (data ?? []) as { catalogo_id: string; quantidade_meta: number }[];
+    },
+    enabled: !!obraId,
+  });
+
+  // Calcula % de avanço a partir da quantidade informada e da meta da obra para o item de catálogo.
+  const computeAvanco = (catalogoId: string | null | undefined, quantidade: number | null | undefined): number => {
+    const q = Number(quantidade ?? 0);
+    if (!q || q <= 0) return 0;
+    if (!catalogoId) return 0;
+    const meta = Number((metasQ.data ?? []).find((m) => m.catalogo_id === catalogoId)?.quantidade_meta ?? 0);
+    if (!meta || meta <= 0) return 0;
+    return Math.min(100, Math.round((q / meta) * 10000) / 100);
+  };
 
   // Existing RDO
   const rdoQ = useQuery({
