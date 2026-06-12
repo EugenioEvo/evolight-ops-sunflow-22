@@ -870,7 +870,7 @@ export default function RDOWizard() {
           </CardContent>
         </Card>
       )}
-      </>
+      </div>
       )}
 
       <Separator />
