@@ -313,6 +313,17 @@ export const rdoService = {
       for (const c of (data || []) as any[]) catMap.set(c.id, { label: c.label, unidade: c.unidade });
     }
 
+    // Resolve obra metas to recompute % avanço (quantidade / meta).
+    const metaMap = new Map<string, number>();
+    if (catIds.length && full.obra_id) {
+      const { data } = await supabase
+        .from('obra_metas_catalogo')
+        .select('catalogo_id, quantidade_meta')
+        .eq('obra_id', full.obra_id)
+        .in('catalogo_id', catIds);
+      for (const m of (data || []) as any[]) metaMap.set(m.catalogo_id, Number(m.quantidade_meta ?? 0));
+    }
+
     // Resolve signed URLs for evidencias
     const evidencias = await Promise.all(
       full.evidencias.map(async (ev) => ({
@@ -348,11 +359,14 @@ export const rdoService = {
       })),
       atividades: full.atividades.map((a) => {
         const cat = a.catalogo_id ? catMap.get(a.catalogo_id) : null;
+        const meta = a.catalogo_id ? metaMap.get(a.catalogo_id) ?? 0 : 0;
+        const q = Number(a.quantidade ?? 0);
+        const pct = meta > 0 && q > 0 ? Math.min(100, Math.round((q / meta) * 10000) / 100) : 0;
         return {
           descricao: a.descricao_livre || cat?.label || '—',
           quantidade: a.quantidade,
           unidade: a.unidade || cat?.unidade || null,
-          percentual_avanco: a.percentual_avanco,
+          percentual_avanco: pct,
         };
       }),
       equipamentos: full.equipamentos.map((eq) => ({
