@@ -82,7 +82,7 @@ export default function ObraDetail({ mode = 'staff' }: Props) {
   const aprovados = useMemo(() => rdos.filter((r) => r.status === 'aprovado'), [rdos]);
 
   const { data: metas = {} } = useQuery({
-    queryKey: ['obra-metas', id],
+    queryKey: ['obra-metas-map', id],
     enabled: !!id,
     queryFn: async () => {
       const { data } = await supabase.from('obra_metas_catalogo').select('catalogo_id, quantidade_meta').eq('obra_id', id!);
