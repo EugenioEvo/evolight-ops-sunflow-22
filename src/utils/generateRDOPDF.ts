@@ -254,7 +254,20 @@ export const generateRDOPDF = async (data: RDOPDFData): Promise<Blob> => {
       const x = margin + col * (cellW + 6);
       try {
         if (dataUrl) {
-          doc.addImage(dataUrl, 'JPEG', x, yPos, cellW, cellH);
+          // Mantém proporção: fit dentro da caixa cellW x cellH e centraliza.
+          const size = await getImageSize(dataUrl);
+          let drawW = cellW;
+          let drawH = cellH;
+          let offX = 0;
+          let offY = 0;
+          if (size && size.w > 0 && size.h > 0) {
+            const ratio = Math.min(cellW / size.w, cellH / size.h);
+            drawW = size.w * ratio;
+            drawH = size.h * ratio;
+            offX = (cellW - drawW) / 2;
+            offY = (cellH - drawH) / 2;
+          }
+          doc.addImage(dataUrl, 'JPEG', x + offX, yPos + offY, drawW, drawH);
         } else {
           doc.setDrawColor(...MUTED);
           doc.rect(x, yPos, cellW, cellH);
