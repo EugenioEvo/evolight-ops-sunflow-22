@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { ArrowLeft, ArrowRight, Camera, Check, FileDown, Loader2, Plus, Save, Send, Trash2, Upload, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -23,6 +23,8 @@ import { rdoService, type RDOAtividade, type RDOEquipamento, type RDOEquipe } fr
 import { CLIMA_LABEL, CLIMA_OPTIONS, TURNO_LABEL, TURNO_OPTIONS } from '@/features/rdo/types';
 
 const STAFF_ROLES = ['admin', 'engenharia', 'supervisao'];
+const ADM_ENG_ROLES = ['admin', 'engenharia'];
+
 
 function Hint({ children }: { children: ReactNode }) {
   return <p className="text-[11px] text-muted-foreground mt-1">{children}</p>;
@@ -60,8 +62,12 @@ export default function RDOWizard() {
   const navigate = useNavigate();
   const { profile } = useAuth();
   const qc = useQueryClient();
+  const [searchParams] = useSearchParams();
 
   const isStaff = profile?.roles?.some((r) => STAFF_ROLES.includes(r)) ?? false;
+  const isAdmEng = profile?.roles?.some((r) => ADM_ENG_ROLES.includes(r)) ?? false;
+  const editMode = searchParams.get('edit') === '1';
+
 
   const [rdoId, setRdoId] = useState<string | null>(isNew ? null : routeId!);
   const [saving, setSaving] = useState(false);
@@ -214,7 +220,11 @@ export default function RDOWizard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rdoQ.data?.status]);
 
-  const readOnly = !isStaff && status !== 'rascunho' && status !== 'rejeitado';
+  const readOnly =
+    status !== 'rascunho' &&
+    status !== 'rejeitado' &&
+    !(isAdmEng && editMode);
+
 
   const headerPatch = useMemo(() => ({
     obra_id: obraId,

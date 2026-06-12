@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Plus, Search, Trash2, FileSpreadsheet, Loader2 } from 'lucide-react';
+import { Plus, Search, Trash2, FileSpreadsheet, Loader2, Pencil, Undo2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,17 +16,21 @@ import { useAuth } from '@/hooks/useAuth';
 import { useRDOQuery, useRDOMutations, RDO_STATUS_LABEL, RDO_STATUS_VARIANT, type RDOStatus } from '@/features/rdo';
 
 const STAFF_ROLES = ['admin', 'engenharia', 'supervisao', 'lider'] as const;
+const ADM_ENG_ROLES = ['admin', 'engenharia'] as const;
 
 export default function RDO() {
   const navigate = useNavigate();
   const { profile } = useAuth();
   const { data: rdos = [], isLoading } = useRDOQuery();
-  const { remove } = useRDOMutations();
+  const { remove, reopen } = useRDOMutations();
   const [search, setSearch] = useState('');
   const [toDelete, setToDelete] = useState<string | null>(null);
+  const [toReopen, setToReopen] = useState<string | null>(null);
 
   const isStaff = profile?.roles?.some((r) => (STAFF_ROLES as readonly string[]).includes(r)) ?? false;
+  const isAdmEng = profile?.roles?.some((r) => (ADM_ENG_ROLES as readonly string[]).includes(r)) ?? false;
   const canCreate = isStaff || profile?.roles?.some((r) => r === 'sup_eletromecanico' || r === 'lider_eletromecanico');
+
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -88,7 +92,8 @@ export default function RDO() {
                     <TableHead>Obra</TableHead>
                     <TableHead className="hidden md:table-cell">Responsável</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead className="w-12" />
+                    <TableHead className="w-32" />
+
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -117,19 +122,44 @@ export default function RDO() {
                         </Badge>
                       </TableCell>
                       <TableCell onClick={(e) => e.stopPropagation()}>
-                        {isStaff && r.status === 'rascunho' && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setToDelete(r.id)}
-                            aria-label="Remover RDO"
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        )}
+                        <div className="flex items-center justify-end gap-1">
+                          {isAdmEng && r.status === 'aprovado' && (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => navigate(`/rdo/${r.id}?edit=1`)}
+                                aria-label="Editar RDO aprovado"
+                                title="Editar (Adm/Engenharia)"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => setToReopen(r.id)}
+                                aria-label="Retornar RDO para rascunho"
+                                title="Retornar para rascunho"
+                              >
+                                <Undo2 className="h-4 w-4 text-amber-500" />
+                              </Button>
+                            </>
+                          )}
+                          {isStaff && r.status === 'rascunho' && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setToDelete(r.id)}
+                              aria-label="Remover RDO"
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
+
                 </TableBody>
               </Table>
             </div>
@@ -158,6 +188,30 @@ export default function RDO() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog open={!!toReopen} onOpenChange={(open) => !open && setToReopen(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Retornar RDO para rascunho?</AlertDialogTitle>
+            <AlertDialogDescription>
+              O RDO voltará ao status <strong>rascunho</strong>, permitindo que o responsável edite e
+              reenvie para aprovação. A aprovação atual (aprovador, data e observações) será descartada.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (toReopen) reopen.mutate(toReopen);
+                setToReopen(null);
+              }}
+            >
+              Retornar para rascunho
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
+
   );
 }
