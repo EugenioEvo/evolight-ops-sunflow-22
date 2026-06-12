@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { ArrowLeft, ArrowRight, Camera, Check, FileDown, Loader2, Plus, Save, Send, Trash2, Upload, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
