@@ -462,7 +462,8 @@ export default function RDOWizard() {
       </div>
 
       {step === 1 && (
-      <>
+      <div key="rdo-step-1" className="space-y-6 contents">
+
 
       {blockingExistingRdo && (
         <Card className="border-amber-500/60 bg-amber-500/10">
