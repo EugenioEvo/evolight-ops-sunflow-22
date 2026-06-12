@@ -23,6 +23,8 @@ import { rdoService, type RDOAtividade, type RDOEquipamento, type RDOEquipe } fr
 import { CLIMA_LABEL, CLIMA_OPTIONS, TURNO_LABEL, TURNO_OPTIONS } from '@/features/rdo/types';
 
 const STAFF_ROLES = ['admin', 'engenharia', 'supervisao'];
+const ADM_ENG_ROLES = ['admin', 'engenharia'];
+
 
 function Hint({ children }: { children: ReactNode }) {
   return <p className="text-[11px] text-muted-foreground mt-1">{children}</p>;
