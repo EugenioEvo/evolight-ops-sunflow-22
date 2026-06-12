@@ -403,6 +403,20 @@ export const rdoService = {
     if (error) throw error;
   },
 
+  async reopen(id: string) {
+    const { error } = await supabase
+      .from('rdo_relatorios')
+      .update({
+        status: 'rascunho',
+        aprovado_por: null,
+        data_aprovacao: null,
+        observacoes_aprovacao: null,
+      })
+      .eq('id', id);
+    if (error) throw error;
+  },
+
+
   async approve(id: string, observacoes?: string) {
     const { data: userData } = await supabase.auth.getUser();
     const { error } = await supabase
