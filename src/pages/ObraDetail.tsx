@@ -75,27 +75,32 @@ export default function ObraDetail({ mode = 'staff' }: Props) {
   const aprovados = useMemo(() => rdos.filter((r) => r.status === 'aprovado'), [rdos]);
 
   const avancoSerie = useMemo(() => {
-    // Cumulative weighted average of percentual_avanco across approved RDOs ordered by date asc.
+    // Para cada RDO aprovado (ordenado por data), pega o último percentual_avanco
+    // por catalogo_id conhecido até aquela data e tira a média. Assim a curva
+    // realmente acumula o progresso ao longo do tempo.
     const sorted = [...aprovados].sort((a, b) => a.data_rdo.localeCompare(b.data_rdo));
-    let sum = 0; let n = 0;
+    const latestByCat = new Map<string, number>();
     return sorted.map((r) => {
-      const ativ = r.atividades ?? [];
-      const avg = ativ.length ? ativ.reduce((acc: number, a: any) => acc + Number(a.percentual_avanco ?? 0), 0) / ativ.length : 0;
-      sum += avg; n += 1;
-      return { data: r.data_rdo, avanco: Math.round((sum / n) * 10) / 10 };
+      for (const a of r.atividades ?? []) {
+        const key = a.catalogo_id ?? `__free_${r.id}_${Math.random()}`;
+        latestByCat.set(key, Number(a.percentual_avanco ?? 0));
+      }
+      const vals = Array.from(latestByCat.values());
+      const avg = vals.length ? vals.reduce((s, v) => s + v, 0) / vals.length : 0;
+      return { data: r.data_rdo, avanco: Math.round(avg * 10) / 10 };
     });
   }, [aprovados]);
 
   const equipe = useMemo(() => {
     const map = new Map<string, number>();
-    for (const r of rdos) {
+    for (const r of aprovados) {
       for (const e of r.equipe ?? []) {
         const h = Number(e.horas_trabalhadas ?? 0) + Number(e.horas_extras ?? 0);
         map.set(e.prestador_id, (map.get(e.prestador_id) ?? 0) + h);
       }
     }
     return map;
-  }, [rdos]);
+  }, [aprovados]);
 
   const { data: equipeNomes = {} } = useQuery({
     queryKey: ['obra-equipe-nomes', id, Array.from(equipe.keys()).sort().join(',')],
