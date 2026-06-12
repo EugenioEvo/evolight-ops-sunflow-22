@@ -75,19 +75,15 @@ export default function ObraDetail({ mode = 'staff' }: Props) {
   const aprovados = useMemo(() => rdos.filter((r) => r.status === 'aprovado'), [rdos]);
 
   const avancoSerie = useMemo(() => {
-    // Para cada RDO aprovado (ordenado por data), pega o último percentual_avanco
-    // por catalogo_id conhecido até aquela data e tira a média. Assim a curva
-    // realmente acumula o progresso ao longo do tempo.
+    // Para cada RDO aprovado: média do percentual_avanco das atividades daquele dia.
+    // A série acumula somando as médias diárias dos RDOs aprovados (cap em 100%).
     const sorted = [...aprovados].sort((a, b) => a.data_rdo.localeCompare(b.data_rdo));
-    const latestByCat = new Map<string, number>();
+    let acc = 0;
     return sorted.map((r) => {
-      for (const a of r.atividades ?? []) {
-        const key = a.catalogo_id ?? `__free_${r.id}_${Math.random()}`;
-        latestByCat.set(key, Number(a.percentual_avanco ?? 0));
-      }
-      const vals = Array.from(latestByCat.values());
-      const avg = vals.length ? vals.reduce((s, v) => s + v, 0) / vals.length : 0;
-      return { data: r.data_rdo, avanco: Math.round(avg * 10) / 10 };
+      const vals = (r.atividades ?? []).map((a: any) => Number(a.percentual_avanco ?? 0));
+      const avgDia = vals.length ? vals.reduce((s, v) => s + v, 0) / vals.length : 0;
+      acc = Math.min(100, acc + avgDia);
+      return { data: r.data_rdo, avanco: Math.round(acc * 10) / 10 };
     });
   }, [aprovados]);
 
