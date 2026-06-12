@@ -243,53 +243,103 @@ export const generateRDOPDF = async (data: RDOPDFData): Promise<Blob> => {
   }
 
   // ===== 6. EVIDÊNCIAS =====
+  // Grid adaptativo por orientação: pré-lê dimensões, agrupa fotos consecutivas
+  // com mesma orientação e escolhe nº de colunas pela largura mínima legível.
   if (data.evidencias.length > 0) {
     sectionHeader('6. EVIDÊNCIAS FOTOGRÁFICAS');
-    const cellW = (contentWidth - 6) / 2;
-    const cellH = 50;
-    let col = 0;
-    for (const ev of data.evidencias) {
-      ensureSpace(cellH + 12);
-      const dataUrl = await fetchAsDataURL(ev.url);
-      const x = margin + col * (cellW + 6);
+
+    type Loaded = {
+      ev: (typeof data.evidencias)[number];
+      dataUrl: string | null;
+      w: number;
+      h: number;
+      orient: 'portrait' | 'landscape' | 'square';
+    };
+
+    const loaded: Loaded[] = await Promise.all(
+      data.evidencias.map(async (ev) => {
+        const dataUrl = await fetchAsDataURL(ev.url);
+        const size = dataUrl ? await getImageSize(dataUrl) : null;
+        const w = size?.w ?? 4;
+        const h = size?.h ?? 3;
+        const r = w / h;
+        const orient: Loaded['orient'] = r < 0.95 ? 'portrait' : r > 1.05 ? 'landscape' : 'square';
+        return { ev, dataUrl, w, h, orient };
+      }),
+    );
+
+    const TARGETS: Record<Loaded['orient'], { minW: number; maxCols: number; aspectCap: number }> = {
+      portrait: { minW: 50, maxCols: 3, aspectCap: 1.35 }, // altura ≤ 1.35×largura
+      landscape: { minW: 75, maxCols: 2, aspectCap: 0.85 },
+      square: { minW: 60, maxCols: 3, aspectCap: 1.0 },
+    };
+    const GAP = 4;
+    const CAPTION_H = 8;
+    const ROW_GAP = 4;
+
+    // Agrupa preservando ordem.
+    const groups: Loaded[][] = [];
+    for (const item of loaded) {
+      const last = groups[groups.length - 1];
+      if (last && last[0].orient === item.orient) last.push(item);
+      else groups.push([item]);
+    }
+
+    const drawCell = (item: Loaded, x: number, y: number, cellW: number, cellH: number) => {
       try {
-        if (dataUrl) {
-          // Mantém proporção: fit dentro da caixa cellW x cellH e centraliza.
-          const size = await getImageSize(dataUrl);
-          let drawW = cellW;
-          let drawH = cellH;
-          let offX = 0;
-          let offY = 0;
-          if (size && size.w > 0 && size.h > 0) {
-            const ratio = Math.min(cellW / size.w, cellH / size.h);
-            drawW = size.w * ratio;
-            drawH = size.h * ratio;
-            offX = (cellW - drawW) / 2;
-            offY = (cellH - drawH) / 2;
-          }
-          doc.addImage(dataUrl, 'JPEG', x + offX, yPos + offY, drawW, drawH);
+        if (item.dataUrl) {
+          const r = Math.min(cellW / item.w, cellH / item.h);
+          const drawW = item.w * r;
+          const drawH = item.h * r;
+          doc.addImage(
+            item.dataUrl,
+            'JPEG',
+            x + (cellW - drawW) / 2,
+            y + (cellH - drawH) / 2,
+            drawW,
+            drawH,
+          );
         } else {
           doc.setDrawColor(...MUTED);
-          doc.rect(x, yPos, cellW, cellH);
+          doc.rect(x, y, cellW, cellH);
           doc.setFontSize(8);
           doc.setTextColor(...MUTED);
-          doc.text('(imagem indisponível)', x + 2, yPos + cellH / 2);
+          doc.text('(imagem indisponível)', x + 2, y + cellH / 2);
         }
       } catch {
         doc.setDrawColor(...MUTED);
-        doc.rect(x, yPos, cellW, cellH);
+        doc.rect(x, y, cellW, cellH);
       }
       doc.setFontSize(7);
       doc.setTextColor(...MUTED);
-      const cap = `[${ev.tipo}]${ev.descricao ? ` ${ev.descricao}` : ''}`;
-      doc.text(doc.splitTextToSize(cap, cellW), x, yPos + cellH + 4);
-      col++;
-      if (col >= 2) {
-        col = 0;
-        yPos += cellH + 12;
+      const cap = `[${item.ev.tipo}]${item.ev.descricao ? ` ${item.ev.descricao}` : ''}`;
+      doc.text(doc.splitTextToSize(cap, cellW), x, y + cellH + 4);
+    };
+
+    for (const group of groups) {
+      const cfg = TARGETS[group[0].orient];
+      const cols = Math.max(
+        1,
+        Math.min(cfg.maxCols, Math.floor((contentWidth + GAP) / (cfg.minW + GAP))),
+      );
+      const cellW = (contentWidth - GAP * (cols - 1)) / cols;
+      const maxCellH = cellW * cfg.aspectCap;
+
+      for (let i = 0; i < group.length; i += cols) {
+        const row = group.slice(i, i + cols);
+        const rowH = row.reduce((acc, it) => {
+          const fitH = Math.min(maxCellH, (it.h / it.w) * cellW);
+          return Math.max(acc, fitH);
+        }, 0);
+
+        ensureSpace(rowH + CAPTION_H + ROW_GAP);
+        row.forEach((it, idx) => {
+          const x = margin + idx * (cellW + GAP);
+          drawCell(it, x, yPos, cellW, rowH);
+        });
+        yPos += rowH + CAPTION_H + ROW_GAP;
       }
     }
-    if (col > 0) yPos += cellH + 12;
   }
 
   // ===== 7. ASSINATURAS =====
