@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -41,7 +41,8 @@ function formatDateOnlyBR(value?: string | null): string {
 export default function ObraDetail({ mode = 'staff' }: Props) {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [photoUrls, setPhotoUrls] = useState<{ url: string; descricao?: string | null; data?: string }[]>([]);
+  // photoUrls é derivado da query abaixo (não usa useState para evitar
+  // perder as fotos quando o React Query devolve cache sem re-executar o queryFn).
 
   const { data: obra, isLoading: loadingObra } = useQuery({
     queryKey: ['obra', id],
@@ -136,7 +137,7 @@ export default function ObraDetail({ mode = 'staff' }: Props) {
   });
 
   // Resolve photo signed URLs (lazy, single effect via query)
-  useQuery({
+  const { data: photoUrls = [] } = useQuery({
     queryKey: ['obra-photos', id, rdos.length],
     enabled: rdos.length > 0,
     queryFn: async () => {
@@ -153,9 +154,7 @@ export default function ObraDetail({ mode = 'staff' }: Props) {
         const url = await signObjectUrl(i.path);
         return url ? { url, descricao: i.descricao, data: i.data } : null;
       }));
-      const ok = resolved.filter(Boolean) as { url: string; descricao?: string | null; data?: string }[];
-      setPhotoUrls(ok);
-      return ok;
+      return resolved.filter(Boolean) as { url: string; descricao?: string | null; data?: string }[];
     },
     staleTime: 10 * 60_000,
   });
