@@ -137,7 +137,7 @@ export default function ObraDetail({ mode = 'staff' }: Props) {
   });
 
   // Resolve photo signed URLs (lazy, single effect via query)
-  useQuery({
+  const { data: photoUrls = [] } = useQuery({
     queryKey: ['obra-photos', id, rdos.length],
     enabled: rdos.length > 0,
     queryFn: async () => {
@@ -154,9 +154,7 @@ export default function ObraDetail({ mode = 'staff' }: Props) {
         const url = await signObjectUrl(i.path);
         return url ? { url, descricao: i.descricao, data: i.data } : null;
       }));
-      const ok = resolved.filter(Boolean) as { url: string; descricao?: string | null; data?: string }[];
-      setPhotoUrls(ok);
-      return ok;
+      return resolved.filter(Boolean) as { url: string; descricao?: string | null; data?: string }[];
     },
     staleTime: 10 * 60_000,
   });
