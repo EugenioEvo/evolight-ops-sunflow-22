@@ -220,7 +220,11 @@ export default function RDOWizard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rdoQ.data?.status]);
 
-  const readOnly = !isStaff && status !== 'rascunho' && status !== 'rejeitado';
+  const readOnly =
+    status !== 'rascunho' &&
+    status !== 'rejeitado' &&
+    !(isAdmEng && editMode);
+
 
   const headerPatch = useMemo(() => ({
     obra_id: obraId,
