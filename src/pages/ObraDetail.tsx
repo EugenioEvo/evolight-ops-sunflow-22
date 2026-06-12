@@ -31,6 +31,13 @@ async function signObjectUrl(path: string): Promise<string | null> {
   return null;
 }
 
+function formatDateOnlyBR(value?: string | null): string {
+  if (!value) return '—';
+  const isoDate = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (isoDate) return `${isoDate[3]}/${isoDate[2]}/${isoDate[1]}`;
+  return new Date(value).toLocaleDateString('pt-BR');
+}
+
 export default function ObraDetail({ mode = 'staff' }: Props) {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -288,7 +295,7 @@ export default function ObraDetail({ mode = 'staff' }: Props) {
                   <div className="absolute -left-1.5 mt-1.5 w-3 h-3 rounded-full bg-primary" />
                   <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:justify-between">
                     <div>
-                      <p className="font-medium">RDO {r.numero_rdo} — {new Date(r.data_rdo).toLocaleDateString('pt-BR')}</p>
+                      <p className="font-medium">RDO {r.numero_rdo} — {formatDateOnlyBR(r.data_rdo)}</p>
                       <p className="text-xs text-muted-foreground">{(r.atividades ?? []).length} atividade(s) · {(r.equipe ?? []).length} pessoa(s)</p>
                     </div>
                     <div className="flex items-center gap-2">
@@ -318,7 +325,7 @@ export default function ObraDetail({ mode = 'staff' }: Props) {
                     <img src={p.url} loading="lazy" alt={p.descricao ?? 'Foto da obra'} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
                   </div>
                   {(p.descricao || p.data) && (
-                    <p className="text-xs text-muted-foreground mt-1 truncate">{p.descricao ?? new Date(p.data!).toLocaleDateString('pt-BR')}</p>
+                    <p className="text-xs text-muted-foreground mt-1 truncate">{p.descricao ?? formatDateOnlyBR(p.data)}</p>
                   )}
                 </a>
               ))}
