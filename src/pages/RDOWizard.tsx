@@ -563,8 +563,8 @@ export default function RDOWizard() {
                 placeholder="HH:MM"
                 pattern="^([01]\d|2[0-3]):[0-5]\d$"
                 maxLength={5}
-                value={horarioInicio}
                 onChange={(e) => setHorarioInicio(maskTime(e.target.value))}
+                onBlur={(e) => { const n = normalizeTime(e.target.value); if (n) setHorarioInicio(n); }}
                 disabled={readOnly}
               />
             </div>
