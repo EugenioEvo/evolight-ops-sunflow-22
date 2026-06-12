@@ -56,6 +56,14 @@ const fetchAsDataURL = async (url: string): Promise<string | null> => {
   }
 };
 
+const getImageSize = (dataUrl: string): Promise<{ w: number; h: number } | null> =>
+  new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve({ w: img.naturalWidth || img.width, h: img.naturalHeight || img.height });
+    img.onerror = () => resolve(null);
+    img.src = dataUrl;
+  });
+
 export const generateRDOPDF = async (data: RDOPDFData): Promise<Blob> => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
