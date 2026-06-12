@@ -771,11 +771,12 @@ export default function RDOWizard() {
             ))}
         </CardContent>
       </Card>
-      </>
+      </div>
       )}
 
       {step === 3 && (
-      <>
+      <div key="rdo-step-3" className="space-y-6 contents">
+
       {/* Ocorrências */}
       <Card>
         <CardHeader><CardTitle className="text-base">Observações & ocorrências</CardTitle></CardHeader>
