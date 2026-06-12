@@ -820,17 +820,17 @@ export default function RDOWizard() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <label className="cursor-pointer inline-flex items-center text-sm text-primary px-2 py-1 rounded border border-input hover:bg-accent">
                         <input type="file" accept="image/*" capture="environment" className="hidden"
-                          onChange={(e) => { handleUploadEvidencias(e.target.files, tipo); e.currentTarget.value = ''; }} />
+                          onChange={(e) => { const fs = e.target.files ? Array.from(e.target.files) : []; e.currentTarget.value = ''; handleUploadEvidencias(fs, tipo); }} />
                         <Camera className="h-4 w-4 mr-1" /> Foto
                       </label>
                       <label className="cursor-pointer inline-flex items-center text-sm text-primary px-2 py-1 rounded border border-input hover:bg-accent">
                         <input type="file" accept="video/*" capture="environment" className="hidden"
-                          onChange={(e) => { handleUploadEvidencias(e.target.files, tipo); e.currentTarget.value = ''; }} />
+                          onChange={(e) => { const fs = e.target.files ? Array.from(e.target.files) : []; e.currentTarget.value = ''; handleUploadEvidencias(fs, tipo); }} />
                         <Camera className="h-4 w-4 mr-1" /> Vídeo
                       </label>
                       <label className="cursor-pointer inline-flex items-center text-sm text-primary px-2 py-1 rounded border border-input hover:bg-accent">
                         <input type="file" accept="image/*,video/*" multiple className="hidden"
-                          onChange={(e) => { handleUploadEvidencias(e.target.files, tipo); e.currentTarget.value = ''; }} />
+                          onChange={(e) => { const fs = e.target.files ? Array.from(e.target.files) : []; e.currentTarget.value = ''; handleUploadEvidencias(fs, tipo); }} />
                         <Upload className="h-4 w-4 mr-1" /> Upload
                       </label>
                     </div>
