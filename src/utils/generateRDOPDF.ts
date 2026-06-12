@@ -335,7 +335,7 @@ export const generateRDOPDF = async (data: RDOPDFData): Promise<Blob> => {
         ensureSpace(rowH + CAPTION_H + ROW_GAP);
         row.forEach((it, idx) => {
           const x = margin + idx * (cellW + GAP);
-          drawCell(it, yPos === yPos ? x : x, yPos, cellW, rowH);
+          drawCell(it, x, yPos, cellW, rowH);
         });
         yPos += rowH + CAPTION_H + ROW_GAP;
       }
