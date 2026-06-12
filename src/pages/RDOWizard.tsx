@@ -62,8 +62,12 @@ export default function RDOWizard() {
   const navigate = useNavigate();
   const { profile } = useAuth();
   const qc = useQueryClient();
+  const [searchParams] = useSearchParams();
 
   const isStaff = profile?.roles?.some((r) => STAFF_ROLES.includes(r)) ?? false;
+  const isAdmEng = profile?.roles?.some((r) => ADM_ENG_ROLES.includes(r)) ?? false;
+  const editMode = searchParams.get('edit') === '1';
+
 
   const [rdoId, setRdoId] = useState<string | null>(isNew ? null : routeId!);
   const [saving, setSaving] = useState(false);
