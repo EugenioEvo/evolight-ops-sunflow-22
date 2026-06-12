@@ -394,7 +394,11 @@ export default function RDOWizard() {
   }
 
   return (
-    <div className="container mx-auto p-4 sm:p-6 space-y-6 max-w-5xl pb-32">
+    <div
+      className="container mx-auto p-4 sm:p-6 space-y-6 max-w-5xl pb-32 notranslate"
+      translate="no"
+    >
+
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="sm" onClick={() => navigate('/rdo')}>
           <ArrowLeft className="h-4 w-4 mr-2" /> Voltar
@@ -458,7 +462,8 @@ export default function RDOWizard() {
       </div>
 
       {step === 1 && (
-      <>
+      <div key="rdo-step-1" className="space-y-6 contents">
+
 
       {blockingExistingRdo && (
         <Card className="border-amber-500/60 bg-amber-500/10">
@@ -600,11 +605,12 @@ export default function RDOWizard() {
           </div>
         </CardContent>
       </Card>
-      </>
+      </div>
       )}
 
       {step === 2 && (
-      <>
+      <div key="rdo-step-2" className="space-y-6 contents">
+
       {/* Equipe */}
       <Card>
         <CardHeader>
@@ -765,11 +771,12 @@ export default function RDOWizard() {
             ))}
         </CardContent>
       </Card>
-      </>
+      </div>
       )}
 
       {step === 3 && (
-      <>
+      <div key="rdo-step-3" className="space-y-6 contents">
+
       {/* Ocorrências */}
       <Card>
         <CardHeader><CardTitle className="text-base">Observações & ocorrências</CardTitle></CardHeader>
@@ -863,7 +870,7 @@ export default function RDOWizard() {
           </CardContent>
         </Card>
       )}
-      </>
+      </div>
       )}
 
       <Separator />
