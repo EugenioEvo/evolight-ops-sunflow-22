@@ -698,11 +698,12 @@ export default function RDOWizard() {
                       value={a.catalogo_id ?? '__livre'}
                       onValueChange={(v) => {
                         const n = [...atividades];
-                        if (v === '__livre') n[i] = { ...a, catalogo_id: null };
-                        else {
-                          const item = (catalogoQ.data ?? []).find((c) => c.id === v);
-                          n[i] = { ...a, catalogo_id: v, descricao_livre: null, unidade: item?.unidade ?? a.unidade };
-                        }
+                        const newCat = v === '__livre' ? null : v;
+                        const item = newCat ? (catalogoQ.data ?? []).find((c) => c.id === newCat) : null;
+                        const base = newCat
+                          ? { ...a, catalogo_id: newCat, descricao_livre: null, unidade: item?.unidade ?? a.unidade }
+                          : { ...a, catalogo_id: null };
+                        n[i] = { ...base, percentual_avanco: computeAvanco(newCat, a.quantidade) };
                         setAtividades(n);
                       }}
                       disabled={readOnly}
