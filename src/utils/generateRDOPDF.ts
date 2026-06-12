@@ -171,12 +171,10 @@ export const generateRDOPDF = async (data: RDOPDFData): Promise<Blob> => {
   } else {
     autoTable(doc, {
       startY: yPos,
-      head: [['Nome', 'Função', 'Horas', 'H. Extras']],
+      head: [['Nome', 'Horas']],
       body: data.equipe.map((e) => [
         e.nome,
-        e.funcao ?? '-',
         String(e.horas_trabalhadas ?? 0),
-        String(e.horas_extras ?? 0),
       ]),
       theme: 'striped',
       styles: { fontSize: 9 },
