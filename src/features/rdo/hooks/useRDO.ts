@@ -44,5 +44,15 @@ export function useRDOMutations() {
     onError: (e: any) => toast.error(e?.message ?? 'Falha ao rejeitar RDO'),
   });
 
-  return { remove, approve, reject };
+  const reopen = useMutation({
+    mutationFn: (id: string) => rdoService.reopen(id),
+    onSuccess: () => {
+      toast.success('RDO retornado para rascunho. O responsável pode editar.');
+      qc.invalidateQueries({ queryKey: KEY });
+    },
+    onError: (e: any) => toast.error(e?.message ?? 'Falha ao reabrir RDO'),
+  });
+
+  return { remove, approve, reject, reopen };
 }
+
