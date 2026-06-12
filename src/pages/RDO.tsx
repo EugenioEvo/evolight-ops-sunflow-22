@@ -188,6 +188,30 @@ export default function RDO() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog open={!!toReopen} onOpenChange={(open) => !open && setToReopen(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Retornar RDO para rascunho?</AlertDialogTitle>
+            <AlertDialogDescription>
+              O RDO voltará ao status <strong>rascunho</strong>, permitindo que o responsável edite e
+              reenvie para aprovação. A aprovação atual (aprovador, data e observações) será descartada.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (toReopen) reopen.mutate(toReopen);
+                setToReopen(null);
+              }}
+            >
+              Retornar para rascunho
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
+
   );
 }
