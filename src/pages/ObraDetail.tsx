@@ -74,18 +74,35 @@ export default function ObraDetail({ mode = 'staff' }: Props) {
 
   const aprovados = useMemo(() => rdos.filter((r) => r.status === 'aprovado'), [rdos]);
 
+  const { data: metas = {} } = useQuery({
+    queryKey: ['obra-metas', id],
+    enabled: !!id,
+    queryFn: async () => {
+      const { data } = await supabase.from('obra_metas_catalogo').select('catalogo_id, quantidade_meta').eq('obra_id', id!);
+      const map: Record<string, number> = {};
+      (data ?? []).forEach((m: any) => { if (m.catalogo_id) map[m.catalogo_id] = Number(m.quantidade_meta ?? 0); });
+      return map;
+    },
+    staleTime: 5 * 60_000,
+  });
+
   const avancoSerie = useMemo(() => {
-    // Para cada RDO aprovado: média do percentual_avanco das atividades daquele dia.
+    // Para cada RDO aprovado: média do % de avanço das atividades daquele dia
+    // (fallback: quantidade / meta * 100 quando percentual_avanco vier nulo).
     // A série acumula somando as médias diárias dos RDOs aprovados (cap em 100%).
     const sorted = [...aprovados].sort((a, b) => a.data_rdo.localeCompare(b.data_rdo));
     let acc = 0;
     return sorted.map((r) => {
-      const vals = (r.atividades ?? []).map((a: any) => Number(a.percentual_avanco ?? 0));
+      const vals = (r.atividades ?? []).map((a: any) => {
+        if (a.percentual_avanco != null) return Number(a.percentual_avanco);
+        const meta = a.catalogo_id ? metas[a.catalogo_id] : 0;
+        return meta > 0 ? (Number(a.quantidade ?? 0) / meta) * 100 : 0;
+      });
       const avgDia = vals.length ? vals.reduce((s, v) => s + v, 0) / vals.length : 0;
       acc = Math.min(100, acc + avgDia);
-      return { data: r.data_rdo, avanco: Math.round(acc * 10) / 10 };
+      return { data: r.data_rdo, avanco: Math.round(acc * 100) / 100 };
     });
-  }, [aprovados]);
+  }, [aprovados, metas]);
 
   const equipe = useMemo(() => {
     const map = new Map<string, number>();
