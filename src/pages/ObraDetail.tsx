@@ -41,7 +41,8 @@ function formatDateOnlyBR(value?: string | null): string {
 export default function ObraDetail({ mode = 'staff' }: Props) {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [photoUrls, setPhotoUrls] = useState<{ url: string; descricao?: string | null; data?: string }[]>([]);
+  // photoUrls é derivado da query abaixo (não usa useState para evitar
+  // perder as fotos quando o React Query devolve cache sem re-executar o queryFn).
 
   const { data: obra, isLoading: loadingObra } = useQuery({
     queryKey: ['obra', id],
