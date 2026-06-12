@@ -150,7 +150,7 @@ export default function RDOWizard() {
   const catalogoQ = useQuery({ queryKey: ['rdo-catalogo'], queryFn: () => rdoService.listCatalogo() });
   const eletroQ = useQuery({ queryKey: ['rdo-eletro'], queryFn: () => rdoService.listEletromecanicos() });
   const metasQ = useQuery({
-    queryKey: ['obra-metas', obraId],
+    queryKey: ['obra-metas-list', obraId],
     queryFn: async () => {
       if (!obraId) return [] as { catalogo_id: string; quantidade_meta: number }[];
       const { supabase } = await import('@/integrations/supabase/client');
