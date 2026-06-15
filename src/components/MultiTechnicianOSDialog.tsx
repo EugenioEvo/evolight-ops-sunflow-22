@@ -211,10 +211,10 @@ export const MultiTechnicianOSDialog = ({
   );
 
   const handleTogglePrestador = (prestadorId: string, checked: boolean) => {
+    // Conflito de agenda agora é apenas alerta — não bloqueia a seleção.
     const availability = availabilityMap.get(prestadorId);
     if (availability && !availability.available && checked) {
-      toast.error("Este técnico possui conflito de agenda no horário selecionado");
-      return;
+      toast.warning("Atenção: este técnico já possui agendamento no horário selecionado");
     }
     setSelectedPrestadores(prev =>
       checked ? [...prev, prestadorId] : prev.filter(id => id !== prestadorId)
@@ -281,10 +281,7 @@ export const MultiTechnicianOSDialog = ({
       if (!standaloneData.cliente_id) return "Selecione um cliente";
       if (!standaloneData.endereco_servico.trim()) return "Informe o endereço do serviço";
       if (!standaloneData.data_servico) return "Informe a data do serviço";
-      // Trava: data não pode ser anterior a hoje
-      const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
-      const ds = new Date(standaloneData.data_servico + 'T00:00:00');
-      if (ds < hoje) return "A data do serviço não pode ser anterior a hoje";
+      // Datas retroativas são permitidas para staff (registros históricos).
     }
     return null;
   };
@@ -679,7 +676,7 @@ export const MultiTechnicianOSDialog = ({
                       id={`tech-${prestador.id}`}
                       checked={isSelected}
                       onCheckedChange={(checked) => handleTogglePrestador(prestador.id, checked as boolean)}
-                      disabled={(!isSelected && (!!hasConflict || !hasEmail))}
+                      disabled={(!isSelected && !hasEmail)}
                     />
                     <label htmlFor={`tech-${prestador.id}`} className="flex-1 text-sm font-medium cursor-pointer flex items-center gap-2">
                       <span className={!hasEmail ? 'text-destructive' : ''}>{prestador.nome}</span>
