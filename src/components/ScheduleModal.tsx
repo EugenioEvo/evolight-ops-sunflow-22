@@ -126,10 +126,7 @@ export const ScheduleModal = ({
 
   const handleSchedule = async () => {
     if (!selectedTecnico || !selectedDate) return;
-
-    if (conflicts.length > 0) {
-      return; // Não permite agendar se houver conflitos
-    }
+    // Conflitos viram apenas alerta — não bloqueiam o agendamento.
 
     const horaFim = calcularHoraFim(horaInicio, duracaoHoras);
     const duracaoMin = parseFloat(duracaoHoras) * 60;
@@ -204,7 +201,7 @@ export const ScheduleModal = ({
               selected={selectedDate}
               onSelect={setSelectedDate}
               locale={ptBR}
-              disabled={(date) => date < new Date()}
+              // Datas retroativas permitidas (registros históricos).
               className="rounded-md border"
             />
           </div>
@@ -294,9 +291,9 @@ export const ScheduleModal = ({
           </Button>
           <Button 
             onClick={handleSchedule} 
-            disabled={!selectedTecnico || !selectedDate || loading || conflicts.length > 0}
+            disabled={!selectedTecnico || !selectedDate || loading}
           >
-            {loading ? 'Agendando...' : 'Agendar'}
+            {loading ? 'Agendando...' : conflicts.length > 0 ? 'Agendar mesmo assim' : 'Agendar'}
           </Button>
         </div>
       </DialogContent>

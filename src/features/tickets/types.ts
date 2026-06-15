@@ -15,21 +15,9 @@ export const ticketSchema = z
     observacoes: z.string().optional(),
     anexos: z.array(z.string()).optional(),
   })
-  // Trava: data_servico não pode ser anterior a hoje (em edição também — usa a própria data já definida)
+  // Datas retroativas são permitidas — UI exibe alerta visual mas não bloqueia.
   .superRefine((val, ctx) => {
-    if (val.data_servico) {
-      const hoje = new Date();
-      hoje.setHours(0, 0, 0, 0);
-      const ds = new Date(val.data_servico + 'T00:00:00');
-      if (ds < hoje) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ['data_servico'],
-          message: 'A data de serviço não pode ser anterior a hoje',
-        });
-      }
-    }
-    // Trava: data_vencimento >= data_servico
+    // Trava mantida: data_vencimento >= data_servico (consistência lógica)
     if (val.data_servico && val.data_vencimento) {
       const ds = new Date(val.data_servico + 'T00:00:00');
       const dv = new Date(val.data_vencimento + 'T00:00:00');
