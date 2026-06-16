@@ -86,22 +86,19 @@ export const ScheduleModal = ({
     if (data) setTecnicos(data as any);
   };
 
-  const calcularHoraFim = (inicio: string, duracaoH: string) => {
-    const [h, m] = inicio.split(':').map(Number);
-    const duracao = parseFloat(duracaoH);
-    const totalMinutos = h * 60 + m + duracao * 60;
-    const novaHora = Math.floor(totalMinutos / 60) % 24;
-    const novoMinuto = Math.round(totalMinutos % 60);
-    return `${String(novaHora).padStart(2, '0')}:${String(novoMinuto).padStart(2, '0')}`;
+  const toISODate = (d: Date): string => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
   };
 
-  // Data/hora de fim (considerando atravessar dias)
-  const endDateTime = useMemo(() => {
+  // Cálculo respeitando janela útil (08-18, dias úteis) — mesma regra das OS
+  const schedWindow = useMemo(() => {
     if (!selectedDate) return null;
-    const [h, m] = horaInicio.split(':').map(Number);
-    const start = new Date(selectedDate);
-    start.setHours(h, m, 0, 0);
-    return addMinutes(start, parseFloat(duracaoHoras) * 60);
+    const dur = parseFloat(duracaoHoras);
+    if (!dur || dur <= 0) return null;
+    return computeScheduleEnd(toISODate(selectedDate), horaInicio, Math.round(dur * 60));
   }, [selectedDate, horaInicio, duracaoHoras]);
 
   const startDateTime = useMemo(() => {
@@ -111,6 +108,13 @@ export const ScheduleModal = ({
     d.setHours(h, m, 0, 0);
     return d;
   }, [selectedDate, horaInicio]);
+
+  const endDateTime = useMemo(() => {
+    if (!schedWindow) return null;
+    const [y, mo, d] = schedWindow.endDate.split('-').map(Number);
+    const [h, m] = schedWindow.endTime.split(':').map(Number);
+    return new Date(y, mo - 1, d, h, m, 0, 0);
+  }, [schedWindow]);
 
   const diasAtravessados = startDateTime && endDateTime
     ? differenceInCalendarDays(endDateTime, startDateTime)
