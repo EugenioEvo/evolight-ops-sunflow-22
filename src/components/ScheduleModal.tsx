@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -8,7 +8,7 @@ import { useSchedule } from '@/hooks/useSchedule';
 import { useConflictCheck } from '@/hooks/useConflictCheck';
 import { ConflictWarning } from '@/components/ConflictWarning';
 import { supabase } from '@/integrations/supabase/client';
-import { format } from 'date-fns';
+import { format, addMinutes, differenceInCalendarDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { CalendarIcon, Clock, AlertCircle, Mail } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -32,6 +32,13 @@ interface Tecnico {
   };
 }
 
+// Normaliza "HH:mm" ou "HH:mm:ss" -> "HH:mm"
+const normalizeHora = (h?: string) => {
+  if (!h) return '08:00';
+  const parts = h.split(':');
+  return `${parts[0].padStart(2, '0')}:${(parts[1] || '00').padStart(2, '0')}`;
+};
+
 export const ScheduleModal = ({ 
   open, 
   onClose, 
@@ -45,7 +52,7 @@ export const ScheduleModal = ({
   const [tecnicos, setTecnicos] = useState<Tecnico[]>([]);
   const [selectedTecnico, setSelectedTecnico] = useState<string>(currentTecnicoId || '');
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(currentData);
-  const [horaInicio, setHoraInicio] = useState(currentHoraInicio || '08:00');
+  const [horaInicio, setHoraInicio] = useState(normalizeHora(currentHoraInicio));
   const [duracaoHoras, setDuracaoHoras] = useState(currentDuracao ? String(currentDuracao / 60) : '2');
   const [conflicts, setConflicts] = useState<any[]>([]);
   const [existingSchedules, setExistingSchedules] = useState<any[]>([]);
@@ -56,7 +63,7 @@ export const ScheduleModal = ({
   useEffect(() => {
     if (currentTecnicoId) setSelectedTecnico(currentTecnicoId);
     if (currentData) setSelectedDate(currentData);
-    if (currentHoraInicio) setHoraInicio(currentHoraInicio);
+    setHoraInicio(normalizeHora(currentHoraInicio));
     if (currentDuracao) setDuracaoHoras(String(currentDuracao / 60));
   }, [currentTecnicoId, currentData, currentHoraInicio, currentDuracao]);
 
@@ -81,10 +88,31 @@ export const ScheduleModal = ({
     const [h, m] = inicio.split(':').map(Number);
     const duracao = parseFloat(duracaoH);
     const totalMinutos = h * 60 + m + duracao * 60;
-    const novaHora = Math.floor(totalMinutos / 60);
-    const novoMinuto = totalMinutos % 60;
+    const novaHora = Math.floor(totalMinutos / 60) % 24;
+    const novoMinuto = Math.round(totalMinutos % 60);
     return `${String(novaHora).padStart(2, '0')}:${String(novoMinuto).padStart(2, '0')}`;
   };
+
+  // Data/hora de fim (considerando atravessar dias)
+  const endDateTime = useMemo(() => {
+    if (!selectedDate) return null;
+    const [h, m] = horaInicio.split(':').map(Number);
+    const start = new Date(selectedDate);
+    start.setHours(h, m, 0, 0);
+    return addMinutes(start, parseFloat(duracaoHoras) * 60);
+  }, [selectedDate, horaInicio, duracaoHoras]);
+
+  const startDateTime = useMemo(() => {
+    if (!selectedDate) return null;
+    const [h, m] = horaInicio.split(':').map(Number);
+    const d = new Date(selectedDate);
+    d.setHours(h, m, 0, 0);
+    return d;
+  }, [selectedDate, horaInicio]);
+
+  const diasAtravessados = startDateTime && endDateTime
+    ? differenceInCalendarDays(endDateTime, startDateTime)
+    : 0;
 
   // Verificar conflitos quando mudar técnico, data ou horário
   useEffect(() => {
@@ -146,16 +174,39 @@ export const ScheduleModal = ({
     }
   };
 
-  const horariosDisponiveis = Array.from({ length: 20 }, (_, i) => {
+  const horariosBase = Array.from({ length: 20 }, (_, i) => {
     const hora = 6 + i;
     return `${String(hora).padStart(2, '0')}:00`;
   });
+  // Garante que o horário atual (mesmo fora da grade padrão) apareça
+  const horariosDisponiveis = useMemo(() => {
+    const set = new Set(horariosBase);
+    if (horaInicio) set.add(horaInicio);
+    return Array.from(set).sort();
+  }, [horaInicio]);
 
-  const duracoes = ['0.5', '1', '1.5', '2', '3', '4', '6', '8'];
+  const duracoesBase = ['0.5', '1', '1.5', '2', '3', '4', '5', '6', '7', '8', '9', '10', '12'];
+  const duracoes = useMemo(() => {
+    const set = new Set(duracoesBase);
+    if (duracaoHoras) set.add(duracaoHoras);
+    return Array.from(set).sort((a, b) => parseFloat(a) - parseFloat(b));
+  }, [duracaoHoras]);
+
+  // Range visual no calendário quando atravessa dias
+  const rangeModifier = useMemo(() => {
+    if (!startDateTime || !endDateTime || diasAtravessados <= 0) return undefined;
+    const dias: Date[] = [];
+    for (let i = 0; i <= diasAtravessados; i++) {
+      const d = new Date(selectedDate!);
+      d.setDate(d.getDate() + i);
+      dias.push(d);
+    }
+    return dias;
+  }, [selectedDate, startDateTime, endDateTime, diasAtravessados]);
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Agendar Ordem de Serviço</DialogTitle>
           <DialogDescription>
@@ -196,14 +247,24 @@ export const ScheduleModal = ({
               <CalendarIcon className="h-4 w-4" />
               Data
             </Label>
-            <Calendar
-              mode="single"
-              selected={selectedDate}
-              onSelect={setSelectedDate}
-              locale={ptBR}
-              // Datas retroativas permitidas (registros históricos).
-              className="rounded-md border"
-            />
+            <div className="flex justify-center rounded-md border">
+              <Calendar
+                mode="single"
+                selected={selectedDate}
+                onSelect={setSelectedDate}
+                locale={ptBR}
+                modifiers={rangeModifier ? { intervalo: rangeModifier } : undefined}
+                modifiersClassNames={{
+                  intervalo: 'bg-primary/20 text-primary-foreground rounded-none',
+                }}
+                className="pointer-events-auto"
+              />
+            </div>
+            {diasAtravessados > 0 && (
+              <p className="text-xs text-muted-foreground">
+                Este agendamento se estende por {diasAtravessados + 1} dia(s).
+              </p>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -272,14 +333,20 @@ export const ScheduleModal = ({
             </div>
           )}
 
-          {selectedDate && (
+          {selectedDate && startDateTime && endDateTime && (
             <div className="rounded-lg bg-muted p-4">
               <p className="text-sm font-medium">Resumo do Agendamento</p>
               <p className="text-sm text-muted-foreground mt-1">
-                {format(selectedDate, "EEEE, dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                <span className="font-medium">Início:</span>{' '}
+                {format(startDateTime, "EEEE, dd 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}
               </p>
               <p className="text-sm text-muted-foreground">
-                {horaInicio} às {calcularHoraFim(horaInicio, duracaoHoras)} ({duracaoHoras}h)
+                <span className="font-medium">Fim:</span>{' '}
+                {format(endDateTime, "EEEE, dd 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}
+              </p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Duração total: {duracaoHoras}h
+                {diasAtravessados > 0 && ` · atravessa ${diasAtravessados} dia(s)`}
               </p>
             </div>
           )}
