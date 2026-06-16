@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { useSchedule } from '@/hooks/useSchedule';
@@ -286,19 +287,17 @@ export const ScheduleModal = ({
             </div>
 
             <div className="grid gap-2">
-              <Label>Duração (horas)</Label>
-              <Select value={duracaoHoras} onValueChange={setDuracaoHoras}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {duracoes.map(d => (
-                    <SelectItem key={d} value={d}>
-                      {d}h ({d === '0.5' ? '30min' : `${parseFloat(d) * 60}min`})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label htmlFor="duracao-horas">Duração (horas)</Label>
+              <Input
+                id="duracao-horas"
+                type="number"
+                inputMode="decimal"
+                min="0.25"
+                step="0.25"
+                value={duracaoHoras}
+                onChange={(e) => setDuracaoHoras(e.target.value)}
+                placeholder="Ex: 2.5"
+              />
             </div>
           </div>
 
