@@ -49,6 +49,13 @@ const getEmailStatus = (os: AgendaOrdemServico) => {
   return { variant: 'outline' as const, icon: Mail, text: 'Pendente', color: 'text-yellow-600 border-yellow-600' };
 };
 
+const parseDateOnlyAsLocal = (date?: string | null) => {
+  if (!date) return undefined;
+  const [year, month, day] = date.split('T')[0].split('-').map(Number);
+  if (!year || !month || !day) return undefined;
+  return new Date(year, month - 1, day);
+};
+
 const Agenda = () => {
   const { selectedDate, setSelectedDate, selectedTecnico, setSelectedTecnico, selectedAceite, setSelectedAceite, tecnicos, loading, osDoDia, diasComOS, loadOrdensServico } = useScheduleData();
   const { resendingInvite, cancelOS, cancelLoading, resendCalendarInvite, generatePresenceQR } = useScheduleActions(loadOrdensServico);
@@ -195,7 +202,7 @@ const Agenda = () => {
       {selectedOS && (
         <ScheduleModal open={scheduleModalOpen} onClose={() => { setScheduleModalOpen(false); setSelectedOS(null); }}
           osId={selectedOS.id} currentTecnicoId={selectedOS.tecnico_id}
-          currentData={selectedOS.data_programada ? new Date(selectedOS.data_programada) : undefined}
+          currentData={parseDateOnlyAsLocal(selectedOS.data_programada)}
           currentHoraInicio={selectedOS.hora_inicio || undefined}
           currentDuracao={selectedOS.duracao_estimada_min || undefined}
           onSuccess={loadOrdensServico}
