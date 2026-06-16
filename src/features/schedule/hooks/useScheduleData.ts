@@ -3,6 +3,7 @@ import { format } from "date-fns";
 import { useErrorHandler } from "@/hooks/useErrorHandler";
 import { useGlobalRealtime } from "@/hooks/useRealtimeProvider";
 import { useAgendaRealtime } from "@/hooks/useAgendaRealtime";
+import { computeScheduleEnd } from "@/utils/scheduleWindow";
 import { scheduleService } from "../services/scheduleService";
 import type { AgendaOrdemServico, Tecnico } from "../types";
 
@@ -47,16 +48,18 @@ export function useScheduleData() {
     }
     const startDate = new Date(startBase);
     startDate.setMinutes(startDate.getMinutes() + startMin);
-    const endDate = new Date(startDate);
-    endDate.setMinutes(endDate.getMinutes() + durationMin);
-    // If end falls exactly at midnight, treat as previous day
-    const endAdjusted = new Date(endDate);
-    if (endDate.getHours() === 0 && endDate.getMinutes() === 0 && durationMin > 0) {
-      endAdjusted.setMinutes(endAdjusted.getMinutes() - 1);
+
+    if (durationMin > 0) {
+      const window = computeScheduleEnd(startKey, os.hora_inicio || '08:00', durationMin);
+      return {
+        startKey,
+        endKey: window.endDate,
+      };
     }
+
     return {
       startKey: format(startDate, 'yyyy-MM-dd'),
-      endKey: format(endAdjusted, 'yyyy-MM-dd'),
+      endKey: startKey,
     };
   };
 

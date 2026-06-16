@@ -2,6 +2,14 @@ import type { AppSupabaseClient } from '@/shared/services/baseService';
 import { getClient } from '@/shared/services/baseService';
 import { addMonths, format, startOfMonth } from "date-fns";
 
+const MAX_LOOKBACK_DAYS_FOR_LONG_OS = 31;
+
+const addDays = (date: Date, days: number) => {
+  const d = new Date(date);
+  d.setDate(d.getDate() + days);
+  return d;
+};
+
 export const createScheduleService = (client?: AppSupabaseClient) => {
   const db = getClient(client);
 
@@ -9,12 +17,13 @@ export const createScheduleService = (client?: AppSupabaseClient) => {
     async loadOrdensServico(selectedDate: Date, selectedTecnico: string) {
       const start = startOfMonth(selectedDate);
       const nextMonthStart = addMonths(start, 1);
+      const lookbackStart = addDays(start, -MAX_LOOKBACK_DAYS_FOR_LONG_OS);
 
       let query = db
         .from('ordens_servico')
         .select(`*, tecnicos(id, profile_id, profiles(nome, email)), tickets(numero_ticket, titulo, endereco_servico, status, prioridade, clientes(empresa))`)
         .not('tecnico_id', 'is', null)
-        .gte('data_programada', `${format(start, 'yyyy-MM-dd')}T00:00:00+00:00`)
+        .gte('data_programada', `${format(lookbackStart, 'yyyy-MM-dd')}T00:00:00+00:00`)
         .lt('data_programada', `${format(nextMonthStart, 'yyyy-MM-dd')}T00:00:00+00:00`)
         .order('data_programada', { ascending: true })
         .order('hora_inicio', { ascending: true });
