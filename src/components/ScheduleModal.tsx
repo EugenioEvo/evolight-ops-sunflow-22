@@ -291,11 +291,11 @@ export const ScheduleModal = ({
               <Input
                 id="duracao-horas"
                 type="number"
-                inputMode="decimal"
-                min="0.25"
-                step="0.25"
+                min={0.5}
+                max={24}
+                step={0.5}
                 value={duracaoHoras}
-                onChange={(e) => setDuracaoHoras(e.target.value)}
+                onChange={(e) => setDuracaoHoras(e.target.value || '1')}
                 placeholder="Ex: 2.5"
               />
             </div>
