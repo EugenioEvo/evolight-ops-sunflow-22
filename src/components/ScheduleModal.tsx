@@ -184,16 +184,23 @@ export const ScheduleModal = ({
     }
   };
 
-  const horariosBase = Array.from({ length: 20 }, (_, i) => {
-    const hora = 6 + i;
-    return `${String(hora).padStart(2, '0')}:00`;
-  });
+  // Horários de 00:01 até 23:59 em múltiplos de 30 minutos (00:01, 00:30, 01:00, ..., 23:30, 23:59)
+  const horariosBase = useMemo(() => {
+    const arr: string[] = ['00:01'];
+    for (let mins = 30; mins <= 23 * 60 + 30; mins += 30) {
+      const h = Math.floor(mins / 60);
+      const m = mins % 60;
+      arr.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
+    }
+    arr.push('23:59');
+    return arr;
+  }, []);
   // Garante que o horário atual (mesmo fora da grade padrão) apareça
   const horariosDisponiveis = useMemo(() => {
     const set = new Set(horariosBase);
     if (horaInicio) set.add(horaInicio);
     return Array.from(set).sort();
-  }, [horaInicio]);
+  }, [horaInicio, horariosBase]);
 
   const duracoesBase = ['0.5', '1', '1.5', '2', '3', '4', '5', '6', '7', '8', '9', '10', '12'];
   const duracoes = useMemo(() => {
