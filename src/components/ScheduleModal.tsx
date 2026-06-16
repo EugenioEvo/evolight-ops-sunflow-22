@@ -9,10 +9,11 @@ import { useSchedule } from '@/hooks/useSchedule';
 import { useConflictCheck } from '@/hooks/useConflictCheck';
 import { ConflictWarning } from '@/components/ConflictWarning';
 import { supabase } from '@/integrations/supabase/client';
-import { format, addMinutes, differenceInCalendarDays } from 'date-fns';
+import { format, differenceInCalendarDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CalendarIcon, Clock, AlertCircle, Mail } from 'lucide-react';
+import { CalendarIcon, Clock, AlertCircle, Mail, AlertTriangle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { computeScheduleEnd, formatScheduledWindow } from '@/utils/scheduleWindow';
 
 interface ScheduleModalProps {
   open: boolean;
@@ -85,22 +86,19 @@ export const ScheduleModal = ({
     if (data) setTecnicos(data as any);
   };
 
-  const calcularHoraFim = (inicio: string, duracaoH: string) => {
-    const [h, m] = inicio.split(':').map(Number);
-    const duracao = parseFloat(duracaoH);
-    const totalMinutos = h * 60 + m + duracao * 60;
-    const novaHora = Math.floor(totalMinutos / 60) % 24;
-    const novoMinuto = Math.round(totalMinutos % 60);
-    return `${String(novaHora).padStart(2, '0')}:${String(novoMinuto).padStart(2, '0')}`;
+  const toISODate = (d: Date): string => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
   };
 
-  // Data/hora de fim (considerando atravessar dias)
-  const endDateTime = useMemo(() => {
+  // Cálculo respeitando janela útil (08-18, dias úteis) — mesma regra das OS
+  const schedWindow = useMemo(() => {
     if (!selectedDate) return null;
-    const [h, m] = horaInicio.split(':').map(Number);
-    const start = new Date(selectedDate);
-    start.setHours(h, m, 0, 0);
-    return addMinutes(start, parseFloat(duracaoHoras) * 60);
+    const dur = parseFloat(duracaoHoras);
+    if (!dur || dur <= 0) return null;
+    return computeScheduleEnd(toISODate(selectedDate), horaInicio, Math.round(dur * 60));
   }, [selectedDate, horaInicio, duracaoHoras]);
 
   const startDateTime = useMemo(() => {
@@ -110,6 +108,13 @@ export const ScheduleModal = ({
     d.setHours(h, m, 0, 0);
     return d;
   }, [selectedDate, horaInicio]);
+
+  const endDateTime = useMemo(() => {
+    if (!schedWindow) return null;
+    const [y, mo, d] = schedWindow.endDate.split('-').map(Number);
+    const [h, m] = schedWindow.endTime.split(':').map(Number);
+    return new Date(y, mo - 1, d, h, m, 0, 0);
+  }, [schedWindow]);
 
   const diasAtravessados = startDateTime && endDateTime
     ? differenceInCalendarDays(endDateTime, startDateTime)
@@ -123,7 +128,7 @@ export const ScheduleModal = ({
         return;
       }
 
-      const horaFim = calcularHoraFim(horaInicio, duracaoHoras);
+      const horaFim = schedWindow?.endTime || horaInicio;
       const result = await checkTechnicianConflict(
         selectedTecnico,
         selectedDate,
@@ -157,7 +162,7 @@ export const ScheduleModal = ({
     if (!selectedTecnico || !selectedDate) return;
     // Conflitos viram apenas alerta — não bloqueiam o agendamento.
 
-    const horaFim = calcularHoraFim(horaInicio, duracaoHoras);
+    const horaFim = schedWindow?.endTime || horaInicio;
     const duracaoMin = parseFloat(duracaoHoras) * 60;
 
     const success = await scheduleOS({
@@ -347,6 +352,24 @@ export const ScheduleModal = ({
                 Duração total: {duracaoHoras}h
                 {diasAtravessados > 0 && ` · atravessa ${diasAtravessados} dia(s)`}
               </p>
+              {schedWindow?.outOfWindowWarning && (
+                <p className="text-xs text-amber-600 dark:text-amber-400 mt-2 flex items-start gap-1">
+                  <AlertTriangle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+                  Hora de início fora da janela útil (08:00–18:00). O término foi calculado reprogramando para o próximo slot válido.
+                </p>
+              )}
+              {schedWindow?.crossedDay && (
+                <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 flex items-start gap-1">
+                  <AlertTriangle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+                  A duração ultrapassa a janela útil — o serviço se estende para o(s) próximo(s) dia(s) útil(eis).
+                </p>
+              )}
+              {schedWindow?.weekendWarning && (
+                <p className="text-xs text-destructive mt-1 flex items-start gap-1">
+                  <AlertTriangle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+                  A data selecionada cai em fim de semana. O serviço foi automaticamente movido para a próxima segunda-feira.
+                </p>
+              )}
             </div>
           )}
         </div>
