@@ -113,7 +113,7 @@ export const useSchedule = () => {
       }
 
       // ===== SALVAR AGENDAMENTO =====
-      const { error: updateError } = await supabase
+      const { data: updatedOS, error: updateError } = await supabase
         .from('ordens_servico')
         .update({
           data_programada: params.data.toISOString(),
@@ -127,9 +127,12 @@ export const useSchedule = () => {
           aceite_at: null,
           motivo_recusa: null,
         } as any)
-        .eq('id', params.osId);
+        .eq('id', params.osId)
+        .select('id')
+        .single();
 
       if (updateError) throw updateError;
+      if (!updatedOS?.id) throw new Error('Nenhuma OS foi atualizada. Verifique suas permissões e tente novamente.');
 
       // ===== ENVIAR CONVITE (SE TÉCNICO TEM EMAIL) =====
       if (hasEmail) {
