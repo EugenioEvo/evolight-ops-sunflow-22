@@ -128,7 +128,7 @@ export const ScheduleModal = ({
         return;
       }
 
-      const horaFim = calcularHoraFim(horaInicio, duracaoHoras);
+      const horaFim = schedWindow?.endTime || horaInicio;
       const result = await checkTechnicianConflict(
         selectedTecnico,
         selectedDate,
