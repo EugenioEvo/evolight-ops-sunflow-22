@@ -162,7 +162,7 @@ export const ScheduleModal = ({
     if (!selectedTecnico || !selectedDate) return;
     // Conflitos viram apenas alerta — não bloqueiam o agendamento.
 
-    const horaFim = calcularHoraFim(horaInicio, duracaoHoras);
+    const horaFim = schedWindow?.endTime || horaInicio;
     const duracaoMin = parseFloat(duracaoHoras) * 60;
 
     const success = await scheduleOS({
