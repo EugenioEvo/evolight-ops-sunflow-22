@@ -21,6 +21,45 @@ export function useScheduleData() {
     return value.slice(0, 10);
   };
 
+  // Parse "YYYY-MM-DD" into a local Date at midnight (no TZ shift)
+  const dateOnlyToLocal = (key: string) => {
+    const [y, m, d] = key.split('-').map(Number);
+    return new Date(y, (m || 1) - 1, d || 1);
+  };
+
+  // Parse "HH:MM[:SS]" -> minutes
+  const parseTimeToMin = (t?: string | null) => {
+    if (!t) return 0;
+    const [h, m] = t.split(':').map(Number);
+    return (h || 0) * 60 + (m || 0);
+  };
+
+  // Returns [startDayKey, endDayKey] (yyyy-mm-dd) covering all days the OS spans.
+  const getOSDayRange = (os: AgendaOrdemServico): { startKey: string; endKey: string } | null => {
+    const startKey = getDateKey(os.data_programada);
+    if (!startKey) return null;
+    const startBase = dateOnlyToLocal(startKey);
+    const startMin = parseTimeToMin(os.hora_inicio);
+    let durationMin = os.duracao_estimada_min || 0;
+    if (!durationMin && os.hora_fim) {
+      const endMin = parseTimeToMin(os.hora_fim);
+      durationMin = Math.max(0, endMin - startMin);
+    }
+    const startDate = new Date(startBase);
+    startDate.setMinutes(startDate.getMinutes() + startMin);
+    const endDate = new Date(startDate);
+    endDate.setMinutes(endDate.getMinutes() + durationMin);
+    // If end falls exactly at midnight, treat as previous day
+    const endAdjusted = new Date(endDate);
+    if (endDate.getHours() === 0 && endDate.getMinutes() === 0 && durationMin > 0) {
+      endAdjusted.setMinutes(endAdjusted.getMinutes() - 1);
+    }
+    return {
+      startKey: format(startDate, 'yyyy-MM-dd'),
+      endKey: format(endAdjusted, 'yyyy-MM-dd'),
+    };
+  };
+
   const loadOrdensServico = useCallback(async () => {
     setLoading(true);
     await handleAsyncError(
@@ -44,16 +83,25 @@ export function useScheduleData() {
     loadOrdensServico();
   }, [loadOrdensServico]);
 
+  const selectedKey = getDateKey(selectedDate);
+
   const osDoDia = ordensServico
-    .filter(os => getDateKey(os.data_programada) === getDateKey(selectedDate))
+    .filter(os => {
+      const range = getOSDayRange(os);
+      if (!range) return false;
+      return selectedKey >= range.startKey && selectedKey <= range.endKey;
+    })
     .filter(os => selectedAceite === 'todos' || os.aceite_tecnico === selectedAceite);
 
   const diasComOS = ordensServico.reduce((acc, os) => {
-    const dateStr = getDateKey(os.data_programada);
-    if (!dateStr) return acc;
-    const [year, month, day] = dateStr.split('-').map(Number);
-    const key = `${year}-${month - 1}-${day}`;
-    acc[key] = (acc[key] || 0) + 1;
+    const range = getOSDayRange(os);
+    if (!range) return acc;
+    const start = dateOnlyToLocal(range.startKey);
+    const end = dateOnlyToLocal(range.endKey);
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      acc[key] = (acc[key] || 0) + 1;
+    }
     return acc;
   }, {} as Record<string, number>);
 
