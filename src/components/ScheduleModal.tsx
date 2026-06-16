@@ -61,13 +61,17 @@ export const ScheduleModal = ({
   const { scheduleOS, loading } = useSchedule();
   const { checkTechnicianConflict, getTechnicianSchedule } = useConflictCheck();
 
-  // Atualizar estados quando props mudarem
+  // Inicializa estados apenas quando o modal abre — evita sobrescrever
+  // as escolhas do usuário se o componente pai re-renderizar e passar
+  // novas instâncias das props (ex.: novo Date em currentData).
   useEffect(() => {
+    if (!open) return;
     if (currentTecnicoId) setSelectedTecnico(currentTecnicoId);
     if (currentData) setSelectedDate(currentData);
     setHoraInicio(normalizeHora(currentHoraInicio));
     if (currentDuracao) setDuracaoHoras(String(currentDuracao / 60));
-  }, [currentTecnicoId, currentData, currentHoraInicio, currentDuracao]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   useEffect(() => {
     loadTecnicos();
