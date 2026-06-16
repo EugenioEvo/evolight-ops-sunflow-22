@@ -45,10 +45,12 @@ export const useSchedule = () => {
     try {
       // ===== VALIDAÇÕES PRÉ-AGENDAMENTO =====
       
-      // 1. Validar data futura
-      const agora = new Date();
+      // 1. Validar data futura — comparar apenas a data (permitir hoje)
+      const hoje = new Date();
+      hoje.setHours(0, 0, 0, 0);
       const dataAgendamento = new Date(params.data);
-      if (dataAgendamento < agora) {
+      dataAgendamento.setHours(0, 0, 0, 0);
+      if (dataAgendamento < hoje) {
         toast({
           title: 'Data inválida',
           description: 'Não é possível agendar para uma data passada',
