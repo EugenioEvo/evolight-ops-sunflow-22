@@ -352,6 +352,24 @@ export const ScheduleModal = ({
                 Duração total: {duracaoHoras}h
                 {diasAtravessados > 0 && ` · atravessa ${diasAtravessados} dia(s)`}
               </p>
+              {schedWindow?.outOfWindowWarning && (
+                <p className="text-xs text-amber-600 dark:text-amber-400 mt-2 flex items-start gap-1">
+                  <AlertTriangle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+                  Hora de início fora da janela útil (08:00–18:00). O término foi calculado reprogramando para o próximo slot válido.
+                </p>
+              )}
+              {schedWindow?.crossedDay && (
+                <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 flex items-start gap-1">
+                  <AlertTriangle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+                  A duração ultrapassa a janela útil — o serviço se estende para o(s) próximo(s) dia(s) útil(eis).
+                </p>
+              )}
+              {schedWindow?.weekendWarning && (
+                <p className="text-xs text-destructive mt-1 flex items-start gap-1">
+                  <AlertTriangle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+                  A data selecionada cai em fim de semana. O serviço foi automaticamente movido para a próxima segunda-feira.
+                </p>
+              )}
             </div>
           )}
         </div>
