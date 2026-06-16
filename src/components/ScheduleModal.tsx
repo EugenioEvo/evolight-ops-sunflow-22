@@ -9,10 +9,11 @@ import { useSchedule } from '@/hooks/useSchedule';
 import { useConflictCheck } from '@/hooks/useConflictCheck';
 import { ConflictWarning } from '@/components/ConflictWarning';
 import { supabase } from '@/integrations/supabase/client';
-import { format, addMinutes, differenceInCalendarDays } from 'date-fns';
+import { format, differenceInCalendarDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CalendarIcon, Clock, AlertCircle, Mail } from 'lucide-react';
+import { CalendarIcon, Clock, AlertCircle, Mail, AlertTriangle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { computeScheduleEnd, formatScheduledWindow } from '@/utils/scheduleWindow';
 
 interface ScheduleModalProps {
   open: boolean;
