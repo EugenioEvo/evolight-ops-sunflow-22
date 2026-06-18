@@ -116,15 +116,35 @@ Deno.serve(async (req) => {
     let isFirstAccess = false
     let displayName = authUserName || 'usuário'
 
-    // 2) If not found in auth, try clientes
+    // 2) If not found in auth, try clientes (email pode estar em profiles OU em cliente_conta_azul_ids)
     if (!authUserId) {
-      const { data: cliente, error: clienteErr } = await admin
-        .from('clientes')
-        .select('id, nome, empresa, email')
-        .ilike('email', rawEmail)
-        .maybeSingle()
+      // 2a) Procurar via profile.email vinculado
+      let cliente: { id: string; empresa: string | null; nome?: string | null } | null = null;
 
-      if (clienteErr) console.error('clientes lookup error', clienteErr)
+      const { data: viaProfile } = await admin
+        .from('clientes')
+        .select('id, empresa, profile_id, profiles!inner(email, nome)')
+        .ilike('profiles.email', rawEmail)
+        .maybeSingle();
+
+      if (viaProfile) {
+        const p = (viaProfile as unknown as { profiles?: { nome?: string | null } }).profiles;
+        cliente = { id: viaProfile.id, empresa: viaProfile.empresa, nome: p?.nome ?? null };
+      }
+
+      // 2b) Fallback: procurar via cliente_conta_azul_ids
+      if (!cliente) {
+        const { data: viaCA } = await admin
+          .from('cliente_conta_azul_ids')
+          .select('cliente_id, nome_fiscal, clientes!inner(id, empresa)')
+          .ilike('email', rawEmail)
+          .maybeSingle();
+
+        if (viaCA) {
+          const c = (viaCA as unknown as { clientes?: { id: string; empresa: string | null } }).clientes;
+          if (c) cliente = { id: c.id, empresa: c.empresa, nome: viaCA.nome_fiscal ?? null };
+        }
+      }
 
       // 3) Not in auth and not in clientes → redirect to prestador signup
       if (!cliente) {
