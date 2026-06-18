@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -19,6 +20,7 @@ export const ForgotPasswordLink = () => {
   const [sent, setSent] = useState(false);
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,7 +28,7 @@ export const ForgotPasswordLink = () => {
     setLoading(true);
 
     try {
-      const { error } = await supabase.functions.invoke('client-password-recovery', {
+      const { data, error } = await supabase.functions.invoke('client-password-recovery', {
         body: {
           email,
           redirectTo: `${window.location.origin}/reset-password`,
@@ -34,6 +36,18 @@ export const ForgotPasswordLink = () => {
       });
 
       if (error) throw error;
+
+      // E-mail não existe nem em auth nem em clientes → encaminha p/ cadastro de prestador
+      if (data && (data as { notFound?: boolean }).notFound) {
+        toast({
+          title: 'E-mail não cadastrado',
+          description:
+            'Não encontramos este e-mail. Você será redirecionado para o cadastro de prestador.',
+        });
+        setOpen(false);
+        setTimeout(() => navigate('/candidatar-se'), 800);
+        return;
+      }
 
       setSent(true);
       toast({
