@@ -26,16 +26,20 @@ export const ForgotPasswordLink = () => {
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+      const { error } = await supabase.functions.invoke('client-password-recovery', {
+        body: {
+          email,
+          redirectTo: `${window.location.origin}/reset-password`,
+        },
       });
 
       if (error) throw error;
 
       setSent(true);
       toast({
-        title: 'E-mail enviado!',
-        description: 'Verifique sua caixa de entrada para redefinir a senha.',
+        title: 'Solicitação recebida',
+        description:
+          'Se este e-mail estiver cadastrado, enviaremos instruções em instantes. Verifique sua caixa de entrada (e o spam).',
       });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Erro ao enviar e-mail';
