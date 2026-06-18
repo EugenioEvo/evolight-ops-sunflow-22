@@ -393,8 +393,14 @@ export default function RDOWizard() {
     if (!files || files.length === 0) return;
     try {
       const id = await ensureDraftCreated();
+      const { processMediaFiles } = await import('@/lib/mediaProcessing');
+      const hasImage = files.some((f) => f.type.startsWith('image/'));
+      const toastId = hasImage ? toast.loading('Otimizando mídia...') : undefined;
+      const { processed, errors } = await processMediaFiles(files);
+      if (toastId) toast.dismiss(toastId);
+      errors.forEach((msg) => toast.error(msg));
       let ok = 0;
-      for (const f of files) {
+      for (const f of processed) {
         try { await rdoService.uploadEvidencia(id, f, tipo); ok++; }
         catch (e: any) { toast.error(`${f.name}: ${e?.message ?? 'falha'}`); }
       }
