@@ -96,52 +96,57 @@ Deno.serve(async (req) => {
       auth: { autoRefreshToken: false, persistSession: false },
     })
 
-    // 1) Look up cliente by email
-    const { data: cliente, error: clienteErr } = await admin
-      .from('clientes')
-      .select('id, nome, empresa, email')
-      .ilike('email', rawEmail)
-      .maybeSingle()
-
-    if (clienteErr) console.error('clientes lookup error', clienteErr)
-
-    if (!cliente) {
-      // Não revela existência — também tenta fluxo padrão para usuários staff/técnicos
-      // que tenham profile mas não cliente: gerar recovery se já existir em auth.
-      // Isso preserva o comportamento atual sem enumeração.
-      try {
-        await admin.auth.admin.generateLink({
-          type: 'recovery',
-          email: rawEmail,
-          options: { redirectTo: redirectTo || undefined },
-        })
-      } catch (_) { /* ignore */ }
-      return new Response(JSON.stringify(GENERIC_OK), {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
-    }
-
-    const displayName = cliente.nome || cliente.empresa || 'cliente'
-
-    // 2) Check if auth user already exists
-    // Use listUsers with email filter (Supabase Admin v2 supports filtering by email server-side via query)
+    // 1) Check auth.users FIRST
     let authUserId: string | null = null
+    let authUserName: string | null = null
     try {
-      // Try a paginated search; emails are unique in auth.users
       const { data: list } = await admin.auth.admin.listUsers({ page: 1, perPage: 200 })
       const found = list?.users?.find(
         (u) => (u.email ?? '').toLowerCase() === rawEmail,
       )
-      authUserId = found?.id ?? null
+      if (found) {
+        authUserId = found.id
+        authUserName =
+          (found.user_metadata as Record<string, unknown> | null)?.nome as string | null ?? null
+      }
     } catch (e) {
       console.error('listUsers failed', e)
     }
 
-    const isFirstAccess = !authUserId
+    let isFirstAccess = false
+    let displayName = authUserName || 'usuário'
 
-    // 3) Provision user if first access
-    if (isFirstAccess) {
+    // 2) If not found in auth, try clientes
+    if (!authUserId) {
+      const { data: cliente, error: clienteErr } = await admin
+        .from('clientes')
+        .select('id, nome, empresa, email')
+        .ilike('email', rawEmail)
+        .maybeSingle()
+
+      if (clienteErr) console.error('clientes lookup error', clienteErr)
+
+      // 3) Not in auth and not in clientes → redirect to prestador signup
+      if (!cliente) {
+        return new Response(
+          JSON.stringify({
+            ok: false,
+            notFound: true,
+            redirectTo: '/candidatar-se',
+            message:
+              'E-mail não encontrado em nossos cadastros. Você pode se candidatar como prestador.',
+          }),
+          {
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          },
+        )
+      }
+
+      // Cliente exists → provision auth user + profile + role
+      displayName = cliente.nome || cliente.empresa || 'cliente'
+      isFirstAccess = true
+
       const { data: created, error: createErr } = await admin.auth.admin.createUser({
         email: rawEmail,
         email_confirm: true,
@@ -156,7 +161,6 @@ Deno.serve(async (req) => {
       }
       authUserId = created.user.id
 
-      // Create profile (idempotent upsert)
       const { error: profErr } = await admin.from('profiles').upsert(
         {
           user_id: authUserId,
@@ -168,7 +172,6 @@ Deno.serve(async (req) => {
       )
       if (profErr) console.error('profile upsert error', profErr)
 
-      // Assign cliente role
       const { error: roleErr } = await admin
         .from('user_roles')
         .insert({ user_id: authUserId, role: 'cliente' })
@@ -177,7 +180,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 4) Generate recovery link (works for both new and existing users)
+    // 4) Generate recovery link (auth user now guaranteed)
     const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
       type: 'recovery',
       email: rawEmail,
