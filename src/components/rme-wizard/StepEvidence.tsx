@@ -41,7 +41,12 @@ export const StepEvidence = ({ formData, updateFormData, rmeId, osId }: Props) =
     setUploading(type);
     const newUrls: string[] = [];
     try {
-      for (const file of files) {
+      const { processMediaFiles } = await import("@/lib/mediaProcessing");
+      const { processed, errors } = await processMediaFiles(files);
+      errors.forEach((msg) =>
+        toast({ title: "Arquivo rejeitado", description: msg, variant: "destructive" })
+      );
+      for (const file of processed) {
         const fileExt = file.name.split(".").pop() || "jpg";
         const fileName = `${osId}/${rmeId}/${type}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${fileExt}`;
         const { error } = await supabase.storage.from("rme-fotos").upload(fileName, file);
@@ -49,9 +54,11 @@ export const StepEvidence = ({ formData, updateFormData, rmeId, osId }: Props) =
         const { data: signedData } = await supabase.storage.from("rme-fotos").createSignedUrl(fileName, SIGNED_URL_TTL);
         if (signedData?.signedUrl) newUrls.push(signedData.signedUrl);
       }
-      const key = type === "antes" ? "fotos_antes" : "fotos_depois";
-      updateFormData({ [key]: [...(formData[key] || []), ...newUrls] } as Partial<RMEFormData>);
-      toast({ title: `${newUrls.length} foto(s) enviada(s)` });
+      if (newUrls.length > 0) {
+        const key = type === "antes" ? "fotos_antes" : "fotos_depois";
+        updateFormData({ [key]: [...(formData[key] || []), ...newUrls] } as Partial<RMEFormData>);
+        toast({ title: `${newUrls.length} foto(s) enviada(s)` });
+      }
     } catch (error: any) {
       toast({ title: "Erro no upload", description: error.message, variant: "destructive" });
     } finally {
