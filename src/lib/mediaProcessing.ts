@@ -1,6 +1,6 @@
 import imageCompression from "browser-image-compression";
 
-export const MAX_VIDEO_BYTES = 100 * 1024 * 1024; // 100 MB
+export const MAX_VIDEO_BYTES = 50 * 1024 * 1024; // 50 MB (alinhado ao default do Storage)
 export const MAX_IMAGE_BYTES_BEFORE_COMPRESSION = 30 * 1024 * 1024; // 30 MB (sanity guard)
 
 const IMAGE_COMPRESSION_OPTS = {
