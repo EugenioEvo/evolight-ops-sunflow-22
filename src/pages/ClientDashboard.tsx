@@ -56,6 +56,8 @@ const formatDateBR = (v?: string | null) => v ? new Date(v).toLocaleDateString('
 
 const ClientDashboard = () => {
   const navigate = useNavigate();
+  const { view } = useParams<{ view?: string }>();
+  const activeTab = view === 'om' || view === 'obras' ? view : 'resumo';
   const { user } = useAuth();
   const { loading, cliente, tickets, rmes, ordensServico, obras, rdos, stats, refresh } = useClientDashData();
   const [ticketDialogOpen, setTicketDialogOpen] = useState(false);
