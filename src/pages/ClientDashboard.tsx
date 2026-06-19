@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import {
-  Ticket, Calendar, Clock, MapPin, FileText, AlertCircle, CheckCircle2, XCircle, Wrench,
+  Ticket, Calendar, Clock, MapPin, FileText, AlertCircle, CheckCircle2, Wrench,
   User, Building2, Mail, Phone, Sun, Hash, Plus, Pencil, Ban, ExternalLink, ClipboardList,
 } from 'lucide-react';
 import { EmptyState } from '@/components/EmptyState';
