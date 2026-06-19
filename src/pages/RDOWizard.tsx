@@ -578,7 +578,7 @@ export default function RDOWizard() {
             <Input type="date" value={dataRdo} onChange={(e) => setDataRdo(e.target.value)} disabled={readOnly} />
           </div>
           <div>
-            <Label>Turno</Label>
+            <Label>Turno *</Label>
             <Select value={turno} onValueChange={setTurno} disabled={readOnly}>
               <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
               <SelectContent>
@@ -588,7 +588,7 @@ export default function RDOWizard() {
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <Label>Início</Label>
+              <Label>Início *</Label>
               <Input
                 type="text"
                 inputMode="numeric"
@@ -602,7 +602,7 @@ export default function RDOWizard() {
               />
             </div>
             <div>
-              <Label>Fim</Label>
+              <Label>Fim *</Label>
               <Input
                 type="text"
                 inputMode="numeric"
@@ -648,7 +648,7 @@ export default function RDOWizard() {
           </div>
 
           <div>
-            <Label>Horas paradas — programadas <span className="text-xs font-normal text-muted-foreground">(0,5 = 30min)</span></Label>
+            <Label>Horas paradas — programadas * <span className="text-xs font-normal text-muted-foreground">(0,5 = 30min)</span></Label>
             <Input
               type="text"
               inputMode="decimal"
@@ -727,7 +727,7 @@ export default function RDOWizard() {
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center justify-between">
-            <span>Atividades executadas</span>
+            <span>Atividades executadas *</span>
             <Button type="button" variant="outline" size="sm" disabled={readOnly} onClick={() => setAtividades([...atividades, { quantidade: 0 }])}>
               <Plus className="h-4 w-4 mr-1" /> Adicionar
             </Button>
@@ -881,7 +881,7 @@ export default function RDOWizard() {
 
       {/* Evidências */}
       <Card>
-        <CardHeader><CardTitle className="text-base">Evidências Audiovisuais</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-base">Evidências Audiovisuais *</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           {(['antes', 'depois', 'ocorrencia', 'epi'] as const).map((tipo) => {
             const evs = (rdoQ.data?.evidencias ?? []).filter((e) => e.tipo === tipo);
@@ -928,7 +928,7 @@ export default function RDOWizard() {
       {/* Assinatura + envio */}
       {!readOnly && (
         <Card>
-          <CardHeader><CardTitle className="text-base">Assinatura do responsável</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-base">Assinatura do responsável *</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             <div className="border-2 rounded-lg overflow-hidden bg-white">
               <SignatureCanvas ref={(r) => { sigRef.current = r; }} canvasProps={{ width: 600, height: 180, className: 'w-full' }} />
