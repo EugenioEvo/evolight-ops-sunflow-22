@@ -187,7 +187,7 @@ export function AppSidebar() {
         </div>
 
         <SidebarGroup>
-          <SidebarGroupLabel>Menu</SidebarGroupLabel>
+          <SidebarGroupLabel>{userRoles.includes('cliente') && !isStaff && !isBackoffice && !isTecnico && !isSupEletro ? 'Menu' : 'RMEs'}</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {mainItems.filter(i => hasAnyRole(i.allow)).flatMap(item => {
