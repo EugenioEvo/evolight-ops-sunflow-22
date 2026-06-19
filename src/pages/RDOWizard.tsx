@@ -648,7 +648,7 @@ export default function RDOWizard() {
           </div>
 
           <div>
-            <Label>Horas paradas — programadas <span className="text-xs font-normal text-muted-foreground">(0,5 = 30min)</span></Label>
+            <Label>Horas paradas — programadas * <span className="text-xs font-normal text-muted-foreground">(0,5 = 30min)</span></Label>
             <Input
               type="text"
               inputMode="decimal"
