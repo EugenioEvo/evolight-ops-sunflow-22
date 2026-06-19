@@ -30,24 +30,77 @@ const ResetPassword = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  const [checking, setChecking] = useState(true);
+
   useEffect(() => {
-    // Detect recovery event from URL hash
-    const hashParams = new URLSearchParams(window.location.hash.substring(1));
-    const type = hashParams.get('type');
+    let cancelled = false;
 
-    if (type === 'recovery') {
-      setIsRecovery(true);
-    }
-
-    // Also listen for auth state changes with recovery event
+    // Listen for auth state changes (PASSWORD_RECOVERY fires after hash/code is processed)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY') {
+      if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') {
         setIsRecovery(true);
+        setChecking(false);
       }
     });
 
-    return () => subscription.unsubscribe();
+    const init = async () => {
+      // Check for error in URL (expired/invalid link returned by Supabase)
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const queryParams = new URLSearchParams(window.location.search);
+      const errorCode = hashParams.get('error') || queryParams.get('error');
+
+      if (errorCode) {
+        if (!cancelled) setChecking(false);
+        return;
+      }
+
+      // Legacy hash flow: #access_token=...&type=recovery
+      if (hashParams.get('type') === 'recovery') {
+        if (!cancelled) {
+          setIsRecovery(true);
+          setChecking(false);
+        }
+        return;
+      }
+
+      // PKCE flow: ?code=...
+      const code = queryParams.get('code');
+      if (code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        if (!cancelled) {
+          if (!error) setIsRecovery(true);
+          setChecking(false);
+        }
+        return;
+      }
+
+      // Fallback: maybe session already exists from a prior redirect
+      const { data } = await supabase.auth.getSession();
+      if (!cancelled) {
+        if (data.session) setIsRecovery(true);
+        setChecking(false);
+      }
+    };
+
+    init();
+
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
   }, []);
+
+  if (checking) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <CardTitle>Validando link...</CardTitle>
+          </CardHeader>
+        </Card>
+      </div>
+    );
+  }
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
