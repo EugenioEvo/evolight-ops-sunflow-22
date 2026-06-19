@@ -77,22 +77,46 @@ serve(async (req) => {
 
     if (roleError) throw roleError
 
-    // Se for cliente, criar registro na tabela clientes
+    // Se for cliente, vincular ao cliente existente (se metadata.cliente_id fornecido)
+    // ou criar um novo registro na tabela clientes
     if (userRole === 'cliente') {
-      const { error: clienteError } = await supabaseClient
-        .from('clientes')
-        .insert({
-          profile_id: profile.id,
-          empresa: metadata.empresa,
-          cnpj_cpf: metadata.cnpj_cpf,
-          endereco: metadata.endereco,
-          cidade: metadata.cidade,
-          estado: metadata.estado,
-          cep: metadata.cep,
-        })
+      const existingClienteId = metadata.cliente_id as string | undefined
 
-      if (clienteError) throw clienteError
+      if (existingClienteId) {
+        // Vincular cliente já existente (criado via sync externo, importação ou admin)
+        const { data: existingCliente, error: lookupErr } = await supabaseClient
+          .from('clientes')
+          .select('id, profile_id')
+          .eq('id', existingClienteId)
+          .maybeSingle()
+
+        if (lookupErr) throw lookupErr
+
+        if (existingCliente && !existingCliente.profile_id) {
+          const { error: linkErr } = await supabaseClient
+            .from('clientes')
+            .update({ profile_id: profile.id })
+            .eq('id', existingClienteId)
+          if (linkErr) throw linkErr
+        }
+        // Se já tem profile_id (outro usuário), apenas seguimos sem criar duplicado.
+      } else {
+        const { error: clienteError } = await supabaseClient
+          .from('clientes')
+          .insert({
+            profile_id: profile.id,
+            empresa: metadata.empresa,
+            cnpj_cpf: metadata.cnpj_cpf,
+            endereco: metadata.endereco,
+            cidade: metadata.cidade,
+            estado: metadata.estado,
+            cep: metadata.cep,
+          })
+
+        if (clienteError) throw clienteError
+      }
     }
+
 
     // Roles operacionais (técnico/engenharia/supervisão) NÃO são mais criados via signup público.
     // Esse fluxo agora passa exclusivamente pela aprovação do admin via edge function 'approve-prestador',
