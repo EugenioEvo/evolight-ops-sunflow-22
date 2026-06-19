@@ -588,7 +588,7 @@ export default function RDOWizard() {
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <Label>Início</Label>
+              <Label>Início *</Label>
               <Input
                 type="text"
                 inputMode="numeric"
