@@ -19,7 +19,9 @@ import {
   Boxes,
   HardHat,
   FileSpreadsheet,
-  BookOpen
+  BookOpen,
+  Wrench,
+  HardHat as HardHatIcon
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
