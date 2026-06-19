@@ -578,7 +578,7 @@ export default function RDOWizard() {
             <Input type="date" value={dataRdo} onChange={(e) => setDataRdo(e.target.value)} disabled={readOnly} />
           </div>
           <div>
-            <Label>Turno</Label>
+            <Label>Turno *</Label>
             <Select value={turno} onValueChange={setTurno} disabled={readOnly}>
               <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
               <SelectContent>
