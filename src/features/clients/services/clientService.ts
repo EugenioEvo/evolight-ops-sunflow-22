@@ -177,7 +177,41 @@ export const createClientService = (client?: AppSupabaseClient) => {
         .select('*, tickets(numero_ticket, titulo), ordens_servico(numero_os), tecnicos(id, profiles(nome))')
         .in('ticket_id', ticketIds)
         .order('created_at', { ascending: false })
-        .limit(10);
+        .limit(50);
+      return data || [];
+    },
+
+    async fetchClientOrdensServico(clienteId: string) {
+      const { data } = await db
+        .from('ordens_servico')
+        .select(`
+          id, numero_os, data_programada, hora_inicio, hora_fim, status, aceite_tecnico, pdf_url,
+          tickets!inner(id, numero_ticket, titulo, cliente_id),
+          tecnicos:tecnico_id(id, profiles(nome, email)),
+          rme_relatorios(id, status, data_execucao)
+        `)
+        .eq('tickets.cliente_id', clienteId)
+        .order('data_programada', { ascending: false, nullsFirst: false });
+      return data || [];
+    },
+
+    async fetchClientObras(clienteId: string) {
+      const { data } = await db
+        .from('obras')
+        .select('id, nome, endereco, cidade, estado, status, potencia_kwp, data_inicio_prevista, data_fim_prevista')
+        .eq('cliente_id', clienteId)
+        .order('nome', { ascending: true });
+      return data || [];
+    },
+
+    async fetchClientRDOs(obraIds: string[]) {
+      if (!obraIds.length) return [];
+      const { data } = await db
+        .from('rdo_relatorios')
+        .select('id, numero_rdo, data_rdo, status, obra_id')
+        .in('obra_id', obraIds)
+        .order('data_rdo', { ascending: false })
+        .limit(200);
       return data || [];
     },
   };
