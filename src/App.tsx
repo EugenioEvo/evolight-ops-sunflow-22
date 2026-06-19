@@ -94,6 +94,11 @@ const App = () => (
                                 <ClientDashboard />
                               </ProtectedRoute>
                             } />
+                            <Route path="/meu-painel/:view" element={
+                              <ProtectedRoute roles={['cliente']}>
+                                <ClientDashboard />
+                              </ProtectedRoute>
+                            } />
                             <Route path="/tickets" element={<Tickets />} />
                             <Route path="/routes" element={<RoutesPage />} />
                             <Route path="/agenda" element={

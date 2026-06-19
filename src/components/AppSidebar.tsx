@@ -19,7 +19,8 @@ import {
   Boxes,
   HardHat,
   FileSpreadsheet,
-  BookOpen
+  BookOpen,
+  Wrench
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
@@ -54,8 +55,10 @@ const STAFF_BO: Role[] = [...STAFF, 'backoffice'];
 const ELETRO: Role[] = ['eletromecanico', 'sup_eletromecanico', 'lider_eletromecanico'];
 
 const mainItems: NavItem[] = [
-  { title: "Dashboard", url: "/", icon: Home, allow: [...STAFF_BO, 'tecnico_campo', 'cliente', ...ELETRO] },
+  { title: "Dashboard", url: "/", icon: Home, allow: [...STAFF_BO, 'tecnico_campo', ...ELETRO] },
   { title: "Meu Painel", url: "/meu-painel", icon: User, allow: ['cliente'] },
+  { title: "O&M", url: "/meu-painel/om", icon: Wrench, allow: ['cliente'] },
+  { title: "Obras", url: "/meu-painel/obras", icon: HardHat, allow: ['cliente'] },
   { title: "Tickets", url: "/tickets", icon: Package, allow: STAFF_BO },
   { title: "Ordens de Serviço", url: "/work-orders", icon: ClipboardList, allow: STAFF_BO },
   { title: "RME", url: "/rme", icon: BarChart3, allow: STAFF_BO },

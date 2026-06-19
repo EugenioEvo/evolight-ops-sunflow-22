@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -56,6 +56,8 @@ const formatDateBR = (v?: string | null) => v ? new Date(v).toLocaleDateString('
 
 const ClientDashboard = () => {
   const navigate = useNavigate();
+  const { view } = useParams<{ view?: string }>();
+  const activeTab = view === 'om' || view === 'obras' ? view : 'resumo';
   const { user } = useAuth();
   const { loading, cliente, tickets, rmes, ordensServico, obras, rdos, stats, refresh } = useClientDashData();
   const [ticketDialogOpen, setTicketDialogOpen] = useState(false);
@@ -224,7 +226,11 @@ const ClientDashboard = () => {
         ))}
       </div>
 
-      <Tabs defaultValue="resumo" className="space-y-4">
+      <Tabs
+        value={activeTab}
+        onValueChange={(v) => navigate(v === 'resumo' ? '/meu-painel' : `/meu-painel/${v}`)}
+        className="space-y-4"
+      >
         <TabsList className="grid w-full grid-cols-3 max-w-md">
           <TabsTrigger value="resumo">Resumo</TabsTrigger>
           <TabsTrigger value="om">O&amp;M</TabsTrigger>
