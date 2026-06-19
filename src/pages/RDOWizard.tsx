@@ -727,7 +727,7 @@ export default function RDOWizard() {
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center justify-between">
-            <span>Atividades executadas</span>
+            <span>Atividades executadas *</span>
             <Button type="button" variant="outline" size="sm" disabled={readOnly} onClick={() => setAtividades([...atividades, { quantidade: 0 }])}>
               <Plus className="h-4 w-4 mr-1" /> Adicionar
             </Button>
