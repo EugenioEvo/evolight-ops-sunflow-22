@@ -2448,6 +2448,10 @@ export type Database = {
       }
       is_staff: { Args: { _user_id: string }; Returns: boolean }
       is_staff_or_backoffice: { Args: { _user_id: string }; Returns: boolean }
+      is_ticket_owner_cliente: {
+        Args: { _ticket_id: string; _user_id: string }
+        Returns: boolean
+      }
       list_rdo_eletromecanicos: {
         Args: { p_only_supervisores?: boolean }
         Returns: {
