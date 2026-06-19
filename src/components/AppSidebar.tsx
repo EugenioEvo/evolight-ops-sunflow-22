@@ -20,8 +20,7 @@ import {
   HardHat,
   FileSpreadsheet,
   BookOpen,
-  Wrench,
-  HardHat as HardHatIcon
+  Wrench
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
