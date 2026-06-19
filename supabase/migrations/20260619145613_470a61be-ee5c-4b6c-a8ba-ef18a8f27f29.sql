@@ -1,0 +1,1 @@
+UPDATE public.clientes SET profile_id = 'bee4a8a5-3e93-44f8-b75b-9b2c0705ca42' WHERE id = '68c76dfa-6ef4-46aa-ad28-4adbcb5a1551' AND profile_id IS NULL;
