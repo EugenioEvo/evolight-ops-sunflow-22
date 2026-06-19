@@ -602,7 +602,7 @@ export default function RDOWizard() {
               />
             </div>
             <div>
-              <Label>Fim</Label>
+              <Label>Fim *</Label>
               <Input
                 type="text"
                 inputMode="numeric"
