@@ -217,7 +217,14 @@ Deno.serve(async (req) => {
       })
     }
 
-    const actionLink = linkData.properties.action_link
+    // Prefer a direct app URL with token_hash so the frontend can verify the OTP itself.
+    // This avoids the hosted auth redirect issuing an implicit refresh-token URL that can
+    // be consumed during redirects before the reset page finishes mounting.
+    const appResetUrl = redirectTo || `${SUPABASE_URL.replace('.supabase.co', '.lovable.app')}/reset-password`
+    const hashedToken = linkData.properties.hashed_token
+    const actionLink = hashedToken
+      ? `${appResetUrl}${appResetUrl.includes('?') ? '&' : '?'}token_hash=${encodeURIComponent(hashedToken)}&type=recovery`
+      : linkData.properties.action_link
 
     // 5) Send email via Resend
     await sendEmail(

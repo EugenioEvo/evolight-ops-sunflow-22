@@ -149,18 +149,15 @@ const ResetPassword = () => {
       if (error) throw error;
 
       setSuccess(true);
-      toast({
-        title: 'Senha redefinida!',
+      toast.success('Senha redefinida!', {
         description: 'Sua senha foi alterada com sucesso.',
       });
 
       setTimeout(() => navigate('/'), 2000);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Erro ao redefinir senha';
-      toast({
-        title: 'Erro ao redefinir senha',
+      toast.error('Erro ao redefinir senha', {
         description: message,
-        variant: 'destructive',
       });
     } finally {
       setLoading(false);
