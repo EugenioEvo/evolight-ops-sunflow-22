@@ -226,7 +226,11 @@ const ClientDashboard = () => {
         ))}
       </div>
 
-      <Tabs defaultValue="resumo" className="space-y-4">
+      <Tabs
+        value={activeTab}
+        onValueChange={(v) => navigate(v === 'resumo' ? '/meu-painel' : `/meu-painel/${v}`)}
+        className="space-y-4"
+      >
         <TabsList className="grid w-full grid-cols-3 max-w-md">
           <TabsTrigger value="resumo">Resumo</TabsTrigger>
           <TabsTrigger value="om">O&amp;M</TabsTrigger>
