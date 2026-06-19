@@ -440,5 +440,3 @@ const ClientDashboard = () => {
 };
 
 export default ClientDashboard;
-
-export default ClientDashboard;
