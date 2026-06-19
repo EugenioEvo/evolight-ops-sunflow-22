@@ -976,6 +976,23 @@ export default function RDOWizard() {
         </div>
       </div>
 
+      <AlertDialog open={missingFields.length > 0} onOpenChange={(open) => { if (!open) setMissingFields([]); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Campos obrigatórios pendentes</AlertDialogTitle>
+            <AlertDialogDescription>
+              Para enviar o RDO para aprovação, preencha os seguintes campos:
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <ul className="list-disc pl-6 text-sm space-y-1">
+            {missingFields.map((f) => <li key={f}>{f}</li>)}
+          </ul>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setMissingFields([])}>Entendi</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </div>
   );
 }
