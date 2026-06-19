@@ -76,7 +76,7 @@ export default function RDOWizard() {
   // Header
   const [obraId, setObraId] = useState<string>('');
   const [dataRdo, setDataRdo] = useState<string>(new Date().toISOString().slice(0, 10));
-  const [turno, setTurno] = useState<string>('');
+  const [turno, setTurno] = useState<string>('integral');
   const [clima, setClima] = useState<string>('');
   const [temperatura, setTemperatura] = useState<string>('');
   const [horarioInicio, setHorarioInicio] = useState<string>('');
@@ -196,7 +196,7 @@ export default function RDOWizard() {
     hydratedForRef.current = r.id;
     setObraId(r.obra_id);
     setDataRdo(r.data_rdo);
-    setTurno(r.turno ?? '');
+    setTurno(r.turno ?? 'integral');
     setClima(r.clima ?? '');
     setTemperatura(r.temperatura_c != null ? String(r.temperatura_c) : '');
     setHorarioInicio(r.horario_inicio ?? '');
