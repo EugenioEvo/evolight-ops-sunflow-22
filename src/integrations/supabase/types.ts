@@ -2442,6 +2442,10 @@ export type Database = {
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_admin_safe: { Args: never; Returns: boolean }
       is_backoffice: { Args: { _user_id: string }; Returns: boolean }
+      is_cliente_owner: {
+        Args: { _cliente_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_staff: { Args: { _user_id: string }; Returns: boolean }
       is_staff_or_backoffice: { Args: { _user_id: string }; Returns: boolean }
       list_rdo_eletromecanicos: {

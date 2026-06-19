@@ -1,69 +1,61 @@
-## Dry-run — smoke test do SunFlow
+# Painel do Cliente — escopo expandido
 
-Objetivo: validar em ~20 minutos os principais fluxos da app, edge functions e DB functions, escrevendo apenas em registros marcados como `[DRY-RUN]` e limpando ao final. Resultado entregue como tabela markdown (OK / Warn / Fail) com ponteiros de arquivo/log.
+Hoje, ao entrar como cliente, o usuário vê apenas um resumo básico (informações, tickets, equipamentos, manutenções) sem poder agir. Vamos transformar o painel em um portal self-service alinhado ao que o cliente precisa após ativar a conta.
 
-### 1. Pré-flight (sem efeitos colaterais)
-- `cloud_status` + `db_health` + `linter` (Supabase)
-- `read_query`: contagens de tickets/OS/RME/RDO/prestadores/tecnicos para baseline e detecção de órfãos (`tickets sem cliente`, `OS sem ticket`, `rme sem OS`).
-- Conferir lista de edge functions deployadas vs. pasta `supabase/functions/`.
+## O que o cliente verá
 
-### 2. DB functions (read-only via `read_query`)
-Chamar com IDs reais lidos no passo 1:
-- `get_dashboard_stats()`
-- `get_technician_workload(tec, hoje-30, hoje+30)` + `get_technician_workload_os_detail(...)`
-- `get_tecnico_os_ativas(tec)`
-- `get_ticket_rme_group_context(ticket)` — valida o JOIN prestadores→tecnicos (bug histórico)
-- `get_minhas_devolucoes()` / `get_backoffice_devolucoes()` / `get_backoffice_entradas_pendentes()`
-- `check_schedule_conflict(tec, hoje, '09:00', '10:00')`
-- `check_geocoding_rate_limit('0.0.0.0')` / `check_presence_rate_limit(...)`
-- `is_admin/is_staff/is_backoffice/can_approve_rdo` para o usuário logado
-- `gerar_numero_ticket()` / `gerar_numero_os()` / `gerar_numero_rdo()` (puros, retornam string)
+A página `/cliente` ganha três áreas, navegáveis por abas:
 
-Triggers são exercitadas implicitamente pelo passo 4 (criação de ticket → `trigger_gerar_numero_ticket`, `trigger_status_historico`, `validate_ticket_tecnico`, `sync_*`).
+### 1. Resumo da conta
 
-### 3. Edge functions (via `curl_edge_functions` + `edge_function_logs`)
-Cada uma chamada com payload válido e payload inválido (espera 400/401/403):
-- Auth/admin: `create-user-profile`, `create-staff-user`, `delete-user`, `approve-prestador`, `provision-staff-as-tecnico`
-- OS lifecycle: `gerar-ordem-servico`, `os-acceptance-action` (JWT HS256), `resend-os-acceptance-email`, `send-calendar-invite`, `send-os-altered-email`, `send-os-cancelled-email`, `send-os-reminders`
-- Tickets/RME/RDO: `send-ticket-decision-email`, `send-ticket-deleted-email`, `send-rejection-notice`, `send-rme-email`, `send-rme-submitted-email`, `send-rme-decision-email`, `send-rdo-submitted-email`, `send-rdo-decision-email`
-- Geo/rotas: `geocode-address`, `mapbox-geocode`, `mapbox-directions`, `reverse-geocode`, `optimize-route-osrm`, `process-pending-geocoding`
-- Infra/integração: `process-email-retries`, `confirm-presence`, `api-export` (x-api-key), `sync-clientes-external`
+- Bloco "Informações pessoais": nome, e-mail, telefone, com botão "Editar perfil" (atualiza `profiles`).
+- Bloco "Conta": empresa, CNPJ/CPF, endereço completo, prioridade.
+- Bloco "Origem do cadastro": badge da origem (Solarz, Conta Azul, Manual), ID Solarz quando houver, e lista de IDs Conta Azul vinculados (somente leitura — sincronizados pelo backoffice).
+- Bloco "Minhas UFVs": cards com nome, endereço, potência e status de cada UFV do cliente.
 
-Para cada uma: status code, body resumido, últimas 20 linhas de log. Falha = response 5xx ou exception no log.
+### 2. O&M  
+  
+Duas sub-abas dentro de "O&M", todas filtradas pelo `cliente_id` do usuário:
 
-### 4. UI ponta-a-ponta (browser, viewport desktop)
-Fluxo único com um ticket descartável, logado como o usuário atual do preview:
-1. `/auth` (se necessário) → dashboard renderiza, sem erros no console
-2. `/clientes` → abre form, fecha sem salvar
-3. `/tickets` → criar `[DRY-RUN] smoke <ts>`, atribuir técnico, gerar OS (dispara `gerar-ordem-servico` + calendar invite)
-4. `/ordens-servico` → abrir OS criada, validar PDF link, abrir modal `+ Técnico` (regressão recente de duração)
-5. `/agenda` → OS aparece no slot correto
-6. `/rotas` → otimização roda (fallback Mapbox→OSRM)
-7. `/rme` → abrir wizard a partir da OS, salvar rascunho, voltar
-8. `/rdo/dashboard` + `/obra-catalogo` → render
-9. `/minhas-os`, `/minhas-devolucoes`, `/backoffice/insumos` → render + dados coerentes
-10. `/portal/...` (cliente) e `/usuarios` (admin) → render
-11. Cleanup: cancelar ticket `[DRY-RUN]` (cascateia OS), confirmar status `cancelado`
+- Tickets:
+  - Lista paginada de tickets do cliente, com filtros por status e busca.
+  - Botão "Abrir novo chamado" abre um formulário (título, descrição, UFV, equipamento, endereço, urgência).
+  - Cada ticket pode ser aberto em um drawer/dialog onde o cliente:
+    - Vê o histórico de status, OS vinculadas e RME (se houver).
+    - **Edita** título, descrição, endereço, prioridade e UFV — somente enquanto o ticket estiver `aberto` ou `aguardando_aprovacao` (alinhado à regra existente que bloqueia edição quando há OS ativa).
+    - Pode cancelar o ticket (não excluir — segue a regra "tickets nunca são excluídos").
+      &nbsp;
 
-A cada tela: screenshot + leitura de console/network para erros 4xx/5xx.
+- **Ordens de Serviço**: número, ticket, técnico, data programada, status de aceite, link "Ver OS", link/modal "Ver RME" (relatórios de manutenção dos tickets do cliente, com status (rascunho/pendente/aprovado/rejeitado) e link para visualizar o PDF/preview.)
 
-### 5. Relatório final (chat)
-Tabela única:
+### 3. Obras (Obra / RDO)
 
-```text
-Área                | Item                          | Status | Nota / referência
---------------------|-------------------------------|--------|-------------------------
-Pré-flight          | cloud_status                  | OK     | ACTIVE_HEALTHY
-DB function         | get_ticket_rme_group_context  | OK     | responsavel_email != null
-Edge function       | gerar-ordem-servico           | WARN   | log: "no slot" em TKxxxx
-UI                  | /tickets criar+gerar OS       | FAIL   | console: 403 em /functions/...
-...
-```
+X sub-abas dentro de "Obras", todas filtradas pelo `cliente_id` do usuário:
 
-Mais: lista priorizada de issues encontrados (curta), e itens não testados/explicitamente fora do escopo (ex.: confirm-presence requer QR físico, push notifications nativas).
+- **UFV XYZ - Expande abaixo o nome da UFV em formato árvore**: Contendo as informações da aba "Obras" que o administrativo ve (situação, RDOs abertos, etc).
 
-### Notas técnicas
-- Dados criados serão prefixados `[DRY-RUN]` e limpos via cancelamento (regra: tickets não são excluídos).
-- Emails reais serão suprimidos sempre que possível usando flag de teste ou destinatário do próprio usuário; quando não houver, marco no relatório.
-- Sem migrações, sem deploys, sem alteração de secrets.
-- Tempo estimado: 15–25 min de execução.
+## Regras e permissões
+
+- Todas as queries usam o `cliente_id` resolvido por `profile_id` (já corrigido). Nenhum dado de outro cliente é exposto.
+- Ponto importante: o cliente só consegue editar Tickets abertos para o usuário dele que ELE mesmo tenha criado. Tickets criados pelo time operacional/adm/staff o cliente não pode editar. Ele também não pode criar OS a partir do ticket. O cliente apenas pode criar o ticket e nada mais. é permitido que ele altere o ticket até que ele entre em atendimento.
+- Edição de ticket só funciona se não houver OS ativa/concluída vinculada (regra `os-generation/edit-restriction-execution`).
+- Cancelamento de ticket reaproveita o fluxo `useCancelOS` adaptado para tickets (cascateia para OS, bloqueado por RME em rascunho).
+- RLS: confirmar (e adicionar se faltar) políticas de leitura para o cliente em `tickets`, `ordens_servico`, `rme_relatorios`, `rdo_relatorios`, `cliente_ufvs` e `cliente_conta_azul_ids` restritas ao próprio `profile_id` via `clientes.profile_id = auth.uid()` (através de função `is_owner_of_cliente`).
+- Origem e IDs Conta Azul são exibidos como somente-leitura.
+
+## Detalhes técnicos
+
+- Página: refatorar `src/pages/ClientDashboard.tsx` em uma estrutura com `Tabs` (`Resumo`, `Tickets`, `Acompanhamento`).
+- Novo hook `useClientFullData` (ou estender `useClientDashData`) para buscar UFVs, conta-azul IDs, RDOs das obras do cliente e OS soltas.
+- Reutilizar componentes existentes: `TicketForm` (criar/editar), `RMEDetailDialog`, listas de OS de `WorkOrders`. Onde necessário, criar wrappers de leitura sem ações administrativas.
+- Função SQL utilitária `is_cliente_owner(_user_id uuid, _cliente_id uuid)` (security definer) para simplificar policies.
+- Migration revisa policies SELECT em `cliente_ufvs`, `cliente_conta_azul_ids`, `rdo_relatorios` (cliente lê quando a obra pertence ao seu cliente), `rme_relatorios` (cliente lê quando o ticket é dele).
+- Não mexer em layout do backoffice nem nos fluxos de técnico.
+- Garantir Notificações push para o cliente (in-app via `notificacoes e via e-mail também`) ao longo do processo.
+- Priorizar a utilização de funções que já existam para não termos retrabalho ou várias fontes verdades
+
+## Fora do escopo desta etapa
+
+- Aprovar/rejeitar RME ou OS pelo cliente (continua sendo ação do backoffice).
+- Upload de evidências pelo cliente em RDOs/RMEs.
+- Edição de UFVs ou IDs Conta Azul.
