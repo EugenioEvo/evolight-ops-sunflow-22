@@ -439,7 +439,6 @@ const ClientDashboard = () => {
   );
 };
 
-// Suppress unused warnings for icons that may be conditionally rendered above.
-void XCircle;
+export default ClientDashboard;
 
 export default ClientDashboard;
