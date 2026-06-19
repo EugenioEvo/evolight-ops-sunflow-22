@@ -147,9 +147,14 @@ export const createClientService = (client?: AppSupabaseClient) => {
     async fetchClientByProfile(profileId: string) {
       const { data } = await db
         .from('clientes')
-        .select('*, profiles(nome, email, telefone)')
+        .select(`
+          *,
+          profiles!clientes_profile_id_fkey(id, nome, email, telefone),
+          cliente_ufvs(id, solarz_ufv_id, nome, endereco, cidade, estado, cep, potencia_kwp, status),
+          cliente_conta_azul_ids(id, conta_azul_customer_id, nome_fiscal, cnpj_cpf, email)
+        `)
         .eq('profile_id', profileId)
-        .single();
+        .maybeSingle();
       return data;
     },
 
