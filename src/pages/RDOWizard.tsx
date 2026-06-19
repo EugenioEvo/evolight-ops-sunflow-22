@@ -881,7 +881,7 @@ export default function RDOWizard() {
 
       {/* Evidências */}
       <Card>
-        <CardHeader><CardTitle className="text-base">Evidências Audiovisuais</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-base">Evidências Audiovisuais *</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           {(['antes', 'depois', 'ocorrencia', 'epi'] as const).map((tipo) => {
             const evs = (rdoQ.data?.evidencias ?? []).filter((e) => e.tipo === tipo);
