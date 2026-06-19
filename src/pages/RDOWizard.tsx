@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 import { useAuth } from '@/hooks/useAuth';
 import { rdoService, type RDOAtividade, type RDOEquipamento, type RDOEquipe } from '@/features/rdo/services/rdoService';
@@ -72,11 +73,12 @@ export default function RDOWizard() {
   const [rdoId, setRdoId] = useState<string | null>(isNew ? null : routeId!);
   const [saving, setSaving] = useState(false);
   const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [missingFields, setMissingFields] = useState<string[]>([]);
 
   // Header
   const [obraId, setObraId] = useState<string>('');
   const [dataRdo, setDataRdo] = useState<string>(new Date().toISOString().slice(0, 10));
-  const [turno, setTurno] = useState<string>('');
+  const [turno, setTurno] = useState<string>('integral');
   const [clima, setClima] = useState<string>('');
   const [temperatura, setTemperatura] = useState<string>('');
   const [horarioInicio, setHorarioInicio] = useState<string>('');
@@ -196,7 +198,7 @@ export default function RDOWizard() {
     hydratedForRef.current = r.id;
     setObraId(r.obra_id);
     setDataRdo(r.data_rdo);
-    setTurno(r.turno ?? '');
+    setTurno(r.turno ?? 'integral');
     setClima(r.clima ?? '');
     setTemperatura(r.temperatura_c != null ? String(r.temperatura_c) : '');
     setHorarioInicio(r.horario_inicio ?? '');
@@ -366,18 +368,32 @@ export default function RDOWizard() {
     qc.invalidateQueries({ queryKey: ['rdo-relatorios'] });
   }
 
+  function collectMissingFields(): string[] {
+    const missing: string[] = [];
+    if (!obraId) missing.push('Obra');
+    if (!dataRdo) missing.push('Data');
+    if (!turno) missing.push('Turno');
+    if (!normalizeTime(horarioInicio)) missing.push('Início');
+    if (!normalizeTime(horarioFim)) missing.push('Fim');
+    if (horasParadasProg === '' || horasParadasProg == null) missing.push('Horas paradas — programadas');
+    if (atividades.length === 0) missing.push('Atividades executadas');
+    const totalEvidencias = (rdoQ.data?.evidencias ?? []).length;
+    if (totalEvidencias === 0) missing.push('Evidências audiovisuais (pelo menos 1)');
+    if (!sigRef.current || sigRef.current.isEmpty()) missing.push('Assinatura do responsável');
+    return missing;
+  }
+
   async function handleSubmit() {
-    if (!sigRef.current || sigRef.current.isEmpty()) {
-      toast.error('Assine antes de enviar para aprovação');
+    const missing = collectMissingFields();
+    if (missing.length > 0) {
+      setMissingFields(missing);
       return;
     }
-    if (equipe.length === 0) { toast.error('Adicione pelo menos um membro à equipe'); return; }
-    if (atividades.length === 0) { toast.error('Adicione pelo menos uma atividade'); return; }
     try {
       setSaving(true);
       await handleSave();
       const id = rdoId!;
-      await rdoService.submitForApproval(id, sigRef.current.toDataURL());
+      await rdoService.submitForApproval(id, sigRef.current!.toDataURL());
       qc.invalidateQueries({ queryKey: ['rdo', id] });
       qc.invalidateQueries({ queryKey: ['rdo-relatorios'] });
       toast.success('RDO enviado para aprovação');
@@ -959,6 +975,23 @@ export default function RDOWizard() {
           )}
         </div>
       </div>
+
+      <AlertDialog open={missingFields.length > 0} onOpenChange={(open) => { if (!open) setMissingFields([]); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Campos obrigatórios pendentes</AlertDialogTitle>
+            <AlertDialogDescription>
+              Para enviar o RDO para aprovação, preencha os seguintes campos:
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <ul className="list-disc pl-6 text-sm space-y-1">
+            {missingFields.map((f) => <li key={f}>{f}</li>)}
+          </ul>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setMissingFields([])}>Entendi</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
     </div>
   );
