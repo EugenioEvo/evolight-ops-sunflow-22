@@ -928,7 +928,7 @@ export default function RDOWizard() {
       {/* Assinatura + envio */}
       {!readOnly && (
         <Card>
-          <CardHeader><CardTitle className="text-base">Assinatura do responsável</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-base">Assinatura do responsável *</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             <div className="border-2 rounded-lg overflow-hidden bg-white">
               <SignatureCanvas ref={(r) => { sigRef.current = r; }} canvasProps={{ width: 600, height: 180, className: 'w-full' }} />
