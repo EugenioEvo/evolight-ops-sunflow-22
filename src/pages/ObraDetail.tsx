@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowLeft, Building2, Calendar, FileSpreadsheet, MapPin, Users, Image as ImageIcon, TrendingUp } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-import { OBRA_STATUS_LABEL, ObraProgressoEtapas } from '@/features/obras';
+import { OBRA_STATUS_LABEL, ObraProgressoEtapas, ObraSharePanel } from '@/features/obras';
 import { RDO_STATUS_LABEL, RDO_STATUS_VARIANT, type RDOStatus } from '@/features/rdo/types';
 
 interface Props { mode?: 'staff' | 'cliente' }
@@ -234,6 +234,8 @@ export default function ObraDetail({ mode = 'staff' }: Props) {
       </Card>
 
       <ObraProgressoEtapas obraId={obra.id} />
+
+      {isStaff && <ObraSharePanel obraId={obra.id} />}
 
       <div className="grid lg:grid-cols-2 gap-4">
         <Card>
