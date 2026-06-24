@@ -47,6 +47,7 @@ import RDO from "./pages/RDO";
 import RDOWizard from "./pages/RDOWizard";
 import GerenciarRDO from "./pages/GerenciarRDO";
 import DashboardRDO from "./pages/DashboardRDO";
+import PublicObraView from "./pages/PublicObraView";
 
 // Legacy /rme route → redirects to the unified Wizard, preserving ?os=
 const LegacyRMERedirect = () => {
@@ -79,6 +80,7 @@ const App = () => (
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/candidatar-se" element={<Candidatar />} />
               <Route path="/confirmar-presenca" element={<PresenceConfirmation />} />
+              <Route path="/p/obra/:token" element={<PublicObraView />} />
               <Route path="/*" element={
                 <ProtectedRoute>
                   <SidebarProvider>
