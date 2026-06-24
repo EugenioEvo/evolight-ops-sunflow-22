@@ -71,3 +71,6 @@ verify_jwt = true
 
 [functions.send-rdo-decision-email]
 verify_jwt = true
+
+[functions.obra-public-view]
+verify_jwt = false
