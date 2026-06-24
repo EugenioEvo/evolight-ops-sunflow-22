@@ -230,6 +230,37 @@ export default function RDOWizard() {
     status !== 'rejeitado' &&
     !(isAdmEng && editMode);
 
+  // Pré-popula "Atividades executadas" a partir das metas cadastradas da obra
+  // ao entrar no step 2, se ainda não houver atividades. Semeia uma vez por obra
+  // para não sobrescrever remoções do usuário.
+  useEffect(() => {
+    if (step !== 2 || readOnly) return;
+    if (!obraId) return;
+    if (seededAtividadesForObra.current === obraId) return;
+    const metas = metasQ.data;
+    const catalogo = catalogoQ.data;
+    if (!metas || !catalogo) return;
+    if (atividades.length > 0 || metas.length === 0) {
+      seededAtividadesForObra.current = obraId;
+      return;
+    }
+    const seeded: RDOAtividade[] = metas.map((m) => {
+      const cat = catalogo.find((c) => c.id === m.catalogo_id);
+      return {
+        catalogo_id: m.catalogo_id,
+        descricao_livre: null,
+        quantidade: 0,
+        unidade: cat?.unidade ?? null,
+        percentual_avanco: 0,
+        observacoes: null,
+      } as RDOAtividade;
+    });
+    setAtividades(seeded);
+    seededAtividadesForObra.current = obraId;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, obraId, metasQ.data, catalogoQ.data, readOnly]);
+
+
 
   const headerPatch = useMemo(() => ({
     obra_id: obraId,
