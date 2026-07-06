@@ -211,7 +211,7 @@ export default function ObraDetail({ mode = 'staff' }: Props) {
               <Calendar className="h-4 w-4 mt-0.5 text-muted-foreground" />
               <div>
                 <p className="text-xs text-muted-foreground">Início previsto</p>
-                <p>{new Date(obra.data_inicio_prevista).toLocaleDateString('pt-BR')}</p>
+                <p>{formatDateOnlyBR(obra.data_inicio_prevista)}</p>
               </div>
             </div>
           )}
