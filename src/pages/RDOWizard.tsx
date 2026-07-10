@@ -546,31 +546,6 @@ export default function RDOWizard() {
       {step === 1 && (
       <div key="rdo-step-1" className="space-y-6 contents">
 
-
-      {blockingExistingRdo && (
-        <Card className="border-amber-500/60 bg-amber-500/10">
-          <CardContent className="py-3 flex flex-col md:flex-row md:items-center gap-3 justify-between">
-            <div className="text-sm">
-              <p className="font-medium text-amber-900 dark:text-amber-200">
-                Já existe um RDO para esta obra na data {dataRdo}
-              </p>
-              <p className="text-muted-foreground">
-                RDO <strong>{blockingExistingRdo.numero_rdo}</strong> (status: {blockingExistingRdo.status}).
-                Só é permitido um RDO ativo por obra/dia — abra o existente para editar ou escolha outra data.
-              </p>
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => navigate(`/rdo/${blockingExistingRdo.id}`)}
-            >
-              Abrir RDO existente
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Identificação */}
       <Card>
         <CardHeader><CardTitle className="text-base">Identificação</CardTitle></CardHeader>
