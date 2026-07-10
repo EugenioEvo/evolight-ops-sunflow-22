@@ -1,0 +1,1 @@
+DROP INDEX IF EXISTS public.uq_rdo_obra_data_ativo;
