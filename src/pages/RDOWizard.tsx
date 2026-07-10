@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, ArrowRight, Camera, Check, FileDown, Loader2, Plus, Save, Send, Trash2, Upload, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useDebounce } from '@/hooks/useDebounce';
 import { downloadRDOPDF } from '@/utils/generateRDOPDF';
 import SignatureCanvas from 'react-signature-canvas';
 import { toast } from 'sonner';
@@ -328,30 +327,10 @@ export default function RDOWizard() {
     return () => { cancelled = true; };
   }, [obraId, dataRdo, horarioInicio, horarioFim, obrasQ.data, readOnly]);
 
-  // Pre-check: existing active RDO for (obra, data). Debounce para evitar refetch a cada
-  // tecla/seleção e usar placeholderData para não "piscar" o aviso bloqueante.
-  const obraIdDeb = useDebounce(obraId, 400);
-  const dataRdoDeb = useDebounce(dataRdo, 400);
-  const existingRdoQ = useQuery({
-    queryKey: ['rdo-existing', obraIdDeb, dataRdoDeb],
-    queryFn: () => rdoService.findActiveByObraData(obraIdDeb, dataRdoDeb),
-    enabled: isNew && !!obraIdDeb && !!dataRdoDeb,
-    placeholderData: keepPreviousData,
-  });
-  const blockingExistingRdo =
-    isNew && existingRdoQ.data && existingRdoQ.data.id !== rdoId ? existingRdoQ.data : null;
-
   async function ensureDraftCreated(): Promise<string> {
     if (rdoId) return rdoId;
     if (!obraId) throw new Error('Selecione uma obra');
     if (!dataRdo) throw new Error('Informe a data do RDO');
-    // Re-check on submit to avoid race with the unique index
-    const existing = await rdoService.findActiveByObraData(obraId, dataRdo);
-    if (existing) {
-      throw new Error(
-        `Já existe um RDO (${existing.numero_rdo}) para esta obra na data ${dataRdo}. Abra-o para editar ou escolha outra data.`,
-      );
-    }
     const respId = profile?.id ? await rdoService.getCurrentPrestadorId(profile.id) : null;
     if (!respId) throw new Error('Seu cadastro de prestador não foi localizado. Conclua sua aprovação primeiro.');
     const id = await rdoService.createDraft({
@@ -566,31 +545,6 @@ export default function RDOWizard() {
 
       {step === 1 && (
       <div key="rdo-step-1" className="space-y-6 contents">
-
-
-      {blockingExistingRdo && (
-        <Card className="border-amber-500/60 bg-amber-500/10">
-          <CardContent className="py-3 flex flex-col md:flex-row md:items-center gap-3 justify-between">
-            <div className="text-sm">
-              <p className="font-medium text-amber-900 dark:text-amber-200">
-                Já existe um RDO para esta obra na data {dataRdo}
-              </p>
-              <p className="text-muted-foreground">
-                RDO <strong>{blockingExistingRdo.numero_rdo}</strong> (status: {blockingExistingRdo.status}).
-                Só é permitido um RDO ativo por obra/dia — abra o existente para editar ou escolha outra data.
-              </p>
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => navigate(`/rdo/${blockingExistingRdo.id}`)}
-            >
-              Abrir RDO existente
-            </Button>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Identificação */}
       <Card>
