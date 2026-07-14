@@ -354,8 +354,16 @@ const WorkOrders = () => {
                       <div className="flex items-center gap-2 text-muted-foreground">
                         <Calendar className="h-4 w-4 flex-shrink-0" />
                         <span>
-                          {os.data_programada ? format(new Date(os.data_programada), "dd/MM/yyyy", { locale: ptBR }) : "Sem data"}
-                          {os.hora_inicio && ` às ${os.hora_inicio}`}
+                          {(() => {
+                            if (!os.data_programada) return "Sem data";
+                            const key = String(os.data_programada).slice(0, 10);
+                            const [y, m, d] = key.split("-").map(Number);
+                            const dateStr = format(new Date(y, (m || 1) - 1, d || 1), "dd/MM/yyyy", { locale: ptBR });
+                            const hi = os.hora_inicio?.slice(0, 5);
+                            const hf = os.hora_fim?.slice(0, 5);
+                            const horario = hi && hf ? `${hi} - ${hf}` : hi || "";
+                            return horario ? `${dateStr} • ${horario}` : dateStr;
+                          })()}
                         </span>
                       </div>
                     </div>
