@@ -1,0 +1,2 @@
+DELETE FROM rdo_evidencias WHERE rdo_id IN ('2cbd471c-1e2f-492c-8175-0dbdb83519be','2bd342a9-0eba-4d76-8209-fceb2867cd64','d68964cb-aa88-43e9-87ea-de3532d187bd');
+DELETE FROM rdo_relatorios WHERE id IN ('2cbd471c-1e2f-492c-8175-0dbdb83519be','2bd342a9-0eba-4d76-8209-fceb2867cd64','d68964cb-aa88-43e9-87ea-de3532d187bd');
