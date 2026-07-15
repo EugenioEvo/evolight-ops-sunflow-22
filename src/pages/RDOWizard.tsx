@@ -874,25 +874,26 @@ export default function RDOWizard() {
           {(['antes', 'depois', 'ocorrencia', 'epi'] as const).map((tipo) => {
             const evs = (rdoQ.data?.evidencias ?? []).filter((e) => e.tipo === tipo);
             const labels: Record<string, string> = { antes: 'Antes', depois: 'Depois', ocorrencia: 'Ocorrências', epi: 'EPIs' };
+            const inputIdPrefix = `rdo-evidencia-${tipo}`;
             return (
               <div key={tipo} className="space-y-2">
                 <div className="flex items-center justify-between gap-2 flex-wrap">
                   <Label>{labels[tipo]} ({evs.length})</Label>
                   {!readOnly && (
                     <div className="flex items-center gap-2 flex-wrap">
-                      <label className="cursor-pointer inline-flex items-center text-sm text-primary px-2 py-1 rounded border border-input hover:bg-accent">
-                        <input type="file" accept="image/*" capture="environment" className="hidden"
-                          onChange={(e) => { const fs = e.target.files ? Array.from(e.target.files) : []; e.currentTarget.value = ''; handleUploadEvidencias(fs, tipo); }} />
+                      <input id={`${inputIdPrefix}-foto`} type="file" accept="image/*,image/heic,image/heif" capture="environment" className="sr-only"
+                        onChange={(e) => { const fs = e.target.files ? Array.from(e.target.files) : []; e.currentTarget.value = ''; handleUploadEvidencias(fs, tipo); }} />
+                      <label htmlFor={`${inputIdPrefix}-foto`} className="cursor-pointer inline-flex min-h-11 items-center text-sm text-primary px-3 py-2 rounded border border-input hover:bg-accent">
                         <Camera className="h-4 w-4 mr-1" /> Foto
                       </label>
-                      <label className="cursor-pointer inline-flex items-center text-sm text-primary px-2 py-1 rounded border border-input hover:bg-accent">
-                        <input type="file" accept="video/*" capture="environment" className="hidden"
-                          onChange={(e) => { const fs = e.target.files ? Array.from(e.target.files) : []; e.currentTarget.value = ''; handleUploadEvidencias(fs, tipo); }} />
+                      <input id={`${inputIdPrefix}-video`} type="file" accept="video/*" capture="environment" className="sr-only"
+                        onChange={(e) => { const fs = e.target.files ? Array.from(e.target.files) : []; e.currentTarget.value = ''; handleUploadEvidencias(fs, tipo); }} />
+                      <label htmlFor={`${inputIdPrefix}-video`} className="cursor-pointer inline-flex min-h-11 items-center text-sm text-primary px-3 py-2 rounded border border-input hover:bg-accent">
                         <Camera className="h-4 w-4 mr-1" /> Vídeo
                       </label>
-                      <label className="cursor-pointer inline-flex items-center text-sm text-primary px-2 py-1 rounded border border-input hover:bg-accent">
-                        <input type="file" accept="image/*,video/*" multiple className="hidden"
-                          onChange={(e) => { const fs = e.target.files ? Array.from(e.target.files) : []; e.currentTarget.value = ''; handleUploadEvidencias(fs, tipo); }} />
+                      <input id={`${inputIdPrefix}-upload`} type="file" accept="image/*,image/heic,image/heif,video/*" multiple className="sr-only"
+                        onChange={(e) => { const fs = e.target.files ? Array.from(e.target.files) : []; e.currentTarget.value = ''; handleUploadEvidencias(fs, tipo); }} />
+                      <label htmlFor={`${inputIdPrefix}-upload`} className="cursor-pointer inline-flex min-h-11 items-center text-sm text-primary px-3 py-2 rounded border border-input hover:bg-accent">
                         <Upload className="h-4 w-4 mr-1" /> Upload
                       </label>
                     </div>
