@@ -1,61 +1,52 @@
-# Painel do Cliente — escopo expandido
+# Ajustes no Catálogo de Atividades (`/obra-catalogo`)
 
-Hoje, ao entrar como cliente, o usuário vê apenas um resumo básico (informações, tickets, equipamentos, manutenções) sem poder agir. Vamos transformar o painel em um portal self-service alinhado ao que o cliente precisa após ativar a conta.
+Aplicar apenas no diálogo de criação/edição de atividade em `src/pages/ObraCatalogo.tsx`. Nenhuma mudança de schema ou backend.
 
-## O que o cliente verá
+## 1. Categoria vira combobox (lista + digitação livre)
 
-A página `/cliente` ganha três áreas, navegáveis por abas:
+- Trocar o `<Input>` do campo **Categoria** por um combobox (Popover + Command do shadcn) que:
+  - Lista as categorias distintas já existentes em `items` (derivadas via `useMemo`, ordenadas alfabeticamente, case-insensitive).
+  - Permite selecionar uma existente OU digitar uma nova (o texto digitado aparece como opção "Criar '<texto>'").
+  - Mantém o valor em `form.categoria` como string simples (sem alterar tipo salvo).
+- Comportamento tanto em **criar** quanto em **editar**.
 
-### 1. Resumo da conta
+## 2. Autopreenchimento ao escolher categoria (somente criação)
 
-- Bloco "Informações pessoais": nome, e-mail, telefone, com botão "Editar perfil" (atualiza `profiles`).
-- Bloco "Conta": empresa, CNPJ/CPF, endereço completo, prioridade.
-- Bloco "Origem do cadastro": badge da origem (Solarz, Conta Azul, Manual), ID Solarz quando houver, e lista de IDs Conta Azul vinculados (somente leitura — sincronizados pelo backoffice).
-- Bloco "Minhas UFVs": cards com nome, endereço, potência e status de cada UFV do cliente.
+Quando `form.id` é indefinido (nova atividade) e o usuário seleciona/digita uma **categoria já existente**, pré-preencher os campos abaixo com o valor **mais frequente** entre os itens daquela categoria — apenas se o campo estiver vazio/no default (não sobrescrever o que o usuário já digitou manualmente):
 
-### 2. O&M  
-  
-Duas sub-abas dentro de "O&M", todas filtradas pelo `cliente_id` do usuário:
+- `unidade` (default atual `'un'` conta como vazio para efeito de auto-preencher)
+- `tipo`
+- `sort_order` (usar `max(sort_order da categoria) + 1` em vez da moda, para o novo item entrar no fim da categoria)
 
-- Tickets:
-  - Lista paginada de tickets do cliente, com filtros por status e busca.
-  - Botão "Abrir novo chamado" abre um formulário (título, descrição, UFV, equipamento, endereço, urgência).
-  - Cada ticket pode ser aberto em um drawer/dialog onde o cliente:
-    - Vê o histórico de status, OS vinculadas e RME (se houver).
-    - **Edita** título, descrição, endereço, prioridade e UFV — somente enquanto o ticket estiver `aberto` ou `aguardando_aprovacao` (alinhado à regra existente que bloqueia edição quando há OS ativa).
-    - Pode cancelar o ticket (não excluir — segue a regra "tickets nunca são excluídos").
-      &nbsp;
+Ao editar (`form.id` definido), **não** aplicar autopreenchimento — respeita o que já está salvo.
 
-- **Ordens de Serviço**: número, ticket, técnico, data programada, status de aceite, link "Ver OS", link/modal "Ver RME" (relatórios de manutenção dos tickets do cliente, com status (rascunho/pendente/aprovado/rejeitado) e link para visualizar o PDF/preview.)
+## 3. Chave (`item_key`) derivada do Label — só na criação
 
-### 3. Obras (Obra / RDO)
-
-X sub-abas dentro de "Obras", todas filtradas pelo `cliente_id` do usuário:
-
-- **UFV XYZ - Expande abaixo o nome da UFV em formato árvore**: Contendo as informações da aba "Obras" que o administrativo ve (situação, RDOs abertos, etc).
-
-## Regras e permissões
-
-- Todas as queries usam o `cliente_id` resolvido por `profile_id` (já corrigido). Nenhum dado de outro cliente é exposto.
-- Ponto importante: o cliente só consegue editar Tickets abertos para o usuário dele que ELE mesmo tenha criado. Tickets criados pelo time operacional/adm/staff o cliente não pode editar. Ele também não pode criar OS a partir do ticket. O cliente apenas pode criar o ticket e nada mais. é permitido que ele altere o ticket até que ele entre em atendimento.
-- Edição de ticket só funciona se não houver OS ativa/concluída vinculada (regra `os-generation/edit-restriction-execution`).
-- Cancelamento de ticket reaproveita o fluxo `useCancelOS` adaptado para tickets (cascateia para OS, bloqueado por RME em rascunho).
-- RLS: confirmar (e adicionar se faltar) políticas de leitura para o cliente em `tickets`, `ordens_servico`, `rme_relatorios`, `rdo_relatorios`, `cliente_ufvs` e `cliente_conta_azul_ids` restritas ao próprio `profile_id` via `clientes.profile_id = auth.uid()` (através de função `is_owner_of_cliente`).
-- Origem e IDs Conta Azul são exibidos como somente-leitura.
+- Na criação, gerar `item_key` automaticamente a partir do `label` conforme o usuário digita, usando slug:
+  - lowercase, remover acentos, trocar não-alfanuméricos por `_`, colapsar `_` repetidos, trim.
+  - Ex.: "Instalação de Painel FV" → `instalacao_de_painel_fv`.
+- Se o usuário editar manualmente o campo Chave, marcar como "dirty" e parar de sincronizar automaticamente com o Label.
+- Ao editar uma atividade existente, o campo Chave permanece como está hoje (edição manual livre, sem sync automático) — evita quebrar RDOs antigos por mudança acidental.
 
 ## Detalhes técnicos
 
-- Página: refatorar `src/pages/ClientDashboard.tsx` em uma estrutura com `Tabs` (`Resumo`, `Tickets`, `Acompanhamento`).
-- Novo hook `useClientFullData` (ou estender `useClientDashData`) para buscar UFVs, conta-azul IDs, RDOs das obras do cliente e OS soltas.
-- Reutilizar componentes existentes: `TicketForm` (criar/editar), `RMEDetailDialog`, listas de OS de `WorkOrders`. Onde necessário, criar wrappers de leitura sem ações administrativas.
-- Função SQL utilitária `is_cliente_owner(_user_id uuid, _cliente_id uuid)` (security definer) para simplificar policies.
-- Migration revisa policies SELECT em `cliente_ufvs`, `cliente_conta_azul_ids`, `rdo_relatorios` (cliente lê quando a obra pertence ao seu cliente), `rme_relatorios` (cliente lê quando o ticket é dele).
-- Não mexer em layout do backoffice nem nos fluxos de técnico.
-- Garantir Notificações push para o cliente (in-app via `notificacoes e via e-mail também`) ao longo do processo.
-- Priorizar a utilização de funções que já existam para não termos retrabalho ou várias fontes verdades
+- Arquivo único afetado: `src/pages/ObraCatalogo.tsx`.
+- Combobox usa `Popover` + `Command`/`CommandInput`/`CommandItem` do shadcn (já disponíveis no projeto).
+- Derivar dados agregados por categoria com `useMemo` sobre `items`:
+  ```text
+  categoriasDisponiveis: string[]                          // distintas, ordenadas
+  defaultsPorCategoria: Record<categoria, {
+    unidade: string (moda),
+    tipo: string|null (moda),
+    proximoSortOrder: number (max+1)
+  }>
+  ```
+- Novo estado local `itemKeyDirty: boolean` (reset ao abrir o dialog: `false` em criação, `true` em edição).
+- `openCreate` reseta `itemKeyDirty=false`; `openEdit` seta `true`.
+- Ao mudar `label` em criação com `!itemKeyDirty`, atualizar `form.item_key = slug(label)`.
+- Ao mudar `item_key` manualmente, `setItemKeyDirty(true)`.
+- Ao selecionar/definir `categoria` em criação, aplicar defaults **apenas** aos campos ainda vazios/no default.
 
-## Fora do escopo desta etapa
+## Fora do escopo
 
-- Aprovar/rejeitar RME ou OS pelo cliente (continua sendo ação do backoffice).
-- Upload de evidências pelo cliente em RDOs/RMEs.
-- Edição de UFVs ou IDs Conta Azul.
+- Estrutura da tabela `rdo_atividades_catalogo`, RLS, RDOs existentes, outras telas.
