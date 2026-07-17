@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,8 +11,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { BookOpen, Pencil, Plus, Search, Trash2 } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { BookOpen, Check, ChevronsUpDown, Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 interface CatalogoItem {
   id: string;
@@ -49,6 +52,29 @@ interface FormState {
 
 const EMPTY: FormState = { item_key: '', label: '', unidade: 'un', categoria: '', tipo: null, sort_order: 0, ativo: true };
 
+function slugify(s: string): string {
+  return s
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .replace(/_+/g, '_');
+}
+
+function modeOf<T extends string | null>(arr: T[]): T | undefined {
+  const counts = new Map<string, { v: T; n: number }>();
+  for (const v of arr) {
+    const k = v == null ? '__null__' : String(v);
+    const cur = counts.get(k);
+    if (cur) cur.n++;
+    else counts.set(k, { v, n: 1 });
+  }
+  let best: { v: T; n: number } | undefined;
+  for (const c of counts.values()) if (!best || c.n > best.n) best = c;
+  return best?.v;
+}
+
 export default function ObraCatalogo() {
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
@@ -56,6 +82,9 @@ export default function ObraCatalogo() {
   const [ativoFilter, setAtivoFilter] = useState<string>('all');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState<FormState>(EMPTY);
+  const [itemKeyDirty, setItemKeyDirty] = useState(false);
+  const [categoriaPopoverOpen, setCategoriaPopoverOpen] = useState(false);
+  const [categoriaSearch, setCategoriaSearch] = useState('');
   const [confirmDelete, setConfirmDelete] = useState<CatalogoItem | null>(null);
 
   const { data: items = [], isLoading } = useQuery({
@@ -71,6 +100,33 @@ export default function ObraCatalogo() {
     },
     staleTime: 5 * 60_000,
   });
+
+  // Categorias existentes (distintas, ordenadas)
+  const categoriasDisponiveis = useMemo(() => {
+    const set = new Set<string>();
+    for (const i of items) if (i.categoria?.trim()) set.add(i.categoria.trim());
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }));
+  }, [items]);
+
+  // Defaults por categoria (moda de unidade/tipo, próximo sort_order)
+  const defaultsPorCategoria = useMemo(() => {
+    const map: Record<string, { unidade: string; tipo: string | null; proximoSortOrder: number }> = {};
+    const grouped = new Map<string, CatalogoItem[]>();
+    for (const i of items) {
+      const k = i.categoria?.trim();
+      if (!k) continue;
+      const arr = grouped.get(k) ?? [];
+      arr.push(i);
+      grouped.set(k, arr);
+    }
+    for (const [cat, arr] of grouped) {
+      const unidade = modeOf(arr.map((i) => i.unidade || 'un')) ?? 'un';
+      const tipo = modeOf(arr.map((i) => i.tipo ?? null)) ?? null;
+      const maxOrder = arr.reduce((m, i) => Math.max(m, i.sort_order ?? 0), 0);
+      map[cat] = { unidade, tipo, proximoSortOrder: maxOrder + 1 };
+    }
+    return map;
+  }, [items]);
 
   const upsertMutation = useMutation({
     mutationFn: async (payload: FormState) => {
@@ -124,13 +180,52 @@ export default function ObraCatalogo() {
     });
   }, [items, search, tipoFilter, ativoFilter]);
 
-  const openCreate = () => { setForm(EMPTY); setDialogOpen(true); };
+  const isCreating = !form.id;
+
+  const openCreate = () => {
+    setForm(EMPTY);
+    setItemKeyDirty(false);
+    setDialogOpen(true);
+  };
   const openEdit = (i: CatalogoItem) => {
     setForm({
       id: i.id, item_key: i.item_key, label: i.label, unidade: i.unidade,
       categoria: i.categoria, tipo: i.tipo, sort_order: i.sort_order ?? 0, ativo: i.ativo,
     });
+    setItemKeyDirty(true);
     setDialogOpen(true);
+  };
+
+  // Label -> item_key auto-slug (apenas na criação, enquanto o usuário não editou a chave manualmente)
+  const handleLabelChange = (label: string) => {
+    setForm((f) => {
+      const next: FormState = { ...f, label };
+      if (isCreating && !itemKeyDirty) next.item_key = slugify(label);
+      return next;
+    });
+  };
+
+  const handleItemKeyChange = (v: string) => {
+    setItemKeyDirty(true);
+    setForm({ ...form, item_key: v });
+  };
+
+  // Aplica defaults ao escolher categoria existente (somente na criação, sem sobrescrever escolhas do usuário)
+  const applyCategoria = (categoria: string) => {
+    setForm((f) => {
+      const next: FormState = { ...f, categoria };
+      if (isCreating) {
+        const d = defaultsPorCategoria[categoria];
+        if (d) {
+          if (!f.unidade || f.unidade === 'un') next.unidade = d.unidade;
+          if (f.tipo == null) next.tipo = d.tipo;
+          if (!f.sort_order) next.sort_order = d.proximoSortOrder;
+        }
+      }
+      return next;
+    });
+    setCategoriaPopoverOpen(false);
+    setCategoriaSearch('');
   };
 
   const handleSubmit = () => {
@@ -140,6 +235,16 @@ export default function ObraCatalogo() {
     }
     upsertMutation.mutate(form);
   };
+
+  const categoriaSearchTrim = categoriaSearch.trim();
+  const filteredCategorias = useMemo(() => {
+    const q = categoriaSearchTrim.toLowerCase();
+    if (!q) return categoriasDisponiveis;
+    return categoriasDisponiveis.filter((c) => c.toLowerCase().includes(q));
+  }, [categoriasDisponiveis, categoriaSearchTrim]);
+  const canCreateNewCategoria =
+    categoriaSearchTrim.length > 0 &&
+    !categoriasDisponiveis.some((c) => c.toLowerCase() === categoriaSearchTrim.toLowerCase());
 
   return (
     <div className="container mx-auto p-4 md:p-6 space-y-6">
@@ -230,16 +335,72 @@ export default function ObraCatalogo() {
           <div className="grid gap-3 py-2">
             <div className="grid gap-1.5">
               <Label>Label *</Label>
-              <Input value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} />
+              <Input value={form.label} onChange={(e) => handleLabelChange(e.target.value)} />
             </div>
             <div className="grid gap-1.5">
               <Label>Chave (item_key) *</Label>
-              <Input value={form.item_key} className="font-mono" onChange={(e) => setForm({ ...form, item_key: e.target.value })} placeholder="ex: instalacao_painel" />
+              <Input
+                value={form.item_key}
+                className="font-mono"
+                onChange={(e) => handleItemKeyChange(e.target.value)}
+                placeholder="ex: instalacao_painel"
+              />
+              {isCreating && !itemKeyDirty && (
+                <p className="text-[11px] text-muted-foreground">Gerada automaticamente a partir do Label. Edite se precisar.</p>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="grid gap-1.5">
                 <Label>Categoria *</Label>
-                <Input value={form.categoria} onChange={(e) => setForm({ ...form, categoria: e.target.value })} />
+                <Popover open={categoriaPopoverOpen} onOpenChange={setCategoriaPopoverOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={categoriaPopoverOpen}
+                      className={cn('justify-between font-normal', !form.categoria && 'text-muted-foreground')}
+                    >
+                      {form.categoria || 'Selecione ou digite...'}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="p-0 w-[--radix-popover-trigger-width]" align="start">
+                    <Command shouldFilter={false}>
+                      <CommandInput
+                        placeholder="Buscar ou criar categoria..."
+                        value={categoriaSearch}
+                        onValueChange={setCategoriaSearch}
+                      />
+                      <CommandList>
+                        {filteredCategorias.length === 0 && !canCreateNewCategoria && (
+                          <CommandEmpty>Nenhuma categoria.</CommandEmpty>
+                        )}
+                        {filteredCategorias.length > 0 && (
+                          <CommandGroup heading="Existentes">
+                            {filteredCategorias.map((c) => (
+                              <CommandItem key={c} value={c} onSelect={() => applyCategoria(c)}>
+                                <Check className={cn('mr-2 h-4 w-4', form.categoria === c ? 'opacity-100' : 'opacity-0')} />
+                                {c}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        )}
+                        {canCreateNewCategoria && (
+                          <CommandGroup heading="Nova">
+                            <CommandItem
+                              value={`__new__${categoriaSearchTrim}`}
+                              onSelect={() => applyCategoria(categoriaSearchTrim)}
+                            >
+                              <Plus className="mr-2 h-4 w-4" />
+                              Criar "{categoriaSearchTrim}"
+                            </CommandItem>
+                          </CommandGroup>
+                        )}
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
               <div className="grid gap-1.5">
                 <Label>Tipo</Label>
