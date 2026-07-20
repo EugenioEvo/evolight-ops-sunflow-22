@@ -108,18 +108,32 @@ serve(async (req) => {
       })
       .sort((a, b) => a.categoria.localeCompare(b.categoria) || a.label.localeCompare(b.label));
 
-    // série de avanço acumulado
+    // série de avanço acumulado — média sobre TODAS as metas (etapas zeradas contam como 0%)
     const sorted = [...aprovados].sort((a, b) => a.data_rdo.localeCompare(b.data_rdo));
-    let acc = 0;
+    const metaIds = Array.from(metaQtyMap.keys());
+    const totalMetas = metaIds.length;
+    const acumulado = new Map<string, number>();
     const avancoSerie = sorted.map((r) => {
-      const vals = (r.atividades ?? []).map((a: any) => {
-        if (a.percentual_avanco != null) return Number(a.percentual_avanco);
-        const meta = a.catalogo_id ? metaQtyMap.get(a.catalogo_id) ?? 0 : 0;
-        return meta > 0 ? (Number(a.quantidade ?? 0) / meta) * 100 : 0;
-      });
-      const avg = vals.length ? vals.reduce((s: number, v: number) => s + v, 0) / vals.length : 0;
-      acc = Math.min(100, acc + avg);
-      return { data: r.data_rdo, avanco: Math.round(acc * 100) / 100 };
+      for (const a of r.atividades ?? []) {
+        if (!a.catalogo_id) continue;
+        acumulado.set(a.catalogo_id, (acumulado.get(a.catalogo_id) ?? 0) + Number(a.quantidade ?? 0));
+      }
+      let avanco = 0;
+      if (totalMetas > 0) {
+        let soma = 0;
+        for (const cid of metaIds) {
+          const meta = metaQtyMap.get(cid) ?? 0;
+          const real = acumulado.get(cid) ?? 0;
+          soma += meta > 0 ? Math.min(100, (real / meta) * 100) : 0;
+        }
+        avanco = soma / totalMetas;
+      } else {
+        const vals = (r.atividades ?? []).map((a: any) =>
+          a.percentual_avanco != null ? Number(a.percentual_avanco) : 0
+        );
+        avanco = vals.length ? vals.reduce((s: number, v: number) => s + v, 0) / vals.length : 0;
+      }
+      return { data: r.data_rdo, avanco: Math.round(avanco * 100) / 100 };
     });
 
     // fotos consolidadas (somente RDOs aprovados)
