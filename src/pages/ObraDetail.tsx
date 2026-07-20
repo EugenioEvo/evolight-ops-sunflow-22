@@ -95,20 +95,35 @@ export default function ObraDetail({ mode = 'staff' }: Props) {
   });
 
   const avancoSerie = useMemo(() => {
-    // Para cada RDO aprovado: média do % de avanço das atividades daquele dia
-    // (fallback: quantidade / meta * 100 quando percentual_avanco vier nulo).
-    // A série acumula somando as médias diárias dos RDOs aprovados (cap em 100%).
+    // Avanço = média do % concluído de TODAS as etapas com meta cadastrada
+    // (etapas sem execução contam como 0%). Acumula quantidade realizada por
+    // catalogo_id ao longo do tempo (somente RDOs aprovados).
     const sorted = [...aprovados].sort((a, b) => a.data_rdo.localeCompare(b.data_rdo));
-    let acc = 0;
+    const metaIds = Object.keys(metas);
+    const totalMetas = metaIds.length;
+    const acumulado: Record<string, number> = {};
     return sorted.map((r) => {
-      const vals = (r.atividades ?? []).map((a: any) => {
-        if (a.percentual_avanco != null) return Number(a.percentual_avanco);
-        const meta = a.catalogo_id ? metas[a.catalogo_id] : 0;
-        return meta > 0 ? (Number(a.quantidade ?? 0) / meta) * 100 : 0;
-      });
-      const avgDia = vals.length ? vals.reduce((s, v) => s + v, 0) / vals.length : 0;
-      acc = Math.min(100, acc + avgDia);
-      return { data: r.data_rdo, avanco: Math.round(acc * 100) / 100 };
+      for (const a of r.atividades ?? []) {
+        if (!a.catalogo_id) continue;
+        acumulado[a.catalogo_id] = (acumulado[a.catalogo_id] ?? 0) + Number(a.quantidade ?? 0);
+      }
+      let avanco = 0;
+      if (totalMetas > 0) {
+        const soma = metaIds.reduce((s, cid) => {
+          const meta = metas[cid] ?? 0;
+          const real = acumulado[cid] ?? 0;
+          const pct = meta > 0 ? Math.min(100, (real / meta) * 100) : 0;
+          return s + pct;
+        }, 0);
+        avanco = soma / totalMetas;
+      } else {
+        // fallback sem metas: média das atividades reportadas no dia
+        const vals = (r.atividades ?? []).map((a: any) =>
+          a.percentual_avanco != null ? Number(a.percentual_avanco) : 0
+        );
+        avanco = vals.length ? vals.reduce((s, v) => s + v, 0) / vals.length : 0;
+      }
+      return { data: r.data_rdo, avanco: Math.round(avanco * 100) / 100 };
     });
   }, [aprovados, metas]);
 
