@@ -517,6 +517,114 @@ export type Database = {
           },
         ]
       }
+      hse_afastamentos: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          data_acidente: string
+          data_afastamento: string
+          data_retorno: string
+          descricao: string
+          dias_afastado: number
+          id: string
+          local_customizado: string | null
+          nome_customizado: string | null
+          obra_id: string | null
+          observacoes: string | null
+          prestador_id: string | null
+          profile_id: string | null
+          updated_at: string
+          vinculo: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          data_acidente: string
+          data_afastamento: string
+          data_retorno: string
+          descricao: string
+          dias_afastado: number
+          id?: string
+          local_customizado?: string | null
+          nome_customizado?: string | null
+          obra_id?: string | null
+          observacoes?: string | null
+          prestador_id?: string | null
+          profile_id?: string | null
+          updated_at?: string
+          vinculo: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          data_acidente?: string
+          data_afastamento?: string
+          data_retorno?: string
+          descricao?: string
+          dias_afastado?: number
+          id?: string
+          local_customizado?: string | null
+          nome_customizado?: string | null
+          obra_id?: string | null
+          observacoes?: string | null
+          prestador_id?: string | null
+          profile_id?: string | null
+          updated_at?: string
+          vinculo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hse_afastamentos_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hse_afastamentos_prestador_id_fkey"
+            columns: ["prestador_id"]
+            isOneToOne: false
+            referencedRelation: "prestadores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hse_afastamentos_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hse_certificacao_alertas: {
+        Row: {
+          certificacao_id: string
+          enviado_em: string
+          id: string
+          janela_dias: number
+        }
+        Insert: {
+          certificacao_id: string
+          enviado_em?: string
+          id?: string
+          janela_dias: number
+        }
+        Update: {
+          certificacao_id?: string
+          enviado_em?: string
+          id?: string
+          janela_dias?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hse_certificacao_alertas_certificacao_id_fkey"
+            columns: ["certificacao_id"]
+            isOneToOne: false
+            referencedRelation: "hse_certificacoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hse_certificacao_anexos: {
         Row: {
           certificacao_id: string

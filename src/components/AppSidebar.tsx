@@ -88,6 +88,10 @@ const cadastroItems: NavItem[] = [
   { title: "Certificações HSE", url: "/hse/catalogo-certificacoes", icon: BookOpen, allow: ['admin'] },
 ];
 
+const hseItems: NavItem[] = [
+  { title: "Afastamentos", url: "/hse/afastamentos", icon: ShieldAlert, allow: ['admin', 'engenharia'] },
+];
+
 const systemItems: NavItem[] = [
   { title: "Relatórios", url: "/relatorios", icon: BarChart3, allow: STAFF_BO },
   { title: "Auditoria", url: "/audit-logs", icon: ShieldAlert, allow: ['admin'] },
@@ -243,6 +247,17 @@ export function AppSidebar() {
             <SidebarGroupContent>
               <SidebarMenu>
                 {cadastroItems.filter(i => hasAnyRole(i.allow)).map(item => renderItem(item))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {hseItems.some(i => hasAnyRole(i.allow)) && (
+          <SidebarGroup>
+            <SidebarGroupLabel>HSE</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {hseItems.filter(i => hasAnyRole(i.allow)).map(item => renderItem(item))}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
