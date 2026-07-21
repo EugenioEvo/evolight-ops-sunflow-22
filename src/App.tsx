@@ -49,6 +49,7 @@ import GerenciarRDO from "./pages/GerenciarRDO";
 import DashboardRDO from "./pages/DashboardRDO";
 import PublicObraView from "./pages/PublicObraView";
 import HseCatalogoCertificacoes from "./pages/HseCatalogoCertificacoes";
+import HseAfastamentos from "./pages/HseAfastamentos";
 
 // Legacy /rme route → redirects to the unified Wizard, preserving ?os=
 const LegacyRMERedirect = () => {
@@ -189,6 +190,11 @@ const App = () => (
                             <Route path="/hse/catalogo-certificacoes" element={
                               <ProtectedRoute roles={['admin']}>
                                 <HseCatalogoCertificacoes />
+                              </ProtectedRoute>
+                            } />
+                            <Route path="/hse/afastamentos" element={
+                              <ProtectedRoute roles={['admin', 'engenharia']}>
+                                <HseAfastamentos />
                               </ProtectedRoute>
                             } />
                             <Route path="/rdo" element={
