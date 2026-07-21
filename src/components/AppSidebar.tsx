@@ -85,6 +85,7 @@ const cadastroItems: NavItem[] = [
   { title: "Equipamentos", url: "/equipamentos", icon: Zap, allow: STAFF_BO },
   { title: "Insumos", url: "/insumos", icon: Package, allow: [...STAFF_BO, 'tecnico_campo'] },
   { title: "Kits", url: "/kits", icon: Boxes, allow: ['admin', 'backoffice'] },
+  { title: "Certificações HSE", url: "/hse/catalogo-certificacoes", icon: BookOpen, allow: ['admin'] },
 ];
 
 const systemItems: NavItem[] = [

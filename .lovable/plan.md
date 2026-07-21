@@ -1,52 +1,83 @@
-# Ajustes no Catálogo de Atividades (`/obra-catalogo`)
 
-Aplicar apenas no diálogo de criação/edição de atividade em `src/pages/ObraCatalogo.tsx`. Nenhuma mudança de schema ou backend.
+# Módulo HSE/EHS
 
-## 1. Categoria vira combobox (lista + digitação livre)
+Entrega em 3 fases pequenas, cada uma testável isoladamente. Após cada fase valido antes de seguir.
 
-- Trocar o `<Input>` do campo **Categoria** por um combobox (Popover + Command do shadcn) que:
-  - Lista as categorias distintas já existentes em `items` (derivadas via `useMemo`, ordenadas alfabeticamente, case-insensitive).
-  - Permite selecionar uma existente OU digitar uma nova (o texto digitado aparece como opção "Criar '<texto>'").
-  - Mantém o valor em `form.categoria` como string simples (sem alterar tipo salvo).
-- Comportamento tanto em **criar** quanto em **editar**.
+---
 
-## 2. Autopreenchimento ao escolher categoria (somente criação)
+## Fase 1 — Certificações vivas (Usuários + Prestadores)
 
-Quando `form.id` é indefinido (nova atividade) e o usuário seleciona/digita uma **categoria já existente**, pré-preencher os campos abaixo com o valor **mais frequente** entre os itens daquela categoria — apenas se o campo estiver vazio/no default (não sobrescrever o que o usuário já digitou manualmente):
+### O que muda para o usuário
+- No cadastro de **Usuário** e de **Prestador** aparece a seção "Certificações HSE" com botão **+ Nova certificação**.
+- Cada certificação: **Tipo** (do catálogo global), **Data de vencimento**, **Observações**, **Anexos ilimitados** (foto/vídeo/qualquer arquivo, galeria ou câmera).
+- Admin ganha `/hse/catalogo-certificacoes` (menu "Sistema") — CRUD do catálogo global.
+- Badge de status na lista de usuários/prestadores: verde (>30d), amarelo (≤30d), vermelho (vencida).
 
-- `unidade` (default atual `'un'` conta como vazio para efeito de auto-preencher)
-- `tipo`
-- `sort_order` (usar `max(sort_order da categoria) + 1` em vez da moda, para o novo item entrar no fim da categoria)
+### Backend
+Migração criando:
+- `hse_certificacao_tipos` — catálogo global (`nome`, `descricao`, `obrigatoria`, `ativo`).
+- `hse_certificacoes` — `tipo_id`, `profile_id` **ou** `prestador_id` (CHECK exatamente-um), `data_vencimento`, `observacoes`, `created_by`, `origem` (`manual` | `migrado_legado`).
+- `hse_certificacao_anexos` — `certificacao_id`, `storage_path`, `nome_original`, `mime_type`, `tamanho_bytes`.
+- Bucket privado `hse-certificacoes` (sem restrição de MIME) + RLS em `storage.objects`.
 
-Ao editar (`form.id` definido), **não** aplicar autopreenchimento — respeita o que já está salvo.
+RLS:
+- Catálogo: leitura para autenticados, escrita só admin.
+- Certificações/anexos: leitura para staff/backoffice + próprio dono; escrita para staff/backoffice.
 
-## 3. Chave (`item_key`) derivada do Label — só na criação
+### Migração dos dados legados (novo)
+Hoje `prestadores.certificacoes text[]` guarda checkboxes ("NR-10", "NR-35", "CAT", etc.). Vou:
+1. **Seed do catálogo** com os valores distintos hoje existentes em `prestadores.certificacoes` (unificados com o array `certificacoesOptions` do frontend), todos ativos.
+2. **Backfill**: para cada string no `certificacoes[]` de cada prestador, criar 1 registro em `hse_certificacoes` com `prestador_id` do dono, `tipo_id` = match no catálogo (case-insensitive, trim), `data_vencimento = NULL`, `origem = 'migrado_legado'`, `observacoes = 'Migrado do cadastro legado — preencher vencimento e anexar comprovante'`.
+3. **UI marca** essas certificações com badge cinza "Pendente de complemento" enquanto `data_vencimento IS NULL`. Usuário ou admin abre e completa vencimento + anexos.
+4. **Coluna legado preservada** por enquanto (`prestadores.certificacoes`) só como fallback histórico; a UI passa a ler do novo modelo. Remoção fica para tech debt separado depois de validado.
+5. Alertas da Fase 2 **ignoram** registros com `data_vencimento IS NULL` (não spamma o admin com legado incompleto).
 
-- Na criação, gerar `item_key` automaticamente a partir do `label` conforme o usuário digita, usando slug:
-  - lowercase, remover acentos, trocar não-alfanuméricos por `_`, colapsar `_` repetidos, trim.
-  - Ex.: "Instalação de Painel FV" → `instalacao_de_painel_fv`.
-- Se o usuário editar manualmente o campo Chave, marcar como "dirty" e parar de sincronizar automaticamente com o Label.
-- Ao editar uma atividade existente, o campo Chave permanece como está hoje (edição manual livre, sem sync automático) — evita quebrar RDOs antigos por mudança acidental.
+### Frontend
+- Componente `HSECertificationsPanel({ profileId?, prestadorId? })` reutilizado em `/usuarios` e no dialog de edição de `/prestadores`.
+- Upload multi-arquivo no padrão RDO/RME (`accept="*/*"` + input com `capture="environment"`).
+- Nova página do catálogo de tipos, estilo `ObraCatalogo`.
+- Onde havia o multiselect antigo de `certificacoes` no form de prestador, substituo pelo novo painel.
 
-## Detalhes técnicos
+### Validação da Fase 1
+(a) rodar migração e conferir contagem de `hse_certificacoes` = soma de itens em `prestadores.certificacoes`; (b) abrir um prestador migrado, ver badge "Pendente" e completar vencimento + anexo; (c) criar tipo novo no catálogo; (d) anexar foto+vídeo+PDF; (e) RLS bloqueando outro perfil.
 
-- Arquivo único afetado: `src/pages/ObraCatalogo.tsx`.
-- Combobox usa `Popover` + `Command`/`CommandInput`/`CommandItem` do shadcn (já disponíveis no projeto).
-- Derivar dados agregados por categoria com `useMemo` sobre `items`:
-  ```text
-  categoriasDisponiveis: string[]                          // distintas, ordenadas
-  defaultsPorCategoria: Record<categoria, {
-    unidade: string (moda),
-    tipo: string|null (moda),
-    proximoSortOrder: number (max+1)
-  }>
-  ```
-- Novo estado local `itemKeyDirty: boolean` (reset ao abrir o dialog: `false` em criação, `true` em edição).
-- `openCreate` reseta `itemKeyDirty=false`; `openEdit` seta `true`.
-- Ao mudar `label` em criação com `!itemKeyDirty`, atualizar `form.item_key = slug(label)`.
-- Ao mudar `item_key` manualmente, `setItemKeyDirty(true)`.
-- Ao selecionar/definir `categoria` em criação, aplicar defaults **apenas** aos campos ainda vazios/no default.
+---
+
+## Fase 2 — Alertas de vencimento (in-app + e-mail)
+
+- Notificações in-app + e-mail (Resend) nas janelas **30/7/0 dias** para o dono e para admin/engenharia.
+- Tabela `hse_certificacao_alertas(certificacao_id, janela_dias, enviado_em)` para dedupe.
+- Edge function `hse-check-certificacoes` + cron diário 08:00 BRT via `supabase--insert`.
+- Ignora registros com `data_vencimento IS NULL` (legado incompleto).
+
+### Validação
+Inserir vencimentos em 30/7/0 dias, disparar manual, confirmar notificação + e-mail sem duplicar em reexecuções.
+
+---
+
+## Fase 3 — Afastamentos (só admin/engenharia)
+
+- Novo item **HSE › Afastamentos**.
+- Formulário:
+  - **Pessoa**: combobox unificando `profiles` + `prestadores`, com opção "Nome customizado".
+  - **Vínculo**: Contratado / Subcontratado.
+  - **Local**: combobox de `obras` (opcional texto livre).
+  - **Data do acidente**, **Descrição**, **Data do afastamento**, **Dias afastado**, **Data de retorno** (auto = afastamento + dias, editável).
+- Cards de totalizadores: acidentes no período, dias perdidos, top obras. Filtros por mês/ano/obra/vínculo.
+- Tabela `hse_afastamentos` com CHECK exatamente-um em pessoa e em local; RLS via `has_role('admin'|'engenharia')`.
+
+### Validação
+Cadastrar 3 afastamentos (interno, prestador, custom), conferir totalizadores/filtros e bloqueio para outros roles.
+
+---
 
 ## Fora do escopo
+- Bloqueio de escala por certificação vencida (coluna `obrigatoria` fica preparada).
+- Integração RDO ↔ afastamento.
+- TF/TG e dashboard HSE avançado.
+- Drop da coluna `prestadores.certificacoes` legada — só após ciclo de validação.
 
-- Estrutura da tabela `rdo_atividades_catalogo`, RLS, RDOs existentes, outras telas.
+---
+
+## Ordem de execução
+Começo pela **Fase 1** (migração + seed do catálogo + backfill legado + UI). Te chamo para validar antes de mexer no cron da Fase 2. Aprova?

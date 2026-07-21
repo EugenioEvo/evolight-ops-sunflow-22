@@ -18,7 +18,8 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search, Shield, Trash2, UserCog, Pencil, Plus, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { especialidadesOptions, certificacoesOptions, experienciaOptions } from '@/features/providers/types';
+import { especialidadesOptions, experienciaOptions } from '@/features/providers/types';
+import { HSECertificationsPanel } from '@/features/hse/components/HSECertificationsPanel';
 
 type AppRole = 'admin' | 'engenharia' | 'supervisao' | 'lider' | 'backoffice' | 'sup_eletromecanico' | 'lider_eletromecanico' | 'eletromecanico' | 'tecnico_campo' | 'cliente';
 const ALL_ROLES: AppRole[] = ['admin', 'engenharia', 'supervisao', 'lider', 'backoffice', 'sup_eletromecanico', 'lider_eletromecanico', 'eletromecanico', 'tecnico_campo', 'cliente'];
@@ -510,25 +511,10 @@ const EditUserDialog = ({ editing, onClose, onSaved, saving, setSaving }: EditDi
                 </div>
               </div>
 
-              <div>
-                <Label className="mb-2 block">Certificações</Label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1">
-                  {certificacoesOptions.map(opt => {
-                    const checked = form.prestador!.certificacoes?.includes(opt) || false;
-                    return (
-                      <label key={opt} className="flex items-center gap-2 text-sm cursor-pointer min-h-[36px]">
-                        <Checkbox
-                          checked={checked}
-                          onCheckedChange={() =>
-                            updatePrestador('certificacoes', toggleArrayItem(form.prestador!.certificacoes, opt))
-                          }
-                        />
-                        {opt}
-                      </label>
-                    );
-                  })}
-                </div>
+              <div className="pt-2 border-t">
+                <HSECertificationsPanel profileId={form.id} />
               </div>
+
 
               <div>
                 <Label>Observações do candidato</Label>
