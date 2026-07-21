@@ -517,6 +517,138 @@ export type Database = {
           },
         ]
       }
+      hse_certificacao_anexos: {
+        Row: {
+          certificacao_id: string
+          created_at: string
+          id: string
+          mime_type: string | null
+          nome_original: string | null
+          storage_path: string
+          tamanho_bytes: number | null
+          uploaded_by: string | null
+        }
+        Insert: {
+          certificacao_id: string
+          created_at?: string
+          id?: string
+          mime_type?: string | null
+          nome_original?: string | null
+          storage_path: string
+          tamanho_bytes?: number | null
+          uploaded_by?: string | null
+        }
+        Update: {
+          certificacao_id?: string
+          created_at?: string
+          id?: string
+          mime_type?: string | null
+          nome_original?: string | null
+          storage_path?: string
+          tamanho_bytes?: number | null
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hse_certificacao_anexos_certificacao_id_fkey"
+            columns: ["certificacao_id"]
+            isOneToOne: false
+            referencedRelation: "hse_certificacoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hse_certificacao_tipos: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          descricao: string | null
+          id: string
+          nome: string
+          obrigatoria: boolean
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          nome: string
+          obrigatoria?: boolean
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          nome?: string
+          obrigatoria?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      hse_certificacoes: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          data_vencimento: string | null
+          id: string
+          observacoes: string | null
+          origem: string
+          prestador_id: string | null
+          profile_id: string | null
+          tipo_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          data_vencimento?: string | null
+          id?: string
+          observacoes?: string | null
+          origem?: string
+          prestador_id?: string | null
+          profile_id?: string | null
+          tipo_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          data_vencimento?: string | null
+          id?: string
+          observacoes?: string | null
+          origem?: string
+          prestador_id?: string | null
+          profile_id?: string | null
+          tipo_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hse_certificacoes_prestador_id_fkey"
+            columns: ["prestador_id"]
+            isOneToOne: false
+            referencedRelation: "prestadores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hse_certificacoes_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hse_certificacoes_tipo_id_fkey"
+            columns: ["tipo_id"]
+            isOneToOne: false
+            referencedRelation: "hse_certificacao_tipos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       insumo_compras: {
         Row: {
           created_at: string
@@ -2472,6 +2604,10 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      hse_cert_is_owner: {
+        Args: { _prestador_id: string; _profile_id: string; _user_id: string }
         Returns: boolean
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
