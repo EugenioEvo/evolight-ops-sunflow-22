@@ -16,6 +16,7 @@ import {
   experienciaOptions,
 } from "@/features/providers";
 import { ApprovePrestadorDialog } from "@/features/providers/components/ApprovePrestadorDialog";
+import { HSECertificationsPanel } from "@/features/hse/components/HSECertificationsPanel";
 
 const CATEGORIA_LABELS: Record<string, string> = {
   tecnico: "Técnico de Campo (O&M)",
@@ -198,30 +199,12 @@ const Prestadores = () => {
                   </FormItem>
                 )} />
 
-                <FormField control={form.control} name="certificacoes" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Certificações</FormLabel>
-                    <Select onValueChange={(value) => {
-                      const currentValues = field.value || [];
-                      if (!currentValues.includes(value)) field.onChange([...currentValues, value]);
-                    }}>
-                      <FormControl><SelectTrigger><SelectValue placeholder="Selecione certificações" /></SelectTrigger></FormControl>
-                      <SelectContent>
-                        {certificacoesOptions.map((cert) => (
-                          <SelectItem key={cert} value={cert}>{cert}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {field.value?.map((cert) => (
-                        <Badge key={cert} variant="secondary" className="cursor-pointer" onClick={() => field.onChange(field.value?.filter((c) => c !== cert))}>
-                          {cert} ✕
-                        </Badge>
-                      ))}
-                    </div>
-                    <FormMessage />
-                  </FormItem>
-                )} />
+                {editingPrestador && (
+                  <div className="pt-3 border-t">
+                    <HSECertificationsPanel prestadorId={editingPrestador.id} />
+                  </div>
+                )}
+
 
                 <FormField control={form.control} name="data_admissao" render={({ field }) => (
                   <FormItem><FormLabel>Data de Admissão</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
