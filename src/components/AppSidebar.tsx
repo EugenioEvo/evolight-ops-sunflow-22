@@ -251,6 +251,7 @@ export function AppSidebar() {
           <SidebarGroup>
             <SidebarGroupLabel>Cadastros</SidebarGroupLabel>
             <SidebarGroupContent>
+              <SidebarMenu>
                 {cadastroItems.filter(i => hasAnyRole(i.allow)).map(item => renderItem(item))}
                 {hasAnyRole(['admin']) && (
                   collapsed ? (
