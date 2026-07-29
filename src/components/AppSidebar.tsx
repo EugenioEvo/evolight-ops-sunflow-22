@@ -263,7 +263,7 @@ export function AppSidebar() {
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   ) : (
-                    <Collapsible defaultOpen={certRoutes.some(isActive)} className="group/collapsible">
+                    <Collapsible defaultOpen={currentPath.startsWith('/hse/catalogo-certificacoes') || currentPath.startsWith('/hse/certificacoes')} className="group/collapsible">
                       <SidebarMenuItem>
                         <CollapsibleTrigger asChild>
                           <SidebarMenuButton className="text-muted-foreground hover:text-foreground hover:bg-muted/50">
