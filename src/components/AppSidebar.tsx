@@ -20,12 +20,15 @@ import {
   HardHat,
   FileSpreadsheet,
   BookOpen,
-  Wrench
+  Wrench,
+  ShieldCheck,
+  ChevronDown
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 import {
   Sidebar,
@@ -36,6 +39,9 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   useSidebar,
 } from "@/components/ui/sidebar";
 
@@ -85,7 +91,7 @@ const cadastroItems: NavItem[] = [
   { title: "Equipamentos", url: "/equipamentos", icon: Zap, allow: STAFF_BO },
   { title: "Insumos", url: "/insumos", icon: Package, allow: [...STAFF_BO, 'tecnico_campo'] },
   { title: "Kits", url: "/kits", icon: Boxes, allow: ['admin', 'backoffice'] },
-  { title: "Certificações HSE", url: "/hse/catalogo-certificacoes", icon: BookOpen, allow: ['admin'] },
+  
 ];
 
 const hseItems: NavItem[] = [
@@ -247,6 +253,43 @@ export function AppSidebar() {
             <SidebarGroupContent>
               <SidebarMenu>
                 {cadastroItems.filter(i => hasAnyRole(i.allow)).map(item => renderItem(item))}
+                {hasAnyRole(['admin']) && (
+                  collapsed ? (
+                    <SidebarMenuItem>
+                      <SidebarMenuButton asChild>
+                        <NavLink to="/hse/catalogo-certificacoes" className={getNavClass("/hse/catalogo-certificacoes")}>
+                          <ShieldCheck className="h-4 w-4" />
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ) : (
+                    <Collapsible defaultOpen={currentPath.startsWith('/hse/catalogo-certificacoes') || currentPath.startsWith('/hse/certificacoes')} className="group/collapsible">
+                      <SidebarMenuItem>
+                        <CollapsibleTrigger asChild>
+                          <SidebarMenuButton className="text-muted-foreground hover:text-foreground hover:bg-muted/50">
+                            <ShieldCheck className="h-4 w-4" />
+                            <span>Certificações HSE</span>
+                            <ChevronDown className="ml-auto h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-180" />
+                          </SidebarMenuButton>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <SidebarMenuSub>
+                            <SidebarMenuSubItem>
+                              <SidebarMenuSubButton asChild isActive={isActive("/hse/catalogo-certificacoes")}>
+                                <NavLink to="/hse/catalogo-certificacoes">Catálogo</NavLink>
+                              </SidebarMenuSubButton>
+                            </SidebarMenuSubItem>
+                            <SidebarMenuSubItem>
+                              <SidebarMenuSubButton asChild isActive={isActive("/hse/certificacoes")}>
+                                <NavLink to="/hse/certificacoes">Certificações Cadastradas</NavLink>
+                              </SidebarMenuSubButton>
+                            </SidebarMenuSubItem>
+                          </SidebarMenuSub>
+                        </CollapsibleContent>
+                      </SidebarMenuItem>
+                    </Collapsible>
+                  )
+                )}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
