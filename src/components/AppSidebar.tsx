@@ -251,8 +251,44 @@ export function AppSidebar() {
           <SidebarGroup>
             <SidebarGroupLabel>Cadastros</SidebarGroupLabel>
             <SidebarGroupContent>
-              <SidebarMenu>
                 {cadastroItems.filter(i => hasAnyRole(i.allow)).map(item => renderItem(item))}
+                {hasAnyRole(['admin']) && (
+                  collapsed ? (
+                    <SidebarMenuItem>
+                      <SidebarMenuButton asChild>
+                        <NavLink to="/hse/catalogo-certificacoes" className={getNavClass("/hse/catalogo-certificacoes")}>
+                          <ShieldCheck className="h-4 w-4" />
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ) : (
+                    <Collapsible defaultOpen={certRoutes.some(isActive)} className="group/collapsible">
+                      <SidebarMenuItem>
+                        <CollapsibleTrigger asChild>
+                          <SidebarMenuButton className="text-muted-foreground hover:text-foreground hover:bg-muted/50">
+                            <ShieldCheck className="h-4 w-4" />
+                            <span>Certificações HSE</span>
+                            <ChevronDown className="ml-auto h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-180" />
+                          </SidebarMenuButton>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <SidebarMenuSub>
+                            <SidebarMenuSubItem>
+                              <SidebarMenuSubButton asChild isActive={isActive("/hse/catalogo-certificacoes")}>
+                                <NavLink to="/hse/catalogo-certificacoes">Catálogo</NavLink>
+                              </SidebarMenuSubButton>
+                            </SidebarMenuSubItem>
+                            <SidebarMenuSubItem>
+                              <SidebarMenuSubButton asChild isActive={isActive("/hse/certificacoes")}>
+                                <NavLink to="/hse/certificacoes">Certificações Cadastradas</NavLink>
+                              </SidebarMenuSubButton>
+                            </SidebarMenuSubItem>
+                          </SidebarMenuSub>
+                        </CollapsibleContent>
+                      </SidebarMenuItem>
+                    </Collapsible>
+                  )
+                )}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
