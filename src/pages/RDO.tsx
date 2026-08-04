@@ -147,17 +147,62 @@ export default function RDO() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Número</TableHead>
-                    <TableHead>Data</TableHead>
-                    <TableHead>Obra</TableHead>
-                    <TableHead className="hidden md:table-cell">Responsável</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead>
+                      <button className="flex items-center gap-1" onClick={() => toggleSort('numero_rdo')}>
+                        Número <SortIcon k="numero_rdo" />
+                      </button>
+                    </TableHead>
+                    <TableHead>
+                      <button className="flex items-center gap-1" onClick={() => toggleSort('data_rdo')}>
+                        Data <SortIcon k="data_rdo" />
+                      </button>
+                    </TableHead>
+                    <TableHead className="min-w-[180px]">
+                      <button className="flex items-center gap-1" onClick={() => toggleSort('obra')}>
+                        Obra <SortIcon k="obra" />
+                      </button>
+                      <Select value={obraFilter} onValueChange={setObraFilter}>
+                        <SelectTrigger className="h-8 mt-1 text-xs font-normal"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Todas</SelectItem>
+                          {obraOptions.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </TableHead>
+                    <TableHead className="hidden md:table-cell min-w-[170px]">
+                      <button className="flex items-center gap-1" onClick={() => toggleSort('responsavel')}>
+                        Responsável <SortIcon k="responsavel" />
+                      </button>
+                      <Select value={respFilter} onValueChange={setRespFilter}>
+                        <SelectTrigger className="h-8 mt-1 text-xs font-normal"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Todos</SelectItem>
+                          {respOptions.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </TableHead>
+                    <TableHead className="hidden lg:table-cell min-w-[200px]">Observação</TableHead>
+                    <TableHead className="min-w-[150px]">
+                      <button className="flex items-center gap-1" onClick={() => toggleSort('status')}>
+                        Status <SortIcon k="status" />
+                      </button>
+                      <Select value={statusFilter} onValueChange={setStatusFilter}>
+                        <SelectTrigger className="h-8 mt-1 text-xs font-normal"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Todos</SelectItem>
+                          {statusOptions.map((s) => (
+                            <SelectItem key={s} value={s}>{RDO_STATUS_LABEL[s as RDOStatus] ?? s}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </TableHead>
                     <TableHead className="w-32" />
 
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filtered.map((r) => (
+                  {paged.map((r) => (
+
                     <TableRow
                       key={r.id}
                       className="cursor-pointer"
