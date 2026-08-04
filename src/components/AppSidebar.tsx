@@ -22,7 +22,7 @@ import {
   BookOpen,
   Wrench,
   ShieldCheck,
-  ChevronDown
+  ChevronDown,
   ListChecks,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
