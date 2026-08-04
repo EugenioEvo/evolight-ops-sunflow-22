@@ -221,6 +221,12 @@ export default function RDO() {
                         )}
                       </TableCell>
                       <TableCell className="hidden md:table-cell text-sm">{r.responsavel?.nome ?? '—'}</TableCell>
+                      <TableCell className="hidden lg:table-cell text-sm max-w-[280px]">
+                        <span className="line-clamp-2 text-muted-foreground" title={(r as any).observacoes_gerais ?? ''}>
+                          {(r as any).observacoes_gerais || '—'}
+                        </span>
+                      </TableCell>
+
                       <TableCell>
                         <Badge variant={RDO_STATUS_VARIANT[r.status as RDOStatus] ?? 'secondary'}>
                           {RDO_STATUS_LABEL[r.status as RDOStatus] ?? r.status}
