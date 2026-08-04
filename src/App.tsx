@@ -13,6 +13,7 @@ import Index from "./pages/Index";
 import RoutesPage from "./pages/Routes";
 import Agenda from "./pages/Agenda";
 import CargaTrabalho from "./pages/CargaTrabalho";
+import Atividades from "./pages/Atividades";
 import Clientes from "./pages/Clientes";
 import Tickets from "./pages/Tickets";
 import Equipamentos from "./pages/Equipamentos";
@@ -116,6 +117,12 @@ const App = () => (
                                 <CargaTrabalho />
                               </ProtectedRoute>
                             } />
+                            <Route path="/atividades" element={
+                              <ProtectedRoute roles={['admin', 'engenharia', 'supervisao', 'lider', 'sup_eletromecanico', 'lider_eletromecanico']}>
+                                <Atividades />
+                              </ProtectedRoute>
+                            } />
+
                             <Route path="/dashboard-presenca" element={
                               <ProtectedRoute roles={['admin', 'engenharia', 'supervisao', 'lider']}>
                                 <DashboardPresenca />
