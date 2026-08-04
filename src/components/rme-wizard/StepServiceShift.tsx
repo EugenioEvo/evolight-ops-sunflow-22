@@ -37,11 +37,26 @@ export const StepServiceShift = ({ formData, updateFormData }: Props) => {
     }
   };
 
+  const handleStartDateChange = (date: Date | undefined) => {
+    if (!date) return;
+    const iso = date.toISOString().split("T")[0];
+    const updates: Partial<RMEFormData> = {
+      data_execucao: iso,
+      weekday: format(date, "EEEE", { locale: ptBR }),
+    };
+    // Se o fim ficou anterior ao novo início, alinha o fim
+    if (formData.data_fim_execucao && formData.data_fim_execucao < iso) {
+      updates.data_fim_execucao = iso;
+    }
+    updateFormData(updates);
+  };
+
   const startDate = formData.data_execucao ? new Date(formData.data_execucao + "T12:00:00") : undefined;
   const endDate = formData.data_fim_execucao ? new Date(formData.data_fim_execucao + "T12:00:00") : undefined;
 
   // Trava: data_fim_execucao >= data_execucao
   const endBeforeStart = !!startDate && !!endDate && endDate < new Date(startDate.toDateString());
+
   // Trava: se mesmo dia, end_time > start_time
   const sameDay =
     !!startDate && !!endDate && startDate.toDateString() === endDate.toDateString();
