@@ -13,6 +13,7 @@ import Index from "./pages/Index";
 import RoutesPage from "./pages/Routes";
 import Agenda from "./pages/Agenda";
 import CargaTrabalho from "./pages/CargaTrabalho";
+import Atividades from "./pages/Atividades";
 import Clientes from "./pages/Clientes";
 import Tickets from "./pages/Tickets";
 import Equipamentos from "./pages/Equipamentos";
