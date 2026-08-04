@@ -96,7 +96,10 @@ const cadastroItems: NavItem[] = [
 
 const hseItems: NavItem[] = [
   { title: "Afastamentos", url: "/hse/afastamentos", icon: ShieldAlert, allow: ['admin', 'engenharia'] },
+  { title: "Catálogo de Certificações", url: "/hse/catalogo-certificacoes", icon: ShieldCheck, allow: ['admin'] },
+  { title: "Certificações Cadastradas", url: "/hse/certificacoes", icon: ShieldCheck, allow: ['admin'] },
 ];
+
 
 const systemItems: NavItem[] = [
   { title: "Relatórios", url: "/relatorios", icon: BarChart3, allow: STAFF_BO },
