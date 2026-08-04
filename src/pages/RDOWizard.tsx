@@ -223,7 +223,11 @@ export default function RDOWizard() {
     setRestricoes(r.restricoes ?? '');
     setHorasParadasProg((r as any).horas_paradas_programadas != null ? String((r as any).horas_paradas_programadas) : '');
     setHorasParadasNaoProg((r as any).horas_paradas_nao_programadas != null ? String((r as any).horas_paradas_nao_programadas) : '');
+    // Horas já salvas são consideradas intencionais: não devem ser sobrescritas
+    // pelo cálculo automático ao reabrir o RDO.
+    manualHorasRef.current = new Set(r.equipe.map((e) => e.prestador_id));
     setEquipe(r.equipe);
+
     setAtividades(r.atividades);
     setEquipamentos(r.equipamentos);
     setStatus(r.status);
