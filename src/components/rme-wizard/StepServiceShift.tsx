@@ -96,33 +96,50 @@ export const StepServiceShift = ({ formData, updateFormData }: Props) => {
         </div>
       </div>
 
-      {/* Início da Execução: Data + Hora — AUTOMÁTICO (puxado da OS) */}
+      {/* Início da Execução: Data + Hora — pré-preenchido pela OS, editável (preenchimento retroativo) */}
       <div className="space-y-3">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <Lock className="h-3 w-3" />
-          <span>Início preenchido automaticamente quando a OS foi iniciada — não editável.</span>
-        </div>
+        <p className="text-xs text-muted-foreground">
+          Pré-preenchido pela OS. Você pode ajustar se estiver preenchendo o RME em outro dia.
+        </p>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label>Início da Execução</Label>
-            <Input
-              type="text"
-              value={startDate ? format(startDate, "dd/MM/yyyy", { locale: ptBR }) : "—"}
-              disabled
-              className="h-12 bg-muted"
-            />
+            <Label>Início da Execução *</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-full justify-start text-left font-normal h-12",
+                    !startDate && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {startDate ? format(startDate, "dd/MM/yyyy", { locale: ptBR }) : "Selecione"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={startDate}
+                  onSelect={handleStartDateChange}
+                  locale={ptBR}
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
           </div>
           <div className="space-y-2">
-            <Label>Hora Início</Label>
+            <Label>Hora Início *</Label>
             <Input
               type="time"
               value={formData.start_time}
-              disabled
-              className="h-12 bg-muted"
+              onChange={(e) => updateFormData({ start_time: e.target.value })}
+              className="h-12"
             />
           </div>
         </div>
       </div>
+
 
       {/* Fim da Execução: Data + Hora — MANUAL */}
       <div className="grid gap-4 sm:grid-cols-2">
