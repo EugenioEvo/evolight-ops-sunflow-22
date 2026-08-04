@@ -71,6 +71,7 @@ const mainItems: NavItem[] = [
   { title: "Rotas", url: "/routes", icon: Route, allow: [...STAFF_BO, 'tecnico_campo'] },
   { title: "Agenda", url: "/agenda", icon: Calendar, allow: STAFF_BO },
   { title: "Carga de Trabalho", url: "/carga-trabalho", icon: TrendingUp, allow: STAFF },
+  { title: "Atividades", url: "/atividades", icon: ListChecks, allow: [...STAFF, 'sup_eletromecanico', 'lider_eletromecanico'] },
   { title: "Confirmações", url: "/dashboard-presenca", icon: Monitor, allow: STAFF },
   { title: "Aprovar RMEs", url: "/gerenciar-rme", icon: CheckSquare, allow: ['admin', 'engenharia', 'supervisao'] },
   { title: "Validar Insumos", url: "/backoffice/insumos", icon: PackageCheck, allow: [...STAFF, 'backoffice'] },
