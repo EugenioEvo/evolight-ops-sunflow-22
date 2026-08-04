@@ -136,19 +136,30 @@ export default function RDOWizard() {
     return Math.round(liquido * 2) / 2;
   })();
 
-  const recalculateEquipeHoras = (lista: RDOEquipe[], horas = defaultHorasTrabalhadas) =>
-    lista.map((e) => ({ ...e, horas_trabalhadas: horas }));
+  // Guarda quais membros tiveram as horas editadas manualmente — esses NUNCA
+  // são sobrescritos pelo cálculo automático.
+  const manualHorasRef = useRef<Set<string>>(new Set());
 
-  // Ao entrar no step 2, recalcula horas trabalhadas de toda a equipe marcada
+  const recalculateEquipeHoras = (lista: RDOEquipe[], horas = defaultHorasTrabalhadas) =>
+    lista.map((e) =>
+      manualHorasRef.current.has(e.prestador_id) ? e : { ...e, horas_trabalhadas: horas },
+    );
+
+  // Ao entrar no step 2 (ou ao mudar horários/paradas), recalcula apenas as
+  // horas que ainda não foram ajustadas manualmente.
   useEffect(() => {
     if (step !== 2 || readOnly) return;
-    setEquipe((prev) =>
-      prev.length === 0 || prev.every((e) => e.horas_trabalhadas === defaultHorasTrabalhadas)
-        ? prev
-        : prev.map((e) => ({ ...e, horas_trabalhadas: defaultHorasTrabalhadas })),
-    );
+    setEquipe((prev) => {
+      const next = prev.map((e) =>
+        manualHorasRef.current.has(e.prestador_id) || e.horas_trabalhadas === defaultHorasTrabalhadas
+          ? e
+          : { ...e, horas_trabalhadas: defaultHorasTrabalhadas },
+      );
+      return next.some((e, i) => e !== prev[i]) ? next : prev;
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, defaultHorasTrabalhadas]);
+
 
   const seededAtividadesForObra = useRef<string | null>(null);
 
