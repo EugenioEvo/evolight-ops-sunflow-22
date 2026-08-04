@@ -136,19 +136,30 @@ export default function RDOWizard() {
     return Math.round(liquido * 2) / 2;
   })();
 
-  const recalculateEquipeHoras = (lista: RDOEquipe[], horas = defaultHorasTrabalhadas) =>
-    lista.map((e) => ({ ...e, horas_trabalhadas: horas }));
+  // Guarda quais membros tiveram as horas editadas manualmente — esses NUNCA
+  // são sobrescritos pelo cálculo automático.
+  const manualHorasRef = useRef<Set<string>>(new Set());
 
-  // Ao entrar no step 2, recalcula horas trabalhadas de toda a equipe marcada
+  const recalculateEquipeHoras = (lista: RDOEquipe[], horas = defaultHorasTrabalhadas) =>
+    lista.map((e) =>
+      manualHorasRef.current.has(e.prestador_id) ? e : { ...e, horas_trabalhadas: horas },
+    );
+
+  // Ao entrar no step 2 (ou ao mudar horários/paradas), recalcula apenas as
+  // horas que ainda não foram ajustadas manualmente.
   useEffect(() => {
     if (step !== 2 || readOnly) return;
-    setEquipe((prev) =>
-      prev.length === 0 || prev.every((e) => e.horas_trabalhadas === defaultHorasTrabalhadas)
-        ? prev
-        : prev.map((e) => ({ ...e, horas_trabalhadas: defaultHorasTrabalhadas })),
-    );
+    setEquipe((prev) => {
+      const next = prev.map((e) =>
+        manualHorasRef.current.has(e.prestador_id) || e.horas_trabalhadas === defaultHorasTrabalhadas
+          ? e
+          : { ...e, horas_trabalhadas: defaultHorasTrabalhadas },
+      );
+      return next.some((e, i) => e !== prev[i]) ? next : prev;
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, defaultHorasTrabalhadas]);
+
 
   const seededAtividadesForObra = useRef<string | null>(null);
 
@@ -212,7 +223,11 @@ export default function RDOWizard() {
     setRestricoes(r.restricoes ?? '');
     setHorasParadasProg((r as any).horas_paradas_programadas != null ? String((r as any).horas_paradas_programadas) : '');
     setHorasParadasNaoProg((r as any).horas_paradas_nao_programadas != null ? String((r as any).horas_paradas_nao_programadas) : '');
+    // Horas já salvas são consideradas intencionais: não devem ser sobrescritas
+    // pelo cálculo automático ao reabrir o RDO.
+    manualHorasRef.current = new Set(r.equipe.map((e) => e.prestador_id));
     setEquipe(r.equipe);
+
     setAtividades(r.atividades);
     setEquipamentos(r.equipamentos);
     setStatus(r.status);
@@ -679,6 +694,25 @@ export default function RDOWizard() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+            <span>
+              Cálculo automático: <strong>{defaultHorasTrabalhadas}h</strong> (fim − início − horas paradas).
+              Valores editados manualmente são preservados ao salvar.
+            </span>
+            {!readOnly && equipe.length > 0 && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  manualHorasRef.current = new Set();
+                  setEquipe((prev) => prev.map((e) => ({ ...e, horas_trabalhadas: defaultHorasTrabalhadas })));
+                }}
+              >
+                Recalcular horas
+              </Button>
+            )}
+          </div>
           {eletroQ.isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : (
             <div className="space-y-2 max-h-72 overflow-auto pr-2">
               {(eletroQ.data ?? []).map((p) => {
@@ -692,7 +726,10 @@ export default function RDOWizard() {
                       disabled={readOnly}
                       onCheckedChange={(v) => {
                         if (v) setEquipe([...equipe, { prestador_id: p.id, horas_trabalhadas: defaultHorasTrabalhadas, horas_extras: 0 }]);
-                        else setEquipe(equipe.filter((e) => e.prestador_id !== p.id));
+                        else {
+                          manualHorasRef.current.delete(p.id);
+                          setEquipe(equipe.filter((e) => e.prestador_id !== p.id));
+                        }
                       }}
                     />
                     <div className="flex-1 min-w-[140px]">
@@ -700,7 +737,21 @@ export default function RDOWizard() {
                       <p className="text-xs text-muted-foreground">{p.categoria === 'sup_eletromecanico' ? 'Sup. Eletromecânico' : 'Eletromecânico'}</p>
                     </div>
                     {checked && item && (
-                      <div className="w-28"><Label className="text-xs">Horas</Label><Input type="number" step="0.5" value={item.horas_trabalhadas ?? 0} onChange={(e) => { const n = [...equipe]; n[idx] = { ...item, horas_trabalhadas: Number(e.target.value) }; setEquipe(n); }} disabled={readOnly} /></div>
+                      <div className="w-28">
+                        <Label className="text-xs">Horas</Label>
+                        <Input
+                          type="number"
+                          step="0.5"
+                          value={item.horas_trabalhadas ?? 0}
+                          onChange={(e) => {
+                            manualHorasRef.current.add(p.id);
+                            const n = [...equipe];
+                            n[idx] = { ...item, horas_trabalhadas: Number(e.target.value) };
+                            setEquipe(n);
+                          }}
+                          disabled={readOnly}
+                        />
+                      </div>
                     )}
                   </div>
                 );
