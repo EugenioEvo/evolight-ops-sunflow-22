@@ -273,8 +273,18 @@ export default function RDO() {
 
                 </TableBody>
               </Table>
+              <div className="pt-4">
+                <Pagination
+                  currentPage={page}
+                  totalPages={totalPages}
+                  onPageChange={setPage}
+                  totalItems={filtered.length}
+                  itemsPerPage={PAGE_SIZE}
+                />
+              </div>
             </div>
           )}
+
         </CardContent>
       </Card>
 
