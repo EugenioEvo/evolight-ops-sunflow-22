@@ -1,22 +1,27 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Plus, Search, Trash2, FileSpreadsheet, Loader2, Pencil, Undo2 } from 'lucide-react';
+import { Plus, Search, Trash2, FileSpreadsheet, Loader2, Pencil, Undo2, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Pagination } from '@/components/Pagination';
 import { useAuth } from '@/hooks/useAuth';
 import { useRDOQuery, useRDOMutations, RDO_STATUS_LABEL, RDO_STATUS_VARIANT, type RDOStatus } from '@/features/rdo';
 
 const STAFF_ROLES = ['admin', 'engenharia', 'supervisao', 'lider'] as const;
 const ADM_ENG_ROLES = ['admin', 'engenharia'] as const;
+const PAGE_SIZE = 20;
+
+type SortKey = 'numero_rdo' | 'data_rdo' | 'obra' | 'responsavel' | 'status';
 
 export default function RDO() {
   const navigate = useNavigate();
@@ -26,21 +31,76 @@ export default function RDO() {
   const [search, setSearch] = useState('');
   const [toDelete, setToDelete] = useState<string | null>(null);
   const [toReopen, setToReopen] = useState<string | null>(null);
+  const [sortKey, setSortKey] = useState<SortKey>('data_rdo');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [obraFilter, setObraFilter] = useState('all');
+  const [respFilter, setRespFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [page, setPage] = useState(1);
 
   const isStaff = profile?.roles?.some((r) => (STAFF_ROLES as readonly string[]).includes(r)) ?? false;
   const isAdmEng = profile?.roles?.some((r) => (ADM_ENG_ROLES as readonly string[]).includes(r)) ?? false;
   const canCreate = isStaff || profile?.roles?.some((r) => r === 'sup_eletromecanico' || r === 'lider_eletromecanico');
 
+  const obraOptions = useMemo(
+    () => Array.from(new Set(rdos.map((r) => r.obra?.nome).filter(Boolean) as string[])).sort(),
+    [rdos],
+  );
+  const respOptions = useMemo(
+    () => Array.from(new Set(rdos.map((r) => r.responsavel?.nome).filter(Boolean) as string[])).sort(),
+    [rdos],
+  );
+  const statusOptions = useMemo(
+    () => Array.from(new Set(rdos.map((r) => r.status).filter(Boolean) as string[])),
+    [rdos],
+  );
+
+  const toggleSort = (key: SortKey) => {
+    if (sortKey === key) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    else { setSortKey(key); setSortDir('asc'); }
+  };
+
+  const SortIcon = ({ k }: { k: SortKey }) =>
+    sortKey !== k ? <ArrowUpDown className="h-3 w-3 opacity-40" />
+      : sortDir === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />;
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return rdos;
-    return rdos.filter((r) =>
-      [r.numero_rdo, r.obra?.nome, r.responsavel?.nome, r.obra?.cidade]
+    let list = rdos.filter((r) => {
+      if (obraFilter !== 'all' && r.obra?.nome !== obraFilter) return false;
+      if (respFilter !== 'all' && r.responsavel?.nome !== respFilter) return false;
+      if (statusFilter !== 'all' && r.status !== statusFilter) return false;
+      if (!q) return true;
+      return [r.numero_rdo, r.obra?.nome, r.responsavel?.nome, r.obra?.cidade, (r as any).observacoes_gerais]
         .filter(Boolean)
-        .some((v) => String(v).toLowerCase().includes(q)),
-    );
-  }, [rdos, search]);
+        .some((v) => String(v).toLowerCase().includes(q));
+    });
+
+    const val = (r: typeof rdos[number]) => {
+      switch (sortKey) {
+        case 'numero_rdo': return r.numero_rdo ?? '';
+        case 'obra': return r.obra?.nome ?? '';
+        case 'responsavel': return r.responsavel?.nome ?? '';
+        case 'status': return r.status ?? '';
+        default: return r.data_rdo ?? '';
+      }
+    };
+    list = [...list].sort((a, b) => {
+      const cmp = String(val(a)).localeCompare(String(val(b)), 'pt-BR', { numeric: true });
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
+    return list;
+  }, [rdos, search, obraFilter, respFilter, statusFilter, sortKey, sortDir]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const paged = useMemo(
+    () => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [filtered, page],
+  );
+
+  useEffect(() => { setPage(1); }, [search, obraFilter, respFilter, statusFilter, sortKey, sortDir]);
+  useEffect(() => { if (page > totalPages) setPage(1); }, [page, totalPages]);
+
 
   return (
     <div className="container mx-auto p-4 sm:p-6 space-y-6">
