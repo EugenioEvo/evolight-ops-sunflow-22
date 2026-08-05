@@ -197,6 +197,38 @@ export const activitiesService = {
       });
     }
 
+    // OS pendentes (sem RME): carga meta prevista, carga real ainda vazia
+    for (const o of osPendentes) {
+      const ticket = o.ticket_id ? ticketMap.get(o.ticket_id) : null;
+      if (ticket?.status === 'cancelado') continue;
+      const tec = tecnicoMap.get(o.tecnico_id);
+      const nome =
+        (tec?.prestador_id ? prestadorMap.get(tec.prestador_id) : null) ??
+        (tec?.profile_id ? profileMap.get(tec.profile_id) : null) ??
+        'Não identificado';
+
+      const minutosPrev = hpMap.get(`${o.id}:${o.tecnico_id}`);
+      let meta: number | null = null;
+      if (minutosPrev) meta = Math.round((Number(minutosPrev) / 60) * 100) / 100;
+      else if (o.duracao_estimada_min) meta = Math.round((Number(o.duracao_estimada_min) / 60) * 100) / 100;
+      else meta = hoursBetween(o.hora_inicio, o.hora_fim);
+
+      rows.push({
+        id: `os-${o.id}`,
+        tipo: 'OS',
+        data: toDay(o.data_programada) || toDay(ticket?.data_servico),
+        pessoaId: o.tecnico_id ?? null,
+        pessoaNome: nome,
+        destino: (ticket?.cliente_id ? clienteMap.get(ticket.cliente_id) : null) ?? '—',
+        numero: o.numero_os ?? ticket?.numero_ticket ?? '—',
+        status: o.aceite_tecnico === 'aceito' ? 'sem_rme' : `aceite_${o.aceite_tecnico ?? 'pendente'}`,
+        horasMeta: meta,
+        horasReais: null,
+        link: `/work-orders/${o.id}`,
+      });
+    }
+
+
     return rows.sort((a, b) => (a.data < b.data ? 1 : a.data > b.data ? -1 : 0));
   },
 };
