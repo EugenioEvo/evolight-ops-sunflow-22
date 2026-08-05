@@ -209,7 +209,8 @@ export default function Atividades() {
                 <SelectItem value="all">Todos os tipos</SelectItem>
                 <SelectItem value="RME">RME</SelectItem>
                 <SelectItem value="RDO">RDO</SelectItem>
-              </SelectContent>
+                <SelectItem value="OS">OS sem RME</SelectItem>
+
             </Select>
             <Select value={pessoaFilter} onValueChange={(v) => { setPessoaFilter(v); setPage(1); }}>
               <SelectTrigger><SelectValue placeholder="Usuário" /></SelectTrigger>
