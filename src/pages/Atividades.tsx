@@ -210,6 +210,8 @@ export default function Atividades() {
                 <SelectItem value="RME">RME</SelectItem>
                 <SelectItem value="RDO">RDO</SelectItem>
                 <SelectItem value="OS">OS sem RME</SelectItem>
+              </SelectContent>
+
 
             </Select>
             <Select value={pessoaFilter} onValueChange={(v) => { setPessoaFilter(v); setPage(1); }}>
