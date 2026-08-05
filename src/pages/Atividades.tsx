@@ -77,11 +77,13 @@ export default function Atividades() {
       count: filtered.length,
       rme: filtered.filter((r) => r.tipo === 'RME').length,
       rdo: filtered.filter((r) => r.tipo === 'RDO').length,
+      os: filtered.filter((r) => r.tipo === 'OS').length,
       meta,
       real,
       aderencia: meta > 0 ? (real / meta) * 100 : null,
     };
   }, [filtered]);
+
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
