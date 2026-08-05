@@ -1,4 +1,4 @@
-export type ActivityTipo = 'RME' | 'RDO';
+export type ActivityTipo = 'RME' | 'RDO' | 'OS';
 
 export interface ActivityRow {
   id: string;
