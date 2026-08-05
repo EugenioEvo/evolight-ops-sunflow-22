@@ -271,8 +271,15 @@ export default function Atividades() {
                           <TableCell className="whitespace-nowrap">{fmtData(r.data)}</TableCell>
                           <TableCell className="font-medium">{r.pessoaNome}</TableCell>
                           <TableCell>
-                            <Badge variant={r.tipo === 'RME' ? 'default' : 'secondary'}>{r.tipo}</Badge>
+                            <Badge
+                              variant={
+                                r.tipo === 'RME' ? 'default' : r.tipo === 'OS' ? 'outline' : 'secondary'
+                              }
+                            >
+                              {r.tipo === 'OS' ? 'OS pendente' : r.tipo}
+                            </Badge>
                           </TableCell>
+
                           <TableCell className="max-w-[220px] truncate">{r.destino}</TableCell>
                           <TableCell className="whitespace-nowrap text-muted-foreground">{r.numero}</TableCell>
                           <TableCell className="text-right whitespace-nowrap">{fmtH(r.horasMeta)}</TableCell>
