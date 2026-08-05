@@ -26,7 +26,7 @@ function toDay(v?: string | null): string {
 
 export const activitiesService = {
   async fetchAll(): Promise<ActivityRow[]> {
-    const [equipeRes, rdosRes, rmesRes] = await Promise.all([
+    const [equipeRes, rdosRes, rmesRes, allOsRes] = await Promise.all([
       supabase.from('rdo_equipe').select(sel('id, rdo_id, prestador_id, horas_trabalhadas, horas_extras')),
       supabase.from('rdo_relatorios').select(sel('id, numero_rdo, data_rdo, obra_id, status')),
       supabase
@@ -36,19 +36,50 @@ export const activitiesService = {
             'id, tecnico_id, ordem_servico_id, ticket_id, data_execucao, data_fim_execucao, start_time, end_time, status',
           ),
         ),
+      supabase
+        .from('ordens_servico')
+        .select(
+          sel(
+            'id, numero_os, ticket_id, tecnico_id, data_programada, hora_inicio, hora_fim, duracao_estimada_min, aceite_tecnico',
+          ),
+        ),
     ]);
     if (equipeRes.error) throw equipeRes.error;
     if (rdosRes.error) throw rdosRes.error;
     if (rmesRes.error) throw rmesRes.error;
+    if (allOsRes.error) throw allOsRes.error;
 
     const equipe = (equipeRes.data ?? []) as any[];
     const rdos = (rdosRes.data ?? []) as any[];
     const rmes = (rmesRes.data ?? []) as any[];
+    const allOs = (allOsRes.data ?? []) as any[];
+
+    // OS sem RME (o RME é compartilhado por ticket entre OSs-irmãs)
+    const ticketsComRme = new Set(rmes.map((r) => r.ticket_id).filter(Boolean));
+    const osComRme = new Set(rmes.map((r) => r.ordem_servico_id).filter(Boolean));
+    const osPendentes = allOs.filter(
+      (o) => !osComRme.has(o.id) && !ticketsComRme.has(o.ticket_id),
+    );
 
     const obraIds = [...new Set(rdos.map((r) => r.obra_id).filter(Boolean))];
-    const osIds = [...new Set(rmes.map((r) => r.ordem_servico_id).filter(Boolean))];
-    const ticketIds = [...new Set(rmes.map((r) => r.ticket_id).filter(Boolean))];
-    const tecnicoIds = [...new Set(rmes.map((r) => r.tecnico_id).filter(Boolean))];
+    const osIds = [
+      ...new Set([
+        ...rmes.map((r) => r.ordem_servico_id).filter(Boolean),
+        ...osPendentes.map((o) => o.id),
+      ]),
+    ];
+    const ticketIds = [
+      ...new Set([
+        ...rmes.map((r) => r.ticket_id).filter(Boolean),
+        ...osPendentes.map((o) => o.ticket_id).filter(Boolean),
+      ]),
+    ];
+    const tecnicoIds = [
+      ...new Set([
+        ...rmes.map((r) => r.tecnico_id).filter(Boolean),
+        ...osPendentes.map((o) => o.tecnico_id).filter(Boolean),
+      ]),
+    ];
 
     const empty = { data: [] as any[], error: null };
     const [obrasRes, osRes, hpRes, ticketsRes, tecnicosRes] = await Promise.all([
@@ -66,12 +97,16 @@ export const activitiesService = {
             .in('ordem_servico_id', osIds)
         : empty,
       ticketIds.length
-        ? supabase.from('tickets').select(sel('id, numero_ticket, cliente_id')).in('id', ticketIds)
+        ? supabase
+            .from('tickets')
+            .select(sel('id, numero_ticket, cliente_id, status, data_servico'))
+            .in('id', ticketIds)
         : empty,
       tecnicoIds.length
         ? supabase.from('tecnicos').select(sel('id, prestador_id, profile_id')).in('id', tecnicoIds)
         : empty,
     ]);
+
 
     const tickets = (ticketsRes.data ?? []) as any[];
     const tecnicos = (tecnicosRes.data ?? []) as any[];
