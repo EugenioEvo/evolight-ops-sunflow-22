@@ -77,11 +77,13 @@ export default function Atividades() {
       count: filtered.length,
       rme: filtered.filter((r) => r.tipo === 'RME').length,
       rdo: filtered.filter((r) => r.tipo === 'RDO').length,
+      os: filtered.filter((r) => r.tipo === 'OS').length,
       meta,
       real,
       aderencia: meta > 0 ? (real / meta) * 100 : null,
     };
   }, [filtered]);
+
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
@@ -158,7 +160,7 @@ export default function Atividades() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{totals.count}</div>
-            <p className="text-xs text-muted-foreground">{totals.rme} RME · {totals.rdo} RDO</p>
+            <p className="text-xs text-muted-foreground">{totals.rme} RME · {totals.rdo} RDO · {totals.os} OS sem RME</p>
           </CardContent>
         </Card>
         <Card>
@@ -207,7 +209,10 @@ export default function Atividades() {
                 <SelectItem value="all">Todos os tipos</SelectItem>
                 <SelectItem value="RME">RME</SelectItem>
                 <SelectItem value="RDO">RDO</SelectItem>
+                <SelectItem value="OS">OS sem RME</SelectItem>
               </SelectContent>
+
+
             </Select>
             <Select value={pessoaFilter} onValueChange={(v) => { setPessoaFilter(v); setPage(1); }}>
               <SelectTrigger><SelectValue placeholder="Usuário" /></SelectTrigger>
@@ -266,8 +271,15 @@ export default function Atividades() {
                           <TableCell className="whitespace-nowrap">{fmtData(r.data)}</TableCell>
                           <TableCell className="font-medium">{r.pessoaNome}</TableCell>
                           <TableCell>
-                            <Badge variant={r.tipo === 'RME' ? 'default' : 'secondary'}>{r.tipo}</Badge>
+                            <Badge
+                              variant={
+                                r.tipo === 'RME' ? 'default' : r.tipo === 'OS' ? 'outline' : 'secondary'
+                              }
+                            >
+                              {r.tipo === 'OS' ? 'OS pendente' : r.tipo}
+                            </Badge>
                           </TableCell>
+
                           <TableCell className="max-w-[220px] truncate">{r.destino}</TableCell>
                           <TableCell className="whitespace-nowrap text-muted-foreground">{r.numero}</TableCell>
                           <TableCell className="text-right whitespace-nowrap">{fmtH(r.horasMeta)}</TableCell>
