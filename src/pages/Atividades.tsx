@@ -160,7 +160,7 @@ export default function Atividades() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{totals.count}</div>
-            <p className="text-xs text-muted-foreground">{totals.rme} RME · {totals.rdo} RDO</p>
+            <p className="text-xs text-muted-foreground">{totals.rme} RME · {totals.rdo} RDO · {totals.os} OS sem RME</p>
           </CardContent>
         </Card>
         <Card>
