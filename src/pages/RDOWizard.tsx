@@ -753,15 +753,23 @@ export default function RDOWizard() {
                     </div>
                     {checked && item && (
                       <div className="w-28">
-                        <Label className="text-xs">Horas</Label>
+                        <Label className="text-xs">Horas (máx. {defaultHorasTrabalhadas})</Label>
                         <Input
                           type="number"
                           step="0.5"
+                          min={0}
+                          max={defaultHorasTrabalhadas}
                           value={item.horas_trabalhadas ?? 0}
                           onChange={(e) => {
                             manualHorasRef.current.add(p.id);
+                            const raw = Number(e.target.value);
+                            const valor = Number.isFinite(raw) ? Math.max(0, raw) : 0;
+                            const limitado = Math.min(valor, defaultHorasTrabalhadas);
+                            if (valor > defaultHorasTrabalhadas) {
+                              setClampAlert({ tentativa: valor, max: defaultHorasTrabalhadas });
+                            }
                             const n = [...equipe];
-                            n[idx] = { ...item, horas_trabalhadas: Number(e.target.value) };
+                            n[idx] = { ...item, horas_trabalhadas: limitado };
                             setEquipe(n);
                           }}
                           disabled={readOnly}
