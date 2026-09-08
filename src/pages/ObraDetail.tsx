@@ -152,28 +152,52 @@ export default function ObraDetail({ mode = 'staff' }: Props) {
     staleTime: 10 * 60_000,
   });
 
-  // Resolve photo signed URLs (lazy, single effect via query)
+  // Resolve photo/video signed URLs (lazy, single effect via query)
   const { data: photoUrls = [] } = useQuery({
     queryKey: ['obra-photos', id, rdos.length],
     enabled: rdos.length > 0,
     queryFn: async () => {
-      const items: { path: string; descricao?: string | null; data?: string }[] = [];
+      const items: { path: string; descricao?: string | null; data?: string; isVideo: boolean }[] = [];
+      const videoByExt = (p: string) => /\.(mp4|webm|mov|m4v|avi|mkv|3gp|quicktime)$/i.test(p);
       for (const r of rdos) {
         for (const e of r.evidencias ?? []) {
-          if (e.storage_path) items.push({ path: e.storage_path, descricao: e.descricao, data: r.data_rdo });
+          if (e.storage_path) {
+            items.push({
+              path: e.storage_path,
+              descricao: e.descricao,
+              data: r.data_rdo,
+              isVideo: String(e.tipo ?? '').toLowerCase().includes('video') || videoByExt(e.storage_path),
+            });
+          }
         }
         for (const f of r.fotos_geral ?? []) {
-          if (typeof f === 'string') items.push({ path: f, data: r.data_rdo });
+          if (typeof f === 'string') items.push({ path: f, data: r.data_rdo, isVideo: videoByExt(f) });
         }
       }
       const resolved = await Promise.all(items.map(async (i) => {
         const url = await signObjectUrl(i.path);
-        return url ? { url, descricao: i.descricao, data: i.data } : null;
+        return url ? { url, descricao: i.descricao, data: i.data, isVideo: i.isVideo } : null;
       }));
-      return resolved.filter(Boolean) as { url: string; descricao?: string | null; data?: string }[];
+      return resolved.filter(Boolean) as { url: string; descricao?: string | null; data?: string; isVideo: boolean }[];
     },
     staleTime: 10 * 60_000,
   });
+
+  const RDOS_PER_PAGE = 10;
+  const MEDIA_PER_PAGE = 12;
+  const [rdoPage, setRdoPage] = useState(1);
+  const [mediaPage, setMediaPage] = useState(1);
+  const rdoTotalPages = Math.max(1, Math.ceil(rdos.length / RDOS_PER_PAGE));
+  const mediaTotalPages = Math.max(1, Math.ceil(photoUrls.length / MEDIA_PER_PAGE));
+  useEffect(() => { if (rdoPage > rdoTotalPages) setRdoPage(1); }, [rdoPage, rdoTotalPages]);
+  useEffect(() => { if (mediaPage > mediaTotalPages) setMediaPage(1); }, [mediaPage, mediaTotalPages]);
+  const rdosPage = rdos.slice((rdoPage - 1) * RDOS_PER_PAGE, rdoPage * RDOS_PER_PAGE);
+  const mediaPageItems = photoUrls.slice((mediaPage - 1) * MEDIA_PER_PAGE, mediaPage * MEDIA_PER_PAGE);
+  const totalHorasEquipe = useMemo(
+    () => Array.from(equipe.values()).reduce((s, h) => s + h, 0),
+    [equipe]
+  );
+
 
   if (loadingObra) {
     return <div className="container mx-auto p-6 space-y-4"><Skeleton className="h-32" /><Skeleton className="h-64" /></div>;
