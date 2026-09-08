@@ -1056,6 +1056,22 @@ export default function RDOWizard() {
         </AlertDialogContent>
       </AlertDialog>
 
+      <AlertDialog open={!!clampAlert} onOpenChange={(open) => { if (!open) setClampAlert(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Horas ajustadas automaticamente</AlertDialogTitle>
+            <AlertDialogDescription>
+              O valor informado ({clampAlert?.tentativa}h) ultrapassa o máximo possível para este dia
+              ({clampAlert?.max}h, calculado por fim − início − horas paradas). O campo foi ajustado
+              para {clampAlert?.max}h. Para lançar mais horas, revise os horários ou as paradas na etapa 1.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setClampAlert(null)}>Entendi</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </div>
   );
 }
