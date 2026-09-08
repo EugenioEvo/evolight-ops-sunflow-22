@@ -334,28 +334,38 @@ export default function ObraDetail({ mode = 'staff' }: Props) {
           ) : rdos.length === 0 ? (
             <p className="text-sm text-muted-foreground py-8 text-center">Nenhum RDO emitido ainda.</p>
           ) : (
-            <ol className="relative border-l ml-3 space-y-4">
-              {rdos.map((r) => (
-                <li key={r.id} className="ml-4">
-                  <div className="absolute -left-1.5 mt-1.5 w-3 h-3 rounded-full bg-primary" />
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:justify-between">
-                    <div>
-                      <p className="font-medium">RDO {r.numero_rdo} — {formatDateOnlyBR(r.data_rdo)}</p>
-                      <p className="text-xs text-muted-foreground">{(r.atividades ?? []).length} atividade(s) · {(r.equipe ?? []).length} pessoa(s)</p>
+            <div className="space-y-4">
+              <ol className="relative border-l ml-3 space-y-4">
+                {rdosPage.map((r) => (
+                  <li key={r.id} className="ml-4">
+                    <div className="absolute -left-1.5 mt-1.5 w-3 h-3 rounded-full bg-primary" />
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:justify-between">
+                      <div>
+                        <p className="font-medium">RDO {r.numero_rdo} — {formatDateOnlyBR(r.data_rdo)}</p>
+                        <p className="text-xs text-muted-foreground">{(r.atividades ?? []).length} atividade(s) · {(r.equipe ?? []).length} pessoa(s)</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant={RDO_STATUS_VARIANT[r.status as RDOStatus]}>{RDO_STATUS_LABEL[r.status as RDOStatus]}</Badge>
+                        {isStaff && (
+                          <Button size="sm" variant="outline" onClick={() => navigate(`/rdo/${r.id}`)}>Abrir</Button>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant={RDO_STATUS_VARIANT[r.status as RDOStatus]}>{RDO_STATUS_LABEL[r.status as RDOStatus]}</Badge>
-                      {isStaff && (
-                        <Button size="sm" variant="outline" onClick={() => navigate(`/rdo/${r.id}`)}>Abrir</Button>
-                      )}
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ol>
+                  </li>
+                ))}
+              </ol>
+              <Pagination
+                currentPage={rdoPage}
+                totalPages={rdoTotalPages}
+                onPageChange={setRdoPage}
+                totalItems={rdos.length}
+                itemsPerPage={RDOS_PER_PAGE}
+              />
+            </div>
           )}
         </CardContent>
       </Card>
+
 
       <Card>
         <CardHeader><CardTitle className="text-base flex items-center gap-2"><ImageIcon className="h-4 w-4" /> Galeria consolidada</CardTitle></CardHeader>
