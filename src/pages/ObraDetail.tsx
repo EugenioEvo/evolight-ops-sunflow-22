@@ -315,6 +315,10 @@ export default function ObraDetail({ mode = 'staff' }: Props) {
                       <span className="text-muted-foreground">{Math.round(h * 10) / 10} h</span>
                     </li>
                   ))}
+                  <li className="py-2 flex items-center justify-between text-sm font-semibold border-t-2">
+                    <span>Total ({equipe.size} pessoa{equipe.size === 1 ? '' : 's'})</span>
+                    <span>{Math.round(totalHorasEquipe * 10) / 10} h</span>
+                  </li>
                 </ul>
               )}
             </CardContent>
