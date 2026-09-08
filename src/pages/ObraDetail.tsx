@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowLeft, Building2, Calendar, FileSpreadsheet, MapPin, Users, Image as ImageIcon, TrendingUp } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { OBRA_STATUS_LABEL, ObraProgressoEtapas, ObraSharePanel } from '@/features/obras';
+import { Pagination } from '@/components/Pagination';
 import { RDO_STATUS_LABEL, RDO_STATUS_VARIANT, type RDOStatus } from '@/features/rdo/types';
 
 interface Props { mode?: 'staff' | 'cliente' }
@@ -70,7 +71,7 @@ export default function ObraDetail({ mode = 'staff' }: Props) {
           id, numero_rdo, data_rdo, status, fotos_geral,
           equipe:rdo_equipe(prestador_id, horas_trabalhadas, horas_extras),
           atividades:rdo_atividades(catalogo_id, quantidade, percentual_avanco),
-          evidencias:rdo_evidencias(storage_path, descricao)
+          evidencias:rdo_evidencias(storage_path, descricao, tipo)
         `)
         .eq('obra_id', id!)
         .order('data_rdo', { ascending: false });
@@ -151,28 +152,52 @@ export default function ObraDetail({ mode = 'staff' }: Props) {
     staleTime: 10 * 60_000,
   });
 
-  // Resolve photo signed URLs (lazy, single effect via query)
+  // Resolve photo/video signed URLs (lazy, single effect via query)
   const { data: photoUrls = [] } = useQuery({
     queryKey: ['obra-photos', id, rdos.length],
     enabled: rdos.length > 0,
     queryFn: async () => {
-      const items: { path: string; descricao?: string | null; data?: string }[] = [];
+      const items: { path: string; descricao?: string | null; data?: string; isVideo: boolean }[] = [];
+      const videoByExt = (p: string) => /\.(mp4|webm|mov|m4v|avi|mkv|3gp|quicktime)$/i.test(p);
       for (const r of rdos) {
         for (const e of r.evidencias ?? []) {
-          if (e.storage_path) items.push({ path: e.storage_path, descricao: e.descricao, data: r.data_rdo });
+          if (e.storage_path) {
+            items.push({
+              path: e.storage_path,
+              descricao: e.descricao,
+              data: r.data_rdo,
+              isVideo: String(e.tipo ?? '').toLowerCase().includes('video') || videoByExt(e.storage_path),
+            });
+          }
         }
         for (const f of r.fotos_geral ?? []) {
-          if (typeof f === 'string') items.push({ path: f, data: r.data_rdo });
+          if (typeof f === 'string') items.push({ path: f, data: r.data_rdo, isVideo: videoByExt(f) });
         }
       }
       const resolved = await Promise.all(items.map(async (i) => {
         const url = await signObjectUrl(i.path);
-        return url ? { url, descricao: i.descricao, data: i.data } : null;
+        return url ? { url, descricao: i.descricao, data: i.data, isVideo: i.isVideo } : null;
       }));
-      return resolved.filter(Boolean) as { url: string; descricao?: string | null; data?: string }[];
+      return resolved.filter(Boolean) as { url: string; descricao?: string | null; data?: string; isVideo: boolean }[];
     },
     staleTime: 10 * 60_000,
   });
+
+  const RDOS_PER_PAGE = 10;
+  const MEDIA_PER_PAGE = 12;
+  const [rdoPage, setRdoPage] = useState(1);
+  const [mediaPage, setMediaPage] = useState(1);
+  const rdoTotalPages = Math.max(1, Math.ceil(rdos.length / RDOS_PER_PAGE));
+  const mediaTotalPages = Math.max(1, Math.ceil(photoUrls.length / MEDIA_PER_PAGE));
+  useEffect(() => { if (rdoPage > rdoTotalPages) setRdoPage(1); }, [rdoPage, rdoTotalPages]);
+  useEffect(() => { if (mediaPage > mediaTotalPages) setMediaPage(1); }, [mediaPage, mediaTotalPages]);
+  const rdosPage = rdos.slice((rdoPage - 1) * RDOS_PER_PAGE, rdoPage * RDOS_PER_PAGE);
+  const mediaPageItems = photoUrls.slice((mediaPage - 1) * MEDIA_PER_PAGE, mediaPage * MEDIA_PER_PAGE);
+  const totalHorasEquipe = useMemo(
+    () => Array.from(equipe.values()).reduce((s, h) => s + h, 0),
+    [equipe]
+  );
+
 
   if (loadingObra) {
     return <div className="container mx-auto p-6 space-y-4"><Skeleton className="h-32" /><Skeleton className="h-64" /></div>;
@@ -290,6 +315,10 @@ export default function ObraDetail({ mode = 'staff' }: Props) {
                       <span className="text-muted-foreground">{Math.round(h * 10) / 10} h</span>
                     </li>
                   ))}
+                  <li className="py-2 flex items-center justify-between text-sm font-semibold border-t-2">
+                    <span>Total ({equipe.size} pessoa{equipe.size === 1 ? '' : 's'})</span>
+                    <span>{Math.round(totalHorasEquipe * 10) / 10} h</span>
+                  </li>
                 </ul>
               )}
             </CardContent>
@@ -305,53 +334,72 @@ export default function ObraDetail({ mode = 'staff' }: Props) {
           ) : rdos.length === 0 ? (
             <p className="text-sm text-muted-foreground py-8 text-center">Nenhum RDO emitido ainda.</p>
           ) : (
-            <ol className="relative border-l ml-3 space-y-4">
-              {rdos.map((r) => (
-                <li key={r.id} className="ml-4">
-                  <div className="absolute -left-1.5 mt-1.5 w-3 h-3 rounded-full bg-primary" />
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:justify-between">
-                    <div>
-                      <p className="font-medium">RDO {r.numero_rdo} — {formatDateOnlyBR(r.data_rdo)}</p>
-                      <p className="text-xs text-muted-foreground">{(r.atividades ?? []).length} atividade(s) · {(r.equipe ?? []).length} pessoa(s)</p>
+            <div className="space-y-4">
+              <ol className="relative border-l ml-3 space-y-4">
+                {rdosPage.map((r) => (
+                  <li key={r.id} className="ml-4">
+                    <div className="absolute -left-1.5 mt-1.5 w-3 h-3 rounded-full bg-primary" />
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:justify-between">
+                      <div>
+                        <p className="font-medium">RDO {r.numero_rdo} — {formatDateOnlyBR(r.data_rdo)}</p>
+                        <p className="text-xs text-muted-foreground">{(r.atividades ?? []).length} atividade(s) · {(r.equipe ?? []).length} pessoa(s)</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant={RDO_STATUS_VARIANT[r.status as RDOStatus]}>{RDO_STATUS_LABEL[r.status as RDOStatus]}</Badge>
+                        {isStaff && (
+                          <Button size="sm" variant="outline" onClick={() => navigate(`/rdo/${r.id}`)}>Abrir</Button>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant={RDO_STATUS_VARIANT[r.status as RDOStatus]}>{RDO_STATUS_LABEL[r.status as RDOStatus]}</Badge>
-                      {isStaff && (
-                        <Button size="sm" variant="outline" onClick={() => navigate(`/rdo/${r.id}`)}>Abrir</Button>
-                      )}
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ol>
+                  </li>
+                ))}
+              </ol>
+              <Pagination
+                currentPage={rdoPage}
+                totalPages={rdoTotalPages}
+                onPageChange={setRdoPage}
+                totalItems={rdos.length}
+                itemsPerPage={RDOS_PER_PAGE}
+              />
+            </div>
           )}
         </CardContent>
       </Card>
+
 
       <Card>
         <CardHeader><CardTitle className="text-base flex items-center gap-2"><ImageIcon className="h-4 w-4" /> Galeria consolidada</CardTitle></CardHeader>
         <CardContent>
           {photoUrls.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-8 text-center">Sem fotos registradas.</p>
+            <p className="text-sm text-muted-foreground py-8 text-center">Sem fotos ou vídeos registrados.</p>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-              {photoUrls.map((p, i) => {
-                const isVideo = /\.(mp4|webm|mov|m4v|avi|mkv|3gp|quicktime)(\?|$)/i.test(p.url);
-                return (
-                  <a key={i} href={p.url} target="_blank" rel="noopener noreferrer" className="group block">
-                    <div className="aspect-square overflow-hidden rounded-lg border bg-muted">
-                      {isVideo ? (
-                        <video src={p.url} className="w-full h-full object-cover bg-black" muted playsInline preload="metadata" />
-                      ) : (
-                        <img src={p.url} loading="lazy" alt={p.descricao ?? 'Foto da obra'} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                {mediaPageItems.map((p, i) => {
+                  const isVideo = p.isVideo || /\.(mp4|webm|mov|m4v|avi|mkv|3gp|quicktime)(\?|$)/i.test(p.url);
+                  return (
+                    <a key={`${mediaPage}-${i}`} href={p.url} target="_blank" rel="noopener noreferrer" className="group block">
+                      <div className="aspect-square overflow-hidden rounded-lg border bg-muted">
+                        {isVideo ? (
+                          <video src={p.url} className="w-full h-full object-cover bg-black" muted playsInline controls preload="metadata" />
+                        ) : (
+                          <img src={p.url} loading="lazy" alt={p.descricao ?? 'Foto da obra'} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                        )}
+                      </div>
+                      {(p.descricao || p.data) && (
+                        <p className="text-xs text-muted-foreground mt-1 truncate">{p.descricao ?? formatDateOnlyBR(p.data)}</p>
                       )}
-                    </div>
-                    {(p.descricao || p.data) && (
-                      <p className="text-xs text-muted-foreground mt-1 truncate">{p.descricao ?? formatDateOnlyBR(p.data)}</p>
-                    )}
-                  </a>
-                );
-              })}
+                    </a>
+                  );
+                })}
+              </div>
+              <Pagination
+                currentPage={mediaPage}
+                totalPages={mediaTotalPages}
+                onPageChange={setMediaPage}
+                totalItems={photoUrls.length}
+                itemsPerPage={MEDIA_PER_PAGE}
+              />
             </div>
           )}
         </CardContent>
