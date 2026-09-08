@@ -145,16 +145,31 @@ export default function RDOWizard() {
       manualHorasRef.current.has(e.prestador_id) ? e : { ...e, horas_trabalhadas: horas },
     );
 
+  // Popup de aviso quando o valor digitado é limitado ao máximo permitido.
+  const [clampAlert, setClampAlert] = useState<{ tentativa: number; max: number } | null>(null);
+
   // Ao entrar no step 2 (ou ao mudar horários/paradas), recalcula apenas as
-  // horas que ainda não foram ajustadas manualmente.
+  // horas que ainda não foram ajustadas manualmente. Valores manuais acima do
+  // máximo permitido são limitados (trava).
   useEffect(() => {
     if (step !== 2 || readOnly) return;
     setEquipe((prev) => {
-      const next = prev.map((e) =>
-        manualHorasRef.current.has(e.prestador_id) || e.horas_trabalhadas === defaultHorasTrabalhadas
+      let limitou = false;
+      const next = prev.map((e) => {
+        if (manualHorasRef.current.has(e.prestador_id)) {
+          if ((e.horas_trabalhadas ?? 0) > defaultHorasTrabalhadas) {
+            limitou = true;
+            return { ...e, horas_trabalhadas: defaultHorasTrabalhadas };
+          }
+          return e;
+        }
+        return e.horas_trabalhadas === defaultHorasTrabalhadas
           ? e
-          : { ...e, horas_trabalhadas: defaultHorasTrabalhadas },
-      );
+          : { ...e, horas_trabalhadas: defaultHorasTrabalhadas };
+      });
+      if (limitou) {
+        toast.warning(`Horas ajustadas para o máximo permitido (${defaultHorasTrabalhadas}h).`);
+      }
       return next.some((e, i) => e !== prev[i]) ? next : prev;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
