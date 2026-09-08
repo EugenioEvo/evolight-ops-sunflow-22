@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowLeft, Building2, Calendar, FileSpreadsheet, MapPin, Users, Image as ImageIcon, TrendingUp } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { OBRA_STATUS_LABEL, ObraProgressoEtapas, ObraSharePanel } from '@/features/obras';
+import { Pagination } from '@/components/Pagination';
 import { RDO_STATUS_LABEL, RDO_STATUS_VARIANT, type RDOStatus } from '@/features/rdo/types';
 
 interface Props { mode?: 'staff' | 'cliente' }
@@ -70,7 +71,7 @@ export default function ObraDetail({ mode = 'staff' }: Props) {
           id, numero_rdo, data_rdo, status, fotos_geral,
           equipe:rdo_equipe(prestador_id, horas_trabalhadas, horas_extras),
           atividades:rdo_atividades(catalogo_id, quantidade, percentual_avanco),
-          evidencias:rdo_evidencias(storage_path, descricao)
+          evidencias:rdo_evidencias(storage_path, descricao, tipo)
         `)
         .eq('obra_id', id!)
         .order('data_rdo', { ascending: false });
