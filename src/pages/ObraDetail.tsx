@@ -371,26 +371,35 @@ export default function ObraDetail({ mode = 'staff' }: Props) {
         <CardHeader><CardTitle className="text-base flex items-center gap-2"><ImageIcon className="h-4 w-4" /> Galeria consolidada</CardTitle></CardHeader>
         <CardContent>
           {photoUrls.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-8 text-center">Sem fotos registradas.</p>
+            <p className="text-sm text-muted-foreground py-8 text-center">Sem fotos ou vídeos registrados.</p>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-              {photoUrls.map((p, i) => {
-                const isVideo = /\.(mp4|webm|mov|m4v|avi|mkv|3gp|quicktime)(\?|$)/i.test(p.url);
-                return (
-                  <a key={i} href={p.url} target="_blank" rel="noopener noreferrer" className="group block">
-                    <div className="aspect-square overflow-hidden rounded-lg border bg-muted">
-                      {isVideo ? (
-                        <video src={p.url} className="w-full h-full object-cover bg-black" muted playsInline preload="metadata" />
-                      ) : (
-                        <img src={p.url} loading="lazy" alt={p.descricao ?? 'Foto da obra'} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                {mediaPageItems.map((p, i) => {
+                  const isVideo = p.isVideo || /\.(mp4|webm|mov|m4v|avi|mkv|3gp|quicktime)(\?|$)/i.test(p.url);
+                  return (
+                    <a key={`${mediaPage}-${i}`} href={p.url} target="_blank" rel="noopener noreferrer" className="group block">
+                      <div className="aspect-square overflow-hidden rounded-lg border bg-muted">
+                        {isVideo ? (
+                          <video src={p.url} className="w-full h-full object-cover bg-black" muted playsInline controls preload="metadata" />
+                        ) : (
+                          <img src={p.url} loading="lazy" alt={p.descricao ?? 'Foto da obra'} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                        )}
+                      </div>
+                      {(p.descricao || p.data) && (
+                        <p className="text-xs text-muted-foreground mt-1 truncate">{p.descricao ?? formatDateOnlyBR(p.data)}</p>
                       )}
-                    </div>
-                    {(p.descricao || p.data) && (
-                      <p className="text-xs text-muted-foreground mt-1 truncate">{p.descricao ?? formatDateOnlyBR(p.data)}</p>
-                    )}
-                  </a>
-                );
-              })}
+                    </a>
+                  );
+                })}
+              </div>
+              <Pagination
+                currentPage={mediaPage}
+                totalPages={mediaTotalPages}
+                onPageChange={setMediaPage}
+                totalItems={photoUrls.length}
+                itemsPerPage={MEDIA_PER_PAGE}
+              />
             </div>
           )}
         </CardContent>
