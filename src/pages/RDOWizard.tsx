@@ -145,16 +145,31 @@ export default function RDOWizard() {
       manualHorasRef.current.has(e.prestador_id) ? e : { ...e, horas_trabalhadas: horas },
     );
 
+  // Popup de aviso quando o valor digitado é limitado ao máximo permitido.
+  const [clampAlert, setClampAlert] = useState<{ tentativa: number; max: number } | null>(null);
+
   // Ao entrar no step 2 (ou ao mudar horários/paradas), recalcula apenas as
-  // horas que ainda não foram ajustadas manualmente.
+  // horas que ainda não foram ajustadas manualmente. Valores manuais acima do
+  // máximo permitido são limitados (trava).
   useEffect(() => {
     if (step !== 2 || readOnly) return;
     setEquipe((prev) => {
-      const next = prev.map((e) =>
-        manualHorasRef.current.has(e.prestador_id) || e.horas_trabalhadas === defaultHorasTrabalhadas
+      let limitou = false;
+      const next = prev.map((e) => {
+        if (manualHorasRef.current.has(e.prestador_id)) {
+          if ((e.horas_trabalhadas ?? 0) > defaultHorasTrabalhadas) {
+            limitou = true;
+            return { ...e, horas_trabalhadas: defaultHorasTrabalhadas };
+          }
+          return e;
+        }
+        return e.horas_trabalhadas === defaultHorasTrabalhadas
           ? e
-          : { ...e, horas_trabalhadas: defaultHorasTrabalhadas },
-      );
+          : { ...e, horas_trabalhadas: defaultHorasTrabalhadas };
+      });
+      if (limitou) {
+        toast.warning(`Horas ajustadas para o máximo permitido (${defaultHorasTrabalhadas}h).`);
+      }
       return next.some((e, i) => e !== prev[i]) ? next : prev;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -738,15 +753,23 @@ export default function RDOWizard() {
                     </div>
                     {checked && item && (
                       <div className="w-28">
-                        <Label className="text-xs">Horas</Label>
+                        <Label className="text-xs">Horas (máx. {defaultHorasTrabalhadas})</Label>
                         <Input
                           type="number"
                           step="0.5"
+                          min={0}
+                          max={defaultHorasTrabalhadas}
                           value={item.horas_trabalhadas ?? 0}
                           onChange={(e) => {
                             manualHorasRef.current.add(p.id);
+                            const raw = Number(e.target.value);
+                            const valor = Number.isFinite(raw) ? Math.max(0, raw) : 0;
+                            const limitado = Math.min(valor, defaultHorasTrabalhadas);
+                            if (valor > defaultHorasTrabalhadas) {
+                              setClampAlert({ tentativa: valor, max: defaultHorasTrabalhadas });
+                            }
                             const n = [...equipe];
-                            n[idx] = { ...item, horas_trabalhadas: Number(e.target.value) };
+                            n[idx] = { ...item, horas_trabalhadas: limitado };
                             setEquipe(n);
                           }}
                           disabled={readOnly}
@@ -1029,6 +1052,22 @@ export default function RDOWizard() {
           </ul>
           <AlertDialogFooter>
             <AlertDialogAction onClick={() => setMissingFields([])}>Entendi</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!clampAlert} onOpenChange={(open) => { if (!open) setClampAlert(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Horas ajustadas automaticamente</AlertDialogTitle>
+            <AlertDialogDescription>
+              O valor informado ({clampAlert?.tentativa}h) ultrapassa o máximo possível para este dia
+              ({clampAlert?.max}h, calculado por fim − início − horas paradas). O campo foi ajustado
+              para {clampAlert?.max}h. Para lançar mais horas, revise os horários ou as paradas na etapa 1.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setClampAlert(null)}>Entendi</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
