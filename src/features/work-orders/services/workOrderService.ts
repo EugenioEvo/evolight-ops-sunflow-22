@@ -3,6 +3,18 @@ import { getClient } from '@/shared/services/baseService';
 import type { WorkOrder } from '../types';
 import type { WorkOrderDetailData } from '../hooks/useWorkOrderDetail';
 
+export interface WorkOrderPageParams {
+  page: number;
+  pageSize: number;
+  search?: string;
+  status?: string;
+  aceite?: string;
+  clienteEmpresa?: string;
+  ufv?: string;
+  dateFrom?: Date;
+  dateTo?: Date;
+}
+
 export const createWorkOrderService = (client?: AppSupabaseClient) => {
   const db = getClient(client);
 
@@ -91,11 +103,6 @@ export const createWorkOrderService = (client?: AppSupabaseClient) => {
     },
 
     async enrich(data: any[]): Promise<WorkOrder[]> {
-      const { data, error } = await db
-        .from("ordens_servico")
-        .select(`*, tickets(id, titulo, status, prioridade, endereco_servico, clientes(empresa, prioridade, cliente_ufvs(nome))), rme_relatorios(id, status)`)
-        .order("data_emissao", { ascending: false });
-      if (error) throw error;
 
       const rows = (data || []).map((os: any) => {
         if (os.tickets?.clientes) {
