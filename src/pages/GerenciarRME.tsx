@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useDebounce } from '@/hooks/useDebounce';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -32,7 +33,8 @@ const GerenciarRME = () => {
   const { toast } = useToast();
 
   // React Query hooks
-  const { data, isLoading, refetch } = useRMEQuery({ page, searchTerm, status: statusFilter });
+  const debouncedSearch = useDebounce(searchTerm, 500);
+  const { data, isLoading, refetch } = useRMEQuery({ page, searchTerm: debouncedSearch, status: statusFilter });
   const { data: stats } = useRMEStatsQuery();
   const approveMutation = useApproveRMEMutation();
   const rejectMutation = useRejectRMEMutation();

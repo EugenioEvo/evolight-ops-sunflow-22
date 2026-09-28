@@ -4,7 +4,7 @@ import { ITEMS_PER_PAGE, type TicketWithRelations } from '../types';
 
 export const useTicketFilters = (tickets: TicketWithRelations[]) => {
   const [searchTerm, setSearchTerm] = useState(localStorage.getItem('tickets_search') || '');
-  const debouncedSearchTerm = useDebounce(searchTerm, 300);
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
   const [activeTab, setActiveTab] = useState(localStorage.getItem('tickets_tab') || 'todos');
   const [selectedCliente, setSelectedCliente] = useState(localStorage.getItem('tickets_cliente') || 'todos');
   const [selectedPrioridade, setSelectedPrioridade] = useState(localStorage.getItem('tickets_prioridade') || 'todas');
