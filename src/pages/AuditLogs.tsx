@@ -10,6 +10,8 @@ import { VirtualizedList } from '@/components/VirtualizedList';
 import { Search, ShieldAlert, Calendar, User, Database } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useDebounce } from '@/hooks/useDebounce';
+import { Pagination } from '@/components/Pagination';
 
 interface AuditLog {
   id: string;
@@ -24,31 +26,42 @@ interface AuditLog {
   user_agent?: string;
 }
 
+const PAGE_SIZE = 20;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 const AuditLogs = () => {
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [tableFilter, setTableFilter] = useState<string>('all');
   const [actionFilter, setActionFilter] = useState<string>('all');
+  const [page, setPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
   const { profile } = useAuth();
+  const debouncedSearch = useDebounce(searchTerm, 500);
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
   const isAdmin = profile?.role === 'admin';
+
+  useEffect(() => { setPage(1); }, [tableFilter, actionFilter, debouncedSearch]);
 
   useEffect(() => {
     if (isAdmin) {
       loadLogs();
     }
-  }, [isAdmin, tableFilter, actionFilter]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdmin, tableFilter, actionFilter, debouncedSearch, page]);
 
   const loadLogs = async () => {
     try {
       setLoading(true);
+      const from = (page - 1) * PAGE_SIZE;
 
       let query = supabase
         .from('audit_logs')
-        .select('*')
+        .select('*', { count: 'exact' })
         .order('performed_at', { ascending: false })
-        .limit(100);
+        .range(from, from + PAGE_SIZE - 1);
 
       if (tableFilter !== 'all') {
         query = query.eq('table_name', tableFilter);
@@ -58,11 +71,19 @@ const AuditLogs = () => {
         query = query.eq('action', actionFilter);
       }
 
-      const { data, error } = await query;
+      const q = debouncedSearch.trim();
+      if (q) {
+        query = UUID_RE.test(q)
+          ? query.eq('record_id', q)
+          : query.or(`table_name.ilike.%${q.replace(/[,()]/g, '')}%,action.ilike.%${q.replace(/[,()]/g, '')}%`);
+      }
+
+      const { data, error, count } = await query;
 
       if (error) throw error;
 
       setLogs((data || []) as AuditLog[]);
+      setTotalCount(count ?? 0);
     } catch (error: any) {
       console.error('Erro ao carregar logs:', error);
     } finally {
@@ -95,16 +116,8 @@ const AuditLogs = () => {
     return names[tableName] || tableName;
   };
 
-  const filteredLogs = logs.filter(log => {
-    if (!searchTerm) return true;
-    
-    const searchLower = searchTerm.toLowerCase();
-    return (
-      log.table_name.toLowerCase().includes(searchLower) ||
-      log.record_id.toLowerCase().includes(searchLower) ||
-      log.action.toLowerCase().includes(searchLower)
-    );
-  });
+  // Search/pagination now happen in the database query
+  const filteredLogs = logs;
 
   if (!isAdmin) {
     return (
@@ -194,7 +207,7 @@ const AuditLogs = () => {
         <Card>
           <CardHeader className="pb-3">
             <CardDescription>Total de Logs</CardDescription>
-            <CardTitle className="text-3xl">{filteredLogs.length}</CardTitle>
+            <CardTitle className="text-3xl">{totalCount}</CardTitle>
           </CardHeader>
         </Card>
 
@@ -314,6 +327,10 @@ const AuditLogs = () => {
               </Card>
             )}
           />
+        )}
+        {totalPages > 1 && (
+          <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage}
+            totalItems={totalCount} itemsPerPage={PAGE_SIZE} />
         )}
       </div>
     </div>
