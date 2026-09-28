@@ -1,8 +1,8 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useDebounce } from '@/hooks/useDebounce';
-import { ITEMS_PER_PAGE, type TicketWithRelations } from '../types';
 
-export const useTicketFilters = (tickets: TicketWithRelations[]) => {
+/** Filter state for the tickets list. Filtering itself runs in the database. */
+export const useTicketFilters = () => {
   const [searchTerm, setSearchTerm] = useState(localStorage.getItem('tickets_search') || '');
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
   const [activeTab, setActiveTab] = useState(localStorage.getItem('tickets_tab') || 'todos');
@@ -11,7 +11,6 @@ export const useTicketFilters = (tickets: TicketWithRelations[]) => {
   const [selectedUfvSolarz, setSelectedUfvSolarz] = useState(localStorage.getItem('tickets_ufv_solarz') || 'todos');
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Persist filters
   useEffect(() => {
     localStorage.setItem('tickets_search', searchTerm);
     localStorage.setItem('tickets_tab', activeTab);
@@ -20,29 +19,6 @@ export const useTicketFilters = (tickets: TicketWithRelations[]) => {
     localStorage.setItem('tickets_ufv_solarz', selectedUfvSolarz);
   }, [searchTerm, activeTab, selectedCliente, selectedPrioridade, selectedUfvSolarz]);
 
-  const filteredTickets = useMemo(() => {
-    return tickets.filter(ticket => {
-      const clienteNome = ticket.clientes?.empresa || ticket.clientes?.profiles?.nome || '';
-      const matchesSearch = ticket.titulo.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-        ticket.numero_ticket.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-        clienteNome.toLowerCase().includes(debouncedSearchTerm.toLowerCase());
-
-      const matchesCliente = selectedCliente === 'todos' || ticket.cliente_id === selectedCliente;
-      const matchesPrioridade = selectedPrioridade === 'todas' || ticket.prioridade === selectedPrioridade;
-      const matchesUfvSolarz = selectedUfvSolarz === 'todos' || ticket.clientes?.ufv_solarz === selectedUfvSolarz;
-
-      if (activeTab === 'todos') return matchesSearch && matchesCliente && matchesPrioridade && matchesUfvSolarz;
-      return matchesSearch && matchesCliente && matchesPrioridade && matchesUfvSolarz && ticket.status === activeTab;
-    });
-  }, [tickets, debouncedSearchTerm, activeTab, selectedCliente, selectedPrioridade, selectedUfvSolarz]);
-
-  const totalPages = Math.ceil(filteredTickets.length / ITEMS_PER_PAGE);
-  const paginatedTickets = filteredTickets.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
-  );
-
-  // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [debouncedSearchTerm, activeTab, selectedCliente, selectedPrioridade, selectedUfvSolarz]);
@@ -61,8 +37,7 @@ export const useTicketFilters = (tickets: TicketWithRelations[]) => {
     setSelectedUfvSolarz,
     currentPage,
     setCurrentPage,
-    filteredTickets,
-    paginatedTickets,
-    totalPages,
   };
 };
+
+export type TicketFiltersState = ReturnType<typeof useTicketFilters>;
