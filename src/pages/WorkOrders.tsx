@@ -144,7 +144,7 @@ const WorkOrders = () => {
     }
   };
 
-  if (loading) {
+  if (loading && workOrders.length === 0 && stats.total === 0) {
     return <div className="p-4 sm:p-6"><LoadingState variant="card" count={6} /></div>;
   }
 
