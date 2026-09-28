@@ -1,62 +1,15 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
 import { useGlobalRealtime } from '@/hooks/useRealtimeProvider';
+import { useDebounce } from '@/hooks/useDebounce';
 import { workOrderService } from '../services/workOrderService';
 import type { WorkOrder } from '../types';
 import { ITEMS_PER_PAGE } from '../types';
 
-export const useWorkOrderData = () => {
-  const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
-  const [clientes, setClientes] = useState<{ id: string; empresa: string }[]>([]);
-  const [loading, setLoading] = useState(true);
-  const { handleAsyncError } = useErrorHandler();
-
-  const loadWorkOrders = async () => {
-    setLoading(true);
-    const data = await handleAsyncError(
-      () => workOrderService.loadAll(),
-      { fallbackMessage: 'Erro ao carregar ordens de serviço' }
-    );
-    if (data) setWorkOrders(data);
-    setLoading(false);
-  };
-
-  const loadClientes = async () => {
-    const data = await workOrderService.loadClientes();
-    setClientes(data);
-  };
-
-  useEffect(() => { loadWorkOrders(); loadClientes(); }, []);
-
-  // Realtime: refresh stats/listing when OS, tickets or RME status change
-  useGlobalRealtime(() => { loadWorkOrders(); });
-
-  const ufvSolarzOptions = useMemo(() => {
-    const ufvSet = new Set<string>();
-    workOrders.forEach(os => {
-      if (os.tickets.clientes?.ufv_solarz) ufvSet.add(os.tickets.clientes.ufv_solarz);
-    });
-    return Array.from(ufvSet).sort();
-  }, [workOrders]);
-
-  const stats = useMemo(() => {
-    const total = workOrders.length;
-    const abertas = workOrders.filter(os => !["concluido", "cancelado", "em_execucao"].includes(os.tickets.status)).length;
-    const emExecucao = workOrders.filter(os => os.tickets.status === "em_execucao").length;
-    const atrasadas = workOrders.filter(os => {
-      if (!os.data_programada) return false;
-      return new Date(os.data_programada) < new Date() && !["concluido", "cancelado"].includes(os.tickets.status);
-    }).length;
-    const concluidas = workOrders.filter(os => os.tickets.status === "concluido").length;
-    const recusadas = workOrders.filter(os => os.aceite_tecnico === "recusado").length;
-    return { total, abertas, emExecucao, atrasadas, concluidas, recusadas };
-  }, [workOrders]);
-
-  return { workOrders, clientes, loading, setLoading, loadWorkOrders, ufvSolarzOptions, stats };
-};
-
-export const useWorkOrderFilters = (workOrders: WorkOrder[]) => {
+/** Filter state for the OS list. Filtering runs in the database. */
+export const useWorkOrderFilters = () => {
   const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearch = useDebounce(searchTerm, 500);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [aceiteFilter, setAceiteFilter] = useState<string>("all");
   const [clienteFilter, setClienteFilter] = useState<string>("all");
@@ -64,68 +17,55 @@ export const useWorkOrderFilters = (workOrders: WorkOrder[]) => {
   const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({});
   const [currentPage, setCurrentPage] = useState(1);
 
-  const filteredOrders = useMemo(() => {
-    const tokens = searchTerm
-      .toLowerCase()
-      .split(/\s+/)
-      .map((t) => t.trim())
-      .filter(Boolean);
-
-    return workOrders.filter((os) => {
-      let matchesSearch = true;
-      if (tokens.length > 0) {
-        const haystack = [
-          os.numero_os,
-          os.tickets?.titulo,
-          os.tickets?.status,
-          os.tickets?.prioridade,
-          os.tickets?.endereco_servico,
-          os.tickets?.clientes?.empresa,
-          os.tickets?.clientes?.ufv_solarz,
-          os.site_name,
-          os.servico_solicitado,
-          os.inspetor_responsavel,
-          os.notes,
-          os.aceite_tecnico,
-          os.motivo_recusa,
-          ...(os.work_type || []),
-          ...(os.equipe || []),
-        ]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase();
-        matchesSearch = tokens.every((t) => haystack.includes(t));
-      }
-
-      const ticketStatus = os.tickets.status;
-      const osStatus =
-        ticketStatus === "concluido" ? "concluida" :
-        ticketStatus === "em_execucao" ? "em_execucao" :
-        ticketStatus === "cancelado" ? "cancelada" : "aberta";
-
-      const matchesStatus = statusFilter === "all" || osStatus === statusFilter;
-      const matchesCliente = clienteFilter === "all" || os.tickets.clientes?.empresa === clienteFilter;
-      const matchesUfvSolarz = ufvSolarzFilter === "all" || os.tickets.clientes?.ufv_solarz === ufvSolarzFilter;
-      const matchesAceite = aceiteFilter === "all" || os.aceite_tecnico === aceiteFilter;
-      const matchesDate =
-        (!dateRange.from || new Date(os.data_programada || os.data_emissao) >= dateRange.from) &&
-        (!dateRange.to || new Date(os.data_programada || os.data_emissao) <= dateRange.to);
-
-      return matchesSearch && matchesStatus && matchesCliente && matchesUfvSolarz && matchesAceite && matchesDate;
-    });
-  }, [workOrders, searchTerm, statusFilter, aceiteFilter, clienteFilter, ufvSolarzFilter, dateRange]);
-
-  const totalPages = Math.ceil(filteredOrders.length / ITEMS_PER_PAGE);
-  const paginatedOrders = useMemo(() => {
-    return filteredOrders.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
-  }, [filteredOrders, currentPage]);
-
-  useEffect(() => { setCurrentPage(1); }, [searchTerm, statusFilter, aceiteFilter, clienteFilter, ufvSolarzFilter, dateRange]);
+  useEffect(() => { setCurrentPage(1); }, [debouncedSearch, statusFilter, aceiteFilter, clienteFilter, ufvSolarzFilter, dateRange]);
 
   return {
-    searchTerm, setSearchTerm, statusFilter, setStatusFilter,
+    searchTerm, setSearchTerm, debouncedSearch, statusFilter, setStatusFilter,
     aceiteFilter, setAceiteFilter, clienteFilter, setClienteFilter,
     ufvSolarzFilter, setUfvSolarzFilter, dateRange, setDateRange,
-    currentPage, setCurrentPage, filteredOrders, paginatedOrders, totalPages,
+    currentPage, setCurrentPage,
   };
+};
+
+export type WorkOrderFiltersState = ReturnType<typeof useWorkOrderFilters>;
+
+export const useWorkOrderData = (filters: WorkOrderFiltersState) => {
+  const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [clientes, setClientes] = useState<{ id: string; empresa: string }[]>([]);
+  const [ufvSolarzOptions, setUfvSolarzOptions] = useState<string[]>([]);
+  const [stats, setStats] = useState({ total: 0, abertas: 0, emExecucao: 0, atrasadas: 0, concluidas: 0, recusadas: 0 });
+  const [loading, setLoading] = useState(true);
+  const { handleAsyncError } = useErrorHandler();
+  const reqId = useRef(0);
+
+  const { currentPage, debouncedSearch, statusFilter, aceiteFilter, clienteFilter, ufvSolarzFilter, dateRange } = filters;
+
+  const loadWorkOrders = useCallback(async () => {
+    const id = ++reqId.current;
+    setLoading(true);
+    const [page, s] = await Promise.all([
+      handleAsyncError(() => workOrderService.loadPage({
+        page: currentPage, pageSize: ITEMS_PER_PAGE, search: debouncedSearch,
+        status: statusFilter, aceite: aceiteFilter, clienteEmpresa: clienteFilter,
+        ufv: ufvSolarzFilter, dateFrom: dateRange.from, dateTo: dateRange.to,
+      }), { fallbackMessage: 'Erro ao carregar ordens de serviço' }),
+      workOrderService.loadStats().catch(() => null),
+    ]);
+    if (id !== reqId.current) return;
+    if (page) { setWorkOrders(page.rows); setTotalCount(page.total); }
+    if (s) setStats(s);
+    setLoading(false);
+  }, [currentPage, debouncedSearch, statusFilter, aceiteFilter, clienteFilter, ufvSolarzFilter, dateRange, handleAsyncError]);
+
+  useEffect(() => {
+    workOrderService.loadClientes().then(setClientes);
+    workOrderService.loadUfvNames().then(setUfvSolarzOptions);
+  }, []);
+  useEffect(() => { loadWorkOrders(); }, [loadWorkOrders]);
+  useGlobalRealtime(loadWorkOrders);
+
+  const totalPages = Math.max(1, Math.ceil(totalCount / ITEMS_PER_PAGE));
+
+  return { workOrders, totalCount, totalPages, clientes, loading, setLoading, loadWorkOrders, ufvSolarzOptions, stats };
 };

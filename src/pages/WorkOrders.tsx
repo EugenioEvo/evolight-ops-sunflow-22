@@ -52,8 +52,8 @@ const WorkOrders = () => {
 
   const canManageOS = profile?.role === "admin" || profile?.role === "engenharia" || profile?.role === "supervisao";
 
-  const { workOrders, clientes, loading, setLoading, loadWorkOrders, ufvSolarzOptions, stats } = useWorkOrderData();
-  const filters = useWorkOrderFilters(workOrders);
+  const filters = useWorkOrderFilters();
+  const { workOrders, totalCount, totalPages, clientes, loading, setLoading, loadWorkOrders, ufvSolarzOptions, stats } = useWorkOrderData(filters);
 
   // Load prestadores + clientes (with full address) for the standalone dialog
   useEffect(() => {
@@ -144,7 +144,7 @@ const WorkOrders = () => {
     }
   };
 
-  if (loading) {
+  if (loading && workOrders.length === 0 && stats.total === 0) {
     return <div className="p-4 sm:p-6"><LoadingState variant="card" count={6} /></div>;
   }
 
@@ -281,12 +281,12 @@ const WorkOrders = () => {
       </Card>
 
       {/* OS List */}
-      {filters.filteredOrders.length === 0 ? (
+      {workOrders.length === 0 ? (
         <EmptyState icon={FileText} title="Nenhuma ordem de serviço encontrada" description="Ajuste os filtros ou crie uma nova OS" />
       ) : (
         <div className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {filters.paginatedOrders.map((os) => {
+            {workOrders.map((os) => {
               const status = getOSStatus(os);
               const config = statusConfig[status];
               const StatusIcon = config.icon;
@@ -431,9 +431,9 @@ const WorkOrders = () => {
           </div>
           <Pagination
             currentPage={filters.currentPage}
-            totalPages={filters.totalPages}
+            totalPages={totalPages}
             onPageChange={filters.setCurrentPage}
-            totalItems={filters.filteredOrders.length}
+            totalItems={totalCount}
             itemsPerPage={18}
           />
         </div>

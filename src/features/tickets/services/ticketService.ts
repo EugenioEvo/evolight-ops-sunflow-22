@@ -3,10 +3,83 @@ import { getClient } from '@/shared/services/baseService';
 import type { TicketWithRelations, TicketCliente, TicketPrestador, LinkedOS } from '../types';
 import type { TablesInsert, TablesUpdate } from '@/integrations/supabase/types';
 
+export interface TicketPageParams {
+  page: number;
+  pageSize: number;
+  status?: string;
+  clienteId?: string;
+  prioridade?: string;
+  ufv?: string;
+  search?: string;
+}
+
 export const createTicketService = (client?: AppSupabaseClient) => {
   const db = getClient(client);
 
   return {
+    /**
+     * Server-side paginated listing. Filters run in the database; only one
+     * page of tickets (with relations) is transferred per request.
+     */
+    async loadPage(params: TicketPageParams): Promise<{ rows: TicketWithRelations[]; total: number; counts: Record<string, number> }> {
+      const { page, pageSize, status, clienteId, prioridade, ufv, search } = params;
+
+      // Resolve cross-table filters (cliente name search / UFV) into cliente ids once.
+      let ufvClienteIds: string[] | null = null;
+      if (ufv && ufv !== 'todos') {
+        const { data } = await db.from('cliente_ufvs').select('cliente_id').eq('nome', ufv);
+        ufvClienteIds = Array.from(new Set((data || []).map((r: any) => r.cliente_id)));
+      }
+      const term = (search || '').trim().replace(/[,()%*]/g, ' ').trim();
+      let searchClienteIds: string[] = [];
+      if (term) {
+        const { data } = await db.from('clientes').select('id').ilike('empresa', `%${term}%`).limit(300);
+        searchClienteIds = (data || []).map((r: any) => r.id);
+      }
+
+      const applyFilters = (q: any, withStatus: boolean) => {
+        if (withStatus && status && status !== 'todos') q = q.eq('status', status);
+        if (clienteId && clienteId !== 'todos') q = q.eq('cliente_id', clienteId);
+        if (prioridade && prioridade !== 'todas') q = q.eq('prioridade', prioridade);
+        if (ufvClienteIds) q = q.in('cliente_id', ufvClienteIds.length ? ufvClienteIds : ['00000000-0000-0000-0000-000000000000']);
+        if (term) {
+          const parts = [`titulo.ilike.%${term}%`, `numero_ticket.ilike.%${term}%`];
+          if (searchClienteIds.length) parts.push(`cliente_id.in.(${searchClienteIds.join(',')})`);
+          q = q.or(parts.join(','));
+        }
+        return q;
+      };
+
+      const from = (page - 1) * pageSize;
+      const pageQuery = applyFilters(
+        db.from('tickets')
+          .select(`*, ordens_servico(numero_os, id, pdf_url, aceite_tecnico, motivo_recusa, tecnico_id, data_programada, tecnicos:tecnico_id(profiles(nome, email)), rme_relatorios(id, status)), clientes(empresa, cnpj_cpf, endereco, cidade, estado, cep, prioridade, status_financeiro_ca, atrasos_recebimentos, cliente_ufvs(nome), profiles(nome, email)), prestadores:tecnico_responsavel_id(id, nome, email)`, { count: 'exact' }),
+        true,
+      ).order('created_at', { ascending: false }).range(from, from + pageSize - 1);
+
+      const statuses = ['todos', 'aberto', 'aprovado', 'ordem_servico_gerada', 'em_execucao', 'concluido', 'cancelado'];
+      const countQueries = statuses.map((s) => {
+        let q = applyFilters(db.from('tickets').select('id', { count: 'exact', head: true }), false);
+        if (s !== 'todos') q = q.eq('status', s);
+        return q;
+      });
+
+      const [pageRes, ...countRes] = await Promise.all([pageQuery, ...countQueries]);
+      if (pageRes.error) throw pageRes.error;
+      const counts: Record<string, number> = {};
+      statuses.forEach((s, i) => { counts[s] = countRes[i].count || 0; });
+
+      const data = pageRes.data || [];
+      data.forEach((t: any) => {
+        if (t.clientes) {
+          const ufvs = Array.isArray(t.clientes.cliente_ufvs) ? t.clientes.cliente_ufvs : [];
+          const names = ufvs.map((u: any) => u?.nome).filter(Boolean);
+          t.clientes.ufv_solarz = names.length ? names.join(', ') : null;
+        }
+      });
+      return { rows: data as unknown as TicketWithRelations[], total: pageRes.count || 0, counts };
+    },
+
     async loadAll(): Promise<TicketWithRelations[]> {
       const { data, error } = await db
         .from('tickets')
