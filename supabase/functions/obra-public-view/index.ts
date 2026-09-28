@@ -152,12 +152,8 @@ serve(async (req) => {
         if (typeof f === "string") photoItems.push({ path: f, data: r.data_rdo });
       }
     }
-    const fotos = (
-      (await signPaths(supabase, photoItems.map((i) => i.path))) &&
-      photoItems
-    );
     const signedMap = await signPaths(supabase, photoItems.map((i) => i.path));
-    const fotosResolved = photoItems
+    const fotos = photoItems
       .map((i) => {
         const u = signedMap.get(i.path);
         return u ? { url: u, descricao: i.descricao ?? null, data: i.data ?? null } : null;
