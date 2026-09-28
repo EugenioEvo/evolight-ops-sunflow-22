@@ -56,6 +56,15 @@ export const useTicketData = (filters: TicketFiltersState) => {
   useGlobalRealtime(loadPage);
 
   const ufvSolarzListForForm = useMemo(() => {
+    return clientes
+      .map(c => c.ufv_solarz)
+      .filter((ufv): ufv is string => !!ufv && ufv.trim() !== '')
+      .filter((ufv, i, arr) => arr.indexOf(ufv) === i)
+      .sort((a, b) => a.localeCompare(b));
+  }, [clientes]);
+
+  // Individual UFV names, used by the server-side UFV filter
+  const ufvSolarzOptions = useMemo(() => {
     const set = new Set<string>();
     clientes.forEach((c: any) => (c.ufvs || []).forEach((u: any) => u?.nome && set.add(u.nome)));
     return Array.from(set).sort((a, b) => a.localeCompare(b));
@@ -73,7 +82,7 @@ export const useTicketData = (filters: TicketFiltersState) => {
     loading,
     setLoading,
     loadData: loadPage,
-    ufvSolarzOptions: ufvSolarzListForForm,
+    ufvSolarzOptions,
     ufvSolarzListForForm,
   };
 };

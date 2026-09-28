@@ -33,9 +33,9 @@ const Tickets = () => {
   const { toast } = useToast();
   const { geocodeAddress, loading: geocoding } = useGeocoding();
 
-  const { tickets, clientes, prestadores, loading: dataLoading, loadData, ufvSolarzOptions, ufvSolarzListForForm } = useTicketData();
+  const filters = useTicketFilters();
+  const { tickets, totalCount, totalPages, statusCounts, clientes, prestadores, loading: dataLoading, loadData, ufvSolarzOptions, ufvSolarzListForForm } = useTicketData(filters);
   const mutations = useTicketMutations(loadData);
-  const filters = useTicketFilters(tickets);
 
   const { getScoresForTicket } = useTechnicianScoreEngine(prestadores);
   const activeTicketScoresRef = useRef<Map<string, any>>(new Map());
@@ -106,7 +106,7 @@ const Tickets = () => {
     setEditingTicket(null);
   };
 
-  if (dataLoading && tickets.length === 0) {
+  if (dataLoading && tickets.length === 0 && statusCounts['todos'] === undefined) {
     return (
       <div className="p-6 space-y-6">
         <div className="animate-pulse space-y-4">
@@ -145,17 +145,17 @@ const Tickets = () => {
 
       <Tabs value={filters.activeTab} onValueChange={filters.setActiveTab}>
         <TabsList className="flex-wrap h-auto gap-1">
-          <TabsTrigger value="todos">Todos ({tickets.length})</TabsTrigger>
-          <TabsTrigger value="aberto">Abertos ({tickets.filter(t => t.status === 'aberto').length})</TabsTrigger>
-          <TabsTrigger value="aprovado">Aprovados ({tickets.filter(t => t.status === 'aprovado').length})</TabsTrigger>
-          <TabsTrigger value="ordem_servico_gerada">OS Gerada ({tickets.filter(t => t.status === 'ordem_servico_gerada').length})</TabsTrigger>
-          <TabsTrigger value="em_execucao">Em Execução ({tickets.filter(t => t.status === 'em_execucao').length})</TabsTrigger>
-          <TabsTrigger value="concluido">Concluídos ({tickets.filter(t => t.status === 'concluido').length})</TabsTrigger>
-          <TabsTrigger value="cancelado">Cancelados ({tickets.filter(t => t.status === 'cancelado').length})</TabsTrigger>
+          <TabsTrigger value="todos">Todos ({statusCounts['todos'] ?? 0})</TabsTrigger>
+          <TabsTrigger value="aberto">Abertos ({statusCounts['aberto'] ?? 0})</TabsTrigger>
+          <TabsTrigger value="aprovado">Aprovados ({statusCounts['aprovado'] ?? 0})</TabsTrigger>
+          <TabsTrigger value="ordem_servico_gerada">OS Gerada ({statusCounts['ordem_servico_gerada'] ?? 0})</TabsTrigger>
+          <TabsTrigger value="em_execucao">Em Execução ({statusCounts['em_execucao'] ?? 0})</TabsTrigger>
+          <TabsTrigger value="concluido">Concluídos ({statusCounts['concluido'] ?? 0})</TabsTrigger>
+          <TabsTrigger value="cancelado">Cancelados ({statusCounts['cancelado'] ?? 0})</TabsTrigger>
         </TabsList>
 
         <TabsContent value={filters.activeTab} className="space-y-4">
-          {filters.filteredTickets.length === 0 ? (
+          {tickets.length === 0 && !dataLoading ? (
             <EmptyState
               icon={TicketIcon}
               title="Nenhum ticket encontrado"
@@ -166,7 +166,7 @@ const Tickets = () => {
           ) : (
             <div className="space-y-4">
               <div className="grid gap-4">
-                {filters.paginatedTickets.map((ticket) => (
+                {tickets.map((ticket) => (
                   <TicketCard
                     key={ticket.id}
                     ticket={ticket}
@@ -191,9 +191,9 @@ const Tickets = () => {
               </div>
               <Pagination
                 currentPage={filters.currentPage}
-                totalPages={filters.totalPages}
+                totalPages={totalPages}
                 onPageChange={filters.setCurrentPage}
-                totalItems={filters.filteredTickets.length}
+                totalItems={totalCount}
                 itemsPerPage={ITEMS_PER_PAGE}
               />
             </div>
