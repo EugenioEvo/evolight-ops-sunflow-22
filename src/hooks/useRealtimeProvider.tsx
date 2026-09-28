@@ -13,20 +13,27 @@ export const RealtimeProvider = ({ children }: { children: ReactNode }) => {
   const listenersRef = useRef<Set<Listener>>(new Set());
 
   useEffect(() => {
+    // Debounce: a single action often touches tickets + OS + RME (triggers),
+    // producing a burst of events. Notify listeners once per burst so each
+    // page reloads once instead of N times.
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const notify = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        timer = null;
+        listenersRef.current.forEach(fn => fn());
+      }, 500);
+    };
+
     const channel = supabase
       .channel('global-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets' }, () => {
-        listenersRef.current.forEach(fn => fn());
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'ordens_servico' }, () => {
-        listenersRef.current.forEach(fn => fn());
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'rme_relatorios' }, () => {
-        listenersRef.current.forEach(fn => fn());
-      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets' }, notify)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'ordens_servico' }, notify)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'rme_relatorios' }, notify)
       .subscribe();
 
     return () => {
+      if (timer) clearTimeout(timer);
       supabase.removeChannel(channel);
     };
   }, []);
