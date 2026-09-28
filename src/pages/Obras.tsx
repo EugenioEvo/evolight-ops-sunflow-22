@@ -11,6 +11,9 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useObrasQuery, useObraMutations, ObraFormDialog, OBRA_STATUS_LABEL, type Obra } from '@/features/obras';
+import { useDebounce } from '@/hooks/useDebounce';
+import { usePaginatedList } from '@/hooks/usePaginatedList';
+import { Pagination } from '@/components/Pagination';
 
 const STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'outline' | 'destructive'> = {
   planejada: 'secondary',
@@ -77,7 +80,7 @@ export default function Obras() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filtered.map((o) => (
+                  {pager.pageItems.map((o) => (
                     <TableRow key={o.id}>
                       <TableCell className="font-medium">{o.nome}</TableCell>
                       <TableCell>{o.cliente?.empresa ?? <span className="text-muted-foreground">—</span>}</TableCell>
@@ -104,6 +107,12 @@ export default function Obras() {
                   ))}
                 </TableBody>
               </Table>
+              {pager.totalPages > 1 && (
+                <div className="p-3">
+                  <Pagination currentPage={pager.page} totalPages={pager.totalPages} onPageChange={pager.setPage}
+                    totalItems={pager.totalItems} itemsPerPage={pager.pageSize} />
+                </div>
+              )}
             </div>
           )}
         </CardContent>
