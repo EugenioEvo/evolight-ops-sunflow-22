@@ -29,14 +29,16 @@ export default function Obras() {
   const [open, setOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<Obra | null>(null);
 
+  const debouncedSearch = useDebounce(search, 500);
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
+    const q = debouncedSearch.trim().toLowerCase();
     if (!q) return obras;
     return obras.filter((o) =>
       [o.nome, o.cidade, o.estado, o.cliente?.empresa, o.responsavel?.nome]
         .filter(Boolean).some((v) => String(v).toLowerCase().includes(q))
     );
-  }, [obras, search]);
+  }, [obras, debouncedSearch]);
+  const pager = usePaginatedList(filtered, 20, debouncedSearch);
 
   return (
     <div className="container mx-auto p-6 space-y-6">
