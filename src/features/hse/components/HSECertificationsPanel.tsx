@@ -204,27 +204,26 @@ function CertDialog({ open, onClose, onSaved, tipos, profileId, prestadorId, ini
     setUploading(true);
     try {
       const id = await ensureCertId();
-      const uploaded: Anexo[] = [];
-      for (const file of Array.from(files)) {
+      const rows = await Promise.all(Array.from(files).map(async (file) => {
         const safe = file.name.replace(/[^\w.\-]+/g, '_');
         const path = `${id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safe}`;
         const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, file, { upsert: false });
         if (upErr) throw upErr;
-        const { data: rec, error: recErr } = await supabase
-          .from('hse_certificacao_anexos')
-          .insert({
-            certificacao_id: id,
-            storage_path: path,
-            nome_original: file.name,
-            mime_type: file.type || null,
-            tamanho_bytes: file.size,
-            uploaded_by: user?.id ?? null,
-          })
-          .select('id, storage_path, nome_original, mime_type')
-          .single();
-        if (recErr) throw recErr;
-        uploaded.push(rec as Anexo);
-      }
+        return {
+          certificacao_id: id,
+          storage_path: path,
+          nome_original: file.name,
+          mime_type: file.type || null,
+          tamanho_bytes: file.size,
+          uploaded_by: user?.id ?? null,
+        };
+      }));
+      const { data: recs, error: recErr } = await supabase
+        .from('hse_certificacao_anexos')
+        .insert(rows)
+        .select('id, storage_path, nome_original, mime_type');
+      if (recErr) throw recErr;
+      const uploaded = (recs ?? []) as Anexo[];
       setAnexos(prev => [...prev, ...uploaded]);
       toast.success(`${uploaded.length} arquivo(s) anexado(s)`);
     } catch (e: any) {
