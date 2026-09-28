@@ -107,26 +107,20 @@ serve(async (req) => {
           ? `A certificação "${nomeTipo}" de ${dono} venceu em ${(cert as any).data_vencimento}.`
           : `A certificação "${nomeTipo}" de ${dono} vence em ${(cert as any).data_vencimento}.`;
 
-      // In-app: dono
-      if (donoUserId) {
-        await supabase.from('notificacoes').insert({
-          user_id: donoUserId,
-          tipo: 'hse_certificacao_alerta',
-          titulo,
-          mensagem,
-          link: '/usuarios',
-        });
-      }
-      // In-app: gestores
-      for (const uid of managerUserIds) {
-        await supabase.from('notificacoes').insert({
+      // In-app: dono + gestores em um único insert
+      const notifRows = [
+        ...(donoUserId
+          ? [{ user_id: donoUserId, tipo: 'hse_certificacao_alerta', titulo, mensagem, link: '/usuarios' }]
+          : []),
+        ...managerUserIds.map((uid) => ({
           user_id: uid,
           tipo: 'hse_certificacao_alerta',
           titulo,
           mensagem,
           link: '/hse/catalogo-certificacoes',
-        });
-      }
+        })),
+      ];
+      if (notifRows.length) await supabase.from('notificacoes').insert(notifRows);
 
       // Email
       if (resend) {

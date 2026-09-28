@@ -57,14 +57,13 @@ export const FileUpload: React.FC<FileUploadProps> = ({
 
     setUploading(true);
     try {
-      const uploadedPaths: string[] = [];
-      for (const file of selectedFiles) {
+      const uploadedPaths = await Promise.all(selectedFiles.map(async (file) => {
         const fileExt = file.name.split('.').pop();
         const fileName = `${ticketId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
         const { error: uploadError } = await supabase.storage.from('ticket-anexos').upload(fileName, file, { cacheControl: '3600', upsert: false });
         if (uploadError) throw uploadError;
-        uploadedPaths.push(fileName);
-      }
+        return fileName;
+      }));
       const newFiles = [...files, ...uploadedPaths];
       setFiles(newFiles);
       onFilesChange(newFiles);

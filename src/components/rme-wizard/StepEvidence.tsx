@@ -46,13 +46,16 @@ export const StepEvidence = ({ formData, updateFormData, rmeId, osId }: Props) =
       errors.forEach((msg) =>
         toast({ title: "Arquivo rejeitado", description: msg, variant: "destructive" })
       );
-      for (const file of processed) {
+      const names = await Promise.all(processed.map(async (file) => {
         const fileExt = file.name.split(".").pop() || "jpg";
         const fileName = `${osId}/${rmeId}/${type}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${fileExt}`;
         const { error } = await supabase.storage.from("rme-fotos").upload(fileName, file);
         if (error) throw error;
-        const { data: signedData } = await supabase.storage.from("rme-fotos").createSignedUrl(fileName, SIGNED_URL_TTL);
-        if (signedData?.signedUrl) newUrls.push(signedData.signedUrl);
+        return fileName;
+      }));
+      if (names.length) {
+        const { data: signed } = await supabase.storage.from("rme-fotos").createSignedUrls(names, SIGNED_URL_TTL);
+        for (const s of signed ?? []) if (s.signedUrl) newUrls.push(s.signedUrl);
       }
       if (newUrls.length > 0) {
         const key = type === "antes" ? "fotos_antes" : "fotos_depois";
