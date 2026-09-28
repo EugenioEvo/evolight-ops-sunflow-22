@@ -33,25 +33,15 @@ const RouteDetailsComponent: React.FC<RouteDetailsProps> = ({
   if (!selectedRoute) return null;
 
   const rota = rotas.find(r => r.id === selectedRoute);
-  if (!rota) return null;
 
-  const originalTimelineItems = rota.ticketsData.map(t => ({
-    id: t.id,
-    address: t.endereco,
-    priority: t.prioridade,
-    status: t.status,
-    coordenadas: t.coordenadas,
-    hasRealCoords: t.hasRealCoords,
-    tempoServico: parseInt(t.estimativa) || 30
-  }));
-
+  // Hooks must run before any early return (rules of hooks)
   const handleReorder = useCallback((newItems: TimelineItem[]) => {
     setReorderedItems(newItems);
     setHasChanges(true);
   }, []);
 
   const handleSave = useCallback(() => {
-    if (!reorderedItems || !onRouteUpdate) return;
+    if (!rota || !reorderedItems || !onRouteUpdate) return;
 
     // Reconstruct ticketsData in new order
     const newTicketsOrder = reorderedItems.map((item, index) => {
@@ -63,12 +53,24 @@ const RouteDetailsComponent: React.FC<RouteDetailsProps> = ({
     onRouteUpdate(selectedRoute, newTicketsOrder);
     setHasChanges(false);
     toast.success("Ordem da rota atualizada!");
-  }, [reorderedItems, onRouteUpdate, rota.ticketsData, selectedRoute]);
+  }, [reorderedItems, onRouteUpdate, rota, selectedRoute]);
 
   const handleReset = useCallback(() => {
     setReorderedItems(null);
     setHasChanges(false);
   }, []);
+
+  if (!rota) return null;
+
+  const originalTimelineItems = rota.ticketsData.map(t => ({
+    id: t.id,
+    address: t.endereco,
+    priority: t.prioridade,
+    status: t.status,
+    coordenadas: t.coordenadas,
+    hasRealCoords: t.hasRealCoords,
+    tempoServico: parseInt(t.estimativa) || 30
+  }));
 
   const currentItems = reorderedItems || originalTimelineItems;
 

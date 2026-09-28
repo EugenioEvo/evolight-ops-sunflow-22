@@ -45,8 +45,15 @@ const MapViewComponent: React.FC<MapViewProps> = ({
 
   const selectedRota = selectedRoute ? rotas.find(r => r.id === selectedRoute) : null;
   const validTickets = tickets.filter(t => isValidCoordinate(t.coordenadas));
-  const validSelectedTickets = selectedRota?.ticketsData.filter(t => isValidCoordinate(t.coordenadas)) || [];
-  const validGeometry = routeGeometry?.filter(coord => isValidCoordinate(coord)) || [];
+  // Memoized so effects depending on them don't re-run (and redraw the map) on every render
+  const validSelectedTickets = useMemo(
+    () => selectedRota?.ticketsData.filter(t => isValidCoordinate(t.coordenadas)) || [],
+    [selectedRota],
+  );
+  const validGeometry = useMemo(
+    () => routeGeometry?.filter(coord => isValidCoordinate(coord)) || [],
+    [routeGeometry],
+  );
 
   // Inicializar mapa usando Leaflet diretamente (sem react-leaflet)
   useEffect(() => {
