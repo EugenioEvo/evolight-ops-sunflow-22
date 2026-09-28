@@ -18,9 +18,6 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search, Shield, Trash2, UserCog, Pencil, Plus, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useDebounce } from '@/hooks/useDebounce';
-import { usePaginatedList } from '@/hooks/usePaginatedList';
-import { Pagination } from '@/components/Pagination';
 import { especialidadesOptions, experienciaOptions } from '@/features/providers/types';
 import { HSECertificationsPanel } from '@/features/hse/components/HSECertificationsPanel';
 
@@ -133,12 +130,10 @@ const Usuarios = () => {
 
   useEffect(() => { load(); }, []);
 
-  const debouncedSearch = useDebounce(search, 500);
-  const filtered = useMemo(() => {
-    const q = debouncedSearch.toLowerCase();
-    return rows.filter(r => r.nome.toLowerCase().includes(q) || r.email.toLowerCase().includes(q));
-  }, [rows, debouncedSearch]);
-  const pager = usePaginatedList(filtered, 20, debouncedSearch);
+  const filtered = useMemo(() => rows.filter(r =>
+    r.nome.toLowerCase().includes(search.toLowerCase()) ||
+    r.email.toLowerCase().includes(search.toLowerCase())
+  ), [rows, search]);
 
   const toggleAtivo = async (row: UsuarioRow) => {
     try {
@@ -209,7 +204,7 @@ const Usuarios = () => {
         <div className="text-center py-12 text-muted-foreground">Carregando usuários...</div>
       ) : (
         <div className="grid gap-3">
-          {pager.pageItems.map(row => (
+          {filtered.map(row => (
             <Card key={row.id} className={!row.ativo ? 'opacity-60' : ''}>
               <CardContent className="p-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
@@ -291,10 +286,6 @@ const Usuarios = () => {
           ))}
           {filtered.length === 0 && (
             <Card className="p-8 text-center text-muted-foreground">Nenhum usuário encontrado.</Card>
-          )}
-          {pager.totalPages > 1 && (
-            <Pagination currentPage={pager.page} totalPages={pager.totalPages} onPageChange={pager.setPage}
-              totalItems={pager.totalItems} itemsPerPage={pager.pageSize} />
           )}
         </div>
       )}

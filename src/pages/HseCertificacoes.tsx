@@ -9,9 +9,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Loader2, ShieldCheck, Search, Paperclip, AlertTriangle, CheckCircle2, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import { differenceInCalendarDays, format } from 'date-fns';
-import { useDebounce } from '@/hooks/useDebounce';
-import { usePaginatedList } from '@/hooks/usePaginatedList';
-import { Pagination } from '@/components/Pagination';
 
 const BUCKET = 'hse-certificacoes';
 
@@ -100,9 +97,8 @@ export default function HseCertificacoes() {
     validas: rows.filter(r => r.dias !== null && r.dias > 30).length,
   }), [rows]);
 
-  const buscaDebounced = useDebounce(busca, 500);
   const filtered = useMemo(() => {
-    const q = buscaDebounced.trim().toLowerCase();
+    const q = busca.trim().toLowerCase();
     return rows.filter(r => {
       if (q && !r.pessoa.toLowerCase().includes(q) && !r.tipoNome.toLowerCase().includes(q)) return false;
       if (situacao === 'vencidas') return r.dias !== null && r.dias < 0;
@@ -111,8 +107,7 @@ export default function HseCertificacoes() {
       if (situacao === 'sem_validade') return r.dias === null;
       return true;
     });
-  }, [rows, buscaDebounced, situacao]);
-  const pager = usePaginatedList(filtered, 20, `${buscaDebounced}|${situacao}`);
+  }, [rows, busca, situacao]);
 
   const diasBadge = (r: Row) => {
     if (r.dias === null) return <Badge variant="secondary">Sem validade</Badge>;
@@ -204,7 +199,7 @@ export default function HseCertificacoes() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {pager.pageItems.map(r => (
+                    {filtered.map(r => (
                       <TableRow key={r.id}>
                         <TableCell>
                           <div className="font-medium">{r.pessoa}</div>
@@ -232,7 +227,7 @@ export default function HseCertificacoes() {
 
               {/* Mobile */}
               <div className="md:hidden space-y-3">
-                {pager.pageItems.map(r => (
+                {filtered.map(r => (
                   <Card key={r.id}>
                     <CardContent className="p-3 space-y-2">
                       <div className="flex items-start justify-between gap-2">
@@ -255,10 +250,6 @@ export default function HseCertificacoes() {
                   </Card>
                 ))}
               </div>
-              {pager.totalPages > 1 && (
-                <Pagination currentPage={pager.page} totalPages={pager.totalPages} onPageChange={pager.setPage}
-                  totalItems={pager.totalItems} itemsPerPage={pager.pageSize} />
-              )}
             </>
           )}
         </CardContent>

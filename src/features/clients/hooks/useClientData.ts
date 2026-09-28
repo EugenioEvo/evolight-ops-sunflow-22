@@ -28,7 +28,7 @@ export function useClientData(pageSize: number = PAGE_SIZE): UseClientDataResult
   const [includeInactive, setIncludeInactive] = useState(false);
   const { handleAsyncError } = useErrorHandler();
 
-  const debouncedSearch = useDebounce(searchTerm, 500);
+  const debouncedSearch = useDebounce(searchTerm, 350);
 
   // Whenever the search term or inactive filter changes, reset to page 1.
   useEffect(() => {
