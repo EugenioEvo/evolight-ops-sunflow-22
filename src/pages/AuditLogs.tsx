@@ -135,7 +135,7 @@ const AuditLogs = () => {
     );
   }
 
-  if (loading) {
+  if (loading && logs.length === 0 && totalCount === 0 && !debouncedSearch) {
     return (
       <div className="p-6">
         <LoadingState />
