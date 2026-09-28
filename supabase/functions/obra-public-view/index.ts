@@ -153,13 +153,16 @@ serve(async (req) => {
       }
     }
     const fotos = (
-      await Promise.all(
-        photoItems.map(async (i) => {
-          const u = await signPath(supabase, i.path);
-          return u ? { url: u, descricao: i.descricao ?? null, data: i.data ?? null } : null;
-        })
-      )
-    ).filter(Boolean);
+      (await signPaths(supabase, photoItems.map((i) => i.path))) &&
+      photoItems
+    );
+    const signedMap = await signPaths(supabase, photoItems.map((i) => i.path));
+    const fotosResolved = photoItems
+      .map((i) => {
+        const u = signedMap.get(i.path);
+        return u ? { url: u, descricao: i.descricao ?? null, data: i.data ?? null } : null;
+      })
+      .filter(Boolean);
 
     const obraPublica = {
       id: obra.id,
