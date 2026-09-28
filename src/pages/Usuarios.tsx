@@ -374,13 +374,14 @@ const EditUserDialog = ({ editing, onClose, onSaved, saving, setSaving }: EditDi
       const toAdd = [...after].filter(r => !before.has(r));
       const toRemove = [...before].filter(r => !after.has(r));
 
-      for (const role of toAdd) {
-        const { error } = await supabase.from('user_roles').insert({ user_id: form.user_id, role });
+      if (toAdd.length) {
+        const { error } = await supabase.from('user_roles')
+          .insert(toAdd.map((role) => ({ user_id: form.user_id, role })) as any);
         if (error) throw error;
       }
-      for (const role of toRemove) {
+      if (toRemove.length) {
         const { error } = await supabase.from('user_roles').delete()
-          .eq('user_id', form.user_id).eq('role', role);
+          .eq('user_id', form.user_id).in('role', toRemove as any);
         if (error) throw error;
       }
 

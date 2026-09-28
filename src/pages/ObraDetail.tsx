@@ -22,14 +22,20 @@ const STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'outline' | 'dest
   cancelada: 'destructive',
 };
 
-async function signObjectUrl(path: string): Promise<string | null> {
-  // Evidence/photos may use a few buckets; try common ones.
+/** Batch-sign paths: one createSignedUrls call per bucket, falling back only for unresolved paths. */
+async function signObjectUrls(paths: string[]): Promise<Map<string, string>> {
   const buckets = ['rdo-evidences', 'ordens-servico', 'rme-evidences'];
+  const result = new Map<string, string>();
+  let pending = [...new Set(paths.filter(Boolean))];
   for (const b of buckets) {
-    const { data } = await supabase.storage.from(b).createSignedUrl(path, 60 * 60 * 24 * 365);
-    if (data?.signedUrl) return data.signedUrl;
+    if (!pending.length) break;
+    const { data } = await supabase.storage.from(b).createSignedUrls(pending, 60 * 60 * 24 * 365);
+    for (const d of data ?? []) {
+      if (d.path && d.signedUrl && !d.error) result.set(d.path, d.signedUrl);
+    }
+    pending = pending.filter((p) => !result.has(p));
   }
-  return null;
+  return result;
 }
 
 function formatDateOnlyBR(value?: string | null): string {
@@ -174,10 +180,11 @@ export default function ObraDetail({ mode = 'staff' }: Props) {
           if (typeof f === 'string') items.push({ path: f, data: r.data_rdo, isVideo: videoByExt(f) });
         }
       }
-      const resolved = await Promise.all(items.map(async (i) => {
-        const url = await signObjectUrl(i.path);
+      const signed = await signObjectUrls(items.map((i) => i.path));
+      const resolved = items.map((i) => {
+        const url = signed.get(i.path);
         return url ? { url, descricao: i.descricao, data: i.data, isVideo: i.isVideo } : null;
-      }));
+      });
       return resolved.filter(Boolean) as { url: string; descricao?: string | null; data?: string; isVideo: boolean }[];
     },
     staleTime: 10 * 60_000,

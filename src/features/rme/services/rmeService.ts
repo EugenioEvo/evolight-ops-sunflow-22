@@ -38,16 +38,17 @@ export const createRmeService = (client?: AppSupabaseClient) => {
     },
 
     async uploadPhotos(files: File[], folder: string, userId: string): Promise<string[]> {
-      const urls: string[] = [];
-      for (const file of files) {
-        const fileName = `${userId}/${folder}/${Date.now()}_${file.name}`;
+      if (!files.length) return [];
+      const names = await Promise.all(files.map(async (file, idx) => {
+        const fileName = `${userId}/${folder}/${Date.now()}_${idx}_${file.name}`;
         const { error } = await db.storage.from('rme-fotos').upload(fileName, file);
         if (error) throw error;
-        // Use signed URL since bucket is not public
-        const { data } = await db.storage.from('rme-fotos').createSignedUrl(fileName, 60 * 60 * 24 * 365);
-        if (data?.signedUrl) urls.push(data.signedUrl);
-      }
-      return urls;
+        return fileName;
+      }));
+      // Bucket is private: sign all paths in a single call
+      const { data, error } = await db.storage.from('rme-fotos').createSignedUrls(names, 60 * 60 * 24 * 365);
+      if (error) throw error;
+      return (data ?? []).map((d) => d.signedUrl).filter((u): u is string => !!u);
     },
 
     async getTecnicoId(profileId: string): Promise<string | undefined> {

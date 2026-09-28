@@ -16,13 +16,19 @@ const json = (body: unknown, status = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
-async function signPath(supabase: any, path: string): Promise<string | null> {
+async function signPaths(supabase: any, paths: string[]): Promise<Map<string, string>> {
   const buckets = ["rdo-evidences", "ordens-servico", "rme-evidences"];
+  const result = new Map<string, string>();
+  let pending = [...new Set(paths.filter(Boolean))];
   for (const b of buckets) {
-    const { data } = await supabase.storage.from(b).createSignedUrl(path, 60 * 60 * 24 * 7);
-    if (data?.signedUrl) return data.signedUrl;
+    if (!pending.length) break;
+    const { data } = await supabase.storage.from(b).createSignedUrls(pending, 60 * 60 * 24 * 7);
+    for (const d of data ?? []) {
+      if (d.path && d.signedUrl && !d.error) result.set(d.path, d.signedUrl);
+    }
+    pending = pending.filter((p) => !result.has(p));
   }
-  return null;
+  return result;
 }
 
 serve(async (req) => {
